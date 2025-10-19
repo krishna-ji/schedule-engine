@@ -190,14 +190,28 @@ class GAScheduler:
             self._validate_population_structure()
             progress.advance(task)
 
-        # Evaluate initial population
+        # Evaluate initial population with progress tracking
         console.print("[cyan]Evaluating Initial Population...[/cyan]")
+        eval_start = time.time()
 
         # Use toolbox.map for parallel evaluation when pool is available
         fitness_values = list(self.toolbox.map(self.toolbox.evaluate, self.population))
 
         for ind, fit in zip(self.population, fitness_values):
             ind.fitness.values = fit
+
+        eval_time = time.time() - eval_start
+        console.print(
+            f"   [green]✓[/green] Evaluated {len(self.population)} individuals in [cyan]{eval_time:.1f}s[/cyan] "
+            f"([dim]{eval_time/len(self.population):.2f}s per individual[/dim])"
+        )
+
+        # Show initial best fitness
+        best = tools.selBest(self.population, 1)[0]
+        console.print(
+            f"   [dim]Initial Best:[/dim] Hard=[yellow]{best.fitness.values[0]:.0f}[/yellow], "
+            f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
+        )
 
     def evolve(self):
         """Run genetic algorithm evolution loop."""
@@ -262,6 +276,19 @@ class GAScheduler:
                     speed_display = "--s/gen"
 
                 time_bar.update(task2, speed_display=speed_display)
+
+                # Show progress feedback after generation completes
+                # - First 5 generations: show every generation
+                # - After that: show every 25 generations
+                # - Always show after completion with timing
+                if gen < 5 or (gen + 1) % 25 == 0:
+                    best = tools.selBest(self.population, 1)[0]
+                    console.print(
+                        f"[dim]✓ Gen {gen+1}/{self.config.generations}: "
+                        f"Hard={best.fitness.values[0]:.0f}, "
+                        f"Soft={best.fitness.values[1]:.2f}, "
+                        f"Time={gen_time:.1f}s[/dim]"
+                    )
 
                 # Early stopping if perfect solution found
                 best = tools.selBest(self.population, 1)[0]
@@ -353,6 +380,9 @@ class GAScheduler:
         # Evaluate invalid individuals
         invalid = [ind for ind in offspring if not ind.fitness.valid]
         if invalid:
+            # Only log when evaluating many individuals (helpful for debugging)
+            # Removed frequent logging to reduce console clutter
+            
             # Use toolbox.map for parallel evaluation when pool is available
             fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
             for ind, fit in zip(invalid, fitness_values):

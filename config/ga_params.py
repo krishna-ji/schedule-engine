@@ -1,13 +1,15 @@
 # This File Contains Genetic Algorithm Parameters
 
-# Population size - INCREASED for better multiprocessing utilization
-# Larger populations keep all CPU cores busy during parallel fitness evaluation
-# Use POP_SIZE=10 for quick testing, 100+ for production runs
-POP_SIZE = 1000  # Optimized for multiprocessing
 
 # Number of generations - adjust based on population size
 # Larger populations often need fewer generations to converge
-NGEN = 100  # Optimized for multiprocessing (was 50)
+NGEN = 1000  # Optimized for multiprocessing (was 50)
+
+# Population size - INCREASED for better multiprocessing utilization
+# Larger populations keep all CPU cores busy during parallel fitness evaluation
+# Use POP_SIZE=10 for quick testing, 100+ for production runs
+POP_SIZE = 100  # Optimized for multiprocessing
+
 
 # Crossover and mutation probabilities optimized for constraint-aware population
 CXPB, MUTPB = 0.8, 0.3  # Reduced mutation to preserve good constraint relationships
