@@ -382,7 +382,7 @@ class GAScheduler:
         if invalid:
             # Only log when evaluating many individuals (helpful for debugging)
             # Removed frequent logging to reduce console clutter
-            
+
             # Use toolbox.map for parallel evaluation when pool is available
             fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
             for ind, fit in zip(invalid, fitness_values):
