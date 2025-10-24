@@ -91,7 +91,7 @@ def plot_individual_hard_constraints(
 
         format_axis(
             ax,
-            xlabel="Generation",
+            xlabel="Generation (0 = Initial Population)",
             ylabel="Violations",
             title=f"Hard Constraint Trend: {constraint_name.replace('_', ' ').title()}",
             legend=True,
@@ -135,7 +135,7 @@ def plot_individual_hard_constraints(
 
     format_axis(
         ax,
-        xlabel="Generation",
+        xlabel="Generation (0 = Initial Population)",
         ylabel="Violations",
         title="All Hard Constraints Trends",
         legend=True,
@@ -279,7 +279,7 @@ def plot_individual_soft_constraints(
 
         format_axis(
             ax,
-            xlabel="Generation",
+            xlabel="Generation (0 = Initial Population)",
             ylabel="Penalty",
             title=f"Soft Constraint Trend: {constraint_name.replace('_', ' ').title()}",
             legend=True,
@@ -323,7 +323,7 @@ def plot_individual_soft_constraints(
 
     format_axis(
         ax,
-        xlabel="Generation",
+        xlabel="Generation (0 = Initial Population)",
         ylabel="Penalty",
         title="All Soft Constraints Trends",
         legend=True,
@@ -430,7 +430,7 @@ def plot_constraint_summary(
     )
     format_axis(
         ax1,
-        xlabel="Generation",
+        xlabel="Generation (0 = Initial Population)",
         ylabel="Total Violations",
         title="Total Hard Constraint Violations",
         legend=False,
@@ -447,7 +447,7 @@ def plot_constraint_summary(
     )
     format_axis(
         ax2,
-        xlabel="Generation",
+        xlabel="Generation (0 = Initial Population)",
         ylabel="Total Penalty",
         title="Total Soft Constraint Penalties",
         legend=False,

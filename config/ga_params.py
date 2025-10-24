@@ -3,12 +3,12 @@
 
 # Number of generations - adjust based on population size
 # Larger populations often need fewer generations to converge
-NGEN = 1000  # Optimized for multiprocessing (was 50)
+NGEN = 100  # Optimized for multiprocessing (was 50)
 
 # Population size - INCREASED for better multiprocessing utilization
 # Larger populations keep all CPU cores busy during parallel fitness evaluation
 # Use POP_SIZE=10 for quick testing, 100+ for production runs
-POP_SIZE = 100  # Optimized for multiprocessing
+POP_SIZE = 10  # Optimized for multiprocessing
 
 
 # Crossover and mutation probabilities optimized for constraint-aware population
@@ -38,10 +38,10 @@ REPAIR_HEURISTICS_CONFIG = {
     # Global Repair Settings
     # ========================================
     "enabled": True,  # Master switch - set to False to disable ALL repairs
-    "max_iterations": 3,  # Global iteration limit (1-5 recommended)
+    "max_iterations": 2,  # REDUCED: from 3 to 2 for faster evolution (1-5 recommended)
     # When to apply repairs
     "apply_after_mutation": True,  # Fix violations after mutation (recommended)
-    "apply_after_crossover": True,  # Fix violations after crossover (optional)
+    "apply_after_crossover": False,  # DISABLED: Crossover rarely creates violations (optimization)
     # Memetic mode - apply intensive local search to elite solutions
     "memetic_mode": False,  # Enable for elite-only iterative refinement
     "elite_percentage": 0.2,  # Top 20% get extra repair passes

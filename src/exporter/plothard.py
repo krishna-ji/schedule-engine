@@ -19,6 +19,7 @@ def plot_hard_constraint_violation_over_generation(hard_trend, output_dir):
 
     Args:
         hard_trend (List[int]): List of hard constraint violation counts per generation.
+                                 Index 0 = initial population, Index 1+ = evolved generations
         output_dir (str): Directory to save the plot.
     """
     # Create CSVs subdirectory
@@ -47,7 +48,7 @@ def plot_hard_constraint_violation_over_generation(hard_trend, output_dir):
 
     format_axis(
         ax,
-        xlabel="Generation",
+        xlabel="Generation (0 = Initial Population)",
         ylabel="Violations",
         title="Hard Constraint Violations Over Generations",
         legend=True,

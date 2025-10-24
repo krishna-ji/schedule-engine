@@ -19,6 +19,7 @@ def plot_soft_constraint_violation_over_generation(soft_trend, output_dir):
 
     Args:
         soft_trend (List[int]): List of soft constraint penalty counts per generation.
+                                Index 0 = initial population, Index 1+ = evolved generations
         output_dir (str): Directory to save the plot.
     """
     # Create CSVs subdirectory
@@ -47,7 +48,7 @@ def plot_soft_constraint_violation_over_generation(soft_trend, output_dir):
 
     format_axis(
         ax,
-        xlabel="Generation",
+        xlabel="Generation (0 = Initial Population)",
         ylabel="Penalty",
         title="Soft Constraint Penalties Over Generations",
         legend=True,

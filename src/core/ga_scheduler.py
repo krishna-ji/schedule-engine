@@ -213,6 +213,9 @@ class GAScheduler:
             f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
         )
 
+        # Track initial population as Generation 0
+        self._track_metrics(gen=-1)  # Will be recorded as generation 0
+
     def evolve(self):
         """Run genetic algorithm evolution loop."""
         gen_times = []
@@ -432,7 +435,12 @@ class GAScheduler:
         self._track_metrics(gen)
 
     def _track_metrics(self, gen: int):
-        """Record metrics for current generation."""
+        """
+        Record metrics for current generation.
+
+        Args:
+            gen: Generation number (-1 for initial population, 0+ for evolved generations)
+        """
         # Basic metrics
         self.metrics.hard_violations.append(
             min(ind.fitness.values[0] for ind in self.population)
@@ -458,8 +466,8 @@ class GAScheduler:
         for name in self.soft_constraint_names:
             self.metrics.detailed_soft[name].append(soft_details[name])
 
-        # Periodic logging
-        if gen % 10 == 0 or gen == self.config.generations - 1:
+        # Periodic logging (skip for initial population gen=-1)
+        if gen >= 0 and (gen % 10 == 0 or gen == self.config.generations - 1):
             self._log_generation_details(gen, best, hard_details, soft_details)
 
     def _log_generation_details(
