@@ -8,7 +8,7 @@ NGEN = 100  # Optimized for multiprocessing (was 50)
 # Population size - INCREASED for better multiprocessing utilization
 # Larger populations keep all CPU cores busy during parallel fitness evaluation
 # Use POP_SIZE=10 for quick testing, 100+ for production runs
-POP_SIZE = 20  # Optimized for multiprocessing
+POP_SIZE = 10  # Optimized for multiprocessing
 
 
 # Crossover and mutation probabilities optimized for constraint-aware population

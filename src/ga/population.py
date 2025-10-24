@@ -468,7 +468,14 @@ def assign_conflict_free_quanta(
 ) -> List:
     """
     Assign time quanta while avoiding conflicts with already used quanta.
-    Prefers consecutive slots for better scheduling quality.
+    CLUSTER-AWARE: Intelligently creates 2-3 quanta blocks to reduce clustering penalty.
+
+    Strategy:
+    1. For quanta_needed <= 3: Find single consecutive block (ideal)
+    2. For quanta_needed 4-6: Split into 2-3 quanta blocks across days
+    3. For quanta_needed > 6: Create multiple 2-3 quanta blocks
+
+    This dramatically reduces initial clustering penalties!
     """
     if quanta_needed <= 0:
         return []
@@ -485,27 +492,137 @@ def assign_conflict_free_quanta(
     if quanta_needed == 0:
         return []
 
-    # For sessions needing 2-4 quanta, try to find consecutive slots
-    if 2 <= quanta_needed <= 4 and len(free_quanta) >= quanta_needed:
-        # Sort quanta to find consecutive sequences
-        sorted_free = sorted(free_quanta)
+    # CLUSTER-AWARE ASSIGNMENT
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+    from config.time_config import quantum_to_day_and_within_day
 
-        # Try to find consecutive slots
-        for i in range(len(sorted_free) - quanta_needed + 1):
-            consecutive_candidates = sorted_free[i : i + quanta_needed]
+    qts = QuantumTimeSystem()
 
-            # Check if they are truly consecutive
-            is_consecutive = True
-            for j in range(1, len(consecutive_candidates)):
-                if consecutive_candidates[j] - consecutive_candidates[j - 1] != 1:
-                    is_consecutive = False
-                    break
+    # Strategy 1: Single block for 1-3 quanta (ideal cluster size)
+    if quanta_needed <= 3:
+        consecutive_block = _find_consecutive_block(free_quanta, quanta_needed)
+        if consecutive_block:
+            return consecutive_block
 
-            if is_consecutive:
-                return consecutive_candidates
+    # Strategy 2: Split into ideal 2-3 quanta blocks for larger sessions
+    elif quanta_needed >= 4:
+        clustered_assignment = _assign_clustered_blocks(quanta_needed, free_quanta, qts)
+        if clustered_assignment:
+            return clustered_assignment
 
-    # If no consecutive slots found or not needed, select randomly
+    # Fallback: Try any consecutive block
+    consecutive_block = _find_consecutive_block(free_quanta, quanta_needed)
+    if consecutive_block:
+        return consecutive_block
+
+    # Last resort: Random selection (will incur clustering penalty)
     return random.sample(free_quanta, quanta_needed)
+
+
+def _find_consecutive_block(free_quanta: List, block_size: int) -> List:
+    """
+    Find a single consecutive block of specified size.
+    Returns None if not found.
+    """
+    if len(free_quanta) < block_size:
+        return None
+
+    sorted_free = sorted(free_quanta)
+
+    for i in range(len(sorted_free) - block_size + 1):
+        candidates = sorted_free[i : i + block_size]
+
+        # Check if truly consecutive
+        is_consecutive = all(
+            candidates[j] - candidates[j - 1] == 1 for j in range(1, len(candidates))
+        )
+
+        if is_consecutive:
+            return candidates
+
+    return None
+
+
+def _assign_clustered_blocks(quanta_needed: int, free_quanta: List, qts) -> List:
+    """
+    Intelligently split quanta into 2-3 quantum blocks across different days.
+
+    Example: 6 quanta -> [3, 3] or [2, 2, 2]
+             5 quanta -> [3, 2] or [2, 2, 1]
+
+    Returns list of assigned quanta or None if clustering fails.
+    """
+    from config.time_config import quantum_to_day_and_within_day
+
+    # Determine ideal block distribution
+    if quanta_needed == 4:
+        target_blocks = [2, 2]  # Two 2-quanta blocks
+    elif quanta_needed == 5:
+        target_blocks = [3, 2]  # 3-quantum + 2-quantum
+    elif quanta_needed == 6:
+        target_blocks = [3, 3]  # Two 3-quanta blocks
+    elif quanta_needed == 7:
+        target_blocks = [3, 2, 2]  # Mix of blocks
+    elif quanta_needed == 8:
+        target_blocks = [3, 3, 2]
+    else:
+        # For larger sessions, create as many 3-blocks as possible
+        num_3_blocks = quanta_needed // 3
+        remainder = quanta_needed % 3
+        target_blocks = [3] * num_3_blocks
+        if remainder > 0:
+            target_blocks.append(remainder)
+
+    # Group free quanta by day
+    day_quanta_map = {}
+    for q in free_quanta:
+        try:
+            day, within_day = quantum_to_day_and_within_day(q, qts)
+            if day not in day_quanta_map:
+                day_quanta_map[day] = []
+            day_quanta_map[day].append(q)
+        except:
+            continue
+
+    # Try to assign each target block to a different day
+    assigned = []
+    days_used = set()
+
+    for block_size in target_blocks:
+        # Try to find a day we haven't used yet
+        for day in day_quanta_map.keys():
+            if day in days_used:
+                continue
+
+            # Try to find consecutive block on this day
+            day_quanta = day_quanta_map[day]
+            block = _find_consecutive_block(day_quanta, block_size)
+
+            if block:
+                assigned.extend(block)
+                days_used.add(day)
+                # Remove assigned quanta from day's available list
+                for q in block:
+                    day_quanta_map[day].remove(q)
+                break
+        else:
+            # Couldn't find ideal block on unused day
+            # Try ANY day (even if used before)
+            for day, day_quanta in day_quanta_map.items():
+                block = _find_consecutive_block(day_quanta, block_size)
+                if block:
+                    assigned.extend(block)
+                    for q in block:
+                        day_quanta_map[day].remove(q)
+                    break
+            else:
+                # Can't satisfy this block - abort clustering
+                return None
+
+    if len(assigned) == quanta_needed:
+        return sorted(assigned)
+
+    return None
 
 
 def create_component_session(
@@ -724,8 +841,8 @@ def find_suitable_rooms(
 
 def assign_intelligent_quanta(quanta_needed: int, available_quanta: List) -> List:
     """
-    Assign time quanta with intelligence to avoid fragmentation and conflicts.
-    Ensures no overlap by randomly selecting from available slots.
+    Assign time quanta with clustering intelligence to minimize fragmentation.
+    CLUSTER-AWARE: Uses same logic as assign_conflict_free_quanta.
     """
     if quanta_needed <= 0:
         return []
@@ -738,25 +855,9 @@ def assign_intelligent_quanta(quanta_needed: int, available_quanta: List) -> Lis
     if quanta_needed == 0:
         return []
 
-    # For better schedule quality, try to find consecutive quanta first
-    # But only for smaller requirements (up to 8 quanta = 2 hours)
-    if quanta_needed <= 8:
-        # Try to find consecutive quanta
-        for attempt in range(3):  # 3 attempts to find consecutive slots
-            start_idx = random.randint(0, max(0, len(available_list) - quanta_needed))
-            consecutive_quanta = available_list[start_idx : start_idx + quanta_needed]
-
-            if len(consecutive_quanta) == quanta_needed:
-                # Simple check for reasonable time spread
-                if (
-                    quanta_needed == 1
-                    or (max(consecutive_quanta) - min(consecutive_quanta))
-                    < quanta_needed * 1.5
-                ):
-                    return consecutive_quanta
-
-    # Fallback: Random selection to ensure diversity and avoid conflicts
-    return random.sample(available_list, quanta_needed)
+    # Reuse cluster-aware assignment with empty used_quanta set
+    # This ensures consistent clustering behavior across all initialization paths
+    return assign_conflict_free_quanta(quanta_needed, available_list, set())
 
 
 def generate_random_gene(
