@@ -32,6 +32,7 @@ from src.core.types import SchedulingContext
 from src.core.ga_scheduler import GAScheduler, GAConfig
 from src.validation import validate_input
 from src.workflows.reporting import generate_reports
+from src.utils.logger import GALogger
 from config.constraints import HARD_CONSTRAINTS_CONFIG, SOFT_CONSTRAINTS_CONFIG
 from config.ga_params import REPAIR_HEURISTICS_CONFIG
 
@@ -166,6 +167,54 @@ def run_standard_workflow(
         name for name, cfg in SOFT_CONSTRAINTS_CONFIG.items() if cfg["enabled"]
     ]
 
+    # ========================================
+    # Step 4.5: Initialize Logger
+    # ========================================
+    from config.ga_params import (
+        USE_MULTIPROCESSING,
+        NUM_WORKERS,
+        POPULATION_STRATEGY,
+        USE_ADAPTIVE_PROBABILITIES,
+        ELITE_PRESERVATION,
+        ELITE_SIZE,
+    )
+
+    logger_config = {
+        "pop_size": pop_size,
+        "generations": generations,
+        "crossover_prob": crossover_prob,
+        "mutation_prob": mutation_prob,
+        "seed": seed,
+        "use_multiprocessing": USE_MULTIPROCESSING,
+        "num_workers": NUM_WORKERS if NUM_WORKERS else "auto",
+        "population_strategy": POPULATION_STRATEGY,
+        "adaptive_operators": USE_ADAPTIVE_PROBABILITIES,
+        "elite_preservation": ELITE_PRESERVATION,
+        "elite_size": f"{ELITE_SIZE:.1%}",
+        "num_hard_constraints": len(hard_names),
+        "num_soft_constraints": len(soft_names),
+        "repair_enabled": REPAIR_HEURISTICS_CONFIG.get("enabled", False),
+        "repair_max_iterations": REPAIR_HEURISTICS_CONFIG.get("max_iterations", 0),
+        "repair_after_mutation": REPAIR_HEURISTICS_CONFIG.get(
+            "apply_after_mutation", False
+        ),
+        "repair_after_crossover": REPAIR_HEURISTICS_CONFIG.get(
+            "apply_after_crossover", False
+        ),
+        "repair_memetic_mode": REPAIR_HEURISTICS_CONFIG.get("memetic_mode", False),
+        "repair_memetic_iterations": REPAIR_HEURISTICS_CONFIG.get(
+            "memetic_iterations", 0
+        ),
+        "num_courses": len(context.courses),
+        "num_groups": len(context.groups),
+        "num_instructors": len(context.instructors),
+        "num_rooms": len(context.rooms),
+        "num_quanta": len(context.available_quanta),
+    }
+
+    logger = GALogger(output_dir, logger_config)
+    console.print(f"   [dim]Logger:[/dim] [cyan]{logger.get_log_path()}[/cyan]")
+
     console.print("[bold]Genetic Algorithm Configuration:[/bold]")
     console.print(
         f"   Population: [cyan]{ga_config.pop_size}[/cyan] | Generations: [cyan]{ga_config.generations}[/cyan]"
@@ -203,7 +252,11 @@ def run_standard_workflow(
     # ========================================
     console.print("[bold green]Running Genetic Algorithm...[/bold green]\n")
 
-    scheduler = GAScheduler(ga_config, context, hard_names, soft_names, pool=pool)
+    logger.start_run()  # Mark start time
+
+    scheduler = GAScheduler(
+        ga_config, context, hard_names, soft_names, pool=pool, logger=logger
+    )
     scheduler.setup_toolbox()
     scheduler.initialize_population()
     scheduler.evolve()
@@ -230,6 +283,15 @@ def run_standard_workflow(
         f"   Soft Penalty: [blue]{best_individual.fitness.values[1]:.2f}[/blue]"
     )
     console.print(f"   Schedule sessions: [cyan]{len(decoded_schedule)}[/cyan]")
+    console.print()
+
+    # Finalize logger
+    logger.end_run(
+        best_hard=best_individual.fitness.values[0],
+        best_soft=best_individual.fitness.values[1],
+        final_schedule_sessions=len(decoded_schedule),
+    )
+    console.print(f"   [dim]Log saved:[/dim] [cyan]{logger.get_log_path()}[/cyan]")
     console.print()
 
     # ========================================

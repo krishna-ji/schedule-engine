@@ -183,6 +183,7 @@ class GAScheduler:
         hard_constraint_names: List[str],
         soft_constraint_names: List[str],
         pool=None,  # NEW: Optional multiprocessing Pool
+        logger=None,  # NEW: Optional GALogger for runtime logging
     ):
         """
         Initialize GA scheduler.
@@ -193,12 +194,14 @@ class GAScheduler:
             hard_constraint_names: Names of enabled hard constraints
             soft_constraint_names: Names of enabled soft constraints
             pool: Optional multiprocessing.Pool for parallel fitness evaluation
+            logger: Optional GALogger for runtime logging
         """
         self.config = config
         self.context = context
         self.hard_constraint_names = hard_constraint_names
         self.soft_constraint_names = soft_constraint_names
         self.pool = pool  # NEW: Store pool for parallel evaluation
+        self.logger = logger  # NEW: Store logger for runtime logging
 
         self.toolbox = None
         self.population = None
@@ -312,6 +315,19 @@ class GAScheduler:
         # Track initial population as Generation 0
         self._track_metrics(gen=-1)  # Will be recorded as generation 0
 
+        # Log initial population to logger
+        if self.logger:
+            diversity = average_pairwise_diversity(self.population)
+            self.logger.log_generation(
+                generation=-1,
+                hard_violations=best.fitness.values[0],
+                soft_penalty=best.fitness.values[1],
+                time_seconds=eval_time,
+                diversity=diversity,
+                repairs=0,
+                notes="Initial population",
+            )
+
     def evolve(self):
         """Run genetic algorithm evolution loop."""
         gen_times = []
@@ -386,12 +402,47 @@ class GAScheduler:
                     f"Time={gen_time:.1f}s[/dim]"
                 )
 
+                # Log generation metrics
+                if self.logger:
+                    diversity = average_pairwise_diversity(self.population)
+                    repairs = 0
+                    if gen < len(self.metrics.repair_stats):
+                        repairs = self.metrics.repair_stats[gen].get("total_fixes", 0)
+
+                    notes = ""
+                    if best.fitness.values[0] == 0:
+                        notes = "Perfect solution"
+
+                    self.logger.log_generation(
+                        generation=gen,
+                        hard_violations=best.fitness.values[0],
+                        soft_penalty=best.fitness.values[1],
+                        time_seconds=gen_time,
+                        diversity=diversity,
+                        repairs=repairs,
+                        notes=notes,
+                    )
+
                 # Early stopping if perfect solution found
                 best = tools.selBest(self.population, 1)[0]
                 if best.fitness.values[0] == 0:
                     console.print(
                         f"\n✓ [bold green]Perfect solution found at generation {gen + 1}![/bold green]"
                     )
+
+                    # Log early stop
+                    if self.logger and gen < len(self.metrics.repair_stats):
+                        diversity = average_pairwise_diversity(self.population)
+                        repairs = self.metrics.repair_stats[gen].get("total_fixes", 0)
+                        self.logger.log_generation(
+                            generation=gen,
+                            hard_violations=0,
+                            soft_penalty=best.fitness.values[1],
+                            time_seconds=0,
+                            diversity=diversity,
+                            repairs=repairs,
+                            notes="Early stop - perfect solution",
+                        )
                     break
 
     def _evolve_generation(self, gen: int, progress=None):
