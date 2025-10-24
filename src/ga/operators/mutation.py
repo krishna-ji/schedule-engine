@@ -192,17 +192,33 @@ def find_suitable_rooms_for_course(
     return suitable_room_ids if suitable_room_ids else list(context.rooms.keys())
 
 
-def mutate_individual(individual, context, mut_prob=0.2):
+def mutate_individual(individual, context, mut_prob=0.2, guided=True):
     """
-    Applies constraint-aware mutation to an individual.
-    Reduced mutation probability to preserve good structures.
+    Applies mutation to an individual with optional constraint guidance.
+
+    PHASE 2: Constraint-Guided Mutation Integration
 
     Args:
         individual: List of SessionGene
-        context: Dict with instructor, rooms, available_quanta,
-        mut_prob (float): Probability of mutation for each gene.
+        context: SchedulingContext with courses, groups, instructors, rooms
+        mut_prob: Probability of mutation for each gene (ignored in guided mode)
+        guided: If True, use constraint-guided mutation (targets violations)
+                If False, use traditional random mutation
+
+    Returns:
+        Tuple containing modified individual (DEAP compatibility)
     """
-    for i in range(len(individual)):
-        if random.random() < mut_prob:
-            individual[i] = mutate_gene(individual[i], context)
-    return (individual,)  # Return as a tuple for DEAP compatibility
+    if guided:
+        # PHASE 2: Constraint-guided mutation (smarter, targets violations)
+        from src.ga.operators.constraint_guided_mutation import (
+            constraint_guided_mutation,
+        )
+
+        modified_individual, stats = constraint_guided_mutation(individual, context)
+        return (modified_individual,)
+    else:
+        # Traditional random mutation (original behavior)
+        for i in range(len(individual)):
+            if random.random() < mut_prob:
+                individual[i] = mutate_gene(individual[i], context)
+        return (individual,)
