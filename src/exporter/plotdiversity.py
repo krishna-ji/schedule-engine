@@ -39,10 +39,10 @@ def plot_diversity_trend(diversity_trend, output_dir):
 
     format_axis(
         ax,
-        xlabel="Generation",
-        ylabel="Avg. Chromosome Distance",
+        xlabel="Generation (0 = Initial Population)",
+        ylabel="Average Chromosome Distance",
         title="Population Diversity Over Generations",
-        legend=True,
+        legend=False,
     )
 
     plt.tight_layout()

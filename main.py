@@ -2,7 +2,6 @@
 Schedule Engine Entry Point
 
 Runs standard GA-based course scheduling workflow.
-Refactored for clarity and testability - see docs/refactoring/ for details.
 """
 
 from rich.console import Console

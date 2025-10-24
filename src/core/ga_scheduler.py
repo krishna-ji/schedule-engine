@@ -139,16 +139,28 @@ class GAScheduler:
         # Selection operator
         self.toolbox.register("select", tools.selNSGA2)
 
-        # Population generation operators
-        self.toolbox.register(
-            "individual",
-            generate_course_group_aware_population,
-            n=1,
-            context=self.context,
-        )
-        self.toolbox.register(
-            "population", generate_course_group_aware_population, context=self.context
-        )
+        # PHASE 3: Hybrid population initialization support
+        from config.ga_params import POPULATION_STRATEGY
+
+        if POPULATION_STRATEGY == "hybrid":
+            from src.ga.hybrid_population import generate_hybrid_population
+
+            self.toolbox.register(
+                "population", generate_hybrid_population, context=self.context
+            )
+        elif POPULATION_STRATEGY == "smart":
+            # Original constraint-aware (Phase 1+2 default)
+            self.toolbox.register(
+                "population",
+                generate_course_group_aware_population,
+                context=self.context,
+            )
+        else:  # "random" or any other value defaults to smart
+            self.toolbox.register(
+                "population",
+                generate_course_group_aware_population,
+                context=self.context,
+            )
 
         # Evaluation operator
         self.toolbox.register(
@@ -164,11 +176,16 @@ class GAScheduler:
         self.toolbox.register(
             "mate", crossover_course_group_aware, cx_prob=self.config.crossover_prob
         )
+
+        # PHASE 2: Constraint-guided mutation support
+        from config.ga_params import USE_CONSTRAINT_GUIDED_MUTATION
+
         self.toolbox.register(
             "mutate",
             mutate_individual,
             context=self.context,
             mut_prob=self.config.mutation_prob,
+            guided=USE_CONSTRAINT_GUIDED_MUTATION,  # Enable constraint-guided mutation
         )
 
     def initialize_population(self):
@@ -212,6 +229,9 @@ class GAScheduler:
             f"   [dim]Initial Best:[/dim] Hard=[yellow]{best.fitness.values[0]:.0f}[/yellow], "
             f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
         )
+
+        # Track initial population as Generation 0
+        self._track_metrics(gen=-1)  # Will be recorded as generation 0
 
     def evolve(self):
         """Run genetic algorithm evolution loop."""
@@ -313,13 +333,16 @@ class GAScheduler:
             "total_fixes": 0,
         }
 
+        # PHASE 1.3: Get adaptive probabilities based on search progress
+        cxpb, mutpb = self._get_adaptive_probabilities(gen)
+
         # Selection
         offspring = self.toolbox.select(self.population, len(self.population))
         offspring = list(map(self.toolbox.clone, offspring))
 
-        # Crossover
+        # Crossover (using adaptive probability)
         for i in range(1, len(offspring), 2):
-            if random.random() < self.config.crossover_prob:
+            if random.random() < cxpb:  # ← Use adaptive crossover probability
                 self.toolbox.mate(offspring[i - 1], offspring[i])
                 del offspring[i - 1].fitness.values
                 del offspring[i].fitness.values
@@ -346,9 +369,9 @@ class GAScheduler:
                         if key in stats1 and key in stats2:
                             generation_repair_stats[key] += stats1[key] + stats2[key]
 
-        # Mutation
+        # Mutation (using adaptive probability)
         for mutant in offspring:
-            if random.random() < self.config.mutation_prob:
+            if random.random() < mutpb:  # ← Use adaptive mutation probability
                 self.toolbox.mutate(mutant)
                 del mutant.fitness.values
 
@@ -388,8 +411,14 @@ class GAScheduler:
             for ind, fit in zip(invalid, fitness_values):
                 ind.fitness.values = fit
 
-        # Replacement: combine parents and offspring, select next generation
-        combined = self.population + offspring
+        # PHASE 1.2: Explicit Elitism - preserve top solutions
+        elite_size = max(1, int(0.05 * len(self.population)))  # Top 5%
+        elite = tools.selBest(self.population, elite_size)
+
+        # Replacement: combine parents, offspring, AND elite
+        combined = (
+            self.population + offspring + elite
+        )  # Elite ensures monotonic improvement
         self.population[:] = self.toolbox.select(combined, len(self.population))
 
         # Memetic mode: Apply intensive local search to elite individuals
@@ -431,8 +460,47 @@ class GAScheduler:
         # Track metrics
         self._track_metrics(gen)
 
+    def _get_adaptive_probabilities(self, gen: int) -> tuple[float, float]:
+        """
+        Adjust crossover and mutation probabilities based on search phase.
+
+        PHASE 1.3: Adaptive Operator Probabilities
+
+        Strategy:
+        - Early (0-30%): High exploration (more mutation, less crossover)
+        - Mid (30-70%): Balanced (use config defaults)
+        - Late (70-100%): High exploitation (more crossover, less mutation)
+
+        Args:
+            gen: Current generation number
+
+        Returns:
+            Tuple of (crossover_prob, mutation_prob)
+        """
+        progress = gen / self.config.generations
+
+        if progress < 0.3:
+            # Early phase: explore aggressively
+            crossover_prob = 0.7
+            mutation_prob = 0.4
+        elif progress < 0.7:
+            # Mid phase: balanced (use config defaults)
+            crossover_prob = self.config.crossover_prob
+            mutation_prob = self.config.mutation_prob
+        else:
+            # Late phase: exploit (refine good solutions)
+            crossover_prob = 0.9
+            mutation_prob = 0.2
+
+        return crossover_prob, mutation_prob
+
     def _track_metrics(self, gen: int):
-        """Record metrics for current generation."""
+        """
+        Record metrics for current generation.
+
+        Args:
+            gen: Generation number (-1 for initial population, 0+ for evolved generations)
+        """
         # Basic metrics
         self.metrics.hard_violations.append(
             min(ind.fitness.values[0] for ind in self.population)
@@ -458,8 +526,8 @@ class GAScheduler:
         for name in self.soft_constraint_names:
             self.metrics.detailed_soft[name].append(soft_details[name])
 
-        # Periodic logging
-        if gen % 10 == 0 or gen == self.config.generations - 1:
+        # Periodic logging (skip for initial population gen=-1)
+        if gen >= 0 and (gen % 10 == 0 or gen == self.config.generations - 1):
             self._log_generation_details(gen, best, hard_details, soft_details)
 
     def _log_generation_details(
