@@ -453,8 +453,8 @@ def repair_group_overlaps(
     """
     Detect overlapping sessions for same group, shift conflicting genes.
 
-    Builds a group-to-quanta mapping, detects overlaps, then reassigns
-    conflicting sessions to free time slots.
+    CRITICAL FIX: Rebuilds occupation map after EACH repair to prevent
+    creating new instructor/room conflicts while fixing group overlaps.
 
     Args:
         individual: List of SessionGene objects
@@ -462,40 +462,46 @@ def repair_group_overlaps(
 
     Returns:
         Number of conflicts resolved
-
-    Note:
-        For multi-group sessions, checks all assigned groups.
-        Priority given to genes earlier in chromosome (assumes better fitness).
     """
     fixes = 0
+    max_attempts = len(individual) * 2  # Prevent infinite loops
+    attempts = 0
 
-    # Build group occupation map: {group_id: {quantum: gene}}
-    group_schedule = defaultdict(lambda: defaultdict(list))
+    while attempts < max_attempts:
+        # CRITICAL: Rebuild map EVERY iteration to track latest state
+        group_schedule = defaultdict(lambda: defaultdict(list))
 
-    for gene in individual:
-        for group_id in gene.group_ids:
-            for q in gene.quanta:
-                group_schedule[group_id][q].append(gene)
+        for gene in individual:
+            for group_id in gene.group_ids:
+                for q in gene.quanta:
+                    group_schedule[group_id][q].append(gene)
 
-    # Detect overlaps and repair
-    for group_id, quanta_map in group_schedule.items():
-        for quantum, genes in quanta_map.items():
-            if len(genes) > 1:
-                # Overlap detected - keep first gene, repair others
-                for gene in genes[1:]:
-                    # Try to find new slot for conflicting gene
+        # Find first conflict
+        conflict_found = False
+
+        for group_id, quanta_map in group_schedule.items():
+            if conflict_found:
+                break
+
+            for quantum, genes in quanta_map.items():
+                if len(genes) > 1:
+                    # Overlap detected - repair FIRST conflict then rebuild
+                    gene = genes[1]  # Fix second gene (keep first)
+
                     course_key = (gene.course_id, gene.course_type)
                     course = context.courses.get(course_key)
                     instructor = context.instructors.get(gene.instructor_id)
                     room = context.rooms.get(gene.room_id)
-                    groups = [context.groups.get(gid) for gid in gene.group_ids]
+                    groups_entities = [
+                        context.groups.get(gid) for gid in gene.group_ids
+                    ]
 
-                    if not all([course, instructor, room] + groups):
+                    if not all([course, instructor, room] + groups_entities):
                         continue
 
                     required_duration = len(gene.quanta)
 
-                    # Use SMART slot finder (considers alternative instructors + clustering)
+                    # Find new slot (this uses CURRENT occupation state)
                     new_quanta, new_instructor, new_room = _find_available_slot_smart(
                         individual,
                         gene,
@@ -503,7 +509,7 @@ def repair_group_overlaps(
                         course,
                         instructor,
                         room,
-                        groups,
+                        groups_entities,
                         context.available_quanta,
                         context,
                         prefer_clustering=True,
@@ -516,6 +522,14 @@ def repair_group_overlaps(
                         if new_room and new_room != gene.room_id:
                             gene.room_id = new_room
                         fixes += 1
+                        conflict_found = True
+                        break  # Exit inner loop to rebuild map
+
+        if not conflict_found:
+            # No more conflicts found
+            break
+
+        attempts += 1
 
     return fixes
 
@@ -530,6 +544,9 @@ def repair_room_conflicts(
 ) -> int:
     """
     Fix room double-bookings by reassigning rooms or shifting times.
+
+    CRITICAL FIX: Rebuilds occupation map after EACH repair to prevent
+    cascading conflicts.
 
     Strategy:
     1. Build room occupation map
@@ -546,27 +563,38 @@ def repair_room_conflicts(
         Number of conflicts resolved
     """
     fixes = 0
+    max_attempts = len(individual) * 2
+    attempts = 0
 
-    # Build room occupation map: {room_id: {quantum: gene}}
-    room_schedule = defaultdict(lambda: defaultdict(list))
+    while attempts < max_attempts:
+        # CRITICAL: Rebuild map EVERY iteration
+        room_schedule = defaultdict(lambda: defaultdict(list))
 
-    for gene in individual:
-        for q in gene.quanta:
-            room_schedule[gene.room_id][q].append(gene)
+        for gene in individual:
+            for q in gene.quanta:
+                room_schedule[gene.room_id][q].append(gene)
 
-    # Detect overlaps and repair
-    for room_id, quanta_map in room_schedule.items():
-        for quantum, genes in quanta_map.items():
-            if len(genes) > 1:
-                # Double-booking detected - keep first gene, repair others
-                for gene in genes[1:]:
+        # Find first conflict
+        conflict_found = False
+
+        for room_id, quanta_map in room_schedule.items():
+            if conflict_found:
+                break
+
+            for quantum, genes in quanta_map.items():
+                if len(genes) > 1:
+                    # Double-booking detected - repair FIRST conflict then rebuild
+                    gene = genes[1]
+
                     course_key = (gene.course_id, gene.course_type)
                     course = context.courses.get(course_key)
                     instructor = context.instructors.get(gene.instructor_id)
                     current_room = context.rooms.get(gene.room_id)
-                    groups = [context.groups.get(gid) for gid in gene.group_ids]
+                    groups_entities = [
+                        context.groups.get(gid) for gid in gene.group_ids
+                    ]
 
-                    if not all([course, instructor, current_room] + groups):
+                    if not all([course, instructor, current_room] + groups_entities):
                         continue
 
                     # Strategy 1: Try shifting time with same room
@@ -577,14 +605,15 @@ def repair_room_conflicts(
                         required_duration,
                         instructor,
                         current_room,
-                        groups,
+                        groups_entities,
                         context.available_quanta,
                     )
 
                     if new_quanta:
                         gene.quanta = new_quanta
                         fixes += 1
-                        continue
+                        conflict_found = True
+                        break
 
                     # Strategy 2: Try alternative room at same time
                     alternative_room = _find_alternative_room(
@@ -599,7 +628,8 @@ def repair_room_conflicts(
                     if alternative_room:
                         gene.room_id = alternative_room.room_id
                         fixes += 1
-                        continue
+                        conflict_found = True
+                        break
 
                     # Strategy 3: Try any room at any time (last resort)
                     for room in context.rooms.values():
@@ -610,7 +640,7 @@ def repair_room_conflicts(
                                 required_duration,
                                 instructor,
                                 room,
-                                groups,
+                                groups_entities,
                                 context.available_quanta,
                             )
 
@@ -618,7 +648,16 @@ def repair_room_conflicts(
                                 gene.room_id = room.room_id
                                 gene.quanta = new_quanta
                                 fixes += 1
+                                conflict_found = True
                                 break
+
+                    if conflict_found:
+                        break
+
+        if not conflict_found:
+            break
+
+        attempts += 1
 
     return fixes
 
@@ -752,7 +791,8 @@ def repair_instructor_conflicts(
     """
     Fix instructor double-bookings by shifting conflicting sessions to free time slots.
 
-    Similar to group overlap repair, but for instructors.
+    CRITICAL FIX: Rebuilds occupation map after EACH repair to prevent
+    cascading conflicts.
 
     Args:
         individual: List of SessionGene objects
@@ -762,32 +802,42 @@ def repair_instructor_conflicts(
         Number of conflicts resolved
     """
     fixes = 0
+    max_attempts = len(individual) * 2
+    attempts = 0
 
-    # Build instructor occupation map: {instructor_id: {quantum: gene}}
-    instructor_schedule = defaultdict(lambda: defaultdict(list))
+    while attempts < max_attempts:
+        # CRITICAL: Rebuild map EVERY iteration
+        instructor_schedule = defaultdict(lambda: defaultdict(list))
 
-    for gene in individual:
-        for q in gene.quanta:
-            instructor_schedule[gene.instructor_id][q].append(gene)
+        for gene in individual:
+            for q in gene.quanta:
+                instructor_schedule[gene.instructor_id][q].append(gene)
 
-    # Detect overlaps and repair
-    for instructor_id, quanta_map in instructor_schedule.items():
-        for quantum, genes in quanta_map.items():
-            if len(genes) > 1:
-                # Overlap detected - keep first gene, repair others
-                for gene in genes[1:]:
+        # Find first conflict
+        conflict_found = False
+
+        for instructor_id, quanta_map in instructor_schedule.items():
+            if conflict_found:
+                break
+
+            for quantum, genes in quanta_map.items():
+                if len(genes) > 1:
+                    # Overlap detected - repair FIRST conflict then rebuild
+                    gene = genes[1]
+
                     course_key = (gene.course_id, gene.course_type)
                     course = context.courses.get(course_key)
                     instructor = context.instructors.get(gene.instructor_id)
                     room = context.rooms.get(gene.room_id)
-                    groups = [context.groups.get(gid) for gid in gene.group_ids]
+                    groups_entities = [
+                        context.groups.get(gid) for gid in gene.group_ids
+                    ]
 
-                    if not all([course, instructor, room] + groups):
+                    if not all([course, instructor, room] + groups_entities):
                         continue
 
                     required_duration = len(gene.quanta)
 
-                    # Use SMART slot finder (considers alternative instructors + clustering)
                     new_quanta, new_instructor, new_room = _find_available_slot_smart(
                         individual,
                         gene,
@@ -795,7 +845,7 @@ def repair_instructor_conflicts(
                         course,
                         instructor,
                         room,
-                        groups,
+                        groups_entities,
                         context.available_quanta,
                         context,
                         prefer_clustering=True,
@@ -808,6 +858,13 @@ def repair_instructor_conflicts(
                         if new_room and new_room != gene.room_id:
                             gene.room_id = new_room
                         fixes += 1
+                        conflict_found = True
+                        break
+
+        if not conflict_found:
+            break
+
+        attempts += 1
 
     return fixes
 

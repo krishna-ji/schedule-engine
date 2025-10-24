@@ -38,60 +38,78 @@ console = Console()
 
 class AlwaysShowTimeRemainingColumn(ProgressColumn):
     """
-    Custom TimeRemainingColumn that ALWAYS shows an estimate, never blank.
-
-    Falls back to simple extrapolation if Rich's built-in calculation returns None.
-    This prevents the annoying "-:--:--" display during evolution.
+    Custom TimeRemainingColumn with:
+    - Always shows an estimate (never blank)
+    - Updates only once per second (reduces flicker)
+    - Smooths estimates using exponential moving average (reduces wild fluctuations)
     """
 
+    def __init__(self):
+        super().__init__()
+        self._last_update_time = 0.0
+        self._cached_text = Text("~calculating~", style="dim progress.remaining")
+        self._ema_remaining = None  # Exponential moving average for smoothing
+        self._alpha = 0.3  # Smoothing factor (0.3 = 30% new, 70% old)
+
     def render(self, task: Task) -> Text:
-        """Render remaining time, always showing a value."""
+        """Render remaining time, updating at most once per second."""
+        import time as time_module
+
+        current_time = time_module.time()
+
+        # Update only once per second to reduce flicker
+        if current_time - self._last_update_time < 1.0:
+            return self._cached_text
+
+        self._last_update_time = current_time
+
+        # Task finished
         if task.finished:
-            return Text("0:00:00", style="progress.remaining")
+            self._cached_text = Text("0:00:00", style="progress.remaining")
+            return self._cached_text
+
+        # Calculate raw estimate
+        raw_remaining = None
 
         # Try Rich's built-in calculation first
         if task.time_remaining is not None:
-            remaining = int(task.time_remaining)
-            hours, remainder = divmod(remaining, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            if hours > 0:
-                time_str = f"{hours}:{minutes:02d}:{seconds:02d}"
-            else:
-                time_str = f"{minutes}:{seconds:02d}"
-            return Text(time_str, style="progress.remaining")
-
-        # Fallback: Simple extrapolation if not enough data
-        if task.completed > 0 and task.total and task.total > 0:
+            raw_remaining = task.time_remaining
+        # Fallback: Simple extrapolation
+        elif task.completed > 0 and task.total and task.total > 0:
             elapsed = task.elapsed or 0
             if elapsed > 0:
-                # Simple linear extrapolation
                 avg_time_per_unit = elapsed / task.completed
                 remaining_units = task.total - task.completed
-                estimated_remaining = int(avg_time_per_unit * remaining_units)
+                raw_remaining = avg_time_per_unit * remaining_units
 
-                hours, remainder = divmod(estimated_remaining, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                if hours > 0:
-                    time_str = f"~{hours}:{minutes:02d}:{seconds:02d}"
-                else:
-                    time_str = f"~{minutes}:{seconds:02d}"
-                return Text(time_str, style="progress.remaining")
+        # Apply exponential moving average for smoothing
+        if raw_remaining is not None:
+            if self._ema_remaining is None:
+                # First estimate - initialize EMA
+                self._ema_remaining = raw_remaining
+            else:
+                # Smooth: EMA = α × new + (1-α) × old
+                self._ema_remaining = (
+                    self._alpha * raw_remaining
+                    + (1 - self._alpha) * self._ema_remaining
+                )
 
-        # Last resort: Show estimated based on typical generation time
-        # This handles the very first generation case
-        if task.total and task.total > 0:
-            # Assume ~1 minute per generation as rough estimate
-            estimated_total = task.total * 60
-            hours, remainder = divmod(estimated_total, 3600)
+            # Format smoothed estimate
+            remaining = int(self._ema_remaining)
+            hours, remainder = divmod(remaining, 3600)
             minutes, seconds = divmod(remainder, 60)
+
             if hours > 0:
                 time_str = f"~{hours}:{minutes:02d}:{seconds:02d}"
             else:
                 time_str = f"~{minutes}:{seconds:02d}"
-            return Text(time_str, style="dim progress.remaining")
 
-        # Absolute fallback (should rarely happen)
-        return Text("~calculating~", style="dim progress.remaining")
+            self._cached_text = Text(time_str, style="progress.remaining")
+            return self._cached_text
+
+        # No estimate available yet
+        self._cached_text = Text("~calculating~", style="dim progress.remaining")
+        return self._cached_text
 
 
 @dataclass
@@ -358,18 +376,15 @@ class GAScheduler:
 
                 time_bar.update(task2, speed_display=speed_display)
 
-                # Show progress feedback after generation completes
-                # - First 5 generations: show every generation
-                # - After that: show every 25 generations
-                # - Always show after completion with timing
-                if gen < 5 or (gen + 1) % 25 == 0:
-                    best = tools.selBest(self.population, 1)[0]
-                    console.print(
-                        f"[dim]✓ Gen {gen+1}/{self.config.generations}: "
-                        f"Hard={best.fitness.values[0]:.0f}, "
-                        f"Soft={best.fitness.values[1]:.2f}, "
-                        f"Time={gen_time:.1f}s[/dim]"
-                    )
+                # Show progress feedback after EVERY generation completes
+                # (User requested: display after every gen, not just first 5 or every 25)
+                best = tools.selBest(self.population, 1)[0]
+                console.print(
+                    f"[dim]✓ Gen {gen+1}/{self.config.generations}: "
+                    f"Hard={best.fitness.values[0]:.0f}, "
+                    f"Soft={best.fitness.values[1]:.2f}, "
+                    f"Time={gen_time:.1f}s[/dim]"
+                )
 
                 # Early stopping if perfect solution found
                 best = tools.selBest(self.population, 1)[0]
@@ -587,8 +602,11 @@ class GAScheduler:
         for name in self.soft_constraint_names:
             self.metrics.detailed_soft[name].append(soft_details[name])
 
-        # Periodic logging (skip for initial population gen=-1)
-        if gen >= 0 and (gen % 10 == 0 or gen == self.config.generations - 1):
+        # Periodic detailed logging every 4 generations (user requested: longer loops now)
+        # Also show on first gen (gen=0) and last gen
+        if gen >= 0 and (
+            gen == 0 or (gen + 1) % 4 == 0 or gen == self.config.generations - 1
+        ):
             self._log_generation_details(gen, best, hard_details, soft_details)
 
     def _log_generation_details(
