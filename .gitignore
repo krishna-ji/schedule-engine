@@ -10,3 +10,4 @@ logs/
 test*.py
 product-design/
 prompts/config/ga_params_optimized.py
+docs/nextphase/
