@@ -5,7 +5,7 @@ Encapsulates NSGA-II genetic algorithm execution for course scheduling.
 Extracted from monolithic main.py for better testability and separation of concerns.
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass, field
 from deap import base, tools
 import random
@@ -18,9 +18,12 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
+    ProgressColumn,
+    Task,
 )
 from rich.table import Table
 from rich.live import Live
+from rich.text import Text
 
 from src.ga.population import generate_course_group_aware_population
 from src.ga.operators.crossover import crossover_course_group_aware
@@ -31,6 +34,64 @@ from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 
 console = Console()
+
+
+class AlwaysShowTimeRemainingColumn(ProgressColumn):
+    """
+    Custom TimeRemainingColumn that ALWAYS shows an estimate, never blank.
+
+    Falls back to simple extrapolation if Rich's built-in calculation returns None.
+    This prevents the annoying "-:--:--" display during evolution.
+    """
+
+    def render(self, task: Task) -> Text:
+        """Render remaining time, always showing a value."""
+        if task.finished:
+            return Text("0:00:00", style="progress.remaining")
+
+        # Try Rich's built-in calculation first
+        if task.time_remaining is not None:
+            remaining = int(task.time_remaining)
+            hours, remainder = divmod(remaining, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours > 0:
+                time_str = f"{hours}:{minutes:02d}:{seconds:02d}"
+            else:
+                time_str = f"{minutes}:{seconds:02d}"
+            return Text(time_str, style="progress.remaining")
+
+        # Fallback: Simple extrapolation if not enough data
+        if task.completed > 0 and task.total and task.total > 0:
+            elapsed = task.elapsed or 0
+            if elapsed > 0:
+                # Simple linear extrapolation
+                avg_time_per_unit = elapsed / task.completed
+                remaining_units = task.total - task.completed
+                estimated_remaining = int(avg_time_per_unit * remaining_units)
+
+                hours, remainder = divmod(estimated_remaining, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                if hours > 0:
+                    time_str = f"~{hours}:{minutes:02d}:{seconds:02d}"
+                else:
+                    time_str = f"~{minutes}:{seconds:02d}"
+                return Text(time_str, style="progress.remaining")
+
+        # Last resort: Show estimated based on typical generation time
+        # This handles the very first generation case
+        if task.total and task.total > 0:
+            # Assume ~1 minute per generation as rough estimate
+            estimated_total = task.total * 60
+            hours, remainder = divmod(estimated_total, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours > 0:
+                time_str = f"~{hours}:{minutes:02d}:{seconds:02d}"
+            else:
+                time_str = f"~{minutes}:{seconds:02d}"
+            return Text(time_str, style="dim progress.remaining")
+
+        # Absolute fallback (should rarely happen)
+        return Text("~calculating~", style="dim progress.remaining")
 
 
 @dataclass
@@ -247,13 +308,13 @@ class GAScheduler:
             refresh_per_second=10,
         )
 
-        # Create time info bar (second line)
+        # Create time info bar (second line) with custom always-show remaining time
         time_bar = Progress(
             TextColumn("[dim]Elapsed:[/dim]"),
             TimeElapsedColumn(),
             TextColumn("•"),
             TextColumn("[dim]Remaining:[/dim]"),
-            TimeRemainingColumn(),
+            AlwaysShowTimeRemainingColumn(),  # Custom column that never shows blank
             TextColumn("•"),
             TextColumn("[dark_red]{task.fields[speed_display]}[/dark_red]"),
             console=console,

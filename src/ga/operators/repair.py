@@ -1158,17 +1158,24 @@ def repair_session_clustering(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
     """
-    Improve session block clustering by REARRANGING quanta to form 2-3 quantum blocks.
+    ENHANCED: Aggressively improve session clustering by rearranging quanta into ideal 2-3 blocks.
 
-    CRITICAL: This repair ONLY rearranges existing quanta - it NEVER adds or removes quanta.
-    This preserves the population invariant that each course-group pair has exactly the
-    required number of quanta.
+    CRITICAL: This repair ONLY rearranges existing quanta - NEVER adds or removes them.
+    Preserves the population invariant that each course-group pair has exactly
+    the required number of quanta.
 
-    Strategy:
-    1. For each gene with multiple isolated 1-quantum sessions:
-       - Try to move isolated quanta to adjacent free slots to form blocks
-       - Only rearrange within the same gene (same course-group-instructor-room)
-    2. Never change the total quanta count per gene
+    ENHANCED Strategy (Much more aggressive than before):
+    1. Analyze entire gene to identify fragmentation pattern
+    2. For genes with 4+ quanta and poor clustering:
+       - Completely REBUILD quanta distribution from scratch
+       - Create optimal 2-3 quantum blocks across different days
+       - Use same clustering logic as initialization
+    3. For genes with isolated 1-quantum blocks:
+       - Try local moves to adjacent positions (original behavior)
+    4. For oversized blocks (4+ consecutive):
+       - Try to split into better 2-3 block distribution
+
+    This is MUCH more effective than the old "move one isolated quantum" approach!
 
     Args:
         individual: List of SessionGene objects to repair
@@ -1178,6 +1185,12 @@ def repair_session_clustering(
         Number of clustering improvements made
     """
     from config.time_config import quantum_to_day_and_within_day
+    from config.time_config import (
+        PREFERRED_BLOCK_SIZE_MIN,
+        PREFERRED_BLOCK_SIZE_MAX,
+        ISOLATED_SESSION_PENALTY,
+        OVERSIZED_BLOCK_PENALTY_PER_QUANTUM,
+    )
 
     qts = QuantumTimeSystem()
     fixes = 0
@@ -1185,19 +1198,40 @@ def repair_session_clustering(
     # Process each gene individually
     for gene in individual:
         if len(gene.quanta) < 2:
-            # Can't cluster single-quantum courses
             continue
 
-        # Analyze blocks in this gene
-        day_quanta_map = defaultdict(
-            list
-        )  # day -> list of (within_day, global_quantum)
+        # ENHANCED: Calculate current clustering penalty
+        current_penalty = _calculate_gene_clustering_penalty(gene, qts)
 
+        # If already perfect, skip
+        if current_penalty == 0:
+            continue
+
+        # STRATEGY 1: For genes with 4+ quanta, try complete rebuild
+        if len(gene.quanta) >= 4 and current_penalty >= 5:
+            success = _rebuild_gene_clustering(gene, individual, context, qts)
+            if success:
+                new_penalty = _calculate_gene_clustering_penalty(gene, qts)
+                if new_penalty < current_penalty:
+                    fixes += 1
+                    continue  # Move to next gene
+
+        # STRATEGY 2: For oversized blocks, try to split them
+        if len(gene.quanta) >= 4:
+            success = _split_oversized_blocks(gene, individual, context, qts)
+            if success:
+                new_penalty = _calculate_gene_clustering_penalty(gene, qts)
+                if new_penalty < current_penalty:
+                    fixes += 1
+                    continue
+
+        # STRATEGY 3: Original approach - move isolated quanta (kept for compatibility)
+        day_quanta_map = defaultdict(list)
         for q in gene.quanta:
             day, within_day = quantum_to_day_and_within_day(q, qts)
             day_quanta_map[day].append((within_day, q))
 
-        # Find isolated 1-quantum blocks on each day
+        # Find and fix isolated blocks
         for day, quanta_pairs in day_quanta_map.items():
             if len(quanta_pairs) < 2:
                 continue
@@ -1206,9 +1240,8 @@ def repair_session_clustering(
             within_day_quanta = [w for w, _ in sorted_pairs]
             global_quanta = [g for _, g in sorted_pairs]
 
-            # Identify blocks
             blocks = []
-            current_block = [0]  # indices into sorted_pairs
+            current_block = [0]
 
             for i in range(1, len(within_day_quanta)):
                 if within_day_quanta[i] == within_day_quanta[i - 1] + 1:
@@ -1218,14 +1251,12 @@ def repair_session_clustering(
                     current_block = [i]
             blocks.append(current_block)
 
-            # Try to rearrange isolated blocks
             for block_indices in blocks:
-                if len(block_indices) == 1:  # Isolated 1-quantum block
+                if len(block_indices) == 1:
                     isolated_idx = block_indices[0]
                     isolated_within = within_day_quanta[isolated_idx]
                     isolated_global = global_quanta[isolated_idx]
 
-                    # Try to move this quantum to adjacent position of another block
                     success = _try_rearrange_isolated_quantum(
                         gene,
                         isolated_global,
@@ -1241,9 +1272,257 @@ def repair_session_clustering(
 
                     if success:
                         fixes += 1
-                        break  # Re-analyze after modification
+                        break
 
     return fixes
+
+
+def _calculate_gene_clustering_penalty(
+    gene: SessionGene, qts: QuantumTimeSystem
+) -> int:
+    """Calculate clustering penalty for a single gene's quanta."""
+    from config.time_config import quantum_to_day_and_within_day
+    from config.time_config import (
+        PREFERRED_BLOCK_SIZE_MAX,
+        ISOLATED_SESSION_PENALTY,
+        OVERSIZED_BLOCK_PENALTY_PER_QUANTUM,
+    )
+
+    penalty = 0
+    day_quanta_map = defaultdict(list)
+
+    for q in gene.quanta:
+        day, within_day = quantum_to_day_and_within_day(q, qts)
+        day_quanta_map[day].append(within_day)
+
+    for day_quanta in day_quanta_map.values():
+        sorted_quanta = sorted(day_quanta)
+        blocks = []
+
+        if sorted_quanta:
+            current_block_size = 1
+            for i in range(1, len(sorted_quanta)):
+                if sorted_quanta[i] == sorted_quanta[i - 1] + 1:
+                    current_block_size += 1
+                else:
+                    blocks.append(current_block_size)
+                    current_block_size = 1
+            blocks.append(current_block_size)
+
+        for block_size in blocks:
+            if block_size == 1:
+                penalty += ISOLATED_SESSION_PENALTY
+            elif block_size > PREFERRED_BLOCK_SIZE_MAX:
+                penalty += (
+                    block_size - PREFERRED_BLOCK_SIZE_MAX
+                ) * OVERSIZED_BLOCK_PENALTY_PER_QUANTUM
+
+    return penalty
+
+
+def _rebuild_gene_clustering(
+    gene: SessionGene,
+    individual: List[SessionGene],
+    context: SchedulingContext,
+    qts: QuantumTimeSystem,
+) -> bool:
+    """
+    ENHANCED: Completely rebuild a gene's quanta distribution with optimal clustering.
+
+    Uses the SAME logic as cluster-aware initialization to create ideal 2-3 blocks.
+    This is much more effective than incrementally moving isolated quanta!
+    """
+    from config.time_config import quantum_to_day_and_within_day
+
+    num_quanta = len(gene.quanta)
+
+    # Determine ideal block distribution (same as initialization)
+    if num_quanta == 4:
+        target_blocks = [2, 2]
+    elif num_quanta == 5:
+        target_blocks = [3, 2]
+    elif num_quanta == 6:
+        target_blocks = [3, 3]
+    elif num_quanta == 7:
+        target_blocks = [3, 2, 2]
+    elif num_quanta == 8:
+        target_blocks = [3, 3, 2]
+    else:
+        num_3_blocks = num_quanta // 3
+        remainder = num_quanta % 3
+        target_blocks = [3] * num_3_blocks
+        if remainder > 0:
+            target_blocks.append(remainder)
+
+    # Get all free quanta for this gene (considering conflicts)
+    free_quanta_by_day = _get_free_quanta_by_day(gene, individual, context, qts)
+
+    # Try to assign target blocks across different days
+    new_quanta = []
+    days_used = set()
+
+    for block_size in target_blocks:
+        block_assigned = False
+
+        # Try unused days first
+        for day, free_quanta in free_quanta_by_day.items():
+            if day in days_used or not free_quanta:
+                continue
+
+            # Find consecutive block of required size
+            block = _find_consecutive_in_list(free_quanta, block_size)
+            if block:
+                new_quanta.extend(block)
+                days_used.add(day)
+                # Remove assigned quanta from free list
+                for q in block:
+                    free_quanta.remove(q)
+                block_assigned = True
+                break
+
+        # If not found on unused day, try ANY day
+        if not block_assigned:
+            for day, free_quanta in free_quanta_by_day.items():
+                if not free_quanta:
+                    continue
+                block = _find_consecutive_in_list(free_quanta, block_size)
+                if block:
+                    new_quanta.extend(block)
+                    for q in block:
+                        free_quanta.remove(q)
+                    block_assigned = True
+                    break
+
+        if not block_assigned:
+            # Can't satisfy this block - abort rebuild
+            return False
+
+    # Success! Replace gene's quanta with optimally clustered ones
+    if len(new_quanta) == num_quanta:
+        gene.quanta = sorted(new_quanta)
+        return True
+
+    return False
+
+
+def _split_oversized_blocks(
+    gene: SessionGene,
+    individual: List[SessionGene],
+    context: SchedulingContext,
+    qts: QuantumTimeSystem,
+) -> bool:
+    """
+    ENHANCED: Split oversized blocks (4+ consecutive) into better 2-3 blocks.
+
+    Example: [6-consecutive] → [3, 3] on different days
+    """
+    from config.time_config import (
+        quantum_to_day_and_within_day,
+        PREFERRED_BLOCK_SIZE_MAX,
+    )
+
+    day_quanta_map = defaultdict(list)
+    for q in gene.quanta:
+        day, within_day = quantum_to_day_and_within_day(q, qts)
+        day_quanta_map[day].append((within_day, q))
+
+    # Find oversized blocks
+    for day, quanta_pairs in day_quanta_map.items():
+        sorted_pairs = sorted(quanta_pairs, key=lambda x: x[0])
+        within_day_quanta = [w for w, _ in sorted_pairs]
+        global_quanta = [g for _, g in sorted_pairs]
+
+        # Check if this day has an oversized consecutive block
+        if len(within_day_quanta) <= PREFERRED_BLOCK_SIZE_MAX:
+            continue
+
+        # Check if all quanta are consecutive (oversized block)
+        is_consecutive = all(
+            within_day_quanta[i] == within_day_quanta[i - 1] + 1
+            for i in range(1, len(within_day_quanta))
+        )
+
+        if not is_consecutive:
+            continue
+
+        # Found oversized block! Try to split it
+        block_size = len(global_quanta)
+
+        # Keep first 2-3 quanta on this day, move rest to another day
+        keep_size = min(3, block_size // 2)
+        move_size = block_size - keep_size
+
+        quanta_to_move = global_quanta[keep_size:]
+
+        # Find free slots on a different day for the moved portion
+        free_quanta_by_day = _get_free_quanta_by_day(gene, individual, context, qts)
+
+        for other_day, free_quanta in free_quanta_by_day.items():
+            if other_day == day or not free_quanta:
+                continue
+
+            # Try to find consecutive block for moved portion
+            target_block = _find_consecutive_in_list(free_quanta, move_size)
+            if target_block:
+                # Success! Replace moved quanta with new block
+                new_quanta = list(gene.quanta)
+                for old_q in quanta_to_move:
+                    new_quanta.remove(old_q)
+                new_quanta.extend(target_block)
+                gene.quanta = sorted(new_quanta)
+                return True
+
+    return False
+
+
+def _get_free_quanta_by_day(
+    gene: SessionGene,
+    individual: List[SessionGene],
+    context: SchedulingContext,
+    qts: QuantumTimeSystem,
+) -> dict:
+    """
+    Get available quanta grouped by day for a gene, excluding current gene's quanta.
+    Returns dict: day_name -> list of free global quanta.
+    """
+    from config.time_config import quantum_to_day_and_within_day
+
+    # Get all operating quanta
+    all_quanta = qts.get_all_operating_quanta()
+
+    # Filter out quanta that would cause conflicts
+    free_by_day = defaultdict(list)
+
+    for q in all_quanta:
+        if q in gene.quanta:
+            # Skip quanta already in this gene
+            continue
+
+        if _is_quantum_free_for_gene(q, gene, individual, context):
+            day, _ = quantum_to_day_and_within_day(q, qts)
+            free_by_day[day].append(q)
+
+    return free_by_day
+
+
+def _find_consecutive_in_list(quanta_list: List[int], block_size: int) -> List[int]:
+    """Find a consecutive block of specified size in a list of quanta."""
+    if len(quanta_list) < block_size:
+        return None
+
+    sorted_quanta = sorted(quanta_list)
+
+    for i in range(len(sorted_quanta) - block_size + 1):
+        candidates = sorted_quanta[i : i + block_size]
+
+        is_consecutive = all(
+            candidates[j] - candidates[j - 1] == 1 for j in range(1, len(candidates))
+        )
+
+        if is_consecutive:
+            return candidates
+
+    return None
 
 
 def _try_rearrange_isolated_quantum(
