@@ -241,6 +241,7 @@ class GAConfig:
         crossover_prob: Probability of crossover operation
         mutation_prob: Probability of mutation operation
         repair_config: Repair heuristics configuration dict (from ga_params.REPAIR_HEURISTICS_CONFIG)
+                       Includes selective_mode, adaptive_repair settings, and enabled heuristics
     """
 
     pop_size: int
@@ -281,9 +282,19 @@ class GAScheduler:
     This class encapsulates the entire GA lifecycle:
     - Toolbox initialization
     - Population generation and validation
-    - Evolution loop execution
+    - Evolution loop execution with adaptive repair
     - Metrics tracking
     - Best solution selection
+
+    Adaptive Repair System:
+        Implements hybrid repair strategy combining stagnation detection
+        and periodic triggers. Dynamically switches between selective (fast)
+        and full (intensive) repair modes based on search progress.
+
+        - Stagnation Detection: Monitors HC improvement over rolling window
+        - Periodic Triggers: Regular repair at configurable intervals
+        - Intensive Triggers: Heavy repair at longer intervals
+        - Dynamic Parameters: Adjusts repair_mode and max_iterations per generation
 
     Usage:
         config = GAConfig(pop_size=50, generations=100, ...)
@@ -305,16 +316,20 @@ class GAScheduler:
         seed: Optional[int] = None,  # NEW: Random seed for worker initialization
     ):
         """
-        Initialize GA scheduler.
+        Initialize GA scheduler with adaptive repair tracking.
 
         Args:
-            config: GA configuration parameters
-            context: Scheduling context with courses, groups, etc.
+            config: GA configuration (includes repair_config with adaptive_repair settings)
+            context: Scheduling context with courses, groups, instructors, rooms
             hard_constraint_names: Names of enabled hard constraints
             soft_constraint_names: Names of enabled soft constraints
             pool: Optional multiprocessing.Pool for parallel fitness evaluation
-            logger: Optional GALogger for runtime logging
-            seed: Random seed for reproducibility (passed to workers)
+            logger: Optional GALogger for file-based logging (writes to logger.txt, not console)
+            seed: Random seed for reproducibility
+
+        Adaptive Repair:
+            Initializes stagnation tracking variables (stagnation_counter, last_best_hc)
+            for hybrid trigger logic. Console messages use global console object.
         """
         self.config = config
         self.context = context
@@ -330,6 +345,10 @@ class GAScheduler:
             detailed_hard={name: [] for name in hard_constraint_names},
             detailed_soft={name: [] for name in soft_constraint_names},
         )
+
+        # ADAPTIVE REPAIR: Stagnation tracking for hybrid strategy
+        self.stagnation_counter = 0
+        self.last_best_hc = float("inf")
 
     def setup_toolbox(self):
         """Initialize DEAP toolbox with operators."""
@@ -573,7 +592,24 @@ class GAScheduler:
                     break
 
     def _evolve_generation(self, gen: int, progress=None):
-        """Execute one generation of evolution."""
+        """
+        Execute one generation of evolution with adaptive repair.
+
+        Hybrid Repair Strategy:
+            1. Stagnation Detection: Track best HC over rolling window
+            2. Periodic Triggers: Regular repair every N generations
+            3. Intensive Triggers: Heavy repair every M generations (M > N)
+            4. Dynamic Parameters: Adjust repair_mode and max_iterations based on trigger type
+
+        Trigger Priority (highest to lowest):
+            - Intensive: Every intensive_interval (default 20) → full mode, max_iterations=10
+            - Stagnation: Window (default 5) gens without HC improvement → full mode, max_iterations=5
+            - Periodic: Every interval (default 10) → full mode, max_iterations=5
+
+        Args:
+            gen: Current generation number (0-indexed)
+            progress: Optional rich.progress.Progress for UI updates
+        """
         repair_config = self.config.repair_config
         generation_repair_stats = {
             "instructor_availability_fixes": 0,
@@ -586,6 +622,86 @@ class GAScheduler:
             "session_count_fixes": 0,
             "total_fixes": 0,
         }
+
+        # ADAPTIVE REPAIR: Hybrid trigger logic (stagnation + periodic)
+        adaptive_config = repair_config.get("adaptive_repair", {})
+        stagnation_cfg = adaptive_config.get("stagnation_trigger", {})
+        periodic_cfg = adaptive_config.get("periodic_trigger", {})
+
+        # Track current best HC for stagnation detection
+        if self.population:
+            current_best_hc = min(
+                ind.fitness.values[0] for ind in self.population if ind.fitness.valid
+            )
+
+            # Stagnation detection
+            stagnation_detected = False
+            if stagnation_cfg.get("enabled", False):
+                improvement = self.last_best_hc - current_best_hc
+                if improvement <= stagnation_cfg.get("threshold", 0.0):
+                    self.stagnation_counter += 1
+                else:
+                    self.stagnation_counter = 0  # Reset on improvement
+                    self.last_best_hc = current_best_hc
+
+                if self.stagnation_counter >= stagnation_cfg.get("window", 5):
+                    stagnation_detected = True
+
+            # Periodic trigger detection
+            is_periodic_gen = periodic_cfg.get("enabled", False) and (
+                gen > 0 and gen % periodic_cfg.get("interval", 10) == 0
+            )
+            is_intensive_gen = periodic_cfg.get("enabled", False) and (
+                gen > 0 and gen % periodic_cfg.get("intensive_interval", 20) == 0
+            )
+
+            # Apply dynamic repair parameters based on triggers
+            if is_intensive_gen:
+                # Intensive repair: full mode, high iterations
+                intensive_action = adaptive_config.get("intensive_action", {})
+                repair_config["selective_mode"] = (
+                    intensive_action.get("repair_mode", "full") == "selective"
+                )
+                repair_config["max_iterations"] = intensive_action.get(
+                    "max_iterations", 10
+                )
+                repair_config["memetic_iterations"] = intensive_action.get(
+                    "max_iterations", 10
+                )
+                console.print(
+                    f"[bold red]🔥 Gen {gen}: Intensive repair triggered (every {periodic_cfg.get('intensive_interval', 20)} gens)[/bold red]"
+                )
+            elif stagnation_detected:
+                # Stagnation repair: use trigger_action settings
+                trigger_action = adaptive_config.get("trigger_action", {})
+                repair_config["selective_mode"] = (
+                    trigger_action.get("repair_mode", "full") == "selective"
+                )
+                repair_config["max_iterations"] = trigger_action.get(
+                    "max_iterations", 5
+                )
+                repair_config["memetic_iterations"] = trigger_action.get(
+                    "max_iterations", 5
+                )
+                console.print(
+                    f"[bold yellow]⚠ Gen {gen}: Stagnation detected ({self.stagnation_counter} gens) - applying repair[/bold yellow]"
+                )
+                self.stagnation_counter = 0  # Reset after applying repair
+            elif is_periodic_gen:
+                # Regular periodic repair: use trigger_action settings
+                trigger_action = adaptive_config.get("trigger_action", {})
+                repair_config["selective_mode"] = (
+                    trigger_action.get("repair_mode", "full") == "selective"
+                )
+                repair_config["max_iterations"] = trigger_action.get(
+                    "max_iterations", 5
+                )
+                repair_config["memetic_iterations"] = trigger_action.get(
+                    "max_iterations", 5
+                )
+                console.print(
+                    f"[bold cyan]🔧 Gen {gen}: Periodic repair triggered (every {periodic_cfg.get('interval', 10)} gens)[/bold cyan]"
+                )
 
         # PHASE 1.3: Get adaptive probabilities based on search progress
         cxpb, mutpb = self._get_adaptive_probabilities(gen)
@@ -605,17 +721,22 @@ class GAScheduler:
                 if repair_config.get("enabled", False) and repair_config.get(
                     "apply_after_crossover", False
                 ):
-                    from src.ga.operators.repair import repair_individual
+                    from src.ga.operators.repair import repair_individual_unified
 
-                    stats1 = repair_individual(
+                    # Use selective mode from config
+                    selective_mode = repair_config.get("selective_mode", True)
+
+                    stats1 = repair_individual_unified(
                         offspring[i - 1],
                         self.context,
                         max_iterations=repair_config.get("max_iterations", 3),
+                        selective=selective_mode,
                     )
-                    stats2 = repair_individual(
+                    stats2 = repair_individual_unified(
                         offspring[i],
                         self.context,
                         max_iterations=repair_config.get("max_iterations", 3),
+                        selective=selective_mode,
                     )
 
                     # Aggregate all repair stats
@@ -633,7 +754,10 @@ class GAScheduler:
                 if repair_config.get("enabled", False) and repair_config.get(
                     "apply_after_mutation", False
                 ):
-                    from src.ga.operators.repair import repair_individual
+                    from src.ga.operators.repair import repair_individual_unified
+
+                    # Use selective mode from config
+                    selective_mode = repair_config.get("selective_mode", True)
 
                     # Check violation threshold if specified
                     threshold = repair_config.get("violation_threshold")
@@ -643,10 +767,11 @@ class GAScheduler:
                         should_repair = mutant.fitness.values[0] > threshold
 
                     if should_repair:
-                        stats = repair_individual(
+                        stats = repair_individual_unified(
                             mutant,
                             self.context,
                             max_iterations=repair_config.get("max_iterations", 3),
+                            selective=selective_mode,
                         )
 
                         # Aggregate all repair stats
@@ -679,17 +804,21 @@ class GAScheduler:
         if repair_config.get("enabled", False) and repair_config.get(
             "memetic_mode", False
         ):
-            from src.ga.operators.repair import repair_individual
+            from src.ga.operators.repair import repair_individual_unified
+
+            # Use selective mode from config
+            selective_mode = repair_config.get("selective_mode", True)
 
             elite_percentage = repair_config.get("elite_percentage", 0.2)
             elite_count = max(1, int(elite_percentage * len(self.population)))
             elite_individuals = tools.selBest(self.population, elite_count)
 
             for individual in elite_individuals:
-                stats = repair_individual(
+                stats = repair_individual_unified(
                     individual,
                     self.context,
                     max_iterations=repair_config.get("memetic_iterations", 5),
+                    selective=selective_mode,
                 )
 
                 # Invalidate fitness after repair

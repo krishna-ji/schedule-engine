@@ -81,6 +81,56 @@ REPAIR_HEURISTICS_CONFIG = {
     # Threshold-based repair (optional)
     "violation_threshold": None,  # Always repair (no threshold)
     # ========================================
+    # NEW: Selective Repair Optimization (Option B)
+    # ========================================
+    # Only repair genes with violations (3-4× faster than full repair)
+    "selective_mode": True,  # Enable selective repair (RECOMMENDED for performance)
+    "detection_strategy": "hybrid",  # "fast", "full", or "hybrid" (recommended)
+    "recheck_after_repair": True,  # Re-detect violations after each iteration
+    # ========================================
+    # NEW: Adaptive Repair Strategy (Hybrid: Stagnation + Periodic)
+    # ========================================
+    # Dynamically switches between selective (fast) and full (intensive) repair
+    # based on search progress. Combines stagnation detection with periodic triggers.
+    #
+    # Trigger Priority (highest to lowest):
+    #   1. Intensive: Every intensive_interval (e.g., gen 20, 40, 60...) → max_iterations=10
+    #   2. Stagnation: No HC improvement for 'window' gens → max_iterations=5
+    #   3. Periodic: Every interval (e.g., gen 10, 30, 50...) → max_iterations=5
+    #
+    # Expected Behavior:
+    #   - Gen 10: Periodic trigger (if not intensive)
+    #   - Gen 15: Stagnation trigger (if HC plateaus for 5 gens)
+    #   - Gen 20: Intensive trigger (overrides periodic)
+    #
+    # See docs/ADAPTIVE_REPAIR_HYBRID_STRATEGY.md for detailed explanation
+    "adaptive_repair": {
+        "enabled": True,  # Enable hybrid adaptive strategy
+        # Stagnation-based trigger
+        "stagnation_trigger": {
+            "enabled": True,  # Enable stagnation detection
+            "window": 5,  # Generations without improvement to consider stagnant
+            "metric": "best_hc",  # Metric to track: "best_hc", "avg_hc", "best_fitness"
+            "threshold": 0.0,  # Minimum improvement required (0 = any improvement counts)
+        },
+        # Periodic trigger (generation-based)
+        "periodic_trigger": {
+            "enabled": True,  # Enable periodic deep repair
+            "interval": 10,  # Apply full repair every N generations (None = disable)
+            "intensive_interval": 20,  # Extra intensive repair every N gens (None = disable)
+        },
+        # Action when triggered (normal trigger)
+        "trigger_action": {
+            "repair_mode": "full",  # Switch to "full" repair (from "selective")
+            "max_iterations": 5,  # More intensive than normal (normal=2)
+        },
+        # Action for intensive trigger (every intensive_interval)
+        "intensive_action": {
+            "repair_mode": "full",  # Full repair mode
+            "max_iterations": 10,  # Maximum intensity
+        },
+    },
+    # ========================================
     # Individual Repair Heuristics
     # ========================================
     # Format: "heuristic_name": {"enabled": bool, "priority": int}
