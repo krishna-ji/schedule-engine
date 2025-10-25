@@ -38,61 +38,38 @@ def main():
         - Provides 3-6x speedup on multi-core systems
         - Set USE_MULTIPROCESSING=False for debugging or single-threaded execution
     """
-    pool = None
+    # Pool will be created inside workflow after data is loaded
+    # (needed to pass data to worker initializer)
+    result = run_standard_workflow(
+        pop_size=POP_SIZE,
+        generations=NGEN,
+        crossover_prob=CXPB,
+        mutation_prob=MUTPB,
+        validate=True,  # Enable input validation
+    )
 
-    # Create multiprocessing pool if enabled
-    if USE_MULTIPROCESSING:
-        import multiprocessing
+    # Print final summary with beautiful rich formatting
+    console.print()
+    console.rule("[bold green]FINAL RESULTS[/bold green]", style="green")
+    console.print()
 
-        pool = multiprocessing.Pool(processes=NUM_WORKERS)
+    hard_viol = result["best_individual"].fitness.values[0]
+    soft_pen = result["best_individual"].fitness.values[1]
+
+    if hard_viol == 0:
         console.print(
-            f"[cyan]Multiprocessing enabled: {pool._processes} workers[/cyan]"
+            "[OK] [bold green]Perfect schedule found (no hard constraint violations)![/bold green]"
         )
     else:
         console.print(
-            "[yellow]Running in single-threaded mode (USE_MULTIPROCESSING=False)[/yellow]"
+            f"[!] [yellow]Hard constraint violations: {hard_viol:.0f}[/yellow]"
         )
 
-    try:
-        result = run_standard_workflow(
-            pop_size=POP_SIZE,
-            generations=NGEN,
-            crossover_prob=CXPB,
-            mutation_prob=MUTPB,
-            validate=True,  # Enable input validation
-            pool=pool,  # Pass pool for parallel evaluation
-        )
-
-        # Print final summary with beautiful rich formatting
-        console.print()
-        console.rule("[bold green]FINAL RESULTS[/bold green]", style="green")
-        console.print()
-
-        hard_viol = result["best_individual"].fitness.values[0]
-        soft_pen = result["best_individual"].fitness.values[1]
-
-        if hard_viol == 0:
-            console.print(
-                "[OK] [bold green]Perfect schedule found (no hard constraint violations)![/bold green]"
-            )
-        else:
-            console.print(
-                f"[!] [yellow]Hard constraint violations: {hard_viol:.0f}[/yellow]"
-            )
-
-        console.print(f"[cyan]Soft constraint penalty: {soft_pen:.2f}[/cyan]")
-        console.print(
-            f"[cyan]Schedule sessions: {len(result['decoded_schedule'])}[/cyan]"
-        )
-        console.print(f"[cyan]Output location: {result['output_path']}[/cyan]")
-        console.print()
-        console.rule(style="green")
-
-    finally:
-        # Clean up multiprocessing pool
-        if pool is not None:
-            pool.close()
-            pool.join()
+    console.print(f"[cyan]Soft constraint penalty: {soft_pen:.2f}[/cyan]")
+    console.print(f"[cyan]Schedule sessions: {len(result['decoded_schedule'])}[/cyan]")
+    console.print(f"[cyan]Output location: {result['output_path']}[/cyan]")
+    console.print()
+    console.rule(style="green")
 
 
 if __name__ == "__main__":

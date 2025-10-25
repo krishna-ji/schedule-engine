@@ -1,0 +1,29 @@
+My chromosome has:
+[Course, Group, Instructor, TimeSlotID, Room]
+I want to create 0 conflicts Course, Group ChromoSome, without overscheduling and underscheduling: But I have Group and Subgroups too. How to make sure that If parent group is scheduled, subgroups are not be scheduled? How to handle this group and subgroup strategy in current situation? 
+I have a logic for Group and Course Initializaiton Strategy. 
+
+I also wanna fix:
+one gene is effectively one quanta: so for subject with L+T=5: 5 genes to be generated.
+
+1. for group in groups:
+    for course in courses:
+    [Theory classes are same for all subgroups too]
+    if has_subgroups
+        Create n = L+T theory_classes with (L+T) for both group: [same theory class for all subgroups]
+        create a chromosome with [course, group[allgroups], TimeSlot=, None, None]
+        For practical : create n = P practical_classes with P for each subgroup separately
+            [Create practical Classes separately]
+            create n=P Practical_Classes with P for all groups separately. differently. 
+    
+    Pass these Created Chromosomes to 2nd phase initializer?: which will try to assign instructor, room, timeslot with minimum violation 
+
+    Then these are passed to GA for further optimizaiton.
+
+    My constraints checker to check conflicts and overscheduling and underscheduling also adjusting accordingly? But how should i designate: that case?
+
+
+So, A sort of my [{C,G} fixed and I, T, R are to be optimized by GA]
+
+... and so on for all ones.
+

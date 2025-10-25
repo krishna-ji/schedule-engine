@@ -12,7 +12,10 @@ from src.entities.group import Group
 
 
 def generate_course_group_pairs(
-    courses: Dict[tuple, Course], groups: Dict[str, Group], hierarchy: Dict
+    courses: Dict[tuple, Course],
+    groups: Dict[str, Group],
+    hierarchy: Dict,
+    silent: bool = False,
 ) -> List[Tuple[tuple, List[str], str, int]]:
     """
     Generates (course_id, group_ids, session_type, num_quanta) tuples.
@@ -26,6 +29,7 @@ def generate_course_group_pairs(
         courses: Dictionary keyed by (course_code, course_type) tuple -> Course
         groups: Dictionary of group_id -> Group
         hierarchy: Output from analyze_group_hierarchy()
+        silent: If True, suppress warning messages (useful for worker processes)
 
     Returns:
         List of tuples: (course_key, group_ids, session_type, num_quanta)
@@ -78,9 +82,10 @@ def generate_course_group_pairs(
                 matching_courses.append((practical_key, courses[practical_key]))
 
             if not matching_courses:
-                print(
-                    f"[!] Warning: Course {course_code} not found for group {parent_prefix}"
-                )
+                if not silent:
+                    print(
+                        f"[!] Warning: Course {course_code} not found for group {parent_prefix}"
+                    )
                 continue
 
             # Process theory and practical courses separately
@@ -118,46 +123,3 @@ def group_pairs_by_course(pairs: List[Tuple]) -> Dict[tuple, List[Tuple]]:
         course_key = pair[0]  # (course_code, course_type) tuple
         course_pairs[course_key].append(pair)
     return dict(course_pairs)
-
-
-if __name__ == "__main__":
-    # Quick test
-    from src.encoder.input_encoder import load_groups, load_courses
-    from src.encoder.quantum_time_system import QuantumTimeSystem
-    from src.ga.group_hierarchy import analyze_group_hierarchy
-    from src.utils.console import write_header, write_info
-
-    qts = QuantumTimeSystem()
-    groups = load_groups("data/Groups.json", qts)
-    courses = load_courses("data/Course.json")
-    hierarchy = analyze_group_hierarchy(groups)
-
-    pairs = generate_course_group_pairs(courses, groups, hierarchy)
-
-    write_header("Course-Group Pair Generation")
-    write_info(f"Total pairs: {len(pairs)}")
-    write_info(f"Total genes to create: {count_total_genes(pairs)}")
-    write_info("")
-
-    # Show some examples
-    write_info("Example Theory Pairs (Parent Group):")
-    theory_pairs = [p for p in pairs if p[2] == "theory"][:5]
-    for course_key, group_ids, session_type, num_quanta in theory_pairs:
-        write_info(f"  {course_key} -> {group_ids} ({num_quanta} quanta)")
-    write_info("")
-
-    write_info("Example Practical Pairs (Subgroups):")
-    practical_pairs = [p for p in pairs if p[2] == "practical"][:5]
-    for course_key, group_ids, session_type, num_quanta in practical_pairs:
-        write_info(f"  {course_key} -> {group_ids} ({num_quanta} quanta)")
-    write_info("")
-
-    # Analyze one course
-    course_groups = group_pairs_by_course(pairs)
-    if course_groups:
-        sample_course = list(course_groups.keys())[0]
-        write_info(f"Detailed breakdown for {sample_course}:")
-        for course_key, group_ids, session_type, num_quanta in course_groups[
-            sample_course
-        ]:
-            write_info(f"  {session_type.upper()}: {group_ids} ({num_quanta} quanta)")

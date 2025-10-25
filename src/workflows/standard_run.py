@@ -48,7 +48,6 @@ def run_standard_workflow(
     output_dir: Optional[str] = None,
     seed: int = 69,
     validate: bool = True,
-    pool=None,  # NEW: Optional multiprocessing Pool for parallel evaluation
 ) -> Dict:
     """
     Execute standard GA scheduling workflow.
@@ -147,6 +146,35 @@ def run_standard_workflow(
             )
 
         console.print("   [bold green]✓[/bold green] Input validation passed\n")
+
+    # ========================================
+    # Step 3.5: Create Multiprocessing Pool
+    # ========================================
+    pool = None
+
+    from config.ga_params import USE_MULTIPROCESSING, NUM_WORKERS
+
+    if USE_MULTIPROCESSING:
+        import multiprocessing
+        from src.core.ga_scheduler import _worker_init
+
+        # Create pool with worker initialization
+        # Workers load data from JSON files (no pickling of complex objects!)
+        pool = multiprocessing.Pool(
+            processes=NUM_WORKERS,
+            initializer=_worker_init,
+            initargs=(data_dir, seed),
+        )
+        console.print(
+            f"[cyan]✓ Multiprocessing enabled: {pool._processes} workers[/cyan]"
+        )
+        console.print(
+            f"   [dim]Workers load data from {data_dir}/ (zero pickling overhead)[/dim]\n"
+        )
+    else:
+        console.print(
+            "[yellow]Running in single-threaded mode (USE_MULTIPROCESSING=False)[/yellow]\n"
+        )
 
     # ========================================
     # Step 4: Configure GA
@@ -255,7 +283,7 @@ def run_standard_workflow(
     logger.start_run()  # Mark start time
 
     scheduler = GAScheduler(
-        ga_config, context, hard_names, soft_names, pool=pool, logger=logger
+        ga_config, context, hard_names, soft_names, pool=pool, logger=logger, seed=seed
     )
     scheduler.setup_toolbox()
     scheduler.initialize_population()
@@ -328,6 +356,11 @@ def run_standard_workflow(
     console.print()
     console.rule(style="green")
     console.print()
+
+    # Clean up multiprocessing pool
+    if pool is not None:
+        pool.close()
+        pool.join()
 
     return {
         "best_individual": best_individual,

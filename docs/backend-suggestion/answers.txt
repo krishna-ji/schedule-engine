@@ -1,0 +1,315 @@
+# Cookiecutter-Django Initialization Answers
+# For Schedule Engine SaaS Backend
+# Generated: October 17, 2025
+
+================================================================================
+COOKIECUTTER-DJANGO PROJECT INITIALIZATION
+================================================================================
+
+project_name [My Awesome Project]: Schedule Engine SaaS
+project_slug [schedule_engine_saas]: schedule_engine
+description [Behold My Awesome Project!]: AI-powered course scheduling system using genetic algorithms with Django REST Framework backend
+author_name [Daniel Roy Greenfeld]: krishna-ji
+domain_name [example.com]: scheduleengine.com
+email [daniel-greenfeld@example.com]: krishna@scheduleengine.com
+version [0.1.0]: 0.1.0
+
+Select open_source_license:
+1 - MIT
+2 - BSD
+3 - GPLv3
+4 - Apache Software License 2.0
+5 - Not open source
+Choose from 1, 2, 3, 4, 5 [1]: 1
+# Reason: MIT is permissive, allows commercial use, compatible with DEAP's LGPL
+
+Select username_type:
+1 - username
+2 - email
+Choose from 1, 2 [1]: 2
+# Reason: Email-based auth is more common for SaaS, easier password recovery
+
+timezone [UTC]: UTC
+# Reason: Keep UTC for backend, handle timezone conversions in frontend
+
+windows [n]: n
+# Reason: Production will be Linux-based (Docker/AWS), develop on Windows with WSL2
+
+Select an editor to use. The choices are:
+1 - None
+2 - PyCharm
+3 - VS Code
+Choose from 1, 2, 3 [1]: 3
+# Reason: You're already using VS Code with GitHub Copilot
+
+use_docker [n]: y
+# Reason: CRITICAL - Need Docker to isolate Django (Python 3.11) from DEAP worker (Python 3.9)
+
+Select postgresql_version:
+1 - 17
+2 - 16
+3 - 15
+4 - 14
+Choose from 1, 2, 3, 4 [1]: 2
+# Reason: PostgreSQL 16 is stable, well-tested, good for production (17 is too new)
+
+Select cloud_provider:
+1 - AWS
+2 - GCP
+3 - None
+Choose from 1, 2, 3 [1]: 1
+# Reason: AWS has best support for Celery (SQS), S3 for file storage, ECS for containers
+
+Select mail_service:
+1 - Mailgun
+2 - Amazon SES
+3 - Mailjet
+4 - Mandrill
+5 - Postmark
+6 - Sendgrid
+7 - Brevo (formerly SendinBlue)
+8 - SparkPost
+9 - Other SMTP
+Choose from 1, 2, 3, 4, 5, 6, 7, 8, 9 [1]: 2
+# Reason: Amazon SES integrates well with AWS, cost-effective, reliable
+
+use_async [n]: n
+# Reason: No need for async views; Celery handles async processing
+
+use_drf [n]: y
+# Reason: REQUIRED - Django REST Framework is core to the architecture
+
+Select frontend_pipeline:
+1 - None
+2 - Django Compressor
+3 - Gulp
+4 - Webpack
+Choose from 1, 2, 3, 4 [1]: 1
+# Reason: Backend-only API, frontend will be separate React/Next.js app
+
+use_celery [n]: y
+# Reason: CRITICAL - Need Celery for background GA execution (long-running jobs)
+
+use_mailpit [n]: y
+# Reason: Useful for testing email notifications during development
+
+use_sentry [n]: y
+# Reason: Essential for production error tracking, especially for async Celery tasks
+
+use_whitenoise [n]: n
+# Reason: No static files to serve (API only), use S3 for media files
+
+use_heroku [n]: n
+# Reason: Using AWS with ECS/Fargate for better control and scalability
+
+Select ci_tool:
+1 - None
+2 - Travis
+3 - Gitlab
+4 - Github
+Choose from 1, 2, 3, 4 [1]: 4
+# Reason: Your repo is on GitHub, GitHub Actions is free and well-integrated
+
+keep_local_envs_in_vcs [y]: y
+# Reason: Easier for team development, secrets managed separately via .env.local
+
+debug [n]: n
+# Reason: Production-ready defaults, debug will be enabled in local.py
+
+================================================================================
+POST-INITIALIZATION SETUP
+================================================================================
+
+After running cookiecutter, you need to:
+
+1. COPY GA ENGINE CODE
+   ------------------
+   cd schedule_engine
+   mkdir ga_engine
+   cp -r ../schedule-engine/src ./ga_engine/
+   cp -r ../schedule-engine/config ./ga_engine/
+   cp ../schedule-engine/requirements.txt ./requirements-worker.txt
+
+2. CREATE CUSTOM DJANGO APP
+   ------------------------
+   python manage.py startapp schedules
+
+3. ADD TO INSTALLED_APPS (config/settings/base.py)
+   ----------------------------------------------
+   INSTALLED_APPS = [
+       ...
+       'rest_framework',
+       'rest_framework.authtoken',
+       'corsheaders',
+       'schedule_engine.schedules.apps.SchedulesConfig',
+   ]
+
+4. CREATE MODELS (schedules/models.py)
+   ----------------------------------
+   Copy from docs/backend-suggestion/drf-architecture.md - Section "1.2 Create Django Models"
+
+5. CREATE CELERY TASKS (schedules/tasks.py)
+   ----------------------------------------
+   Copy from docs/backend-suggestion/drf-architecture.md - Section "2.3 Create Celery Task"
+
+6. SETUP API VIEWS (schedules/views.py)
+   -----------------------------------
+   Copy from docs/backend-suggestion/drf-architecture.md - Section "1.4 Create API Views"
+
+7. CONFIGURE CELERY (config/celery.py)
+   ----------------------------------
+   Copy from docs/backend-suggestion/drf-architecture.md - Section "2.1 Configure Celery"
+
+8. UPDATE DOCKER FILES
+   -------------------
+   Modify compose/production/django/Dockerfile for API container
+   Create compose/production/celery/Dockerfile for worker container (Python 3.9 + DEAP)
+
+9. ADD ENVIRONMENT VARIABLES (.envs/.production/.django)
+   ----------------------------------------------------
+   CELERY_BROKER_URL=redis://redis:6379/0
+   CELERY_RESULT_BACKEND=redis://redis:6379/0
+   AWS_ACCESS_KEY_ID=your_key
+   AWS_SECRET_ACCESS_KEY=your_secret
+   AWS_STORAGE_BUCKET_NAME=schedule-outputs
+
+10. RUN MIGRATIONS
+    --------------
+    docker-compose -f production.yml run --rm django python manage.py makemigrations
+    docker-compose -f production.yml run --rm django python manage.py migrate
+
+================================================================================
+TESTING COMMANDS
+================================================================================
+
+# Development
+docker-compose -f local.yml up
+docker-compose -f local.yml run --rm django python manage.py createsuperuser
+
+# Check Celery worker
+docker-compose -f local.yml logs -f celeryworker
+
+# Run tests
+docker-compose -f local.yml run --rm django pytest
+
+# Production
+docker-compose -f production.yml up -d
+docker-compose -f production.yml logs -f
+
+================================================================================
+API ENDPOINTS (After Setup)
+================================================================================
+
+POST   /api/schedules/                  Create new schedule job
+GET    /api/schedules/                  List user's jobs
+GET    /api/schedules/{id}/             Get job status
+GET    /api/schedules/{id}/result/      Get full results (when complete)
+DELETE /api/schedules/{id}/             Cancel/delete job
+
+POST   /api/auth/login/                 Get auth token
+POST   /api/auth/register/              Create account
+POST   /api/auth/logout/                Invalidate token
+
+================================================================================
+ARCHITECTURE OVERVIEW
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                          CLIENT (React/Next.js)                     │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │ HTTPS
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     NGINX (Reverse Proxy)                           │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │
+                ┌────────────────┴─────────────────┐
+                ▼                                  ▼
+┌──────────────────────────┐          ┌──────────────────────────┐
+│  Django API (Python 3.11)│          │  Celery Worker (Py 3.9) │
+│  - Django 4.2            │          │  - DEAP 1.4              │
+│  - DRF 3.14              │          │  - GA Engine             │
+│  - Models/Views          │          │  - Matplotlib            │
+│  - JWT Auth              │          │  - NumPy                 │
+└──────────┬───────────────┘          └────────┬─────────────────┘
+           │                                    │
+           └──────────┬─────────────────────────┘
+                      ▼                         ▼
+              ┌───────────────┐        ┌───────────────┐
+              │  PostgreSQL   │        │     Redis     │
+              │  (Job Metadata)│       │  (Task Queue) │
+              └───────────────┘        └───────────────┘
+                      │
+                      ▼
+              ┌───────────────┐
+              │   AWS S3      │
+              │ (Output Files)│
+              └───────────────┘
+
+================================================================================
+KEY FILES TO MODIFY AFTER COOKIECUTTER
+================================================================================
+
+1. config/settings/base.py
+   - Add 'schedules' app
+   - Configure DRF settings
+   - Add CELERY_* settings
+
+2. config/urls.py
+   - Include schedules.urls
+   - Add API versioning: api/v1/
+
+3. schedule_engine/schedules/models.py
+   - ScheduleJob model (see drf-architecture.md)
+
+4. schedule_engine/schedules/tasks.py
+   - run_ga_schedule_task (Celery task)
+
+5. schedule_engine/schedules/views.py
+   - ScheduleViewSet (DRF viewset)
+
+6. compose/production/celery/Dockerfile
+   - NEW FILE: Python 3.9 + DEAP dependencies
+
+7. production.yml
+   - Add celeryworker service pointing to new Dockerfile
+
+================================================================================
+DEPENDENCIES TO ADD
+================================================================================
+
+Add to requirements/base.txt:
+  celery>=5.3.0
+  redis>=5.0.0
+  django-celery-results>=2.5.1
+  flower>=2.0.1  # Celery monitoring
+
+Add to requirements-worker.txt (for Celery container):
+  Django>=4.2.0
+  celery>=5.3.0
+  redis>=5.0.0
+  psycopg2-binary>=2.9.0
+  deap>=1.4.1
+  tqdm>=4.66.0
+  matplotlib>=3.7.0
+  numpy>=1.24.0
+
+================================================================================
+NEXT STEPS AFTER INITIALIZATION
+================================================================================
+
+1. Read: docs/backend-suggestion/drf-architecture.md
+2. Follow: "Step-by-Step Implementation" section
+3. Test: Run test_backend_integration.py to verify adapter works
+4. Deploy: Follow Phase 4 "Docker Multi-Stage Build"
+
+================================================================================
+SUPPORT & REFERENCES
+================================================================================
+
+- Main Architecture Doc: docs/backend-suggestion/drf-architecture.md
+- Task Breakdown: docs/backend-suggestion/preparation-checklist.md
+- Cookiecutter Django Docs: https://cookiecutter-django.readthedocs.io/
+- Your GitHub: https://github.com/krishna-ji/schedule-engine
+
+================================================================================

@@ -36,6 +36,124 @@ from src.core.types import SchedulingContext
 console = Console()
 
 
+# ============================================================================
+# Worker Initialization for Multiprocessing
+# ============================================================================
+# Module-level worker context (set once per worker process)
+_WORKER_CONTEXT = None
+
+
+def _worker_init(data_dir: str, seed: int):
+    """
+    Initialize worker process by loading data from JSON files.
+
+    This function is called once when each worker process starts.
+    It sets up DEAP creator types and loads scheduling context from disk.
+
+    This approach avoids pickling complex objects - workers just read the
+    same JSON files that the main process read.
+
+    Args:
+        data_dir: Directory containing input JSON files
+        seed: Random seed for reproducibility
+
+    Fixes:
+        - Bug #1: No pickling overhead (workers load from disk once)
+        - Bug #2: Random seed propagation (seed set in each worker)
+        - Bug #4: Creator types missing (types created in each worker)
+    """
+    global _WORKER_CONTEXT
+    import os
+    import sys
+    from io import StringIO
+    from deap import creator, base
+    from src.encoder.input_encoder import (
+        load_courses,
+        load_groups,
+        load_instructors,
+        load_rooms,
+        link_courses_and_groups,
+        link_courses_and_instructors,
+    )
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+
+    # Set up DEAP creator types (required for Windows spawn)
+    if not hasattr(creator, "FitnessMulti"):
+        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -0.01))
+    if not hasattr(creator, "Individual"):
+        creator.create("Individual", list, fitness=creator.FitnessMulti)
+
+    # Set environment variable to indicate we're in a worker process
+    # This allows other modules to suppress warnings
+    os.environ["_GA_WORKER_PROCESS"] = "1"
+
+    # Suppress all print output from data loading (workers should be silent)
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+
+    try:
+        # Load data from JSON files (same as main process)
+        qts = QuantumTimeSystem()
+        groups = load_groups(os.path.join(data_dir, "Groups.json"), qts)
+
+        # Get enrolled course codes
+        enrolled_course_codes = set()
+        for group in groups.values():
+            enrolled_course_codes.update(group.enrolled_courses)
+
+        # Load and filter courses
+        all_courses = load_courses(os.path.join(data_dir, "Course.json"))
+        courses = {
+            key: course
+            for key, course in all_courses.items()
+            if key[0] in enrolled_course_codes
+        }
+
+        instructors = load_instructors(os.path.join(data_dir, "Instructors.json"), qts)
+        rooms = load_rooms(os.path.join(data_dir, "Rooms.json"), qts)
+
+        # Link relationships (suppress output)
+        link_courses_and_groups(courses, groups)
+        link_courses_and_instructors(courses, instructors)
+    finally:
+        # Restore stdout
+        sys.stdout = old_stdout
+
+    # Store scheduling context in module-level variable
+    _WORKER_CONTEXT = {
+        "courses": courses,
+        "instructors": instructors,
+        "groups": groups,
+        "rooms": rooms,
+    }
+
+    # Propagate random seed to worker
+    random.seed(seed)
+
+
+def _worker_evaluate(individual):
+    """
+    Evaluate individual using worker-local context.
+
+    This function is called for each evaluation. It retrieves the
+    scheduling context from module-level state (set once in _worker_init)
+    instead of pickling it every time.
+
+    Args:
+        individual: GA individual to evaluate
+
+    Returns:
+        Tuple of (hard_violations, soft_penalty)
+    """
+    return evaluate(
+        individual,
+        _WORKER_CONTEXT["courses"],
+        _WORKER_CONTEXT["instructors"],
+        _WORKER_CONTEXT["groups"],
+        _WORKER_CONTEXT["rooms"],
+    )
+
+
 class AlwaysShowTimeRemainingColumn(ProgressColumn):
     """
     Custom TimeRemainingColumn with:
@@ -184,6 +302,7 @@ class GAScheduler:
         soft_constraint_names: List[str],
         pool=None,  # NEW: Optional multiprocessing Pool
         logger=None,  # NEW: Optional GALogger for runtime logging
+        seed: Optional[int] = None,  # NEW: Random seed for worker initialization
     ):
         """
         Initialize GA scheduler.
@@ -195,6 +314,7 @@ class GAScheduler:
             soft_constraint_names: Names of enabled soft constraints
             pool: Optional multiprocessing.Pool for parallel fitness evaluation
             logger: Optional GALogger for runtime logging
+            seed: Random seed for reproducibility (passed to workers)
         """
         self.config = config
         self.context = context
@@ -202,6 +322,7 @@ class GAScheduler:
         self.soft_constraint_names = soft_constraint_names
         self.pool = pool  # NEW: Store pool for parallel evaluation
         self.logger = logger  # NEW: Store logger for runtime logging
+        self.seed = seed  # NEW: Store seed for worker initialization
 
         self.toolbox = None
         self.population = None
@@ -245,14 +366,20 @@ class GAScheduler:
             )
 
         # Evaluation operator
-        self.toolbox.register(
-            "evaluate",
-            evaluate,
-            courses=self.context.courses,
-            instructors=self.context.instructors,
-            groups=self.context.groups,
-            rooms=self.context.rooms,
-        )
+        # Use worker initialization pattern for parallel execution
+        if self.pool is not None:
+            # Parallel mode: use worker evaluation (context already in workers)
+            self.toolbox.register("evaluate", _worker_evaluate)
+        else:
+            # Sequential mode: use direct evaluation with bound context
+            self.toolbox.register(
+                "evaluate",
+                evaluate,
+                courses=self.context.courses,
+                instructors=self.context.instructors,
+                groups=self.context.groups,
+                rooms=self.context.rooms,
+            )
 
         # Genetic operators
         self.toolbox.register(
