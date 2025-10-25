@@ -1,4 +1,15 @@
 # Schedule Engine Agent Guide
+
+## Commit Message Format
+When generating or suggesting commit messages for this repository:
+- Follow this format: `<type>(<scope>): <summary>`
+- Use imperative mood ("add", "fix", "update") and keep summary under 72 characters.
+- Choose types from: `feat`, `fix`, `data`, `method`, `analysis`, `result`, `doc`, `test`, `refactor`, `setup`, `release`.
+- Include a short explanation of the change's purpose or scientific motivation if relevant.
+- Reference experiment numbers, datasets, or manuscript sections when applicable.
+- Avoid generic summaries like "update" or "minor fix".
+
+## Project Guidelines
 - create all test files inside test/
 
 

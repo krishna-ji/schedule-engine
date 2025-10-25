@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import random
+import os
 from rich.console import Console
 
 from src.ga.sessiongene import SessionGene
@@ -53,10 +54,13 @@ def generate_course_group_aware_population(n: int, context: SchedulingContext) -
     # - Practical: Each subgroup separately (e.g., ["BAE2A"], then ["BAE2B"])
     hierarchy = analyze_group_hierarchy(context.groups)
 
+    # Detect if we're in a worker process (suppress warnings to avoid duplicates)
+    silent = os.environ.get("_GA_WORKER_PROCESS") == "1"
+
     # Generate course-group pairs using the proper function
     # Returns: List[Tuple[course_key, group_ids, session_type, num_quanta]]
     pair_tuples = generate_course_group_pairs(
-        context.courses, context.groups, hierarchy
+        context.courses, context.groups, hierarchy, silent=silent
     )
 
     # Convert to simpler format for gene creation
@@ -66,10 +70,12 @@ def generate_course_group_aware_population(n: int, context: SchedulingContext) -
     ]
 
     if not course_group_pairs:
-        print("Warning: No valid course-group pairs found!")
+        if not silent:
+            print("Warning: No valid course-group pairs found!")
         return []
 
-    print(f"Found {len(course_group_pairs)} course-group pairs to schedule")
+    if not silent:
+        print(f"Found {len(course_group_pairs)} course-group pairs to schedule")
 
     # Generate population without progress bar for simplicity
     # Progress is already shown at higher level in ga_scheduler
@@ -108,11 +114,13 @@ def generate_course_group_aware_population(n: int, context: SchedulingContext) -
         if genes:
             population.append(create_individual(genes))
         else:
-            print(f"Warning: Individual {individual_idx+1} has no genes!")
+            if not silent:
+                print(f"Warning: Individual {individual_idx+1} has no genes!")
 
-    print(
-        f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population)/len(population):.1f} genes each"
-    )
+    if not silent:
+        print(
+            f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population)/len(population):.1f} genes each"
+        )
     return population
 
 

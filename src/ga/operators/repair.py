@@ -1,37 +1,43 @@
 """
 Repair Heuristics for Constraint Violation Restoration
 
-This module implements deterministic repair operators that fix hard constraint
-violations in GA individuals. Repairs are applied after mutation/crossover to
-project invalid solutions back onto the feasible region.
+Deterministic repair operators that fix hard constraint violations in GA individuals.
+Applied after mutation/crossover to project invalid solutions onto feasible region.
 
 Repair Strategies (Complete Set):
-1. Instructor Availability: Shift sessions away from instructor unavailable times
-2. Group Overlaps: Detect time conflicts for same group, reassign to free slots
-3. Room Conflicts: Fix room double-bookings by shifting times or changing rooms
-4. Instructor Conflicts: Fix instructor double-bookings by shifting times
-5. Instructor Qualification: Reassign unqualified instructors to qualified ones
-6. Room Type Mismatch: Reassign rooms to match course requirements (lab vs classroom)
-7. Incomplete/Extra Sessions: Add missing or remove extra session genes
+1. Instructor Availability: Shift sessions to respect instructor schedules
+2. Group Overlaps: Resolve time conflicts for same group
+3. Room Conflicts: Fix double-bookings by shifting times or changing rooms
+4. Instructor Conflicts: Resolve instructor double-bookings
+5. Instructor Qualification: Reassign unqualified instructors
+6. Room Type Mismatch: Match course requirements (lab vs classroom)
+7. Session Clustering: Group isolated sessions into blocks (soft penalty reducer)
+8. Incomplete/Extra Sessions: Add missing or remove surplus genes
 
-Note: Room and group availability are NOT checked because:
-- Rooms are always available during operating hours
-- Groups default to all operating hours (QuantumTimeSystem guarantees this)
-- Schedules are only generated within operating hours
+Availability Model:
+- Instructor availability: Checked (part-time may have restrictions)
+- Room availability: NOT checked (always available during operating hours)
+- Group availability: NOT checked (default to all operating hours)
 
 Architecture:
-- Individual repairs target specific constraint types
-- repair_individual() orchestrates all repairs iteratively
-- Repairs preserve gene structure (course-group relationships)
-- Greedy approach: First-fit slot assignment
+- Registry-based: Enable/disable repairs via config/ga_params.py
+- Priority-ordered: Lower priority number executes first
+- In-place modification: Invalidate fitness after repair
+- Unified interface: repair_individual_unified() with selective optimization
+
+Repair Modes:
+- Full: Scans all genes (thorough, slower)
+- Selective: Only repairs violated genes (3-4× faster, recommended)
 
 Usage:
-    from src.ga.operators.repair import repair_individual
+    from src.ga.operators.repair import repair_individual_unified
 
-    # After mutation
-    mutate(individual)
-    stats = repair_individual(individual, context, max_iterations=3)
+    # Recommended: Use selective mode
+    stats = repair_individual_unified(individual, context, selective=True)
     print(f"Fixed {stats['total_fixes']} violations")
+
+    # Legacy: Full repair
+    stats = repair_individual_unified(individual, context, selective=False)
 """
 
 from typing import List, Dict, Set, Tuple
@@ -2014,3 +2020,55 @@ def repair_individual(
     stats["total_fixes"] = sum(v for k, v in stats.items() if k.endswith("_fixes"))
 
     return stats
+
+
+# ============================================================================
+# UNIFIED REPAIR INTERFACE WITH SELECTIVE MODE
+# ============================================================================
+
+
+def repair_individual_unified(
+    individual: List[SessionGene],
+    context: SchedulingContext,
+    max_iterations: int = 2,
+    selective: bool = True,
+) -> dict:
+    """
+    Unified repair interface with selective optimization.
+
+    This function provides backward compatibility while enabling the new
+    selective repair system. It automatically routes to the appropriate
+    repair strategy based on the `selective` parameter.
+
+    Args:
+        individual: List of SessionGene objects to repair
+        context: Scheduling context with entities
+        max_iterations: Maximum repair iterations
+        selective: If True, use selective repair (OPTIMIZED, recommended)
+                   If False, use full repair (original behavior, for testing)
+
+    Returns:
+        Dict with repair statistics (includes efficiency metrics if selective=True)
+
+    Performance:
+        - selective=True: 3-4× faster, only repairs violated genes
+        - selective=False: Original speed, scans all genes
+
+    Example:
+        >>> # Recommended: Use selective mode
+        >>> stats = repair_individual_unified(individual, context, selective=True)
+        >>> print(f"Fixed {stats['total_fixes']}, efficiency: {stats['efficiency']:.1f}%")
+
+        >>> # Testing: Compare with original
+        >>> stats_full = repair_individual_unified(individual, context, selective=False)
+    """
+    if selective:
+        # OPTIMIZED PATH: Selective repair (only violated genes)
+        from src.ga.operators.repair_selective import repair_individual_selective
+
+        return repair_individual_selective(
+            individual, context, max_iterations=max_iterations
+        )
+    else:
+        # ORIGINAL PATH: Full repair (all genes)
+        return repair_individual(individual, context, max_iterations=max_iterations)

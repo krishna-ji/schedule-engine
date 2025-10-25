@@ -18,6 +18,7 @@ Expected Impact: 15-25% better initial population → faster convergence
 
 from typing import List, Dict, Tuple
 import random
+import os
 from src.ga.sessiongene import SessionGene
 from src.ga.individual import create_individual
 from src.ga.population import generate_course_group_aware_population
@@ -49,13 +50,23 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
     random_count = max(1, n // 4)  # At least 1 random
     smart_count = n - greedy_count - random_count  # Rest are smart
 
-    print(
-        f"Hybrid initialization: {greedy_count} greedy, {smart_count} smart, {random_count} random"
+    # Detect if we're in a worker process (suppress info messages)
+    silent = os.environ.get("_GA_WORKER_PROCESS") == "1"
+
+    if not silent:
+        print(
+            f"Hybrid initialization: {greedy_count} greedy, {smart_count} smart, {random_count} random"
+        )
+
+    # Pre-generate course-group pairs ONCE (avoid duplicate warnings)
+    hierarchy = analyze_group_hierarchy(context.groups)
+    pair_tuples = generate_course_group_pairs(
+        context.courses, context.groups, hierarchy, silent=silent
     )
 
     # Generate greedy individuals (25%)
     for i in range(greedy_count):
-        individual = _greedy_construction(context)
+        individual = _greedy_construction(context, pair_tuples)
         if individual:
             population.append(create_individual(individual))
 
@@ -65,7 +76,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
 
     # Generate random individuals (25%)
     for i in range(random_count):
-        individual = _random_construction(context)
+        individual = _random_construction(context, pair_tuples)
         if individual:
             population.append(create_individual(individual))
 
@@ -78,7 +89,9 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
     return population[:n]  # Trim to exactly n if we have more
 
 
-def _greedy_construction(context: SchedulingContext) -> List[SessionGene]:
+def _greedy_construction(
+    context: SchedulingContext, pair_tuples: List[Tuple]
+) -> List[SessionGene]:
     """
     Greedy constructive heuristic for creating feasible schedule.
 
@@ -87,15 +100,13 @@ def _greedy_construction(context: SchedulingContext) -> List[SessionGene]:
     2. For each pair, assign first feasible time/room/instructor
     3. Track resource usage to avoid conflicts
 
+    Args:
+        context: SchedulingContext
+        pair_tuples: Pre-generated course-group pairs (avoids duplicate warnings)
+
     Returns:
         Individual with SessionGenes (feasible if possible)
     """
-    # Get course-group pairs
-    hierarchy = analyze_group_hierarchy(context.groups)
-    pair_tuples = generate_course_group_pairs(
-        context.courses, context.groups, hierarchy
-    )
-
     if not pair_tuples:
         return []
 
@@ -301,11 +312,17 @@ def _find_available_instructor(
     return None
 
 
-def _random_construction(context: SchedulingContext) -> List[SessionGene]:
+def _random_construction(
+    context: SchedulingContext, pair_tuples: List[Tuple]
+) -> List[SessionGene]:
     """
     Generate completely random individual for diversity.
 
     Uses existing constraint-aware generation but with maximum randomness.
+
+    Args:
+        context: SchedulingContext
+        pair_tuples: Pre-generated pairs (unused, kept for API consistency)
     """
     # Generate single individual with smart approach
     # (Already has randomness built-in)
