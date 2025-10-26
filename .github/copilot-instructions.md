@@ -81,7 +81,7 @@ When generating or suggesting commit messages for this repository:
 - Data format adjustments
 - UI/output formatting changes
 
-#### ❌ **No Documentation Needed**
+#### [!ERR] **No Documentation Needed**
 - Typo fixes
 - Comment updates
 - Whitespace changes

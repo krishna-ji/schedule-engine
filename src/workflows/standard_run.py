@@ -37,12 +37,6 @@ from src.validation.feasibility_checker import (
 )
 from src.workflows.reporting import generate_reports
 from src.utils.logger import GALogger
-from config.constraints import HARD_CONSTRAINTS_CONFIG, SOFT_CONSTRAINTS_CONFIG
-from config.ga_params import REPAIR_HEURISTICS_CONFIG
-from config.feasibility_config import (
-    GENERATE_FEASIBILITY_REPORT,
-    SAVE_REPORT_ON_SUCCESS,
-)
 
 console = Console()
 
@@ -56,6 +50,7 @@ def run_standard_workflow(
     output_dir: Optional[str] = None,
     seed: int = 69,
     validate: bool = True,
+    config: Optional[object] = None,
 ) -> Dict:
     """
     Execute standard GA scheduling workflow.
@@ -64,9 +59,10 @@ def run_standard_workflow(
         1. Initialize RNG and output directory
         2. Load input data from JSON files
         3. Validate input data (optional)
-        4. Setup and run GA scheduler
-        5. Decode best solution
-        6. Generate reports and exports
+        4. Check feasibility (optional)
+        5. Setup and run GA scheduler
+        6. Decode best solution
+        7. Generate reports and exports
 
     Args:
         pop_size: Population size for GA
@@ -77,7 +73,7 @@ def run_standard_workflow(
         output_dir: Output directory (auto-generated if None)
         seed: Random seed for reproducibility
         validate: Whether to validate input before running GA
-        pool: Optional multiprocessing.Pool for parallel fitness evaluation
+        config: Config object (from config.models.Config) - if None, loads from config module
 
     Returns:
         Dict containing:
@@ -90,6 +86,15 @@ def run_standard_workflow(
     Raises:
         ValueError: If input validation fails
     """
+    # Load config if not provided
+    if config is None:
+        from config import config as global_config
+
+        config = global_config
+        if config is None:
+            from config.loader import load_config
+
+            config = load_config()
 
     # ========================================
     # Step 1: Initialize
@@ -165,18 +170,20 @@ def run_standard_workflow(
     )
 
     # Generate feasibility report file if requested
-    if GENERATE_FEASIBILITY_REPORT and (is_feasible or SAVE_REPORT_ON_SUCCESS):
+    if config.feasibility.generate_report and (
+        is_feasible or config.feasibility.save_report_on_success
+    ):
         feasibility_report_path = os.path.join(output_dir, "feasibility_report.txt")
         generate_feasibility_report_file(feasibility_report, feasibility_report_path)
         console.print(
             f"   [dim]Feasibility report:[/dim] [cyan]{feasibility_report_path}[/cyan]\n"
         )
 
-    # If not feasible and FAIL_ON_INFEASIBILITY=True, check_feasibility already raised error
+    # If not feasible and FAIL_ON_INFEASIBILITY=True, check_feasibility already exited
     # If we're here, either it's feasible or FAIL_ON_INFEASIBILITY=False
     if not is_feasible:
         console.print(
-            "[yellow]⚠ Proceeding despite infeasibility (FAIL_ON_INFEASIBILITY=False)[/yellow]\n"
+            "[yellow]⚠ Proceeding despite infeasibility (fail_on_infeasibility=False)[/yellow]\n"
         )
 
     # ========================================
@@ -184,16 +191,14 @@ def run_standard_workflow(
     # ========================================
     pool = None
 
-    from config.ga_params import USE_MULTIPROCESSING, NUM_WORKERS
-
-    if USE_MULTIPROCESSING:
+    if config.parallel.use_multiprocessing:
         import multiprocessing
         from src.core.ga_scheduler import _worker_init
 
         # Create pool with worker initialization
         # Workers load data from JSON files (no pickling of complex objects!)
         pool = multiprocessing.Pool(
-            processes=NUM_WORKERS,
+            processes=config.parallel.num_workers,
             initializer=_worker_init,
             initargs=(data_dir, seed),
         )
@@ -205,39 +210,91 @@ def run_standard_workflow(
         )
     else:
         console.print(
-            "[yellow]Running in single-threaded mode (USE_MULTIPROCESSING=False)[/yellow]\n"
+            "[yellow]Running in single-threaded mode (use_multiprocessing=False)[/yellow]\n"
         )
 
     # ========================================
     # Step 4: Configure GA
     # ========================================
+
+    # Convert config to dict format for GA scheduler
+    repair_config = {
+        "enabled": config.repair.enabled,
+        "max_iterations": config.repair.max_iterations,
+        "apply_after_mutation": config.repair.apply_after_mutation,
+        "apply_after_crossover": config.repair.apply_after_crossover,
+        "memetic_mode": config.repair.memetic_mode,
+        "elite_percentage": config.repair.elite_percentage,
+        "memetic_iterations": config.repair.memetic_iterations,
+        "violation_threshold": config.repair.violation_threshold,
+        "selective_mode": config.repair.selective_mode,
+        "detection_strategy": config.repair.detection_strategy,
+        "recheck_after_repair": config.repair.recheck_after_repair,
+        "adaptive_repair": config.repair.adaptive_repair,
+        "heuristics": config.repair.heuristics,
+    }
+
     ga_config = GAConfig(
         pop_size=pop_size,
         generations=generations,
         crossover_prob=crossover_prob,
         mutation_prob=mutation_prob,
-        repair_config=REPAIR_HEURISTICS_CONFIG,
+        repair_config=repair_config,
     )
 
     # Get enabled constraint names
-    hard_names = [
-        name for name, cfg in HARD_CONSTRAINTS_CONFIG.items() if cfg["enabled"]
-    ]
-    soft_names = [
-        name for name, cfg in SOFT_CONSTRAINTS_CONFIG.items() if cfg["enabled"]
-    ]
+    hard_constraints_dict = {
+        "no_group_overlap": {
+            "enabled": config.hard_constraints.no_group_overlap.enabled,
+            "weight": config.hard_constraints.no_group_overlap.weight,
+        },
+        "no_instructor_conflict": {
+            "enabled": config.hard_constraints.no_instructor_conflict.enabled,
+            "weight": config.hard_constraints.no_instructor_conflict.weight,
+        },
+        "instructor_not_qualified": {
+            "enabled": config.hard_constraints.instructor_not_qualified.enabled,
+            "weight": config.hard_constraints.instructor_not_qualified.weight,
+        },
+        "room_type_mismatch": {
+            "enabled": config.hard_constraints.room_type_mismatch.enabled,
+            "weight": config.hard_constraints.room_type_mismatch.weight,
+        },
+        "availability_violations": {
+            "enabled": config.hard_constraints.availability_violations.enabled,
+            "weight": config.hard_constraints.availability_violations.weight,
+        },
+        "incomplete_or_extra_sessions": {
+            "enabled": config.hard_constraints.incomplete_or_extra_sessions.enabled,
+            "weight": config.hard_constraints.incomplete_or_extra_sessions.weight,
+        },
+    }
+
+    soft_constraints_dict = {
+        "group_gaps_penalty": {
+            "enabled": config.soft_constraints.group_gaps_penalty.enabled,
+            "weight": config.soft_constraints.group_gaps_penalty.weight,
+        },
+        "instructor_gaps_penalty": {
+            "enabled": config.soft_constraints.instructor_gaps_penalty.enabled,
+            "weight": config.soft_constraints.instructor_gaps_penalty.weight,
+        },
+        "group_midday_break_violation": {
+            "enabled": config.soft_constraints.group_midday_break_violation.enabled,
+            "weight": config.soft_constraints.group_midday_break_violation.weight,
+        },
+        "session_block_clustering_penalty": {
+            "enabled": config.soft_constraints.session_block_clustering_penalty.enabled,
+            "weight": config.soft_constraints.session_block_clustering_penalty.weight,
+        },
+    }
+
+    hard_names = [name for name, cfg in hard_constraints_dict.items() if cfg["enabled"]]
+    soft_names = [name for name, cfg in soft_constraints_dict.items() if cfg["enabled"]]
 
     # ========================================
     # Step 4.5: Initialize Logger
     # ========================================
-    from config.ga_params import (
-        USE_MULTIPROCESSING,
-        NUM_WORKERS,
-        POPULATION_STRATEGY,
-        USE_ADAPTIVE_PROBABILITIES,
-        ELITE_PRESERVATION,
-        ELITE_SIZE,
-    )
 
     logger_config = {
         "pop_size": pop_size,
@@ -245,26 +302,22 @@ def run_standard_workflow(
         "crossover_prob": crossover_prob,
         "mutation_prob": mutation_prob,
         "seed": seed,
-        "use_multiprocessing": USE_MULTIPROCESSING,
-        "num_workers": NUM_WORKERS if NUM_WORKERS else "auto",
-        "population_strategy": POPULATION_STRATEGY,
-        "adaptive_operators": USE_ADAPTIVE_PROBABILITIES,
-        "elite_preservation": ELITE_PRESERVATION,
-        "elite_size": f"{ELITE_SIZE:.1%}",
+        "use_multiprocessing": config.parallel.use_multiprocessing,
+        "num_workers": (
+            config.parallel.num_workers if config.parallel.num_workers else "auto"
+        ),
+        "population_strategy": config.ga.population_strategy,
+        "adaptive_operators": config.ga.use_adaptive_probabilities,
+        "elite_preservation": config.ga.elite_preservation,
+        "elite_size": f"{config.ga.elite_size:.1%}",
         "num_hard_constraints": len(hard_names),
         "num_soft_constraints": len(soft_names),
-        "repair_enabled": REPAIR_HEURISTICS_CONFIG.get("enabled", False),
-        "repair_max_iterations": REPAIR_HEURISTICS_CONFIG.get("max_iterations", 0),
-        "repair_after_mutation": REPAIR_HEURISTICS_CONFIG.get(
-            "apply_after_mutation", False
-        ),
-        "repair_after_crossover": REPAIR_HEURISTICS_CONFIG.get(
-            "apply_after_crossover", False
-        ),
-        "repair_memetic_mode": REPAIR_HEURISTICS_CONFIG.get("memetic_mode", False),
-        "repair_memetic_iterations": REPAIR_HEURISTICS_CONFIG.get(
-            "memetic_iterations", 0
-        ),
+        "repair_enabled": config.repair.enabled,
+        "repair_max_iterations": config.repair.max_iterations,
+        "repair_after_mutation": config.repair.apply_after_mutation,
+        "repair_after_crossover": config.repair.apply_after_crossover,
+        "repair_memetic_mode": config.repair.memetic_mode,
+        "repair_memetic_iterations": config.repair.memetic_iterations,
         "num_courses": len(context.courses),
         "num_groups": len(context.groups),
         "num_instructors": len(context.instructors),
@@ -287,20 +340,18 @@ def run_standard_workflow(
     )
 
     # Display repair configuration status
-    if REPAIR_HEURISTICS_CONFIG.get("enabled", False):
+    if config.repair.enabled:
         repair_modes = []
-        if REPAIR_HEURISTICS_CONFIG.get("apply_after_mutation", False):
+        if config.repair.apply_after_mutation:
             repair_modes.append("mutation")
-        if REPAIR_HEURISTICS_CONFIG.get("apply_after_crossover", False):
+        if config.repair.apply_after_crossover:
             repair_modes.append("crossover")
-        if REPAIR_HEURISTICS_CONFIG.get("memetic_mode", False):
-            repair_modes.append(
-                f"memetic({REPAIR_HEURISTICS_CONFIG.get('elite_percentage', 0.2):.0%} elite)"
-            )
+        if config.repair.memetic_mode:
+            repair_modes.append(f"memetic({config.repair.elite_percentage:.0%} elite)")
 
         modes_str = ", ".join(repair_modes) if repair_modes else "none"
         console.print(
-            f"   Repair Heuristics: [green]✓ enabled[/green] (after {modes_str}, max {REPAIR_HEURISTICS_CONFIG.get('max_iterations', 3)} iter)"
+            f"   Repair Heuristics: [green]✓ enabled[/green] (after {modes_str}, max {config.repair.max_iterations} iter)"
         )
     else:
         console.print(f"   Repair Heuristics: [dim]✗ disabled[/dim]")
@@ -364,7 +415,7 @@ def run_standard_workflow(
         console=console,
         transient=True,
     ) as progress:
-        task = progress.add_task("📊 Generating Reports...", total=None)
+        task = progress.add_task("Generating Reports...", total=None)
         generate_reports(
             decoded_schedule=decoded_schedule,
             metrics=scheduler.metrics,

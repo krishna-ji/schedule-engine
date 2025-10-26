@@ -7,7 +7,7 @@ individual.
 
 Performance Impact:
 - Reduces gene scans from 100% to ~5-15% of population
-- Expected 3-4× speedup in repair operations
+- Expected 3-4* speedup in repair operations
 - Backward compatible with full-scan mode
 
 Architecture:

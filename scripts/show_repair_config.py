@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from config.ga_params import REPAIR_HEURISTICS_CONFIG
+from config import get_config  # get_config().repair
 from src.ga.operators.repair_registry import (
     get_all_repair_heuristics,
     get_enabled_repair_heuristics,
@@ -29,11 +29,11 @@ def main():
     console.print()
 
     # Global settings
-    global_enabled = REPAIR_HEURISTICS_CONFIG.get("enabled", True)
-    max_iterations = REPAIR_HEURISTICS_CONFIG.get("max_iterations", 3)
-    apply_after_mutation = REPAIR_HEURISTICS_CONFIG.get("apply_after_mutation", True)
-    apply_after_crossover = REPAIR_HEURISTICS_CONFIG.get("apply_after_crossover", False)
-    memetic_mode = REPAIR_HEURISTICS_CONFIG.get("memetic_mode", False)
+    global_enabled = get_config().repair.get("enabled", True)
+    max_iterations = get_config().repair.get("max_iterations", 3)
+    apply_after_mutation = get_config().repair.get("apply_after_mutation", True)
+    apply_after_crossover = get_config().repair.get("apply_after_crossover", False)
+    memetic_mode = get_config().repair.get("memetic_mode", False)
 
     # Global settings panel
     global_status = "✓ ENABLED" if global_enabled else "✗ DISABLED"
@@ -113,7 +113,7 @@ def main():
 
     # Summary
     console.rule(
-        "[dim]Configuration loaded from config/ga_params.py::REPAIR_HEURISTICS_CONFIG[/dim]"
+        "[dim]Configuration loaded from config/ga_params.py::get_config().repair[/dim]"
     )
     console.print()
 

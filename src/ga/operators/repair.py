@@ -27,7 +27,7 @@ Architecture:
 
 Repair Modes:
 - Full: Scans all genes (thorough, slower)
-- Selective: Only repairs violated genes (3-4× faster, recommended)
+- Selective: Only repairs violated genes (3-4* faster, recommended)
 
 Usage:
     from src.ga.operators.repair import repair_individual_unified
@@ -231,7 +231,10 @@ def _find_available_slot_smart(
     Returns:
         Tuple of (quanta_list, instructor_id, room_id) or (None, None, None)
     """
-    from config.time_config import quantum_to_day_and_within_day
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
 
     qts = QuantumTimeSystem()
 
@@ -347,7 +350,10 @@ def _score_clustering(
     Returns:
         Score: 100 for adjacent, 10 for same day, 0 otherwise
     """
-    from config.time_config import quantum_to_day_and_within_day
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
 
     if not existing_sessions:
         return 0
@@ -1247,8 +1253,11 @@ def repair_session_clustering(
     Returns:
         Number of clustering improvements made
     """
-    from config.time_config import quantum_to_day_and_within_day
-    from config.time_config import (
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
+    from src.utils.time_helpers import (
         PREFERRED_BLOCK_SIZE_MIN,
         PREFERRED_BLOCK_SIZE_MAX,
         ISOLATED_SESSION_PENALTY,
@@ -1344,8 +1353,11 @@ def _calculate_gene_clustering_penalty(
     gene: SessionGene, qts: QuantumTimeSystem
 ) -> int:
     """Calculate clustering penalty for a single gene's quanta."""
-    from config.time_config import quantum_to_day_and_within_day
-    from config.time_config import (
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
+    from src.utils.time_helpers import (
         PREFERRED_BLOCK_SIZE_MAX,
         ISOLATED_SESSION_PENALTY,
         OVERSIZED_BLOCK_PENALTY_PER_QUANTUM,
@@ -1395,7 +1407,10 @@ def _rebuild_gene_clustering(
     Uses the SAME logic as cluster-aware initialization to create ideal 2-3 blocks.
     This is much more effective than incrementally moving isolated quanta!
     """
-    from config.time_config import quantum_to_day_and_within_day
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
 
     num_quanta = len(gene.quanta)
 
@@ -1479,7 +1494,7 @@ def _split_oversized_blocks(
 
     Example: [6-consecutive] → [3, 3] on different days
     """
-    from config.time_config import (
+    from src.utils.time_helpers import (
         quantum_to_day_and_within_day,
         PREFERRED_BLOCK_SIZE_MAX,
     )
@@ -1548,7 +1563,10 @@ def _get_free_quanta_by_day(
     Get available quanta grouped by day for a gene, excluding current gene's quanta.
     Returns dict: day_name -> list of free global quanta.
     """
-    from config.time_config import quantum_to_day_and_within_day
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
 
     # Get all operating quanta
     all_quanta = qts.get_all_operating_quanta()
@@ -2051,7 +2069,7 @@ def repair_individual_unified(
         Dict with repair statistics (includes efficiency metrics if selective=True)
 
     Performance:
-        - selective=True: 3-4× faster, only repairs violated genes
+        - selective=True: 3-4* faster, only repairs violated genes
         - selective=False: Original speed, scans all genes
 
     Example:

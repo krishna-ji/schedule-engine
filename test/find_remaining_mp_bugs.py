@@ -293,7 +293,7 @@ critical_bugs = [name for name, status in bugs.items() if status is True]
 warnings = [name for name, status in bugs.items() if status is None]
 passing = [name for name, status in bugs.items() if status is False]
 
-print("🔴 CRITICAL BUGS FOUND:")
+print(" CRITICAL BUGS FOUND:")
 if critical_bugs:
     for bug in critical_bugs:
         print(f"  ✗ {bug}")
@@ -309,7 +309,7 @@ else:
     print("  (none)")
 
 print()
-print("✅ PASSING CHECKS:")
+print(" PASSING CHECKS:")
 if passing:
     for check in passing:
         print(f"  ✓ {check}")
@@ -322,7 +322,7 @@ print("FINAL VERDICT")
 print("=" * 80)
 
 if critical_bugs:
-    print(f"❌ Found {len(critical_bugs)} NEW critical bugs (plus 2 known)")
+    print(f"[!ERR] Found {len(critical_bugs)} NEW critical bugs (plus 2 known)")
     print()
     print("All bugs must be fixed for proper multiprocessing:")
     print("  1. Pickling overhead (KNOWN)")
@@ -330,7 +330,7 @@ if critical_bugs:
     for i, bug in enumerate(critical_bugs, 3):
         print(f"  {i}. {bug} (NEW)")
 else:
-    print("✅ NO NEW BUGS - Only 2 known issues remain:")
+    print(" NO NEW BUGS - Only 2 known issues remain:")
     print("  1. Pickling overhead (causes 2.7x slowdown)")
     print("  2. Random seed not propagated (non-reproducible results)")
 

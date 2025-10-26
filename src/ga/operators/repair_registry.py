@@ -15,7 +15,7 @@ Usage:
 """
 
 from typing import Dict, Callable
-from config.ga_params import REPAIR_HEURISTICS_CONFIG
+from config import get_config
 
 
 def get_all_repair_heuristics() -> Dict[str, Dict]:
@@ -102,7 +102,7 @@ def get_enabled_repair_heuristics() -> Dict[str, Dict]:
     """
     Returns only the enabled repair heuristics based on configuration.
 
-    Filters heuristics according to REPAIR_HEURISTICS_CONFIG and applies
+    Filters heuristics according to get_config().repair and applies
     configured priorities. Sorted by priority (ascending).
 
     Returns:
@@ -119,7 +119,7 @@ def get_enabled_repair_heuristics() -> Dict[str, Dict]:
     all_repairs = get_all_repair_heuristics()
     enabled_repairs = {}
 
-    heuristics_config = REPAIR_HEURISTICS_CONFIG.get("heuristics", {})
+    heuristics_config = get_config().repair.heuristics or {}
 
     for name, repair_info in all_repairs.items():
         # Check if heuristic is enabled in config

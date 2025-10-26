@@ -502,7 +502,7 @@ def assign_conflict_free_quanta(
 
     # CLUSTER-AWARE ASSIGNMENT
     from src.encoder.quantum_time_system import QuantumTimeSystem
-    from config.time_config import quantum_to_day_and_within_day
+    from src.utils.time_helpers import get_midday_break_quanta, quantum_to_day_and_within_day
 
     qts = QuantumTimeSystem()
 
@@ -560,7 +560,7 @@ def _assign_clustered_blocks(quanta_needed: int, free_quanta: List, qts) -> List
 
     Returns list of assigned quanta or None if clustering fails.
     """
-    from config.time_config import quantum_to_day_and_within_day
+    from src.utils.time_helpers import get_midday_break_quanta, quantum_to_day_and_within_day
 
     # Determine ideal block distribution
     if quanta_needed == 4:

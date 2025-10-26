@@ -346,7 +346,7 @@ class InputValidator:
                     f"[bold red]Found {len(courses_without_instructors)} enrolled course(s) without any qualified instructors![/bold red]\n\n"
                     f"[yellow]These courses have groups enrolled but no instructors can teach them.[/yellow]\n"
                     f"[cyan]Action required: Add qualified instructors in Course.json and Instructors.json[/cyan]",
-                    title="❌ VALIDATION ERROR",
+                    title="[!ERR] VALIDATION ERROR",
                     border_style="red",
                 )
             )

@@ -11,7 +11,7 @@ Strategy:
 
 Performance Impact:
 - Reduces repair workload from 100% to ~5-15% of genes
-- Expected 3-4× speedup in repair operations
+- Expected 3-4* speedup in repair operations
 - Minimal detection overhead (~5ms per individual)
 
 Architecture:
@@ -108,7 +108,7 @@ def _detect_fast(individual: List[SessionGene]) -> Dict[int, List[str]]:
         if gene.quanta:
             min_q = min(gene.quanta)
             max_q = max(gene.quanta)
-            # Assuming max quantum is around 527 (6 days × 11 slots × 8 quanta per slot)
+            # Assuming max quantum is around 527 (6 days * 11 slots * 8 quanta per slot)
             if min_q < 0 or max_q > 600:  # Upper bound safety margin
                 issues.append("invalid_quanta")
 

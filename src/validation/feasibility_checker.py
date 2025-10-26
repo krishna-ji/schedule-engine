@@ -19,6 +19,7 @@ Usage:
     )
 """
 
+import sys
 from typing import Dict, List, Tuple, Set, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
@@ -32,13 +33,7 @@ from src.entities.instructor import Instructor
 from src.entities.room import Room
 from src.entities.group import Group
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from config.feasibility_config import (
-    ENABLE_FEASIBILITY_CHECKS,
-    FAIL_ON_INFEASIBILITY,
-    FEASIBILITY_CHECKS,
-    SHOW_CONSOLE_OUTPUT,
-    TOLERANCE_MARGIN,
-)
+from config import get_config
 
 console = Console()
 
@@ -73,7 +68,7 @@ class FeasibilityReport:
 
 
 def check_feasibility(
-    courses: Dict[str, Course],
+    courses: Dict[tuple, Course],
     instructors: Dict[str, Instructor],
     rooms: Dict[str, Room],
     groups: Dict[str, Group],
@@ -83,7 +78,7 @@ def check_feasibility(
     Performs comprehensive feasibility analysis on the scheduling problem.
 
     Args:
-        courses: Dictionary of course_id -> Course
+        courses: Dictionary of (course_code, course_type) tuple -> Course
         instructors: Dictionary of instructor_id -> Instructor
         rooms: Dictionary of room_id -> Room
         groups: Dictionary of group_id -> Group
@@ -93,7 +88,7 @@ def check_feasibility(
         Tuple of (is_feasible, FeasibilityReport)
         is_feasible is True only if all critical checks pass
     """
-    if not ENABLE_FEASIBILITY_CHECKS:
+    if not get_config().feasibility.enable_checks:
         console.print("[yellow]⚠ Feasibility checks are disabled in config[/yellow]")
         return True, FeasibilityReport(
             is_feasible=True,
@@ -101,7 +96,7 @@ def check_feasibility(
             summary={"status": "skipped", "reason": "disabled in config"},
         )
 
-    if SHOW_CONSOLE_OUTPUT:
+    if get_config().feasibility.show_console_output:
         console.print()
         console.rule("[bold cyan]FEASIBILITY ANALYSIS[/bold cyan]", style="cyan")
         console.print()
@@ -112,34 +107,36 @@ def check_feasibility(
     total_operating_quanta = len(qts.get_all_operating_quanta())
 
     # Run enabled checks
-    if FEASIBILITY_CHECKS["instructor_workload"]["enabled"]:
+    if get_config().feasibility.checks["instructor_workload"]["enabled"]:
         result = _check_instructor_workload(courses, instructors, qts)
         results.append(result)
-        if SHOW_CONSOLE_OUTPUT:
+        if get_config().feasibility.show_console_output:
             _print_check_result(result)
 
-    if FEASIBILITY_CHECKS["instructor_qualification_bottleneck"]["enabled"]:
+    if get_config().feasibility.checks["instructor_qualification_bottleneck"][
+        "enabled"
+    ]:
         result = _check_instructor_qualification_bottleneck(courses, instructors, qts)
         results.append(result)
-        if SHOW_CONSOLE_OUTPUT:
+        if get_config().feasibility.show_console_output:
             _print_check_result(result)
 
-    if FEASIBILITY_CHECKS["room_capacity_bottleneck"]["enabled"]:
+    if get_config().feasibility.checks["room_capacity_bottleneck"]["enabled"]:
         result = _check_room_capacity_bottleneck(courses, rooms, groups, qts)
         results.append(result)
-        if SHOW_CONSOLE_OUTPUT:
+        if get_config().feasibility.show_console_output:
             _print_check_result(result)
 
-    if FEASIBILITY_CHECKS["room_feature_bottleneck"]["enabled"]:
+    if get_config().feasibility.checks["room_feature_bottleneck"]["enabled"]:
         result = _check_room_feature_bottleneck(courses, rooms, qts)
         results.append(result)
-        if SHOW_CONSOLE_OUTPUT:
+        if get_config().feasibility.show_console_output:
             _print_check_result(result)
 
-    if FEASIBILITY_CHECKS["group_pigeonhole"]["enabled"]:
+    if get_config().feasibility.checks["group_pigeonhole"]["enabled"]:
         result = _check_group_pigeonhole(courses, groups, total_operating_quanta)
         results.append(result)
-        if SHOW_CONSOLE_OUTPUT:
+        if get_config().feasibility.show_console_output:
             _print_check_result(result)
 
     # Determine overall feasibility
@@ -161,29 +158,33 @@ def check_feasibility(
         is_feasible=is_feasible, results=results, summary=summary
     )
 
-    if SHOW_CONSOLE_OUTPUT:
+    if get_config().feasibility.show_console_output:
         _print_summary(report)
 
     # Handle infeasibility
-    if not is_feasible and FAIL_ON_INFEASIBILITY:
+    if not is_feasible and get_config().feasibility.fail_on_infeasibility:
         console.print()
         console.print(
             Panel(
-                "[bold red]❌ PROBLEM IS INFEASIBLE[/bold red]\n\n"
+                "[bold red][!ERR] PROBLEM IS INFEASIBLE[/bold red]\n\n"
                 f"Found {len(critical_failures)} critical issue(s) that make this problem unsolvable.\n"
                 "Please review the detailed report above and fix the identified issues.\n\n"
-                "[dim]Set FAIL_ON_INFEASIBILITY=False in config to continue anyway (not recommended).[/dim]",
+                "[dim]Set get_config().feasibility.fail_on_infeasibility=False in config to continue anyway (not recommended).[/dim]",
                 border_style="red",
                 box=box.DOUBLE,
             )
         )
         console.print()
+        console.print("[bold red]⏹ Exiting program...[/bold red]\n")
+
+        # Gracefully exit without traceback
+        sys.exit(1)
 
     return is_feasible, report
 
 
 def _check_instructor_workload(
-    courses: Dict[str, Course],
+    courses: Dict[tuple, Course],
     instructors: Dict[str, Instructor],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
@@ -192,6 +193,8 @@ def _check_instructor_workload(
 
     Verifies that the total teaching demand doesn't exceed total instructor availability.
     This is a global check - if it fails, the problem is definitely unsolvable.
+
+    Note: courses dict is keyed by (course_code, course_type) tuples
     """
     # Calculate total demand (in quanta)
     total_demand = sum(course.quanta_per_week for course in courses.values())
@@ -209,7 +212,7 @@ def _check_instructor_workload(
             total_supply += len(instructor.available_quanta)
 
     # Apply tolerance margin
-    adjusted_supply = total_supply * (1 + TOLERANCE_MARGIN)
+    adjusted_supply = total_supply * (1 + get_config().feasibility.tolerance_margin)
 
     passed = total_demand <= adjusted_supply
     utilization_rate = (
@@ -242,7 +245,7 @@ def _check_instructor_workload(
     return FeasibilityResult(
         check_name="Instructor Workload vs Availability",
         passed=passed,
-        severity=FEASIBILITY_CHECKS["instructor_workload"]["severity"],
+        severity=get_config().feasibility.checks["instructor_workload"]["severity"],
         message=message,
         details={
             "total_demand_quanta": total_demand,
@@ -262,7 +265,7 @@ def _check_instructor_workload(
 
 
 def _check_instructor_qualification_bottleneck(
-    courses: Dict[str, Course],
+    courses: Dict[tuple, Course],
     instructors: Dict[str, Instructor],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
@@ -271,13 +274,15 @@ def _check_instructor_qualification_bottleneck(
 
     For each course, verifies that there are enough qualified instructors
     with sufficient availability to cover all required sessions.
+
+    Note: courses dict is keyed by (course_code, course_type) tuples
     """
     all_operating_quanta = qts.get_all_operating_quanta()
     bottlenecks = []
     total_courses = len(courses)
     problematic_courses = 0
 
-    for course_id, course in courses.items():
+    for course_key, course in courses.items():
         demand = course.quanta_per_week
 
         # Find all qualified instructors and sum their availability
@@ -297,13 +302,20 @@ def _check_instructor_qualification_bottleneck(
                 supply += len(instructor.available_quanta)
 
         # Check if supply meets demand
-        adjusted_supply = supply * (1 + TOLERANCE_MARGIN)
+        adjusted_supply = supply * (1 + get_config().feasibility.tolerance_margin)
 
         if demand > adjusted_supply:
             shortage = demand - supply
+            # Format course_key as string for display: "ENME 103 (theory)"
+            course_display = (
+                f"{course_key[0]} ({course_key[1]})"
+                if isinstance(course_key, tuple)
+                else str(course_key)
+            )
             bottlenecks.append(
                 {
-                    "course_id": course_id,
+                    "course_key": course_key,
+                    "course_display": course_display,
                     "course_name": course.name,
                     "demand": demand,
                     "supply": supply,
@@ -328,7 +340,7 @@ def _check_instructor_qualification_bottleneck(
         for b in bottlenecks[:5]:
             shortage_hours = b["shortage"] * qts.QUANTUM_MINUTES // 60
             recommendations.append(
-                f"  • {b['course_name']} ({b['course_id']}): "
+                f"  • {b['course_name']} ({b['course_display']}): "
                 f"needs {shortage_hours}h more from qualified instructors "
                 f"(currently {b['qualified_instructors']} qualified)"
             )
@@ -349,7 +361,9 @@ def _check_instructor_qualification_bottleneck(
     return FeasibilityResult(
         check_name="Instructor Qualification Bottleneck",
         passed=passed,
-        severity=FEASIBILITY_CHECKS["instructor_qualification_bottleneck"]["severity"],
+        severity=get_config().feasibility.checks["instructor_qualification_bottleneck"][
+            "severity"
+        ],
         message=message,
         details={
             "total_courses": total_courses,
@@ -361,7 +375,7 @@ def _check_instructor_qualification_bottleneck(
 
 
 def _check_room_capacity_bottleneck(
-    courses: Dict[str, Course],
+    courses: Dict[tuple, Course],
     rooms: Dict[str, Room],
     groups: Dict[str, Group],
     qts: QuantumTimeSystem,
@@ -371,29 +385,38 @@ def _check_room_capacity_bottleneck(
 
     Verifies that total seat-hours available can accommodate total student-hours required.
     Also checks if the largest class can fit in any room.
+
+    Note: courses dict is keyed by (course_code, course_type) tuples
     """
     all_operating_quanta = qts.get_all_operating_quanta()
 
-    # Calculate demand: sum of (students × quanta) for all courses
+    # Calculate demand: sum of (students * quanta) for all course-group sessions
+    # IMPORTANT: Each group takes the course separately, so we need capacity per session
     total_student_hours = 0
     largest_class_size = 0
     largest_class_course = None
+    largest_class_key = None
 
-    for course in courses.values():
-        # Count students enrolled (from groups)
-        enrolled_students = 0
+    for course_key, course in courses.items():
+        # Each enrolled group takes this course in SEPARATE sessions
         for group_id in course.enrolled_group_ids:
-            if group_id in groups:
-                enrolled_students += groups[group_id].student_count
+            if group_id not in groups:
+                continue
 
-        student_hours = enrolled_students * course.quanta_per_week
-        total_student_hours += student_hours
+            group = groups[group_id]
+            group_size = group.student_count
 
-        if enrolled_students > largest_class_size:
-            largest_class_size = enrolled_students
-            largest_class_course = course
+            # This group needs (group_size * quanta) seat-hours
+            student_hours = group_size * course.quanta_per_week
+            total_student_hours += student_hours
 
-    # Calculate supply: sum of (capacity × available_quanta) for all rooms
+            # Track largest single session (not sum of all groups!)
+            if group_size > largest_class_size:
+                largest_class_size = group_size
+                largest_class_course = course
+                largest_class_key = course_key
+
+    # Calculate supply: sum of (capacity * available_quanta) for all rooms
     total_seat_hours = 0
     largest_room_capacity = 0
 
@@ -409,7 +432,7 @@ def _check_room_capacity_bottleneck(
         largest_room_capacity = max(largest_room_capacity, room.capacity)
 
     # Apply tolerance
-    adjusted_supply = total_seat_hours * (1 + TOLERANCE_MARGIN)
+    adjusted_supply = total_seat_hours * (1 + get_config().feasibility.tolerance_margin)
 
     # Check 1: Global capacity
     global_passed = total_student_hours <= adjusted_supply
@@ -445,15 +468,21 @@ def _check_room_capacity_bottleneck(
         )
 
     if not largest_class_passed:
+        course_display = (
+            f"{largest_class_key[0]} ({largest_class_key[1]})"
+            if isinstance(largest_class_key, tuple)
+            else str(largest_class_key)
+        )
         recommendations.extend(
             [
                 f"",
-                f"⚠ Largest class has {largest_class_size} students but biggest room only holds {largest_room_capacity}",
-                f"   Problem course: {largest_class_course.name} ({largest_class_course.course_id})",
+                f"⚠ Largest single session has {largest_class_size} students but biggest room only holds {largest_room_capacity}",
+                f"   Problem course: {largest_class_course.name} ({course_display})",
+                f"   Note: This is the largest group size, not sum of all groups",
                 "Solutions:",
-                "• Split the large course into multiple sections",
-                "• Add a larger room",
-                "• Reduce enrollment for this course",
+                "• Split the large group into smaller sections",
+                "• Add a larger room (capacity ≥ {largest_class_size})",
+                "• Reduce enrollment for this group",
             ]
         )
 
@@ -465,7 +494,9 @@ def _check_room_capacity_bottleneck(
     return FeasibilityResult(
         check_name="Room Capacity Bottleneck",
         passed=passed,
-        severity=FEASIBILITY_CHECKS["room_capacity_bottleneck"]["severity"],
+        severity=get_config().feasibility.checks["room_capacity_bottleneck"][
+            "severity"
+        ],
         message=message,
         details={
             "total_student_hours": total_student_hours,
@@ -473,15 +504,25 @@ def _check_room_capacity_bottleneck(
             "shortage": max(0, total_student_hours - total_seat_hours),
             "utilization_rate": utilization,
             "largest_class_size": largest_class_size,
+            "largest_class_course": (
+                largest_class_course.name if largest_class_course else "N/A"
+            ),
+            "largest_class_course_id": (
+                largest_class_course.course_id if largest_class_course else "N/A"
+            ),
             "largest_room_capacity": largest_room_capacity,
             "num_rooms": len(rooms),
+            "largest_class_course_key": largest_class_key,
+            "largest_class_course_name": (
+                largest_class_course.name if largest_class_course else None
+            ),
         },
         recommendations=recommendations,
     )
 
 
 def _check_room_feature_bottleneck(
-    courses: Dict[str, Course],
+    courses: Dict[tuple, Course],
     rooms: Dict[str, Room],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
@@ -490,6 +531,8 @@ def _check_room_feature_bottleneck(
 
     For each required room feature, verifies that rooms with that feature
     have sufficient total availability to cover all courses requiring it.
+
+    Note: courses dict is keyed by (course_code, course_type) tuples
     """
     all_operating_quanta = qts.get_all_operating_quanta()
 
@@ -512,7 +555,7 @@ def _check_room_feature_bottleneck(
     bottlenecks = []
     for feature, demand in feature_demand.items():
         supply = feature_supply.get(feature, 0)
-        adjusted_supply = supply * (1 + TOLERANCE_MARGIN)
+        adjusted_supply = supply * (1 + get_config().feasibility.tolerance_margin)
 
         if demand > adjusted_supply:
             shortage = demand - supply
@@ -560,7 +603,7 @@ def _check_room_feature_bottleneck(
     return FeasibilityResult(
         check_name="Room Feature Bottleneck",
         passed=passed,
-        severity=FEASIBILITY_CHECKS["room_feature_bottleneck"]["severity"],
+        severity=get_config().feasibility.checks["room_feature_bottleneck"]["severity"],
         message=message,
         details={
             "total_features": len(feature_demand),
@@ -572,7 +615,7 @@ def _check_room_feature_bottleneck(
 
 
 def _check_group_pigeonhole(
-    courses: Dict[str, Course],
+    courses: Dict[tuple, Course],
     groups: Dict[str, Group],
     total_operating_quanta: int,
 ) -> FeasibilityResult:
@@ -583,6 +626,10 @@ def _check_group_pigeonhole(
     than there are available time slots in the week.
     This is the most fundamental check - if a group needs 80 hours
     but there are only 72 hours in the week, it's impossible.
+
+    Note: courses dict is keyed by (course_code, course_type) tuples.
+          Groups store enrolled_courses as course_codes (strings).
+          We need to check BOTH theory and practical for each course_code.
     """
     overloaded_groups = []
     max_utilization = 0
@@ -590,9 +637,15 @@ def _check_group_pigeonhole(
     for group_id, group in groups.items():
         # Calculate total quanta needed for this group
         total_demand = 0
-        for course_id in group.enrolled_courses:
-            if course_id in courses:
-                total_demand += courses[course_id].quanta_per_week
+        for course_code in group.enrolled_courses:
+            # Check both theory and practical versions of this course
+            theory_key = (course_code, "theory")
+            practical_key = (course_code, "practical")
+
+            if theory_key in courses:
+                total_demand += courses[theory_key].quanta_per_week
+            if practical_key in courses:
+                total_demand += courses[practical_key].quanta_per_week
 
         # Check group-specific availability if specified
         if group.available_quanta:
@@ -601,7 +654,7 @@ def _check_group_pigeonhole(
             available = total_operating_quanta
 
         # Apply tolerance
-        adjusted_available = available * (1 + TOLERANCE_MARGIN)
+        adjusted_available = available * (1 + get_config().feasibility.tolerance_margin)
 
         utilization = (
             (total_demand / available * 100) if available > 0 else float("inf")
@@ -660,7 +713,7 @@ def _check_group_pigeonhole(
     return FeasibilityResult(
         check_name="Group Pigeonhole Problem",
         passed=passed,
-        severity=FEASIBILITY_CHECKS["group_pigeonhole"]["severity"],
+        severity=get_config().feasibility.checks["group_pigeonhole"]["severity"],
         message=message,
         details={
             "total_groups": len(groups),
@@ -684,9 +737,19 @@ def _print_check_result(result: FeasibilityResult):
     console.print(f"[{color}]{icon} {result.check_name}[/{color}]")
     console.print(f"  {result.message}")
 
-    if result.recommendations:
-        for rec in result.recommendations[:3]:  # Show first 3 recommendations
+    # For failed checks, show more details
+    if not result.passed and result.recommendations:
+        # Show first 5 recommendations on console (more for critical failures)
+        display_count = 5 if result.severity == "critical" else 3
+        for rec in result.recommendations[:display_count]:
             console.print(f"  [dim]{rec}[/dim]")
+
+        # Indicate if there are more recommendations in the report
+        if len(result.recommendations) > display_count:
+            remaining = len(result.recommendations) - display_count
+            console.print(
+                f"  [dim italic]... and {remaining} more (see detailed report)[/dim italic]"
+            )
 
     console.print()
 
@@ -747,7 +810,7 @@ def generate_feasibility_report_file(report: FeasibilityReport, output_path: str
     import json
     from datetime import datetime
 
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\n")
         f.write("FEASIBILITY ANALYSIS REPORT\n")
         f.write("=" * 80 + "\n")
@@ -772,16 +835,52 @@ def generate_feasibility_report_file(report: FeasibilityReport, output_path: str
             f.write(f"Status: {'PASS' if result.passed else 'FAIL'}\n")
             f.write(f"Severity: {result.severity.upper()}\n")
             f.write(f"Message: {result.message}\n")
+            f.write("\n")
 
+            # Write detailed information in human-readable format
             if result.details:
-                f.write("\nDetails:\n")
-                f.write(json.dumps(result.details, indent=2))
-                f.write("\n")
+                f.write("Details:\n")
+
+                # Format details based on check type
+                if "bottlenecks" in result.details and result.details["bottlenecks"]:
+                    f.write(
+                        f"  Bottlenecks Found: {len(result.details['bottlenecks'])}\n\n"
+                    )
+                    for j, bottleneck in enumerate(result.details["bottlenecks"], 1):
+                        f.write(f"  Bottleneck {j}:\n")
+                        for key, value in bottleneck.items():
+                            f.write(f"    {key}: {value}\n")
+                        f.write("\n")
+
+                # Check for overloaded groups (stored in 'details' subkey for group pigeonhole)
+                elif (
+                    "details" in result.details
+                    and isinstance(result.details["details"], list)
+                    and result.details["details"]
+                ):
+                    f.write(
+                        f"  Overloaded Groups: {len(result.details['details'])}\n\n"
+                    )
+                    for j, group_info in enumerate(result.details["details"], 1):
+                        f.write(f"  Group {j}:\n")
+                        for key, value in group_info.items():
+                            f.write(f"    {key}: {value}\n")
+                        f.write("\n")
+
+                else:
+                    # Generic detail printing for other metrics
+                    for key, value in result.details.items():
+                        if key not in ["bottlenecks", "details"] and not isinstance(
+                            value, (list, dict)
+                        ):
+                            f.write(f"  {key}: {value}\n")
+                    f.write("\n")
 
             if result.recommendations:
-                f.write("\nRecommendations:\n")
+                f.write("Recommendations:\n")
                 for rec in result.recommendations:
                     f.write(f"  {rec}\n")
+                f.write("\n")
 
             f.write("\n")
 

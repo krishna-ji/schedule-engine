@@ -112,7 +112,7 @@ failed = sum(1 for c in all_checks if c is False)
 warnings = sum(1 for c in all_checks if c is None)
 
 if failed == 0 and warnings == 0:
-    print("✅ ALL FIXES IMPLEMENTED SUCCESSFULLY!")
+    print("ALL FIXES IMPLEMENTED SUCCESSFULLY!")
     print()
     print("All 4 multiprocessing bugs are now fixed:")
     print("  1. ✓ Pickling overhead (worker init passes context once)")
@@ -122,8 +122,8 @@ if failed == 0 and warnings == 0:
     print()
     print("Expected performance:")
     print("  - Sequential: baseline")
-    print("  - Parallel (before): 2.7× SLOWER (buggy)")
-    print("  - Parallel (now): 2-3× FASTER ✅")
+    print("  - Parallel (before): 2.7* SLOWER (buggy)")
+    print("  - Parallel (now): 2-3* FASTER ")
     print()
     print("Next step: Run full GA with 'python main.py' to verify")
 elif failed == 0:
@@ -131,7 +131,7 @@ elif failed == 0:
     print()
     print("Implementation is mostly complete but has minor issues.")
 else:
-    print(f"❌ {failed} CHECKS FAILED, {passed} passed")
+    print(f"[!ERR] {failed} CHECKS FAILED, {passed} passed")
     print()
     print("Fix implementation is incomplete. Please review failed checks.")
 

@@ -396,7 +396,7 @@ def link_courses_and_groups(
 
         console.print(table)
         console.print(
-            f"[dim yellow]ℹ️  {len(missing_courses)} course enrollments skipped (courses not in filtered dataset)[/dim yellow]"
+            f"[dim yellow]INFO: {len(missing_courses)} course enrollments skipped (courses not in filtered dataset)[/dim yellow]"
         )
         console.print()
 
