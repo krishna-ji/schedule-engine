@@ -539,7 +539,7 @@ class InputValidator:
         else:
             console.print()
             console.print(
-                "[bold green]✓[/bold green] Validation passed! No issues found."
+                "[bold green]...OK!...[/bold green] Validation passed! No issues found."
             )
             console.print()
 

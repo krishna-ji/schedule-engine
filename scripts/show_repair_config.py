@@ -36,16 +36,16 @@ def main():
     memetic_mode = get_config().repair.get("memetic_mode", False)
 
     # Global settings panel
-    global_status = "✓ ENABLED" if global_enabled else "✗ DISABLED"
+    global_status = "[OK}ENABLED" if global_enabled else "✗ DISABLED"
     global_color = "green" if global_enabled else "red"
 
     console.print(
         Panel(
             f"[bold]Master Switch:[/bold] [{global_color}]{global_status}[/{global_color}]\n"
             f"[bold]Max Iterations:[/bold] {max_iterations}\n"
-            f"[bold]Apply After Mutation:[/bold] {'✓ Yes' if apply_after_mutation else '✗ No'}\n"
-            f"[bold]Apply After Crossover:[/bold] {'✓ Yes' if apply_after_crossover else '✗ No'}\n"
-            f"[bold]Memetic Mode:[/bold] {'✓ Enabled' if memetic_mode else '✗ Disabled'}",
+            f"[bold]Apply After Mutation:[/bold] {'[OK}Yes' if apply_after_mutation else '✗ No'}\n"
+            f"[bold]Apply After Crossover:[/bold] {'[OK}Yes' if apply_after_crossover else '✗ No'}\n"
+            f"[bold]Memetic Mode:[/bold] {'[OK}Enabled' if memetic_mode else '✗ Disabled'}",
             title="[bold]Global Settings[/bold]",
             border_style="cyan",
         )
@@ -66,7 +66,7 @@ def main():
 
     # Enabled repairs table
     if enabled_repairs:
-        console.print("[bold green]✓ ENABLED REPAIR HEURISTICS[/bold green]")
+        console.print("[bold green][OK}ENABLED REPAIR HEURISTICS[/bold green]")
 
         table = Table(show_header=True, header_style="bold green", box=None)
         table.add_column("Priority", justify="center", style="cyan", width=8)

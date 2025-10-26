@@ -157,6 +157,135 @@ class ColorPaletteConfig(BaseModel):
     course_colors: Dict[str, str] = Field(default_factory=dict)
 
 
+class HypermutationConfig(BaseModel):
+    """Hypermutation settings for escaping local optima"""
+
+    enabled: bool = True
+    trigger_on_stagnation: bool = True
+    stagnation_window: int = Field(default=5, ge=3, le=20)
+    duration_generations: int = Field(default=2, ge=1, le=5)
+    mutation_rate: float = Field(default=0.8, ge=0.3, le=1.0)
+
+
+class ConstraintPrioritiesConfig(BaseModel):
+    """Constraint-specific repair priorities"""
+
+    enabled: bool = True
+    availability_weight: float = Field(default=0.8, ge=0.0, le=1.0)
+    overlap_weight: float = Field(default=0.15, ge=0.0, le=1.0)
+    other_weight: float = Field(default=0.05, ge=0.0, le=1.0)
+
+
+class PopulationRestartConfig(BaseModel):
+    """Population restart settings (risky - use as last resort)"""
+
+    enabled: bool = Field(
+        default=False, description="Enable population restart (RISKY - destroys 50%)"
+    )
+    trigger_stagnation_gens: int = Field(
+        default=15, ge=10, le=50, description="Stagnation threshold (generations)"
+    )
+    restart_percentage: float = Field(
+        default=0.5, ge=0.3, le=0.7, description="Percentage of population to replace"
+    )
+    min_interval_gens: int = Field(
+        default=50, ge=20, le=200, description="Minimum generations between restarts"
+    )
+
+
+class ViolationHeatmapConfig(BaseModel):
+    """Constraint violation heatmap for targeted repair"""
+
+    enabled: bool = Field(
+        default=True, description="Track violation frequency per gene"
+    )
+    target_hot_genes: bool = Field(
+        default=True, description="Prioritize repair on frequently-violated genes"
+    )
+    top_n_hotspots: int = Field(
+        default=20, ge=5, le=100, description="Number of hotspots to target"
+    )
+    persistence_file: str = Field(
+        default="violation_heatmap.json", description="File to persist heatmap data"
+    )
+
+
+class MultiNeighborhoodConfig(BaseModel):
+    """Multi-neighborhood local search for repair"""
+
+    enabled: bool = Field(
+        default=True,
+        description="Try combined moves (time+instructor+room simultaneously)",
+    )
+    max_combinations: int = Field(
+        default=50, ge=10, le=200, description="Max instructor-room combinations to try"
+    )
+    fallback_to_single: bool = Field(
+        default=True,
+        description="Fall back to single-neighborhood if combined fails",
+    )
+
+
+class EnhancementConfig(BaseModel):
+    """
+    Master switch for all GA enhancements.
+
+    Phase 1 (Immediate):
+    - memetic_mode: Apply light repair every generation to elite
+    - increased_population: Use larger population sizes
+    - frequent_repair: More aggressive repair intervals
+
+    Phase 2 (High Priority):
+    - hypermutation: Escape local optima with temporary high mutation
+    - constraint_priorities: Focus repair on worst violations first
+    - greedy_initialization: More greedy seeds in hybrid population
+
+    Phase 3 (Advanced):
+    - population_restart: Replace worst 50% when stuck (RISKY)
+    - violation_heatmap: Track hot genes, target repairs
+    - multi_neighborhood: Combined moves in repair (time+instructor+room)
+    """
+
+    master_enabled: bool = Field(
+        default=True,
+        description="Master switch - disable to revert to baseline GA",
+    )
+
+    # Phase 1: Immediate wins
+    memetic_mode: bool = Field(
+        default=True, description="Apply light repair to elite every generation"
+    )
+    increased_population: bool = Field(
+        default=True, description="Use larger population sizes"
+    )
+    frequent_repair: bool = Field(
+        default=True, description="More aggressive repair intervals"
+    )
+
+    # Phase 2: High priority
+    hypermutation: HypermutationConfig = Field(default_factory=HypermutationConfig)
+    constraint_priorities: ConstraintPrioritiesConfig = Field(
+        default_factory=ConstraintPrioritiesConfig
+    )
+    greedy_initialization_percent: float = Field(
+        default=0.4,
+        ge=0.0,
+        le=1.0,
+        description="Percentage of population for greedy initialization",
+    )
+
+    # Phase 3: Advanced features
+    population_restart: PopulationRestartConfig = Field(
+        default_factory=PopulationRestartConfig
+    )
+    violation_heatmap: ViolationHeatmapConfig = Field(
+        default_factory=ViolationHeatmapConfig
+    )
+    multi_neighborhood: MultiNeighborhoodConfig = Field(
+        default_factory=MultiNeighborhoodConfig
+    )
+
+
 class Config(BaseModel):
     """Master configuration for Schedule Engine"""
 
@@ -177,6 +306,7 @@ class Config(BaseModel):
     io: IOConfig = Field(default_factory=IOConfig)
     calendar: CalendarConfig = Field(default_factory=CalendarConfig)
     colors: ColorPaletteConfig = Field(default_factory=ColorPaletteConfig)
+    enhancements: EnhancementConfig = Field(default_factory=EnhancementConfig)
 
     class Config:
         validate_assignment = True

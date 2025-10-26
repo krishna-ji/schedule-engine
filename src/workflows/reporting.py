@@ -22,6 +22,20 @@ from src.exporter.plot_detailed_constraints import (
     plot_constraint_summary,
 )
 
+# NEW: Import advanced evaluation metric plotting modules
+from src.exporter.plot_hypervolume import plot_hypervolume_trend
+from src.exporter.plot_spacing import (
+    plot_spacing_trend,
+    plot_spacing_distribution,
+    plot_spacing_with_pareto,
+)
+from src.exporter.plot_convergence import (
+    plot_multi_metric_convergence,
+    plot_convergence_dashboard,
+    plot_convergence_rate,
+    plot_constraint_satisfaction_evolution,
+)
+
 
 def generate_reports(
     decoded_schedule: List[CourseSession],
@@ -41,10 +55,12 @@ def generate_reports(
         - Evolution plots: hard/soft constraint trends, diversity
         - Pareto front visualization
         - Detailed constraint breakdown plots
+        - Advanced metrics: hypervolume, spacing, IGD, spread, convergence
+        - Multi-metric convergence dashboard
 
     Args:
         decoded_schedule: Best schedule solution (list of CourseSessions)
-        metrics: GA evolution metrics
+        metrics: GA evolution metrics (now includes hypervolume, spacing, IGD, etc.)
         population: Final population (for Pareto front)
         qts: Quantum time system (for time conversion)
         output_dir: Output directory path
@@ -89,5 +105,71 @@ def generate_reports(
 
     plot_constraint_summary(metrics.detailed_hard, metrics.detailed_soft, output_dir)
     print("      [OK] constraint_summary.pdf")
+
+    # NEW: Generate advanced evaluation metric plots
+    print("  [+] Generating advanced evaluation metrics...")
+
+    # Phase 1: Essential metrics
+    if metrics.hypervolume:
+        plot_hypervolume_trend(metrics.hypervolume, output_dir)
+        print("      [OK] hypervolume_trend.pdf")
+
+    if metrics.spacing:
+        plot_spacing_trend(metrics.spacing, output_dir)
+        print("      [OK] spacing_trend.pdf")
+
+        # Spacing distribution for final population
+        plot_spacing_distribution(population, output_dir)
+        print("      [OK] spacing_distribution.pdf")
+
+        # Combined spacing + Pareto front view
+        plot_spacing_with_pareto(population, metrics.spacing, output_dir)
+        print("      [OK] spacing_pareto_combined.pdf")
+
+    if metrics.feasibility_rate:
+        plot_constraint_satisfaction_evolution(metrics.feasibility_rate, output_dir)
+        print("      [OK] feasibility_evolution.pdf")
+
+    # Convergence rate analysis
+    if metrics.hard_violations:
+        plot_convergence_rate(metrics.hard_violations, output_dir, "Hard Violations")
+        print("      [OK] convergence_rate_hard_violations.pdf")
+
+    # Phase 2: Multi-metric convergence visualization
+    if metrics.hypervolume and metrics.spacing:
+        metrics_dict = {
+            "hypervolume": metrics.hypervolume,
+            "spacing": metrics.spacing,
+            "diversity": metrics.diversity,
+        }
+
+        # Add IGD and spread if available
+        if metrics.igd:
+            metrics_dict["igd"] = metrics.igd
+        if metrics.spread:
+            metrics_dict["spread"] = metrics.spread
+
+        plot_multi_metric_convergence(metrics_dict, output_dir)
+        print("      [OK] convergence_multi_metric.pdf")
+
+    # Comprehensive dashboard
+    if (
+        metrics.hard_violations
+        and metrics.soft_penalties
+        and metrics.diversity
+        and metrics.hypervolume
+        and metrics.spacing
+        and metrics.feasibility_rate
+    ):
+        plot_convergence_dashboard(
+            hard_violations=metrics.hard_violations,
+            soft_penalties=metrics.soft_penalties,
+            diversity=metrics.diversity,
+            hypervolume=metrics.hypervolume,
+            spacing=metrics.spacing,
+            feasibility_rate=metrics.feasibility_rate,
+            output_dir=output_dir,
+        )
+        print("      [OK] convergence_dashboard.pdf")
 
     print("  [+] All reports generated successfully!")

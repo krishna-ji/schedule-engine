@@ -37,6 +37,7 @@ from src.validation.feasibility_checker import (
 )
 from src.workflows.reporting import generate_reports
 from src.utils.logger import GALogger
+from src.utils.constraint_logger import ConstraintLogger
 
 console = Console()
 
@@ -158,7 +159,7 @@ def run_standard_workflow(
                 "[X] Input validation failed with ERRORS! Fix errors and try again."
             )
 
-        console.print("   [bold green]✓[/bold green] Input validation passed\n")
+        console.print("   [bold green]...OK!...[/bold green] Input validation passed\n")
 
     # ========================================
     # Step 3.5: Feasibility Check
@@ -203,7 +204,7 @@ def run_standard_workflow(
             initargs=(data_dir, seed),
         )
         console.print(
-            f"[cyan]✓ Multiprocessing enabled: {pool._processes} workers[/cyan]"
+            f"[cyan][OK] Multiprocessing enabled: {pool._processes} workers[/cyan]"
         )
         console.print(
             f"   [dim]Workers load data from {data_dir}/ (zero pickling overhead)[/dim]\n"
@@ -328,6 +329,12 @@ def run_standard_workflow(
     logger = GALogger(output_dir, logger_config)
     console.print(f"   [dim]Logger:[/dim] [cyan]{logger.get_log_path()}[/cyan]")
 
+    # Initialize ConstraintLogger for detailed per-generation constraint breakdown
+    constraint_logger = ConstraintLogger(output_dir, hard_names, soft_names)
+    console.print(
+        f"   [dim]Constraint Logger:[/dim] [cyan]{constraint_logger.get_log_path()}[/cyan]"
+    )
+
     console.print("[bold]Genetic Algorithm Configuration:[/bold]")
     console.print(
         f"   Population: [cyan]{ga_config.pop_size}[/cyan] | Generations: [cyan]{ga_config.generations}[/cyan]"
@@ -351,7 +358,7 @@ def run_standard_workflow(
 
         modes_str = ", ".join(repair_modes) if repair_modes else "none"
         console.print(
-            f"   Repair Heuristics: [green]✓ enabled[/green] (after {modes_str}, max {config.repair.max_iterations} iter)"
+            f"   Repair Heuristics: [green][OK] enabled[/green] (after {modes_str}, max {config.repair.max_iterations} iter)"
         )
     else:
         console.print(f"   Repair Heuristics: [dim]✗ disabled[/dim]")
@@ -366,7 +373,14 @@ def run_standard_workflow(
     logger.start_run()  # Mark start time
 
     scheduler = GAScheduler(
-        ga_config, context, hard_names, soft_names, pool=pool, logger=logger, seed=seed
+        ga_config,
+        context,
+        hard_names,
+        soft_names,
+        pool=pool,
+        logger=logger,
+        constraint_logger=constraint_logger,  # NEW: Pass constraint logger
+        seed=seed,
     )
     scheduler.setup_toolbox()
     scheduler.initialize_population()
@@ -435,6 +449,10 @@ def run_standard_workflow(
     console.print(f"[bold]Results saved to:[/bold] [cyan]{output_dir}[/cyan]")
     console.print(f"   • [dim]schedule.json[/dim]: Schedule data")
     console.print(f"   • [dim]schedule.pdf[/dim]: Visual calendar")
+    console.print(f"   • [dim]logger.txt[/dim]: Run summary and generation log")
+    console.print(
+        f"   • [dim]logger_constraints.csv[/dim]: Detailed constraint breakdown (Excel-ready)"
+    )
     console.print(f"   • [dim]plots/[/dim]: Evolution charts")
     console.print()
     console.rule(style="green")

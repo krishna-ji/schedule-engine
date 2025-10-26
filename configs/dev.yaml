@@ -10,7 +10,7 @@ environment: dev
 # Genetic Algorithm Settings
 ga:
   ngen: 100              # Medium generations
-  pop_size: 20           # Small-medium population
+  pop_size: 100          # ENHANCED: Was 20, now 100 for better testing
   cxpb: 0.8
   mutpb: 0.3
   elite_preservation: true
@@ -31,9 +31,9 @@ repair:
   max_iterations: 3
   apply_after_mutation: true
   apply_after_crossover: true
-  memetic_mode: false
-  elite_percentage: 0.1
-  memetic_iterations: 5
+  memetic_mode: true     # ENHANCED: Was false, now true
+  elite_percentage: 0.2  # ENHANCED: Was 0.1, now 0.2
+  memetic_iterations: 2  # ENHANCED: Was 5, now 2 (lighter)
   selective_mode: true
   detection_strategy: hybrid
   recheck_after_repair: true
@@ -97,3 +97,48 @@ soft_constraints:
     enabled: true
     weight: 1.0
   soft_weight_factor: 0.01
+
+# ============================================================================
+# ENHANCEMENTS - Master switch for all improvements
+# ============================================================================
+enhancements:
+  master_enabled: true  # Set to false to disable ALL enhancements
+  
+  # Phase 1: Immediate wins
+  memetic_mode: true              # Light repair to elite every generation
+  increased_population: true      # Use larger population (100 vs 20)
+  frequent_repair: true           # More aggressive repair (every 5 gens vs 10)
+  
+  # Phase 2: High priority
+  hypermutation:
+    enabled: true
+    trigger_on_stagnation: true
+    stagnation_window: 5
+    duration_generations: 2
+    mutation_rate: 0.8
+  
+  constraint_priorities:
+    enabled: true
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  
+  greedy_initialization_percent: 0.4  # 40% greedy (was 25%)
+  
+  # Phase 3: Advanced Features
+  population_restart:
+    enabled: false               # [RISKY] Disabled by default (can disrupt convergence)
+    trigger_stagnation_gens: 15  # Restart after 15 gens of stagnation
+    restart_percentage: 0.5      # Replace 50% of population with fresh individuals
+    min_interval_gens: 50        # Minimum 50 gens between restarts (avoid thrashing)
+  
+  violation_heatmap:
+    enabled: true                # [SAFE] Track constraint violations per gene
+    target_hot_genes: true       # Use heatmap to target problematic genes in repair
+    top_n_hotspots: 20           # Report top 20 most violated genes
+    persistence_file: "violation_heatmap.json"  # Save heatmap to output dir
+  
+  multi_neighborhood:
+    enabled: true                # [SAFE] Try combined moves (time+instructor+room)
+    max_combinations: 50         # Try up to 50 combined moves per violated gene
+    fallback_to_single: true     # Fallback to single-neighborhood repair if combined fails

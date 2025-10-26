@@ -275,7 +275,9 @@ class GALogger:
             f.write(f"Final Soft Penalty:      {best_soft:.2f}\n")
 
             if best_hard == 0:
-                f.write("\n✓ FEASIBLE SOLUTION FOUND (No hard constraint violations)\n")
+                f.write(
+                    "\n[OK}FEASIBLE SOLUTION FOUND (No hard constraint violations)\n"
+                )
             else:
                 f.write("\n⚠ INFEASIBLE SOLUTION (Hard constraints violated)\n")
 

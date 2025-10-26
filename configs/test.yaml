@@ -97,3 +97,48 @@ soft_constraints:
     enabled: true
     weight: 1.0
   soft_weight_factor: 0.01
+
+# ============================================================================
+# ENHANCEMENTS - Master switch (minimal for quick testing)
+# ============================================================================
+enhancements:
+  master_enabled: true  # Keep enabled for smoke testing
+  
+  # Phase 1: Immediate wins (minimal settings for speed)
+  memetic_mode: false             # Disabled for test (too slow)
+  increased_population: false     # Keep small pop for speed
+  frequent_repair: false          # Standard repair intervals
+  
+  # Phase 2: High priority (disabled for quick testing)
+  hypermutation:
+    enabled: false
+    trigger_on_stagnation: true
+    stagnation_window: 3
+    duration_generations: 1
+    mutation_rate: 0.7
+  
+  constraint_priorities:
+    enabled: true                 # Keep this - it's fast
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  
+  greedy_initialization_percent: 0.25  # Keep original 25% for test
+  
+  # Phase 3: Advanced Features (Test with caution)
+  population_restart:
+    enabled: false               # [RISKY] Disabled in test (causes disruption)
+    trigger_stagnation_gens: 15  # Restart after 15 gens of stagnation
+    restart_percentage: 0.5      # Replace 50% of population
+    min_interval_gens: 50        # Minimum 50 gens between restarts
+  
+  violation_heatmap:
+    enabled: true                # [SAFE] Track hot genes for analysis
+    target_hot_genes: true       # Use heatmap for targeted repair
+    top_n_hotspots: 20           # Show top 20 hotspots in summary
+    persistence_file: "violation_heatmap.json"
+  
+  multi_neighborhood:
+    enabled: true                # [SAFE] Enhanced repair strategy
+    max_combinations: 50         # Try up to 50 combined moves per gene
+    fallback_to_single: true     # Fallback to single-neighborhood if combined fails
