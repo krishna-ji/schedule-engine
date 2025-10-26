@@ -221,7 +221,7 @@ def _check_instructor_workload(
 
     message = f"Demand: {total_demand} quanta, Supply: {total_supply} quanta"
     if passed:
-        message += f" [OK}(Utilization: {utilization_rate:.1f}%)"
+        message += f" [OK] (Utilization: {utilization_rate:.1f}%)"
     else:
         shortage = total_demand - total_supply
         message += f" ✗ (Shortage: {shortage} quanta, {shortage * qts.QUANTUM_MINUTES // 60} hours)"
@@ -449,7 +449,7 @@ def _check_room_capacity_bottleneck(
     )
 
     if passed:
-        message = f"Seat-hours sufficient: {total_seat_hours:,} available, {total_student_hours:,} needed [OK}({utilization:.1f}%)"
+        message = f"Seat-hours sufficient: {total_seat_hours:,} available, {total_student_hours:,} needed [OK] ({utilization:.1f}%)"
     else:
         message = f"Seat-hours insufficient ✗"
 
