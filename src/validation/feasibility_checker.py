@@ -778,7 +778,7 @@ def _print_summary(report: FeasibilityReport):
     if report.is_feasible:
         console.print(
             Panel(
-                "[bold green][OK}PROBLEM IS FEASIBLE[/bold green]\n\n"
+                "[bold green][OK!]PROBLEM IS FEASIBLE[/bold green]\n\n"
                 "All critical checks passed. The GA should be able to find a solution.\n"
                 "[dim]Note: This doesn't guarantee a perfect solution exists, but fundamental constraints are satisfied.[/dim]",
                 border_style="green",

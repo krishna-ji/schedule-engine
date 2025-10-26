@@ -3,6 +3,12 @@ Centralized thesis-ready styling configuration for all plots.
 Applies Seaborn-inspired theme with Times New Roman font.
 """
 
+# CRITICAL: Set non-interactive backend BEFORE any other matplotlib imports
+# This prevents tkinter-related errors in CLI environments
+import matplotlib
+
+matplotlib.use("Agg")  # Non-interactive backend for file generation
+
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import font_manager

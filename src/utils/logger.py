@@ -276,7 +276,7 @@ class GALogger:
 
             if best_hard == 0:
                 f.write(
-                    "\n[OK}FEASIBLE SOLUTION FOUND (No hard constraint violations)\n"
+                    "\n[OK!]FEASIBLE SOLUTION FOUND (No hard constraint violations)\n"
                 )
             else:
                 f.write("\n⚠ INFEASIBLE SOLUTION (Hard constraints violated)\n")

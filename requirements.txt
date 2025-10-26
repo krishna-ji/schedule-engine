@@ -1,11 +1,25 @@
-# Core GA Framework
-deap>=1.4.1
+# Core Dependencies
+# Python 3.13+ compatible versions
+# Versions matched from conda environment.yml where available
+
+# Genetic Algorithm Framework
+deap==1.4.1
+
+# Data Validation & Configuration
+pydantic==2.10.3
+pyyaml==6.0.2
 
 # Console UI & Progress Bars
-rich>=13.0.0
+rich==13.9.4
 
 # Data Visualization
-matplotlib>=3.7.0
+matplotlib==3.9.4
+seaborn>=0.13.0
 
-# Data Handling
-numpy>=1.24.0
+# Data Handling & Scientific Computing
+numpy==2.3.1
+scipy==1.16.0
+pandas>=2.3.0
+
+# Additional utilities (if needed)
+# typing-extensions==4.12.2  # Usually comes with Python 3.13

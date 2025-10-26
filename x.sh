@@ -4,8 +4,8 @@
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Path to the virtual environment (one directory up, then into genetic/.venv)
-VENV_PATH="$SCRIPT_DIR/../genetic/.venv"
+# Path to the virtual environment (same directory as script)
+VENV_PATH="$SCRIPT_DIR/.venv"
 
 # Activate the virtual environment
 if [ -f "$VENV_PATH/bin/activate" ]; then
@@ -40,7 +40,7 @@ if [ -f "$VENV_PATH/bin/activate" ]; then
             ;;
     esac
 else
-    echo "Error: Virtual environment not found at $VENV_PATH"
-    echo "Please ensure the .venv directory exists at ../genetic/.venv"
+    echo "[ERROR] Virtual environment not found at $VENV_PATH"
+    echo "Please run setup-venv.sh first to create the virtual environment"
     exit 1
 fi

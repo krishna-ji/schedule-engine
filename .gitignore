@@ -15,3 +15,9 @@ docs/backend-suggestion/prompts/prompt.txt
 prompts/thesis_generator.md
 random.txt
 test/
+
+# Python virtual environment
+.venv/
+venv/
+env/
+ENV/
