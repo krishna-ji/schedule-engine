@@ -8,7 +8,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from config.constraints import HARD_CONSTRAINTS_CONFIG, SOFT_CONSTRAINTS_CONFIG
+from config import get_config  # get_config().hard_constraints, get_config().soft_constraints
 from src.constraints.hard import get_enabled_hard_constraints
 from src.constraints.soft import get_enabled_soft_constraints
 from src.utils.console import write_header, write_separator, write_info
@@ -24,9 +24,9 @@ def main():
     write_separator()
 
     hard_enabled_count = sum(
-        1 for cfg in HARD_CONSTRAINTS_CONFIG.values() if cfg["enabled"]
+        1 for cfg in get_config().hard_constraints.values() if cfg["enabled"]
     )
-    hard_total_count = len(HARD_CONSTRAINTS_CONFIG)
+    hard_total_count = len(get_config().hard_constraints)
 
     write_info(
         f"Status: {hard_enabled_count}/{hard_total_count} hard constraints enabled"
@@ -44,14 +44,14 @@ def main():
 
     # Show disabled hard constraints
     hard_disabled = [
-        name for name, cfg in HARD_CONSTRAINTS_CONFIG.items() if not cfg["enabled"]
+        name for name, cfg in get_config().hard_constraints.items() if not cfg["enabled"]
     ]
     if hard_disabled:
         write_info("DISABLED HARD CONSTRAINTS:")
         write_separator("-")
         for name in hard_disabled:
             write_info(
-                f"  {name:<45} (weight = {HARD_CONSTRAINTS_CONFIG[name]['weight']:.2f})"
+                f"  {name:<45} (weight = {get_config().hard_constraints[name]['weight']:.2f})"
             )
         write_info("")
 
@@ -66,9 +66,9 @@ def main():
     write_separator()
 
     soft_enabled_count = sum(
-        1 for cfg in SOFT_CONSTRAINTS_CONFIG.values() if cfg["enabled"]
+        1 for cfg in get_config().soft_constraints.values() if cfg["enabled"]
     )
-    soft_total_count = len(SOFT_CONSTRAINTS_CONFIG)
+    soft_total_count = len(get_config().soft_constraints)
 
     write_info(
         f"Status: {soft_enabled_count}/{soft_total_count} soft constraints enabled"
@@ -86,14 +86,14 @@ def main():
 
     # Show disabled soft constraints
     soft_disabled = [
-        name for name, cfg in SOFT_CONSTRAINTS_CONFIG.items() if not cfg["enabled"]
+        name for name, cfg in get_config().soft_constraints.items() if not cfg["enabled"]
     ]
     if soft_disabled:
         write_info("DISABLED SOFT CONSTRAINTS:")
         write_separator("-")
         for name in soft_disabled:
             write_info(
-                f"  {name:<45} (weight = {SOFT_CONSTRAINTS_CONFIG[name]['weight']:.2f})"
+                f"  {name:<45} (weight = {get_config().soft_constraints[name]['weight']:.2f})"
             )
         write_info("")
 

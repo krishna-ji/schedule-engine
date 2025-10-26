@@ -1,6 +1,7 @@
 import random
 from typing import List
 from src.ga.sessiongene import SessionGene
+from config import get_config
 
 
 def crossover_course_group_aware(
@@ -41,8 +42,6 @@ def crossover_course_group_aware(
 
         Note: MATH101-GroupA still exists in both (no duplication/loss)
     """
-    from config.ga_params import VALIDATE_POPULATION_INTEGRITY
-
     # Build lookup tables: (course_id, tuple(sorted(group_ids))) -> gene
     # We sort group_ids to ensure consistent key regardless of list order
     gene_map1 = {(gene.course_id, tuple(sorted(gene.group_ids))): gene for gene in ind1}
@@ -51,7 +50,7 @@ def crossover_course_group_aware(
     # Verify both individuals have same (course, group) pairs
     # This catches any corruption early with a clear error message
     # Can be disabled via config for performance or experimental operators
-    if VALIDATE_POPULATION_INTEGRITY:
+    if get_config().ga.validate_population_integrity:
         keys1 = set(gene_map1.keys())
         keys2 = set(gene_map2.keys())
 
@@ -64,14 +63,14 @@ def crossover_course_group_aware(
                 f"   Missing in Individual 1: {missing_in_ind1}\n"
                 f"   Missing in Individual 2: {missing_in_ind2}\n"
                 f"   This indicates population corruption or invalid mutation.\n"
-                f"   To disable this check, set VALIDATE_POPULATION_INTEGRITY=False in config/ga_params.py"
+                f"   To disable this check, set get_config().ga.validate_population_integrity=False in config/ga_params.py"
             )
 
     # For each (course, group) pair, probabilistically swap ATTRIBUTES
     # If validation is disabled, only swap for common keys (intersection)
     keys_to_process = (
         gene_map1.keys()
-        if VALIDATE_POPULATION_INTEGRITY
+        if get_config().ga.validate_population_integrity
         else (set(gene_map1.keys()) & set(gene_map2.keys()))
     )
 

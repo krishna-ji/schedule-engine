@@ -298,16 +298,18 @@ def get_enabled_hard_constraints():
     Returns:
         Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
     """
-    from config.constraints import HARD_CONSTRAINTS_CONFIG
+    from config import get_config
 
     all_constraints = get_all_hard_constraints()
     enabled = {}
 
-    for name, config in HARD_CONSTRAINTS_CONFIG.items():
-        if config["enabled"] and name in all_constraints:
+    cfg = get_config().hard_constraints
+    for name, func in all_constraints.items():
+        constraint_cfg = getattr(cfg, name, None)
+        if constraint_cfg and constraint_cfg.enabled:
             enabled[name] = {
-                "function": all_constraints[name],
-                "weight": config["weight"],
+                "function": func,
+                "weight": constraint_cfg.weight,
             }
 
     return enabled

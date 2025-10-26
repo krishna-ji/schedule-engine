@@ -1,0 +1,99 @@
+# ============================================================================
+# PRODUCTION CONFIGURATION - Full Quality Run (30-60 minutes)
+# ============================================================================
+# Purpose: Final schedule generation with maximum quality
+# Use: python main.py --env prod
+
+name: "Production Configuration"
+environment: prod
+
+# Genetic Algorithm Settings
+ga:
+  ngen: 1000             # Full generations for convergence
+  pop_size: 200          # Large population for diversity (must be even)
+  cxpb: 0.8
+  mutpb: 0.3
+  elite_preservation: true
+  elite_size: 0.05
+  use_adaptive_probabilities: true
+  use_constraint_guided_mutation: true
+  population_strategy: hybrid
+  validate_population_integrity: false
+
+# Parallelization (full CPU usage)
+parallel:
+  use_multiprocessing: true
+  num_workers: null     # Auto-detect all CPU cores
+
+# Repair Heuristics (intensive)
+repair:
+  enabled: true
+  max_iterations: 5     # More iterations for better quality
+  apply_after_mutation: true
+  apply_after_crossover: true
+  memetic_mode: false
+  elite_percentage: 0.1
+  memetic_iterations: 10  # More intensive local search
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: true
+
+# Feasibility Checks (strict)
+feasibility:
+  enable_checks: true
+  fail_on_infeasibility: true  # Must be feasible for production
+  tolerance_margin: 0.02
+  generate_report: true
+  show_console_output: true
+  save_report_on_success: true
+
+# Time Configuration
+time:
+  quantum_minutes: 60
+  earliest_preferred_time: "10:00"
+  latest_preferred_time: "17:00"
+  midday_break_start: "12:00"
+  midday_break_end: "14:00"
+  max_session_coalescence: 3
+
+# I/O Paths
+io:
+  data_dir: data
+  output_dir: output
+
+# Hard Constraints (all enabled with standard weights)
+hard_constraints:
+  no_group_overlap:
+    enabled: true
+    weight: 2.0
+  no_instructor_conflict:
+    enabled: true
+    weight: 2.0
+  instructor_not_qualified:
+    enabled: true
+    weight: 2.0
+  room_type_mismatch:
+    enabled: true
+    weight: 2.0
+  availability_violations:
+    enabled: true
+    weight: 2.0
+  incomplete_or_extra_sessions:
+    enabled: true
+    weight: 1.0
+
+# Soft Constraints (all enabled)
+soft_constraints:
+  group_gaps_penalty:
+    enabled: true
+    weight: 1.0
+  instructor_gaps_penalty:
+    enabled: true
+    weight: 1.0
+  group_midday_break_violation:
+    enabled: true
+    weight: 1.0
+  session_block_clustering_penalty:
+    enabled: true
+    weight: 1.0
+  soft_weight_factor: 0.01  # 1% of hard constraint weight

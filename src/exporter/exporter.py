@@ -303,7 +303,7 @@ def export_everything(
         >>> from src.exporter.exporter import export_everything
         >>> export_everything(final_schedule, "./output", qts_instance)
         [OK-KRISHNA] Schedule exported successfully!
-        📄 JSON: ./output/schedule.json
+        JSON: ./output/schedule.json
         [...]PDF:  ./output/calendar_colored_merged.pdf
 
     Note:
@@ -328,5 +328,5 @@ def export_everything(
     )
 
     print("[OK-KRISHNA] Schedule exported successfully!")
-    print(f"📄 JSON: {json_path}")
+    print(f"[...]JSON: {json_path}")
     print(f"[...]PDF:  {pdf_path}")

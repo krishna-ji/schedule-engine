@@ -569,8 +569,8 @@ print(f"  {passed_count} PASSED")
 print()
 
 if critical_count > 0:
-    print("❌ MULTIPROCESSING HAS BUGS - REQUIRES FIXES")
+    print("[!ERR] MULTIPROCESSING HAS BUGS - REQUIRES FIXES")
 else:
-    print("✅ NO CRITICAL BUGS FOUND (besides known pickling overhead)")
+    print("NO CRITICAL BUGS FOUND (besides known pickling overhead)")
 
 print()

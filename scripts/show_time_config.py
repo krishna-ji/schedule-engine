@@ -6,7 +6,7 @@ Shows time-related parameters and quantum conversions for verification.
 
 from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.utils.console import write_header, write_separator, write_info
-from config.time_config import (
+from src.utils.time_helpers import (
     QUANTUM_MINUTES,
     QUANTA_PER_HOUR,
     MAX_SESSION_COALESCENCE,

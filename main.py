@@ -4,17 +4,11 @@ Schedule Engine Entry Point
 Runs standard GA-based course scheduling workflow.
 """
 
+import argparse
 from rich.console import Console
 from rich.panel import Panel
 from src.workflows import run_standard_workflow
-from config.ga_params import (
-    POP_SIZE,
-    NGEN,
-    CXPB,
-    MUTPB,
-    USE_MULTIPROCESSING,
-    NUM_WORKERS,
-)
+from config import init_config
 
 console = Console()
 
@@ -24,28 +18,65 @@ def main():
     Execute standard scheduling workflow.
 
     Pipeline:
-        1. Load input data from data/
-        2. Validate input for consistency
-        3. Run NSGA-II genetic algorithm (with optional parallelization)
-        4. Export best schedule to output/
-        5. Generate evolution plots and reports
+        1. Load configuration from YAML (configs/test|dev|prod.yaml)
+        2. Load input data from data/
+        3. Validate input for consistency
+        4. Check feasibility (optional)
+        5. Run NSGA-II genetic algorithm (with optional parallelization)
+        6. Export best schedule to output/
+        7. Generate evolution plots and reports
 
-    Configuration is loaded from config/ga_params.py and config/constraints.py.
-    Results are saved to output/evaluation_<timestamp>/.
+    Configuration:
+        Loaded from YAML files in configs/ directory.
+        Use --env {test|dev|prod} to select configuration.
+
+    Results:
+        Saved to output/evaluation_<timestamp>/
 
     Parallelization:
-        - If USE_MULTIPROCESSING=True, uses multiprocessing.Pool for parallel fitness evaluation
-        - Provides 3-6x speedup on multi-core systems
-        - Set USE_MULTIPROCESSING=False for debugging or single-threaded execution
+        Controlled by parallel.use_multiprocessing in YAML config.
+        Provides 3-6x speedup on multi-core systems.
     """
-    # Pool will be created inside workflow after data is loaded
-    # (needed to pass data to worker initializer)
+    # Parse CLI arguments
+    parser = argparse.ArgumentParser(description="University Course Scheduling Engine")
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Path to config YAML file (e.g., configs/custom.yaml)",
+    )
+    parser.add_argument(
+        "--env",
+        type=str,
+        choices=["test", "dev", "prod"],
+        help="Environment: test (fast), dev (medium), prod (full quality)",
+    )
+    args = parser.parse_args()
+
+    # Determine config path
+    config_path = args.config
+    if args.env:
+        config_path = f"configs/{args.env}.yaml"
+
+    # Load configuration
+    try:
+        config = init_config(config_path)
+        console.print()
+        console.print(
+            Panel(config.summary(), title="Configuration", border_style="cyan")
+        )
+        console.print()
+    except Exception as e:
+        console.print(f"[bold red][!ERR] Failed to load config:[/bold red] {e}")
+        return 1
+
+    # Run workflow with config
     result = run_standard_workflow(
-        pop_size=POP_SIZE,
-        generations=NGEN,
-        crossover_prob=CXPB,
-        mutation_prob=MUTPB,
+        pop_size=config.ga.pop_size,
+        generations=config.ga.ngen,
+        crossover_prob=config.ga.cxpb,
+        mutation_prob=config.ga.mutpb,
         validate=True,  # Enable input validation
+        config=config,  # Pass config object to workflow
     )
 
     # Print final summary with beautiful rich formatting

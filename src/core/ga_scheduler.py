@@ -29,6 +29,7 @@ from src.ga.population import generate_course_group_aware_population
 from src.ga.operators.crossover import crossover_course_group_aware
 from src.ga.operators.mutation import mutate_individual
 from src.ga.evaluator.fitness import evaluate
+from config import get_config
 from src.ga.evaluator.detailed_fitness import evaluate_detailed
 from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
@@ -206,7 +207,7 @@ class AlwaysShowTimeRemainingColumn(ProgressColumn):
                 # First estimate - initialize EMA
                 self._ema_remaining = raw_remaining
             else:
-                # Smooth: EMA = α × new + (1-α) × old
+                # Smooth: EMA = α * new + (1-α) * old
                 self._ema_remaining = (
                     self._alpha * raw_remaining
                     + (1 - self._alpha) * self._ema_remaining
@@ -240,7 +241,7 @@ class GAConfig:
         generations: Number of generations to evolve
         crossover_prob: Probability of crossover operation
         mutation_prob: Probability of mutation operation
-        repair_config: Repair heuristics configuration dict (from ga_params.REPAIR_HEURISTICS_CONFIG)
+        repair_config: Repair heuristics configuration dict (from ga_params.get_config().repair)
                        Includes selective_mode, adaptive_repair settings, and enabled heuristics
     """
 
@@ -362,15 +363,13 @@ class GAScheduler:
         self.toolbox.register("select", tools.selNSGA2)
 
         # PHASE 3: Hybrid population initialization support
-        from config.ga_params import POPULATION_STRATEGY
-
-        if POPULATION_STRATEGY == "hybrid":
+        if get_config().ga.population_strategy == "hybrid":
             from src.ga.hybrid_population import generate_hybrid_population
 
             self.toolbox.register(
                 "population", generate_hybrid_population, context=self.context
             )
-        elif POPULATION_STRATEGY == "smart":
+        elif get_config().ga.population_strategy == "smart":
             # Original constraint-aware (Phase 1+2 default)
             self.toolbox.register(
                 "population",
@@ -406,14 +405,12 @@ class GAScheduler:
         )
 
         # PHASE 2: Constraint-guided mutation support
-        from config.ga_params import USE_CONSTRAINT_GUIDED_MUTATION
-
         self.toolbox.register(
             "mutate",
             mutate_individual,
             context=self.context,
             mut_prob=self.config.mutation_prob,
-            guided=USE_CONSTRAINT_GUIDED_MUTATION,  # Enable constraint-guided mutation
+            guided=get_config().ga.use_constraint_guided_mutation,  # Enable constraint-guided mutation
         )
 
     def initialize_population(self):
@@ -669,7 +666,7 @@ class GAScheduler:
                     "max_iterations", 10
                 )
                 console.print(
-                    f"[bold red]🔥 Gen {gen}: Intensive repair triggered (every {periodic_cfg.get('intensive_interval', 20)} gens)[/bold red]"
+                    f"[bold red]Gen {gen}: Intensive repair triggered (every {periodic_cfg.get('intensive_interval', 20)} gens)[/bold red]"
                 )
             elif stagnation_detected:
                 # Stagnation repair: use trigger_action settings
@@ -700,7 +697,7 @@ class GAScheduler:
                     "max_iterations", 5
                 )
                 console.print(
-                    f"[bold cyan]🔧 Gen {gen}: Periodic repair triggered (every {periodic_cfg.get('interval', 10)} gens)[/bold cyan]"
+                    f"[bold cyan] Gen {gen}: Periodic repair triggered (every {periodic_cfg.get('interval', 10)} gens)[/bold cyan]"
                 )
 
         # PHASE 1.3: Get adaptive probabilities based on search progress

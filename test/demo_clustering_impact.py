@@ -10,12 +10,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.ga.population import assign_conflict_free_quanta
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from config.time_config import quantum_to_day_and_within_day
-from config.time_config import (
+from src.utils.time_helpers import quantum_to_day_and_within_day
+from src.utils.time_helpers import (
     ISOLATED_SESSION_PENALTY,
     OVERSIZED_BLOCK_PENALTY_PER_QUANTUM,
 )
-from config.time_config import PREFERRED_BLOCK_SIZE_MAX
+from src.utils.time_helpers import get_config().time.preferred_block_size_max
 import random
 
 
@@ -56,9 +56,9 @@ def calculate_clustering_penalty(quanta: list, qts: QuantumTimeSystem) -> int:
         for block_size in blocks:
             if block_size == 1:
                 penalty += ISOLATED_SESSION_PENALTY
-            elif block_size > PREFERRED_BLOCK_SIZE_MAX:
+            elif block_size > get_config().time.preferred_block_size_max:
                 penalty += (
-                    block_size - PREFERRED_BLOCK_SIZE_MAX
+                    block_size - get_config().time.preferred_block_size_max
                 ) * OVERSIZED_BLOCK_PENALTY_PER_QUANTUM
 
     return penalty
@@ -134,7 +134,7 @@ def demo_comparison():
         cluster_penalty = calculate_clustering_penalty(cluster_assignment, qts)
         cluster_blocks = format_blocks(cluster_assignment, qts)
 
-        print(f"  ❌ Random:  {random_blocks}")
+        print(f"  [!ERR] Random:  {random_blocks}")
         print(f"     Penalty: {random_penalty}")
         print()
         print(f"  ✅ Clustered: {cluster_blocks}")

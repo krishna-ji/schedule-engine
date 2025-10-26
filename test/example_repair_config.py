@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from rich.console import Console
-from config.ga_params import REPAIR_HEURISTICS_CONFIG
+from config import get_config
 from src.ga.operators.repair_registry import get_enabled_repair_heuristics
 
 console = Console()
@@ -23,10 +23,10 @@ def show_current_config():
 
     enabled = get_enabled_repair_heuristics()
     console.print(
-        f"  Master switch: {'✓ ON' if REPAIR_HEURISTICS_CONFIG['enabled'] else '✗ OFF'}"
+        f"  Master switch: {'✓ ON' if get_config().repair['enabled'] else '✗ OFF'}"
     )
     console.print(f"  Enabled repairs: {len(enabled)}/7")
-    console.print(f"  Max iterations: {REPAIR_HEURISTICS_CONFIG['max_iterations']}")
+    console.print(f"  Max iterations: {get_config().repair['max_iterations']}")
     console.print()
 
 
@@ -35,7 +35,7 @@ def example_1_disable_expensive_repair():
     console.rule("[bold]Example 1: Disable Expensive Repair[/bold]")
     console.print()
 
-    console.print("💡 [dim]Use case: Speed up GA runs during experimentation[/dim]")
+    console.print("[-] [dim]Use case: Speed up GA runs during experimentation[/dim]")
     console.print()
     console.print("[yellow]Disabling: repair_incomplete_or_extra_sessions[/yellow]")
     console.print(
@@ -46,7 +46,7 @@ def example_1_disable_expensive_repair():
     # Show code
     console.print("```python")
     console.print(
-        'REPAIR_HEURISTICS_CONFIG["heuristics"]["repair_incomplete_or_extra_sessions"]["enabled"] = False'
+        'get_config().repair["heuristics"]["repair_incomplete_or_extra_sessions"]["enabled"] = False'
     )
     console.print("```")
     console.print()
@@ -58,7 +58,7 @@ def example_2_ablation_study():
     console.print()
 
     console.print(
-        "💡 [dim]Use case: Measure the individual impact of each repair[/dim]"
+        "[-] [dim]Use case: Measure the individual impact of each repair[/dim]"
     )
     console.print()
     console.print("Strategy: Enable repairs one at a time, measure fitness improvement")
@@ -66,19 +66,19 @@ def example_2_ablation_study():
 
     console.print("```python")
     console.print("# Disable all repairs first")
-    console.print("for name in REPAIR_HEURISTICS_CONFIG['heuristics']:")
-    console.print("    REPAIR_HEURISTICS_CONFIG['heuristics'][name]['enabled'] = False")
+    console.print("for name in get_config().repair['heuristics']:")
+    console.print("    get_config().repair['heuristics'][name]['enabled'] = False")
     console.print()
     console.print("# Enable one repair at a time")
     console.print(
         "for repair_name in ['repair_availability_violations', 'repair_group_overlaps', ...]:"
     )
     console.print(
-        "    REPAIR_HEURISTICS_CONFIG['heuristics'][repair_name]['enabled'] = True"
+        "    get_config().repair['heuristics'][repair_name]['enabled'] = True"
     )
     console.print("    run_ga()  # Run and record results")
     console.print(
-        "    REPAIR_HEURISTICS_CONFIG['heuristics'][repair_name]['enabled'] = False"
+        "    get_config().repair['heuristics'][repair_name]['enabled'] = False"
     )
     console.print("```")
     console.print()
@@ -89,7 +89,7 @@ def example_3_priority_reordering():
     console.rule("[bold]Example 3: Priority Reordering[/bold]")
     console.print()
 
-    console.print("💡 [dim]Use case: Find optimal repair execution order[/dim]")
+    console.print("[-] [dim]Use case: Find optimal repair execution order[/dim]")
     console.print()
     console.print(
         "Hypothesis: Fixing group overlaps first may reduce cascading violations"
@@ -99,10 +99,10 @@ def example_3_priority_reordering():
     console.print("```python")
     console.print("# Prioritize group overlaps")
     console.print(
-        'REPAIR_HEURISTICS_CONFIG["heuristics"]["repair_group_overlaps"]["priority"] = 1'
+        'get_config().repair["heuristics"]["repair_group_overlaps"]["priority"] = 1'
     )
     console.print(
-        'REPAIR_HEURISTICS_CONFIG["heuristics"]["repair_availability_violations"]["priority"] = 2'
+        'get_config().repair["heuristics"]["repair_availability_violations"]["priority"] = 2'
     )
     console.print("```")
     console.print()
@@ -114,7 +114,7 @@ def example_4_debugging_constraint():
     console.print()
 
     console.print(
-        "💡 [dim]Use case: Isolate violations to understand their root cause[/dim]"
+        "[-] [dim]Use case: Isolate violations to understand their root cause[/dim]"
     )
     console.print()
     console.print(
@@ -125,7 +125,7 @@ def example_4_debugging_constraint():
     console.print("```python")
     console.print("# Disable availability repair to see violations clearly")
     console.print(
-        'REPAIR_HEURISTICS_CONFIG["heuristics"]["repair_availability_violations"]["enabled"] = False'
+        'get_config().repair["heuristics"]["repair_availability_violations"]["enabled"] = False'
     )
     console.print()
     console.print("# Run GA and examine violation report")
@@ -140,7 +140,7 @@ def example_5_thesis_experiment():
     console.print()
 
     console.print(
-        "💡 [dim]Use case: Compare GA with vs without repair heuristics[/dim]"
+        "[-] [dim]Use case: Compare GA with vs without repair heuristics[/dim]"
     )
     console.print()
     console.print("Experimental conditions:")
@@ -151,20 +151,20 @@ def example_5_thesis_experiment():
 
     console.print("```python")
     console.print("# Baseline: No repairs")
-    console.print('REPAIR_HEURISTICS_CONFIG["enabled"] = False')
+    console.print('get_config().repair["enabled"] = False')
     console.print()
     console.print("# Treatment 1: Basic repairs only")
-    console.print('REPAIR_HEURISTICS_CONFIG["enabled"] = True')
-    console.print("for name in REPAIR_HEURISTICS_CONFIG['heuristics']:")
+    console.print('get_config().repair["enabled"] = True')
+    console.print("for name in get_config().repair['heuristics']:")
     console.print(
         "    if name in ['repair_availability_violations', 'repair_group_overlaps']:"
     )
     console.print(
-        "        REPAIR_HEURISTICS_CONFIG['heuristics'][name]['enabled'] = True"
+        "        get_config().repair['heuristics'][name]['enabled'] = True"
     )
     console.print("    else:")
     console.print(
-        "        REPAIR_HEURISTICS_CONFIG['heuristics'][name]['enabled'] = False"
+        "        get_config().repair['heuristics'][name]['enabled'] = False"
     )
     console.print()
     console.print("# Treatment 2: All repairs (default)")
@@ -194,10 +194,10 @@ def main():
     console.rule()
     console.print()
     console.print(
-        "[dim]💡 Tip: Copy these examples to config/ga_params.py to experiment[/dim]"
+        "[dim][-] Tip: Copy these examples to config/ga_params.py to experiment[/dim]"
     )
     console.print(
-        "[dim]📖 See docs/REPAIR_REGISTRY_SYSTEM.md for complete documentation[/dim]"
+        "[dim] See docs/REPAIR_REGISTRY_SYSTEM.md for complete documentation[/dim]"
     )
     console.print()
 

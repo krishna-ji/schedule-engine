@@ -12,3 +12,6 @@ product-design/
 prompts/config/ga_params_optimized.py
 docs/nextphase/
 docs/backend-suggestion/prompts/prompt.txt
+prompts/thesis_generator.md
+random.txt
+test/

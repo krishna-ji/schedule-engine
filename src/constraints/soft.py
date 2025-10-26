@@ -11,10 +11,11 @@ from typing import List
 from collections import defaultdict
 from src.entities.decoded_session import CourseSession
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from config.time_config import (
+from src.utils.time_helpers import (
     get_midday_break_quanta,
     quantum_to_day_and_within_day,
 )
+from config import get_config
 
 # Global QuantumTimeSystem instance (initialized once)
 _QTS = QuantumTimeSystem()
@@ -200,12 +201,7 @@ def session_block_clustering_penalty(sessions: List[CourseSession]) -> int:
     Returns:
         Total penalty for non-preferred block sizes.
     """
-    from config.time_config import (
-        PREFERRED_BLOCK_SIZE_MIN,
-        PREFERRED_BLOCK_SIZE_MAX,
-        ISOLATED_SESSION_PENALTY,
-        OVERSIZED_BLOCK_PENALTY_PER_QUANTUM,
-    )
+    cfg = get_config().time
 
     penalty = 0
 
@@ -247,14 +243,14 @@ def session_block_clustering_penalty(sessions: List[CourseSession]) -> int:
             for block_size in blocks:
                 if block_size == 1:
                     # Isolated single quantum - heavy penalty
-                    penalty += ISOLATED_SESSION_PENALTY
-                elif block_size < PREFERRED_BLOCK_SIZE_MIN:
+                    penalty += cfg.isolated_session_penalty
+                elif block_size < cfg.preferred_block_size_min:
                     # Below minimum preferred size (shouldn't happen if min=2 and we penalize 1)
-                    penalty += PREFERRED_BLOCK_SIZE_MIN - block_size
-                elif block_size > PREFERRED_BLOCK_SIZE_MAX:
+                    penalty += cfg.preferred_block_size_min - block_size
+                elif block_size > cfg.preferred_block_size_max:
                     # Oversized block - penalize excess quanta
-                    excess = block_size - PREFERRED_BLOCK_SIZE_MAX
-                    penalty += excess * OVERSIZED_BLOCK_PENALTY_PER_QUANTUM
+                    excess = block_size - cfg.preferred_block_size_max
+                    penalty += excess * cfg.oversized_block_penalty_per_quantum
                 # else: block_size is 2 or 3 → no penalty (preferred)
 
     return penalty
@@ -291,16 +287,16 @@ def get_enabled_soft_constraints():
     Returns:
         Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
     """
-    from config.constraints import SOFT_CONSTRAINTS_CONFIG
-
     all_constraints = get_all_soft_constraints()
     enabled = {}
 
-    for name, config in SOFT_CONSTRAINTS_CONFIG.items():
-        if config["enabled"] and name in all_constraints:
+    cfg = get_config().soft_constraints
+    for name, func in all_constraints.items():
+        constraint_cfg = getattr(cfg, name, None)
+        if constraint_cfg and constraint_cfg.enabled:
             enabled[name] = {
-                "function": all_constraints[name],
-                "weight": config["weight"],
+                "function": func,
+                "weight": constraint_cfg.weight,
             }
 
     return enabled

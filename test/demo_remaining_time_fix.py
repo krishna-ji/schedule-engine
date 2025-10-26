@@ -109,7 +109,7 @@ def demo_evolution_progress():
     console.print(
         "[dim]Notice: Remaining time showed an estimate from the VERY FIRST generation![/dim]"
     )
-    console.print("[dim]No more annoying '-:--:--' blanks! 🎯[/dim]\n")
+    console.print("[dim]No more annoying '-:--:--' blanks! [/dim]\n")
 
 
 def main():
@@ -120,7 +120,7 @@ def main():
     demo_evolution_progress()
 
     console.print("=" * 70)
-    console.print("[bold green]✅ The fix is working perfectly![/bold green]")
+    console.print("[bold green] The fix is working perfectly![/bold green]")
     console.print("=" * 70)
     console.print("\n[cyan]Key improvements:[/cyan]")
     console.print("  • Remaining time shown from Gen 1 (rough estimate)")

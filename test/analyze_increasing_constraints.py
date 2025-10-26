@@ -32,7 +32,7 @@ constraints = [
 for c in constraints:
     change = gen100[c] - gen0[c]
     pct = (change / gen0[c] * 100) if gen0[c] > 0 else 0
-    status = "❌ WORSE" if change > 0 else "✅ BETTER" if change < 0 else "➖ SAME"
+    status = "[!ERR] WORSE" if change > 0 else "BETTER" if change < 0 else " SAME"
     print(
         f"{c:30s}: {gen0[c]:6.0f} → {gen100[c]:6.0f} ({change:+6.0f}, {pct:+6.1f}%) {status}"
     )
@@ -70,7 +70,7 @@ for c in constraints:
         )
 
 print("\n" + "=" * 70)
-print("🔍 ROOT CAUSE ANALYSIS")
+print("ROOT CAUSE ANALYSIS")
 print("=" * 70)
 
 # Identify the culprit
@@ -81,27 +81,29 @@ avail = gen100["availability_violations"] - gen0["availability_violations"]
 
 print("\nProblem Summary:")
 if no_group < 0:
-    print(f"  ✅ Group overlaps: DECREASING ({no_group:.0f})")
+    print(f"  [OK] Group overlaps: DECREASING ({no_group:.0f})")
 else:
-    print(f"  ❌ Group overlaps: INCREASING (+{no_group:.0f}) - CRITICAL!")
+    print(f"  [!ERR] Group overlaps: INCREASING (+{no_group:.0f}) - CRITICAL!")
 
 if no_instructor > 0:
-    print(f"  ❌ Instructor conflicts: INCREASING (+{no_instructor:.0f}) - CRITICAL!")
+    print(
+        f"  [!ERR] Instructor conflicts: INCREASING (+{no_instructor:.0f}) - CRITICAL!"
+    )
 else:
-    print(f"  ✅ Instructor conflicts: DECREASING ({no_instructor:.0f})")
+    print(f"  [OK] Instructor conflicts: DECREASING ({no_instructor:.0f})")
 
 if room_type < 0:
-    print(f"  ✅ Room type mismatches: DECREASING ({room_type:.0f})")
+    print(f"  [OK] Room type mismatches: DECREASING ({room_type:.0f})")
 else:
-    print(f"  ❌ Room type mismatches: INCREASING (+{room_type:.0f})")
+    print(f"  [!ERR] Room type mismatches: INCREASING (+{room_type:.0f})")
 
 if avail < 0:
-    print(f"  ✅ Availability violations: DECREASING ({avail:.0f})")
+    print(f"  [OK] Availability violations: DECREASING ({avail:.0f})")
 else:
-    print(f"  ❌ Availability violations: INCREASING (+{avail:.0f}) - CRITICAL!")
+    print(f"  [!ERR] Availability violations: INCREASING (+{avail:.0f}) - CRITICAL!")
 
 print("\n" + "=" * 70)
-print("💡 LIKELY ROOT CAUSES")
+print("[ANALYZE] LIKELY ROOT CAUSES")
 print("=" * 70)
 
 issues = []
