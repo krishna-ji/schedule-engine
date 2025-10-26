@@ -31,10 +31,18 @@ from src.decoder.individual_decoder import decode_individual
 from src.core.types import SchedulingContext
 from src.core.ga_scheduler import GAScheduler, GAConfig
 from src.validation import validate_input
+from src.validation.feasibility_checker import (
+    check_feasibility,
+    generate_feasibility_report_file,
+)
 from src.workflows.reporting import generate_reports
 from src.utils.logger import GALogger
 from config.constraints import HARD_CONSTRAINTS_CONFIG, SOFT_CONSTRAINTS_CONFIG
 from config.ga_params import REPAIR_HEURISTICS_CONFIG
+from config.feasibility_config import (
+    GENERATE_FEASIBILITY_REPORT,
+    SAVE_REPORT_ON_SUCCESS,
+)
 
 console = Console()
 
@@ -148,7 +156,31 @@ def run_standard_workflow(
         console.print("   [bold green]✓[/bold green] Input validation passed\n")
 
     # ========================================
-    # Step 3.5: Create Multiprocessing Pool
+    # Step 3.5: Feasibility Check
+    # ========================================
+    console.print("[bold magenta]Checking Problem Feasibility...[/bold magenta]\n")
+
+    is_feasible, feasibility_report = check_feasibility(
+        context.courses, context.instructors, context.rooms, context.groups, qts
+    )
+
+    # Generate feasibility report file if requested
+    if GENERATE_FEASIBILITY_REPORT and (is_feasible or SAVE_REPORT_ON_SUCCESS):
+        feasibility_report_path = os.path.join(output_dir, "feasibility_report.txt")
+        generate_feasibility_report_file(feasibility_report, feasibility_report_path)
+        console.print(
+            f"   [dim]Feasibility report:[/dim] [cyan]{feasibility_report_path}[/cyan]\n"
+        )
+
+    # If not feasible and FAIL_ON_INFEASIBILITY=True, check_feasibility already raised error
+    # If we're here, either it's feasible or FAIL_ON_INFEASIBILITY=False
+    if not is_feasible:
+        console.print(
+            "[yellow]⚠ Proceeding despite infeasibility (FAIL_ON_INFEASIBILITY=False)[/yellow]\n"
+        )
+
+    # ========================================
+    # Step 3.6: Create Multiprocessing Pool
     # ========================================
     pool = None
 

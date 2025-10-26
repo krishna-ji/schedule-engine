@@ -22,5 +22,79 @@ When generating or suggesting commit messages for this repository:
 - **Exports & Reports** `export_everything` writes JSON plus plots into `output/evaluation_<timestamp>/`. Plot modules under `src/exporter/` require the same directory structure. Calendar appearance is controlled via `config/calendar_config.py`.
 - **Workflows** Run the solver with `python main.py`. Dependencies: DEAP, Matplotlib (install with `pip install -r requirements.txt` when available, otherwise `pip install deap matplotlib`). With no automated tests, shorten `config/ga_params.NGEN` for quick smoke runs.
 - **Warnings & Defaults** When availability is absent, groups default to operating quanta, instructors/rooms become fully available. Existing warning prints highlight missing enrollments/qualifications; keep them when extending validation.
-- **Documentation** Keep project docs inside `docs/`. **Be VERY concise**: focus on concepts, architecture, and design decisions ONLY—NO code snippets (only if absolutely crucial can use code snippets), NO detailed implementations, NO verbose explanations. Structure: problem → solution approach → key components. Use bullet points. Max 1-2 short paragraphs per major topic. Reference module names for details (e.g., "see `constraints/hard.py`") rather than explaining code. Split theory from implementation. Avoid filler words. Document WHY (rationale, tradeoffs), not HOW (code does that).
 - **Style Notes** Match existing ASCII-only style, Sunday-first ordering for schedules, and reuse shared constants (e.g., `QuantumTimeSystem.DAY_NAMES`) when adding new reports.
+
+## Documentation Policy (Bifurcated System)
+
+### 1. Code Documentation: Docstrings Only
+- **All code must be documented using Python docstrings** (functions, classes, modules).
+- Docstrings are the single source of truth for what code does.
+- **Never create separate .md files to document code**—code documents itself.
+
+### 2. Minor Changes: Changelog in `docs/code/`
+- For **routine bugfixes, small enhancements, or refactoring** that don't alter core architecture:
+  - Add a **single timestamped entry** to the appropriate changelog:
+    - `docs/code/BUGFIX.md` - Bug fixes
+    - `docs/code/ENHANCE.md` - Minor enhancements
+    - `docs/code/REFACTOR.md` - Code refactoring
+    - Create additional changelogs as needed (e.g., `PERF.md`, `DATA.md`)
+  - **Format**: `## [YYYY-MM-DD] Brief description` + list of affected files
+  - **No detailed explanations**—just timestamp, description, files
+  - **Example**:
+    ```markdown
+    ## [2025-10-26] Fixed incorrect penalty in group gap constraint
+    - `src/constraints/soft.py`
+    ```
+
+### 3. Major Changes: Thesis Reports in `docs/for_report/`
+- For **significant architectural, algorithmic, or core logic changes** (e.g., new chromosome structure, repair strategy, constraint category):
+  - Create a **new file** in `docs/for_report/` (e.g., `adaptive_repair_mechanism.md`)
+  - Write in **formal, thesis-ready prose**—content must be publication-quality
+  - **Must begin with a comment block** suggesting thesis placement
+  - **Structure**: Problem → Solution → Implementation → Results/Trade-offs
+  - **Focus on WHY and WHAT**, not HOW (code does that)
+  - **Example start**:
+    ```markdown
+    <!-- Suggested thesis placement: Chapter 3 - Algorithmic Design, Section 3.4 -->
+    
+    ## Adaptive Repair Mechanism
+    
+    To address the challenge of constraint satisfaction in highly constrained
+    scheduling problems, the engine implements an adaptive repair mechanism...
+    ```
+
+### 4. What Requires Documentation?
+
+#### ✅ **Must Document** (Thesis Report in `docs/for_report/`)
+- New algorithms or heuristics
+- Architectural changes (e.g., chromosome structure)
+- New constraint categories or evaluation strategies
+- Novel optimization techniques
+- Changes to GA operators (selection, crossover, mutation logic)
+- Performance-critical design decisions
+
+#### 📝 **Changelog Only** (Entry in `docs/code/`)
+- Bugfixes
+- Minor refactoring (variable renames, code cleanup)
+- Small performance tweaks
+- Configuration changes
+- Data format adjustments
+- UI/output formatting changes
+
+#### ❌ **No Documentation Needed**
+- Typo fixes
+- Comment updates
+- Whitespace changes
+- Trivial variable renames
+
+### 5. Documentation File Naming
+- **Thesis Reports**: Use descriptive, topic-based names (e.g., `hybrid_population_initialization.md`, `nsga2_selection_mechanism.md`)
+- **Changelogs**: Use category-based names (e.g., `BUGFIX.md`, `ENHANCE.md`, `REFACTOR.md`)
+
+### 6. When in Doubt
+- **Ask**: "Would this go in my thesis?"
+  - **Yes** → Create thesis report in `docs/for_report/`
+  - **No** → Add changelog entry in `docs/code/`
+- **Ask**: "Did I change the algorithm or just fix a bug?"
+  - **Algorithm** → Thesis report
+  - **Bug/Tweak** → Changelog

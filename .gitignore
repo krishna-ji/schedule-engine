@@ -12,3 +12,5 @@ product-design/
 prompts/config/ga_params_optimized.py
 docs/nextphase/
 docs/backend-suggestion/prompts/prompt.txt
+prompts/
+!prompts/prompts.txt

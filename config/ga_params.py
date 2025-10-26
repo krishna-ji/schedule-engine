@@ -3,12 +3,12 @@
 
 # Number of generations - adjust based on population size
 # Larger populations often need fewer generations to converge
-NGEN = 100  # Production run
+NGEN = 200  # Production run
 
 # Population size - INCREASED for better multiprocessing utilization
 # Larger populations keep all CPU cores busy during parallel fitness evaluation
 # Use POP_SIZE=10 for quick testing, 100+ for production runs
-POP_SIZE = 10  # Production run - INCREASED from 10
+POP_SIZE = 20  # Production run - INCREASED from 10
 
 
 # Crossover and mutation probabilities optimized for constraint-aware population
@@ -70,12 +70,12 @@ REPAIR_HEURISTICS_CONFIG = {
     # Global Repair Settings
     # ========================================
     "enabled": True,  # Production test with repairs enabled
-    "max_iterations": 2,  # OPTIMIZED: reduced from 5 → 2 for performance (convergence typically happens in 1-2 iterations)
+    "max_iterations": 3,  # CRITICAL: Increased from 2 → 3 for better availability violation fixing
     # When to apply repairs
     "apply_after_mutation": True,  # Fix violations after mutation (recommended)
-    "apply_after_crossover": False,  # Disabled - mutations already repaired, crossover usually preserves feasibility
+    "apply_after_crossover": True,  # CRITICAL FIX: Enable to prevent crossover from breaking repairs
     # Memetic mode - apply intensive local search to elite solutions
-    "memetic_mode": True,  # ENABLED for elite refinement (Phase 1.1)
+    "memetic_mode": False,  # DISABLED: Not helping with stuck violations, redirect effort to global repair
     "elite_percentage": 0.1,  # OPTIMIZED: Top 10% only (reduced from 20%) - less overhead
     "memetic_iterations": 5,  # OPTIMIZED: reduced from 10 → 5 for balance between quality and speed
     # Threshold-based repair (optional)
@@ -109,7 +109,7 @@ REPAIR_HEURISTICS_CONFIG = {
         # Stagnation-based trigger
         "stagnation_trigger": {
             "enabled": True,  # Enable stagnation detection
-            "window": 5,  # Generations without improvement to consider stagnant
+            "window": 3,  # OPTIMIZED: Reduced from 5 → 3 to detect stagnation faster and trigger repairs sooner
             "metric": "best_hc",  # Metric to track: "best_hc", "avg_hc", "best_fitness"
             "threshold": 0.0,  # Minimum improvement required (0 = any improvement counts)
         },
@@ -122,12 +122,12 @@ REPAIR_HEURISTICS_CONFIG = {
         # Action when triggered (normal trigger)
         "trigger_action": {
             "repair_mode": "full",  # Switch to "full" repair (from "selective")
-            "max_iterations": 5,  # More intensive than normal (normal=2)
+            "max_iterations": 8,  # More intensive than normal (normal=2) - INCREASED from 5 to 8
         },
         # Action for intensive trigger (every intensive_interval)
         "intensive_action": {
             "repair_mode": "full",  # Full repair mode
-            "max_iterations": 10,  # Maximum intensity
+            "max_iterations": 15,  # Maximum intensity - INCREASED from 10 to 15
         },
     },
     # ========================================
