@@ -265,6 +265,12 @@ class GAMetrics:
         detailed_hard: Per-constraint hard violation tracking
         detailed_soft: Per-constraint soft penalty tracking
         repair_stats: Repair statistics per generation
+        hypervolume: Hypervolume indicator per generation (multi-objective quality)
+        spacing: Spacing metric per generation (Pareto front uniformity)
+        pareto_front_size: Number of non-dominated solutions per generation
+        igd: Inverted Generational Distance per generation (convergence + coverage)
+        spread: Spread metric per generation (extent + distribution)
+        feasibility_rate: Percentage of feasible solutions per generation
     """
 
     hard_violations: List[float] = field(default_factory=list)
@@ -272,9 +278,20 @@ class GAMetrics:
     diversity: List[float] = field(default_factory=list)
     detailed_hard: Dict[str, List[float]] = field(default_factory=dict)
     detailed_soft: Dict[str, List[float]] = field(default_factory=dict)
-    repair_stats: List[Dict] = field(
-        default_factory=list
-    )  # NEW: Track repairs per generation
+    repair_stats: List[Dict] = field(default_factory=list)
+
+    # Phase 1: Essential metrics
+    hypervolume: List[float] = field(default_factory=list)
+    spacing: List[float] = field(default_factory=list)
+    feasibility_rate: List[float] = field(default_factory=list)
+    pareto_front_size: List[int] = field(default_factory=list)
+
+    # Phase 2: Advanced metrics
+    igd: List[float] = field(default_factory=list)
+    spread: List[float] = field(default_factory=list)
+
+    # Reference front for IGD calculation (set once, used throughout)
+    reference_front: List = field(default_factory=list)
 
 
 class GAScheduler:
@@ -371,6 +388,9 @@ class GAScheduler:
 
             self.violation_heatmap = ViolationHeatmap()
             console.print("[dim]   Violation heatmap tracking: ENABLED[/dim]")
+
+        # NEW: Hypervolume reference point (initialized during first metric tracking)
+        self._hypervolume_ref_point = None
 
     def setup_toolbox(self):
         """Initialize DEAP toolbox with operators."""
@@ -1002,6 +1022,19 @@ class GAScheduler:
             gen: Generation number (-1 for initial population, 0+ for evolved generations)
             event_tracker: Optional EventTracker with events from this generation
         """
+        # Import new metrics modules
+        from src.metrics.hypervolume import (
+            calculate_hypervolume,
+            get_hypervolume_reference_point,
+        )
+        from src.metrics.pareto_metrics import (
+            calculate_spacing,
+            calculate_inverted_generational_distance,
+            calculate_spread,
+            get_pareto_front_size,
+        )
+        from src.metrics.convergence import calculate_constraint_satisfaction_rate
+
         # Basic metrics
         self.metrics.hard_violations.append(
             min(ind.fitness.values[0] for ind in self.population)
@@ -1011,6 +1044,51 @@ class GAScheduler:
         )
         diversity = average_pairwise_diversity(self.population)
         self.metrics.diversity.append(diversity)
+
+        # Phase 1: Essential multi-objective metrics
+        # Calculate hypervolume (use consistent reference point)
+        if gen == 0 or gen == -1:
+            # First generation: establish reference point
+            self._hypervolume_ref_point = get_hypervolume_reference_point(
+                self.population, margin=0.1
+            )
+
+        hv = calculate_hypervolume(self.population, self._hypervolume_ref_point)
+        self.metrics.hypervolume.append(hv)
+
+        # Calculate spacing (Pareto front uniformity)
+        spacing = calculate_spacing(self.population)
+        self.metrics.spacing.append(spacing)
+
+        # Count Pareto front size
+        pf_size = get_pareto_front_size(self.population)
+        self.metrics.pareto_front_size.append(pf_size)
+
+        # Calculate feasibility rate
+        feas_rate = calculate_constraint_satisfaction_rate(self.population)
+        self.metrics.feasibility_rate.append(feas_rate)
+
+        # Phase 2: Advanced metrics (IGD, Spread)
+        # IGD requires reference front - use initial population as reference
+        if gen == -1 or gen == 0:
+            # Store initial Pareto front as reference
+            pareto_front = tools.sortNondominated(
+                self.population, len(self.population), first_front_only=True
+            )[0]
+            self.metrics.reference_front = [ind for ind in pareto_front]
+
+        # Calculate IGD if reference front exists
+        if self.metrics.reference_front:
+            igd = calculate_inverted_generational_distance(
+                self.population, self.metrics.reference_front
+            )
+            self.metrics.igd.append(igd)
+        else:
+            self.metrics.igd.append(0.0)
+
+        # Calculate spread
+        spread = calculate_spread(self.population)
+        self.metrics.spread.append(spread)
 
         # Detailed constraint breakdown
         best = tools.selBest(self.population, 1)[0]
