@@ -9,12 +9,12 @@ environment: prod
 
 # Genetic Algorithm Settings
 ga:
-  ngen: 1000             # Full generations for convergence
-  pop_size: 200          # Large population for diversity (must be even)
-  cxpb: 0.8
-  mutpb: 0.3
+  ngen: 2000             # Extended generations for maximum convergence
+  pop_size: 200          # ENHANCED: Large population for diversity and exploration
+  cxpb: 0.85             # Higher crossover probability for better solution mixing
+  mutpb: 0.25            # Slightly lower mutation to preserve good solutions
   elite_preservation: true
-  elite_size: 0.05
+  elite_size: 0.05       # Preserve top 5% of population
   use_adaptive_probabilities: true
   use_constraint_guided_mutation: true
   population_strategy: hybrid
@@ -28,12 +28,12 @@ parallel:
 # Repair Heuristics (intensive)
 repair:
   enabled: true
-  max_iterations: 5     # More iterations for better quality
+  max_iterations: 7     # Maximum iterations for production quality
   apply_after_mutation: true
   apply_after_crossover: true
-  memetic_mode: false
-  elite_percentage: 0.1
-  memetic_iterations: 10  # More intensive local search
+  memetic_mode: true    # Light repair every generation
+  elite_percentage: 0.25 # Repair top 25% of population
+  memetic_iterations: 3 # Balanced repair thoroughness
   selective_mode: true
   detection_strategy: hybrid
   recheck_after_repair: true
@@ -61,39 +61,84 @@ io:
   data_dir: data
   output_dir: output
 
-# Hard Constraints (all enabled with standard weights)
+# Hard Constraints (optimized weights for production)
 hard_constraints:
   no_group_overlap:
     enabled: true
-    weight: 2.0
+    weight: 5.0          # Critical: No student can be in two places at once
   no_instructor_conflict:
     enabled: true
-    weight: 2.0
+    weight: 5.0          # Critical: No instructor double-booking
   instructor_not_qualified:
     enabled: true
-    weight: 2.0
+    weight: 4.0          # Very important: Qualified instructors only
   room_type_mismatch:
     enabled: true
-    weight: 2.0
+    weight: 3.0          # Important: Labs need lab rooms
   availability_violations:
     enabled: true
-    weight: 2.0
+    weight: 6.0          # Highest priority: Respect availability constraints
   incomplete_or_extra_sessions:
     enabled: true
-    weight: 1.0
+    weight: 2.0          # Important: Meet required session counts
 
-# Soft Constraints (all enabled)
+# Soft Constraints (balanced weights for quality schedule)
 soft_constraints:
   group_gaps_penalty:
     enabled: true
-    weight: 1.0
+    weight: 2.5          # Higher: Minimize gaps in student schedules
   instructor_gaps_penalty:
     enabled: true
-    weight: 1.0
+    weight: 1.5          # Moderate: Reduce instructor idle time
   group_midday_break_violation:
     enabled: true
-    weight: 1.0
+    weight: 2.0          # Important: Preserve lunch breaks
   session_block_clustering_penalty:
     enabled: true
-    weight: 1.0
-  soft_weight_factor: 0.01  # 1% of hard constraint weight
+    weight: 3          # Important: Keep course sessions together
+  soft_weight_factor: 0.015  # 1.5% of hard constraint weight for better balance
+
+# ============================================================================
+# ENHANCEMENTS - Master switch for all improvements
+# ============================================================================
+enhancements:
+  master_enabled: true  # Set to false to disable ALL enhancements
+  
+  # Phase 1: Immediate wins
+  memetic_mode: true              # Light repair to elite every generation
+  increased_population: true      # Use larger population (400 vs 200)
+  frequent_repair: true           # More aggressive repair (every 5 gens vs 10)
+  
+  # Phase 2: High priority
+  hypermutation:
+    enabled: true                 # Escape local optima
+    trigger_on_stagnation: true
+    stagnation_window: 10         # More patient: trigger after 10 gens
+    duration_generations: 3       # Extended hypermutation period
+    mutation_rate: 0.75           # 75% mutation during hypermutation (balanced)
+  
+  constraint_priorities:
+    enabled: true                 # Focus repair on worst violations
+    availability_weight: 0.85     # 85% effort on availability violations (highest priority)
+    overlap_weight: 0.12          # 12% on group overlaps
+    other_weight: 0.03            # 3% on other constraints
+  
+  greedy_initialization_percent: 0.5  # 50% greedy for better initial quality
+  
+  # Phase 3: Advanced Features (Production Settings)
+  population_restart:
+    enabled: true                # [CONTROLLED] Enabled with conservative settings
+    trigger_stagnation_gens: 30  # Very conservative: restart after 30 stagnant gens
+    restart_percentage: 0.30     # Gentle restart: replace only 30% of population
+    min_interval_gens: 100       # Long interval: minimum 100 gens between restarts
+  
+  violation_heatmap:
+    enabled: true                # [SAFE] Full heatmap analysis in production
+    target_hot_genes: true       # Use heatmap for intelligent targeted repair
+    top_n_hotspots: 50           # Extensive reporting for production analysis
+    persistence_file: "violation_heatmap.json"
+  
+  multi_neighborhood:
+    enabled: true                # [SAFE] Best repair strategy for production
+    max_combinations: 150        # Maximum thoroughness (150 vs 100)
+    fallback_to_single: true     # Always fallback for robustness

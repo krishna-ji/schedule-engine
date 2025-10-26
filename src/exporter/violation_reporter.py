@@ -60,43 +60,43 @@ def generate_violation_report(
     if group_violations:
         report_lines.extend(_format_group_violations(group_violations))
     else:
-        report_lines.append("✓ No Group Overlap Violations")
+        report_lines.append("[OK}No Group Overlap Violations")
         report_lines.append("")
 
     if instructor_violations:
         report_lines.extend(_format_instructor_violations(instructor_violations))
     else:
-        report_lines.append("✓ No Instructor Conflict Violations")
+        report_lines.append("[OK}No Instructor Conflict Violations")
         report_lines.append("")
 
     if room_violations:
         report_lines.extend(_format_room_violations(room_violations))
     else:
-        report_lines.append("✓ No Room Conflict Violations")
+        report_lines.append("[OK}No Room Conflict Violations")
         report_lines.append("")
 
     if qualification_violations:
         report_lines.extend(_format_qualification_violations(qualification_violations))
     else:
-        report_lines.append("✓ No Instructor Qualification Violations")
+        report_lines.append("[OK}No Instructor Qualification Violations")
         report_lines.append("")
 
     if room_type_violations:
         report_lines.extend(_format_room_type_violations(room_type_violations))
     else:
-        report_lines.append("✓ No Room Type Mismatch Violations")
+        report_lines.append("[OK}No Room Type Mismatch Violations")
         report_lines.append("")
 
     if availability_violations:
         report_lines.extend(_format_availability_violations(availability_violations))
     else:
-        report_lines.append("✓ No Availability Violations")
+        report_lines.append("[OK}No Availability Violations")
         report_lines.append("")
 
     if schedule_violations:
         report_lines.extend(_format_schedule_violations(schedule_violations))
     else:
-        report_lines.append("✓ No Schedule Completeness Violations")
+        report_lines.append("[OK}No Schedule Completeness Violations")
         report_lines.append("")
 
     report_lines.append("=" * 80)

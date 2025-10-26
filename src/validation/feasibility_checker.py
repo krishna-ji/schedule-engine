@@ -221,7 +221,7 @@ def _check_instructor_workload(
 
     message = f"Demand: {total_demand} quanta, Supply: {total_supply} quanta"
     if passed:
-        message += f" ✓ (Utilization: {utilization_rate:.1f}%)"
+        message += f" [OK}(Utilization: {utilization_rate:.1f}%)"
     else:
         shortage = total_demand - total_supply
         message += f" ✗ (Shortage: {shortage} quanta, {shortage * qts.QUANTUM_MINUTES // 60} hours)"
@@ -328,7 +328,7 @@ def _check_instructor_qualification_bottleneck(
     passed = len(bottlenecks) == 0
 
     if passed:
-        message = f"All {total_courses} courses have sufficient qualified instructor availability ✓"
+        message = f"All {total_courses} courses have sufficient qualified instructor availability ...OK!..."
     else:
         message = f"{problematic_courses}/{total_courses} courses lack qualified instructor capacity ✗"
 
@@ -449,7 +449,7 @@ def _check_room_capacity_bottleneck(
     )
 
     if passed:
-        message = f"Seat-hours sufficient: {total_seat_hours:,} available, {total_student_hours:,} needed ✓ ({utilization:.1f}%)"
+        message = f"Seat-hours sufficient: {total_seat_hours:,} available, {total_student_hours:,} needed [OK}({utilization:.1f}%)"
     else:
         message = f"Seat-hours insufficient ✗"
 
@@ -575,7 +575,7 @@ def _check_room_feature_bottleneck(
     passed = len(bottlenecks) == 0
 
     if passed:
-        message = f"All required room features have sufficient availability ✓"
+        message = f"All required room features have sufficient availability ...OK!..."
     else:
         message = f"{len(bottlenecks)} room feature(s) have capacity shortages ✗"
 
@@ -678,7 +678,7 @@ def _check_group_pigeonhole(
     passed = len(overloaded_groups) == 0
 
     if passed:
-        message = f"All {len(groups)} groups have feasible course loads ✓"
+        message = f"All {len(groups)} groups have feasible course loads ...OK!..."
         if max_utilization > 80:
             message += f" (Max utilization: {max_utilization:.1f}%)"
     else:
@@ -728,7 +728,7 @@ def _check_group_pigeonhole(
 def _print_check_result(result: FeasibilityResult):
     """Print a single check result with rich formatting."""
     if result.passed:
-        icon = "✓"
+        icon = "...OK!..."
         color = "green"
     else:
         icon = "✗"
@@ -778,7 +778,7 @@ def _print_summary(report: FeasibilityReport):
     if report.is_feasible:
         console.print(
             Panel(
-                "[bold green]✓ PROBLEM IS FEASIBLE[/bold green]\n\n"
+                "[bold green][OK}PROBLEM IS FEASIBLE[/bold green]\n\n"
                 "All critical checks passed. The GA should be able to find a solution.\n"
                 "[dim]Note: This doesn't guarantee a perfect solution exists, but fundamental constraints are satisfied.[/dim]",
                 border_style="green",

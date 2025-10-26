@@ -7,6 +7,7 @@ Extracted from monolithic main.py for better testability and separation of conce
 
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass, field
+from pathlib import Path
 from deap import base, tools
 import random
 import time
@@ -314,6 +315,7 @@ class GAScheduler:
         soft_constraint_names: List[str],
         pool=None,  # NEW: Optional multiprocessing Pool
         logger=None,  # NEW: Optional GALogger for runtime logging
+        constraint_logger=None,  # NEW: Optional ConstraintLogger for detailed constraint logging
         seed: Optional[int] = None,  # NEW: Random seed for worker initialization
     ):
         """
@@ -326,6 +328,7 @@ class GAScheduler:
             soft_constraint_names: Names of enabled soft constraints
             pool: Optional multiprocessing.Pool for parallel fitness evaluation
             logger: Optional GALogger for file-based logging (writes to logger.txt, not console)
+            constraint_logger: Optional ConstraintLogger for detailed constraint logging (writes to logger_constraints.csv)
             seed: Random seed for reproducibility
 
         Adaptive Repair:
@@ -338,6 +341,7 @@ class GAScheduler:
         self.soft_constraint_names = soft_constraint_names
         self.pool = pool  # NEW: Store pool for parallel evaluation
         self.logger = logger  # NEW: Store logger for runtime logging
+        self.constraint_logger = constraint_logger  # NEW: Store constraint logger
         self.seed = seed  # NEW: Store seed for worker initialization
 
         self.toolbox = None
@@ -350,6 +354,23 @@ class GAScheduler:
         # ADAPTIVE REPAIR: Stagnation tracking for hybrid strategy
         self.stagnation_counter = 0
         self.last_best_hc = float("inf")
+
+        # ENHANCEMENT: Hypermutation tracking
+        self.hypermutation_active = False
+        self.hypermutation_countdown = 0
+
+        # ENHANCEMENT: Population restart tracking
+        self.last_restart_gen = -1000  # Track last restart generation
+        self.prolonged_stagnation_counter = 0  # Separate counter for restart
+
+        # ENHANCEMENT: Violation heatmap for targeted repair
+        self.violation_heatmap = None
+        enhancement_cfg = get_config().enhancements
+        if enhancement_cfg.master_enabled and enhancement_cfg.violation_heatmap.enabled:
+            from src.metrics.violation_heatmap import ViolationHeatmap
+
+            self.violation_heatmap = ViolationHeatmap()
+            console.print("[dim]   Violation heatmap tracking: ENABLED[/dim]")
 
     def setup_toolbox(self):
         """Initialize DEAP toolbox with operators."""
@@ -444,7 +465,7 @@ class GAScheduler:
 
         eval_time = time.time() - eval_start
         console.print(
-            f"   [green]✓[/green] Evaluated {len(self.population)} individuals in [cyan]{eval_time:.1f}s[/cyan] "
+            f"   [green]...OK!...[/green] Evaluated {len(self.population)} individuals in [cyan]{eval_time:.1f}s[/cyan] "
             f"([dim]{eval_time/len(self.population):.2f}s per individual[/dim])"
         )
 
@@ -468,6 +489,29 @@ class GAScheduler:
                 time_seconds=eval_time,
                 diversity=diversity,
                 repairs=0,
+                notes="Initial population",
+            )
+
+        # Log initial population to constraint logger
+        if self.constraint_logger:
+            diversity = average_pairwise_diversity(self.population)
+            hard_details, soft_details = evaluate_detailed(
+                best,
+                self.context.courses,
+                self.context.instructors,
+                self.context.groups,
+                self.context.rooms,
+            )
+            self.constraint_logger.log_generation(
+                generation=-1,
+                hard_total=best.fitness.values[0],
+                soft_total=best.fitness.values[1],
+                hard_breakdown=hard_details,
+                soft_breakdown=soft_details,
+                diversity=diversity,
+                time_seconds=eval_time,
+                repair_stats={},
+                events=[],
                 notes="Initial population",
             )
 
@@ -520,6 +564,10 @@ class GAScheduler:
                 gen_time = time.time() - gen_start
                 gen_times.append(gen_time)
 
+                # Update timing in constraint logger (last logged entry)
+                if self.constraint_logger:
+                    self.constraint_logger.update_last_generation_time(gen_time)
+
                 progress_bar.advance(task1)
                 time_bar.advance(task2)
 
@@ -539,7 +587,7 @@ class GAScheduler:
                 # (User requested: display after every gen, not just first 5 or every 25)
                 best = tools.selBest(self.population, 1)[0]
                 console.print(
-                    f"[dim]✓ Gen {gen+1}/{self.config.generations}: "
+                    f"[dim]...OK!... Gen {gen+1}/{self.config.generations}: "
                     f"Hard={best.fitness.values[0]:.0f}, "
                     f"Soft={best.fitness.values[1]:.2f}, "
                     f"Time={gen_time:.1f}s[/dim]"
@@ -570,7 +618,7 @@ class GAScheduler:
                 best = tools.selBest(self.population, 1)[0]
                 if best.fitness.values[0] == 0:
                     console.print(
-                        f"\n✓ [bold green]Perfect solution found at generation {gen + 1}![/bold green]"
+                        f"\n...OK!... [bold green]Perfect solution found at generation {gen + 1}![/bold green]"
                     )
 
                     # Log early stop
@@ -587,6 +635,19 @@ class GAScheduler:
                             notes="Early stop - perfect solution",
                         )
                     break
+
+        # ENHANCEMENT: Save violation heatmap at end
+        if self.violation_heatmap:
+            enhancement_cfg = get_config().enhancements
+            output_dir = get_config().io.output_dir
+            heatmap_file = (
+                Path(output_dir) / enhancement_cfg.violation_heatmap.persistence_file
+            )
+            self.violation_heatmap.save_to_file(str(heatmap_file))
+            console.print(f"[dim]   Saved violation heatmap to {heatmap_file}[/dim]")
+
+            # Print summary
+            self.violation_heatmap.print_summary(console)
 
     def _evolve_generation(self, gen: int, progress=None):
         """
@@ -607,6 +668,11 @@ class GAScheduler:
             gen: Current generation number (0-indexed)
             progress: Optional rich.progress.Progress for UI updates
         """
+        # Import EventTracker for event logging
+        from src.utils.constraint_logger import EventTracker
+
+        event_tracker = EventTracker()
+
         repair_config = self.config.repair_config
         generation_repair_stats = {
             "instructor_availability_fixes": 0,
@@ -637,12 +703,50 @@ class GAScheduler:
                 improvement = self.last_best_hc - current_best_hc
                 if improvement <= stagnation_cfg.get("threshold", 0.0):
                     self.stagnation_counter += 1
+                    self.prolonged_stagnation_counter += 1  # Track for restart
                 else:
                     self.stagnation_counter = 0  # Reset on improvement
+                    self.prolonged_stagnation_counter = 0  # Reset on improvement
                     self.last_best_hc = current_best_hc
 
                 if self.stagnation_counter >= stagnation_cfg.get("window", 5):
                     stagnation_detected = True
+                    event_tracker.add("stagnation_detected")
+
+                    # ENHANCEMENT: Trigger hypermutation on stagnation
+                    enhancement_cfg = get_config().enhancements
+                    if (
+                        enhancement_cfg.master_enabled
+                        and enhancement_cfg.hypermutation.enabled
+                        and enhancement_cfg.hypermutation.trigger_on_stagnation
+                    ):
+                        # Activate hypermutation
+                        self.hypermutation_active = True
+                        self.hypermutation_countdown = (
+                            enhancement_cfg.hypermutation.duration_generations
+                        )
+                        console.print(
+                            f"[bold magenta]⚡ Gen {gen}: HYPERMUTATION activated "
+                            f"(mutpb: {self.config.mutation_prob:.1f} → "
+                            f"{enhancement_cfg.hypermutation.mutation_rate:.1f} "
+                            f"for {self.hypermutation_countdown} gens)[/bold magenta]"
+                        )
+                        event_tracker.add("hypermutation_start")
+
+                # ENHANCEMENT: Check for population restart (RISKY - last resort)
+                restart_cfg = enhancement_cfg.population_restart
+                if (
+                    enhancement_cfg.master_enabled
+                    and restart_cfg.enabled
+                    and self.prolonged_stagnation_counter
+                    >= restart_cfg.trigger_stagnation_gens
+                ):
+                    # Check minimum interval since last restart
+                    gens_since_restart = gen - self.last_restart_gen
+                    if gens_since_restart >= restart_cfg.min_interval_gens:
+                        self._restart_population(gen)
+                        event_tracker.add("population_restart")
+                        self.last_best_hc = float("inf")  # Force re-evaluation
 
             # Periodic trigger detection
             is_periodic_gen = periodic_cfg.get("enabled", False) and (
@@ -665,6 +769,7 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = intensive_action.get(
                     "max_iterations", 10
                 )
+                event_tracker.add("intensive_repair")
                 console.print(
                     f"[bold red]Gen {gen}: Intensive repair triggered (every {periodic_cfg.get('intensive_interval', 20)} gens)[/bold red]"
                 )
@@ -680,6 +785,7 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = trigger_action.get(
                     "max_iterations", 5
                 )
+                event_tracker.add("stagnation_repair")
                 console.print(
                     f"[bold yellow]⚠ Gen {gen}: Stagnation detected ({self.stagnation_counter} gens) - applying repair[/bold yellow]"
                 )
@@ -696,12 +802,26 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = trigger_action.get(
                     "max_iterations", 5
                 )
+                event_tracker.add("periodic_repair")
                 console.print(
                     f"[bold cyan] Gen {gen}: Periodic repair triggered (every {periodic_cfg.get('interval', 10)} gens)[/bold cyan]"
                 )
 
         # PHASE 1.3: Get adaptive probabilities based on search progress
         cxpb, mutpb = self._get_adaptive_probabilities(gen)
+
+        # ENHANCEMENT: Override mutation probability if hypermutation is active
+        if self.hypermutation_active:
+            enhancement_cfg = get_config().enhancements
+            mutpb = enhancement_cfg.hypermutation.mutation_rate
+            event_tracker.add("hypermutation_active")
+            self.hypermutation_countdown -= 1
+            if self.hypermutation_countdown <= 0:
+                self.hypermutation_active = False
+                event_tracker.add("hypermutation_ended")
+                console.print(
+                    f"[dim]   Gen {gen}: Hypermutation ended, returning to normal mutpb[/dim]"
+                )
 
         # Selection
         offspring = self.toolbox.select(self.population, len(self.population))
@@ -837,8 +957,8 @@ class GAScheduler:
         # Store generation repair stats
         self.metrics.repair_stats.append(generation_repair_stats)
 
-        # Track metrics
-        self._track_metrics(gen)
+        # Track metrics (also logs to constraint logger)
+        self._track_metrics(gen, event_tracker)
 
     def _get_adaptive_probabilities(self, gen: int) -> tuple[float, float]:
         """
@@ -874,12 +994,13 @@ class GAScheduler:
 
         return crossover_prob, mutation_prob
 
-    def _track_metrics(self, gen: int):
+    def _track_metrics(self, gen: int, event_tracker=None):
         """
         Record metrics for current generation.
 
         Args:
             gen: Generation number (-1 for initial population, 0+ for evolved generations)
+            event_tracker: Optional EventTracker with events from this generation
         """
         # Basic metrics
         self.metrics.hard_violations.append(
@@ -888,7 +1009,8 @@ class GAScheduler:
         self.metrics.soft_penalties.append(
             min(ind.fitness.values[1] for ind in self.population)
         )
-        self.metrics.diversity.append(average_pairwise_diversity(self.population))
+        diversity = average_pairwise_diversity(self.population)
+        self.metrics.diversity.append(diversity)
 
         # Detailed constraint breakdown
         best = tools.selBest(self.population, 1)[0]
@@ -905,6 +1027,46 @@ class GAScheduler:
 
         for name in self.soft_constraint_names:
             self.metrics.detailed_soft[name].append(soft_details[name])
+
+        # ENHANCEMENT: Record violations to heatmap
+        if self.violation_heatmap and gen >= 0:  # Skip initial population
+            from src.metrics.violation_recorder import record_violations_to_heatmap
+
+            record_violations_to_heatmap(best, self.context, self.violation_heatmap)
+            self.violation_heatmap.record_generation(gen)
+
+        # Log to constraint logger if available
+        if self.constraint_logger:
+            # Get repair stats for this generation
+            repair_stats = {}
+            if gen >= 0 and gen < len(self.metrics.repair_stats):
+                repair_stats = self.metrics.repair_stats[gen]
+            elif gen == -1:  # Initial population
+                repair_stats = {}
+
+            # Get events from event tracker
+            events = []
+            if event_tracker and event_tracker.has_events():
+                events = event_tracker.get_events()
+
+            # Determine notes
+            notes = ""
+            if best.fitness.values[0] == 0:
+                notes = "Perfect solution"
+
+            # Log to constraint CSV (crash-safe - flushes immediately)
+            self.constraint_logger.log_generation(
+                generation=gen,
+                hard_total=best.fitness.values[0],
+                soft_total=best.fitness.values[1],
+                hard_breakdown=hard_details,
+                soft_breakdown=soft_details,
+                diversity=diversity,
+                time_seconds=0.0,  # Will be updated by evolve() loop
+                repair_stats=repair_stats,
+                events=events,
+                notes=notes,
+            )
 
         # Periodic detailed logging every 4 generations (user requested: longer loops now)
         # Also show on first gen (gen=0) and last gen
@@ -969,6 +1131,75 @@ class GAScheduler:
             for name, value in soft_details.items():
                 if value > 0:
                     console.print(f"      • {name}: {value:.2f}")
+
+    def _restart_population(self, gen: int):
+        """
+        Population restart: Replace worst individuals with new random ones.
+
+        RISKY OPERATION: Destroys genetic information but reintroduces diversity.
+        Should only trigger as last resort after prolonged stagnation.
+
+        Strategy:
+        1. Sort population by fitness (worst first)
+        2. Keep best X% (elite preservation)
+        3. Generate new X% with hybrid strategy
+        4. Re-evaluate new individuals
+
+        Args:
+            gen: Current generation number (for logging)
+        """
+        enhancement_cfg = get_config().enhancements
+        restart_cfg = enhancement_cfg.population_restart
+
+        if not restart_cfg.enabled:
+            return
+
+        # Calculate how many to replace
+        restart_count = int(len(self.population) * restart_cfg.restart_percentage)
+        elite_count = len(self.population) - restart_count
+
+        console.print(
+            f"\n[bold red]🔄 Gen {gen}: POPULATION RESTART triggered![/bold red]"
+        )
+        console.print(
+            f"   [dim]Replacing worst {restart_count}/{len(self.population)} individuals "
+            f"({restart_cfg.restart_percentage*100:.0f}%)[/dim]"
+        )
+
+        # Sort by fitness (best first for NSGA-II multi-objective)
+        # Use lexicographic sort: hard constraints first, then soft
+        sorted_pop = sorted(
+            self.population,
+            key=lambda ind: (ind.fitness.values[0], ind.fitness.values[1]),
+        )
+
+        # Keep elite (best individuals)
+        elite = sorted_pop[:elite_count]
+
+        # Generate new individuals using hybrid strategy
+        new_individuals = self.toolbox.population(n=restart_count)
+
+        # Evaluate new individuals
+        console.print(f"   [cyan]Evaluating {restart_count} new individuals...[/cyan]")
+        fitness_values = list(self.toolbox.map(self.toolbox.evaluate, new_individuals))
+        for ind, fit in zip(new_individuals, fitness_values):
+            ind.fitness.values = fit
+
+        # Replace population
+        self.population[:] = elite + new_individuals
+
+        # Calculate diversity improvement
+        from src.metrics.diversity import average_pairwise_diversity
+
+        new_diversity = average_pairwise_diversity(self.population)
+
+        console.print(
+            f"   [green]...OK!... Restart complete! New diversity: {new_diversity:.4f}[/green]"
+        )
+
+        # Update tracking
+        self.last_restart_gen = gen
+        self.prolonged_stagnation_counter = 0  # Reset counter
 
     def get_best_solution(self):
         """
