@@ -7,12 +7,35 @@ Separate from logger.txt - provides granular per-generation constraint analysis.
 Features:
 - Detailed hard/soft constraint breakdown per generation
 - Diversity metrics tracking
+- Advanced metrics (hypervolume, spacing, IGD, spread)
 - Event logging (repair, hypermutation, stagnation, etc.)
+- **Enhanced repair tracking:** individuals repaired, crossover/mutation/memetic counts
 - Timing metrics (time per generation)
 - Crash-safe: Flushes after each generation (no data loss on crash)
 - CSV format for easy analysis in Excel/Python
 
-Output: logger_constraints.csv in output directory
+Output: logger_all.csv in output directory
+
+CSV Columns:
+- generation: Generation number (INIT for initial population)
+- hard_total: Sum of all hard constraint violations
+- soft_total: Sum of all soft constraint penalties
+- hard_<constraint_name>: Individual hard constraint values
+- soft_<constraint_name>: Individual soft constraint values
+- diversity: Population diversity metric (0-1)
+- hypervolume: NSGA-II quality indicator
+- spacing: Solution distribution uniformity
+- igd: Inverted Generational Distance
+- spread: Solution spread metric
+- time_seconds: Time taken for this generation
+- repairs_total: Total number of repairs performed
+- repairs_individuals_count: Number of individuals that received repairs
+- repairs_crossover_count: Total repairs applied after crossover
+- repairs_mutation_count: Total repairs applied after mutation
+- repairs_memetic_count: Total repairs from memetic local search
+- repairs_<type>: Breakdown by repair type (availability, overlap, room, etc.)
+- events: Semicolon-separated list of events (repair, stagnation, hypermutation, etc.)
+- notes: Optional notes (e.g., "Initial population", "Perfect solution")
 """
 
 import os
@@ -47,12 +70,12 @@ class ConstraintLogger:
         Initialize constraint logger.
 
         Args:
-            output_dir: Directory to write logger_constraints.csv
+            output_dir: Directory to write logger_all.csv
             hard_constraint_names: List of enabled hard constraint names
             soft_constraint_names: List of enabled soft constraint names
         """
         self.output_dir = output_dir
-        self.log_path = os.path.join(output_dir, "logger_constraints.csv")
+        self.log_path = os.path.join(output_dir, "logger_all.csv")
         self.hard_names = hard_constraint_names
         self.soft_names = soft_constraint_names
 
@@ -83,8 +106,18 @@ class ConstraintLogger:
         columns.extend(
             [
                 "diversity",
+                "hypervolume",  # NEW: NSGA-II quality metric
+                "spacing",  # NEW: Solution distribution metric
+                "igd",  # NEW: Inverted Generational Distance
+                "spread",  # NEW: Solution spread metric
                 "time_seconds",
+                # Repair totals
                 "repairs_total",
+                "repairs_individuals_count",  # NEW: How many individuals were repaired
+                "repairs_crossover_count",  # NEW: Repairs after crossover
+                "repairs_mutation_count",  # NEW: Repairs after mutation
+                "repairs_memetic_count",  # NEW: Repairs from memetic search
+                # Repair breakdowns by type
                 "repairs_instructor_availability",
                 "repairs_overlap",
                 "repairs_room",
@@ -112,6 +145,10 @@ class ConstraintLogger:
         soft_breakdown: Dict[str, float],
         diversity: float,
         time_seconds: float,
+        hypervolume: float = 0.0,
+        spacing: float = 0.0,
+        igd: float = 0.0,
+        spread: float = 0.0,
         repair_stats: Optional[Dict[str, int]] = None,
         events: Optional[List[str]] = None,
         notes: str = "",
@@ -127,6 +164,10 @@ class ConstraintLogger:
             soft_breakdown: Dict mapping constraint names to individual values
             diversity: Population diversity metric
             time_seconds: Time taken for this generation
+            hypervolume: Hypervolume indicator (NSGA-II quality metric)
+            spacing: Spacing metric (solution distribution)
+            igd: Inverted Generational Distance
+            spread: Solution spread metric
             repair_stats: Optional dict with repair statistics (from GAScheduler.metrics.repair_stats)
             events: Optional list of event strings (e.g., ["repair", "stagnation", "hypermutation"])
             notes: Optional notes string
@@ -150,6 +191,10 @@ class ConstraintLogger:
 
         # Add diversity and timing
         row.append(f"{diversity:.4f}")
+        row.append(f"{hypervolume:.6f}")
+        row.append(f"{spacing:.6f}")
+        row.append(f"{igd:.6f}")
+        row.append(f"{spread:.6f}")
         row.append(f"{time_seconds:.3f}")
 
         # Add repair statistics
@@ -157,6 +202,10 @@ class ConstraintLogger:
             repair_stats = {}
 
         row.append(str(repair_stats.get("total_fixes", 0)))
+        row.append(str(repair_stats.get("individuals_repaired", 0)))  # NEW
+        row.append(str(repair_stats.get("crossover_repairs", 0)))  # NEW
+        row.append(str(repair_stats.get("mutation_repairs", 0)))  # NEW
+        row.append(str(repair_stats.get("memetic_repairs", 0)))  # NEW
         row.append(str(repair_stats.get("instructor_availability_fixes", 0)))
         row.append(str(repair_stats.get("overlap_fixes", 0)))
         row.append(str(repair_stats.get("room_fixes", 0)))
@@ -242,12 +291,31 @@ class EventTracker:
     """
     Helper class to track events during a generation.
 
-    Events include:
-    - Repair triggers (periodic, stagnation, intensive)
-    - Hypermutation activation/deactivation
-    - Perfect solution found
-    - Early stopping
-    - Stagnation detection
+    Events tracked (logged in events column of logger_all.csv):
+
+    **Repair Events:**
+    - `crossover_repair_applied` - Repair applied after crossover operations
+    - `mutation_repair_applied` - Repair applied after mutation operations
+    - `memetic_repair_applied` - Memetic local search applied to elite individuals
+    - `periodic_repair` - Regular periodic repair triggered (every N generations)
+    - `stagnation_repair` - Repair triggered due to stagnation detection
+    - `intensive_repair` - High-intensity repair triggered (every M generations)
+
+    **Stagnation Events:**
+    - `stagnation_detected` - No improvement detected for X consecutive generations
+
+    **Hypermutation Events:**
+    - `hypermutation_start` - Hypermutation activated (increased mutation rate)
+    - `hypermutation_active` - Hypermutation is currently active
+    - `hypermutation_ended` - Hypermutation period ended, returning to normal
+
+    **Population Events:**
+    - `population_restart` - Partial population restart due to prolonged stagnation
+
+    **Solution Events:**
+    - `perfect_solution` - Perfect solution found (hard violations = 0)
+
+    **Format:** Events are semicolon-separated in the CSV (e.g., "stagnation_detected; hypermutation_start; crossover_repair_applied")
     """
 
     def __init__(self):

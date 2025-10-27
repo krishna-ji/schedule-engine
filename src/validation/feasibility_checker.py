@@ -33,7 +33,7 @@ from src.entities.instructor import Instructor
 from src.entities.room import Room
 from src.entities.group import Group
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from config import get_config
+from src.config import get_config
 
 console = Console()
 

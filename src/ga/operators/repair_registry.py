@@ -15,7 +15,7 @@ Usage:
 """
 
 from typing import Dict, Callable
-from config import get_config
+from src.config import get_config
 
 
 def get_all_repair_heuristics() -> Dict[str, Dict]:

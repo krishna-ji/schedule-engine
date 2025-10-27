@@ -2,7 +2,7 @@
 Configuration module - Clean YAML-based configuration.
 
 Usage:
-    from config import config
+    from src.config import config
 
     # Access config values
     ngen = config.ga.ngen
@@ -10,8 +10,8 @@ Usage:
     fail_on_infeasibility = config.feasibility.fail_on_infeasibility
 """
 
-from config.loader import load_config
-from config.models import Config
+from src.config.loader import load_config
+from src.config.models import Config
 
 # Global config object (set by main.py)
 config: Config = None

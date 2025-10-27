@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from config import get_config  # get_config().repair
+from src.config import get_config  # get_config().repair
 from src.ga.operators.repair_registry import (
     get_all_repair_heuristics,
     get_enabled_repair_heuristics,

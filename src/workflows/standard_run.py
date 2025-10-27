@@ -89,11 +89,11 @@ def run_standard_workflow(
     """
     # Load config if not provided
     if config is None:
-        from config import config as global_config
+        from src.config import config as global_config
 
         config = global_config
         if config is None:
-            from config.loader import load_config
+            from src.config.loader import load_config
 
             config = load_config()
 
@@ -269,6 +269,10 @@ def run_standard_workflow(
             "enabled": config.hard_constraints.incomplete_or_extra_sessions.enabled,
             "weight": config.hard_constraints.incomplete_or_extra_sessions.weight,
         },
+        "session_block_clustering_penalty": {
+            "enabled": config.hard_constraints.session_block_clustering_penalty.enabled,
+            "weight": config.hard_constraints.session_block_clustering_penalty.weight,
+        },
     }
 
     soft_constraints_dict = {
@@ -283,10 +287,6 @@ def run_standard_workflow(
         "group_midday_break_violation": {
             "enabled": config.soft_constraints.group_midday_break_violation.enabled,
             "weight": config.soft_constraints.group_midday_break_violation.weight,
-        },
-        "session_block_clustering_penalty": {
-            "enabled": config.soft_constraints.session_block_clustering_penalty.enabled,
-            "weight": config.soft_constraints.session_block_clustering_penalty.weight,
         },
     }
 
@@ -451,7 +451,7 @@ def run_standard_workflow(
     console.print(f"   • [dim]schedule.pdf[/dim]: Visual calendar")
     console.print(f"   • [dim]logger.txt[/dim]: Run summary and generation log")
     console.print(
-        f"   • [dim]logger_constraints.csv[/dim]: Detailed constraint breakdown (Excel-ready)"
+        f"   • [dim]logger_all.csv[/dim]: Complete generation-wise data (constraints, metrics, events)"
     )
     console.print(f"   • [dim]plots/[/dim]: Evolution charts")
     console.print()

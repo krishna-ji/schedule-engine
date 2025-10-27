@@ -1,7 +1,7 @@
 import random
 from typing import List
 from src.ga.sessiongene import SessionGene
-from config import get_config
+from src.config import get_config
 
 
 def crossover_course_group_aware(

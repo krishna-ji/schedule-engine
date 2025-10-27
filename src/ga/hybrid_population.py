@@ -50,7 +50,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
     population = []
 
     # ENHANCEMENT: Get greedy percentage from config
-    from config import get_config
+    from src.config import get_config
 
     enhancement_cfg = get_config().enhancements
 

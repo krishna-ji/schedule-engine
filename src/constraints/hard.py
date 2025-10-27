@@ -2,6 +2,12 @@ from typing import Dict, List
 from src.entities.course import Course
 from src.entities.decoded_session import CourseSession
 from collections import defaultdict
+from src.config import get_config
+from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.utils.time_helpers import quantum_to_day_and_within_day
+
+# Time system singleton
+_QTS = QuantumTimeSystem()
 
 
 def no_group_overlap(sessions: List[CourseSession]) -> int:
@@ -271,6 +277,104 @@ def incomplete_or_extra_sessions(
     return violations
 
 
+def session_block_clustering_penalty(sessions: List[CourseSession]) -> int:
+    """
+    Penalizes course sessions that are fragmented into undesirable block sizes.
+
+    Theory courses:
+    - Penalty of 1 for blocks greater than 3
+    - Penalty of 2 for isolated blocks (length 1), but first isolated slot is excused
+    - Preferred block sizes: 2-3 consecutive quanta
+
+    Practical courses:
+    - All sessions must be in a single coalesced block (no splits)
+    - Heavy penalty for fragmentation
+
+    Example (Theory):
+    - 6 quanta as [3,3] → 0 penalty (ideal)
+    - 6 quanta as [2,2,2] → 0 penalty (acceptable)
+    - 6 quanta as [1,2,3] → 0 penalty (first isolated slot excused)
+    - 6 quanta as [1,1,4] → 2 + 1 = 3 penalty (second isolated slot + oversized block)
+    - 6 quanta as [6] → 3 penalty (oversized by 3)
+
+    Example (Practical):
+    - 3 quanta as [3] → 0 penalty (ideal - single block)
+    - 3 quanta as [2,1] → 20 penalty (fragmented practical)
+
+    Args:
+        sessions: List of course sessions to evaluate.
+
+    Returns:
+        Total penalty for non-preferred block sizes.
+    """
+    cfg = get_config().time
+
+    penalty = 0
+
+    # Group sessions by (course_id, course_type, day) to find blocks
+    course_day_quanta = defaultdict(lambda: defaultdict(list))
+    course_type_map = {}  # Track course types
+
+    for session in sessions:
+        # Use course_id + course_type as unique identifier
+        course_key = (session.course_id, session.course_type)
+        course_type_map[course_key] = session.course_type
+
+        for q in session.session_quanta:
+            day, within_day = quantum_to_day_and_within_day(q, _QTS)
+            course_day_quanta[course_key][day].append(within_day)
+
+    # Analyze block sizes for each course on each day
+    for course_key, course_days in course_day_quanta.items():
+        course_type = course_type_map[course_key]
+
+        for day_quanta in course_days.values():
+            # Sort quanta to identify consecutive blocks
+            sorted_quanta = sorted(day_quanta)
+
+            # Find consecutive blocks
+            blocks = []
+            if sorted_quanta:
+                current_block = [sorted_quanta[0]]
+
+                for i in range(1, len(sorted_quanta)):
+                    if sorted_quanta[i] == sorted_quanta[i - 1] + 1:
+                        # Consecutive - add to current block
+                        current_block.append(sorted_quanta[i])
+                    else:
+                        # Gap - start new block
+                        blocks.append(len(current_block))
+                        current_block = [sorted_quanta[i]]
+
+                # Don't forget the last block
+                blocks.append(len(current_block))
+
+            # Apply penalties based on course type
+            if course_type.lower() == "practical":
+                # Practical courses: must be in a single block
+                if len(blocks) > 1:
+                    # Heavy penalty for fragmentation
+                    penalty += cfg.practical_fragmentation_penalty * (len(blocks) - 1)
+            else:
+                # Theory courses: apply refined penalty logic
+                isolated_count = 0
+
+                for block_size in blocks:
+                    if block_size == 1:
+                        # Isolated single quantum
+                        isolated_count += 1
+                        if isolated_count > cfg.theory_max_excused_isolated:
+                            # Excused slots exceeded, penalize subsequent ones
+                            penalty += cfg.theory_isolated_penalty
+                    elif block_size > cfg.preferred_block_size_max:
+                        # Oversized block - penalty per quantum beyond max
+                        excess = block_size - cfg.preferred_block_size_max
+                        penalty += excess * cfg.theory_oversized_penalty_per_quantum
+                    # Block sizes within preferred range have no penalty
+
+    return penalty
+
+
 # ---------------------------
 # Hard Constraint Registry
 # ---------------------------
@@ -288,6 +392,7 @@ def get_all_hard_constraints():
         "room_type_mismatch": room_type_mismatch,
         "availability_violations": availability_violations,
         "incomplete_or_extra_sessions": incomplete_or_extra_sessions,
+        "session_block_clustering_penalty": session_block_clustering_penalty,
     }
 
 
@@ -298,7 +403,7 @@ def get_enabled_hard_constraints():
     Returns:
         Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
     """
-    from config import get_config
+    from src.config import get_config
 
     all_constraints = get_all_hard_constraints()
     enabled = {}
