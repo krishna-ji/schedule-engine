@@ -2,7 +2,7 @@ name: "Development Configuration"
 environment: dev
 
 ga:
-  ngen: 200
+  ngen: 150
   pop_size: 100
   cxpb: 0.85
   mutpb: 0.25
