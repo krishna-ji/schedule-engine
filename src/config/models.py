@@ -79,20 +79,45 @@ class HardConstraintsConfig(BaseModel):
     incomplete_or_extra_sessions: ConstraintConfig = ConstraintConfig(
         enabled=True, weight=1.0
     )
+    session_block_clustering_penalty: ConstraintConfig = ConstraintConfig(
+        enabled=True, weight=2.0
+    )
+
+
+class SoftConstraintConfigWithPenalty(BaseModel):
+    """Single soft constraint configuration with penalty factors"""
+
+    enabled: bool = True
+    weight: float = Field(ge=0.0)
+    gap_penalty_per_quantum: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Penalty per gap quantum (for gap-based constraints)",
+    )
+    distance_penalty_per_quantum: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Penalty per quantum distance (for distance-based constraints)",
+    )
 
 
 class SoftConstraintsConfig(BaseModel):
     """Soft constraints configuration"""
 
-    group_gaps_penalty: ConstraintConfig = ConstraintConfig(enabled=True, weight=1.0)
-    instructor_gaps_penalty: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=1.0
+    group_gaps_penalty: SoftConstraintConfigWithPenalty = Field(
+        default_factory=lambda: SoftConstraintConfigWithPenalty(
+            enabled=True, weight=1.0, gap_penalty_per_quantum=1
+        )
     )
-    group_midday_break_violation: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=1.0
+    instructor_gaps_penalty: SoftConstraintConfigWithPenalty = Field(
+        default_factory=lambda: SoftConstraintConfigWithPenalty(
+            enabled=True, weight=1.0, gap_penalty_per_quantum=1
+        )
     )
-    session_block_clustering_penalty: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=1.0
+    group_midday_break_violation: SoftConstraintConfigWithPenalty = Field(
+        default_factory=lambda: SoftConstraintConfigWithPenalty(
+            enabled=True, weight=1.0, distance_penalty_per_quantum=1
+        )
     )
     soft_weight_factor: float = Field(default=0.01, ge=0.0, le=1.0)
 
@@ -123,30 +148,55 @@ class FeasibilityConfig(BaseModel):
 class TimeConfig(BaseModel):
     """Time and quantum settings"""
 
-    quantum_minutes: int = Field(default=60, ge=15, le=120)
-    earliest_preferred_time: str = "10:00"
-    latest_preferred_time: str = "17:00"
-    midday_break_start: str = "12:00"
-    midday_break_end: str = "14:00"
-    max_session_coalescence: int = Field(default=3, ge=1, le=6)
-    preferred_block_size_min: int = Field(default=2, ge=1, le=6)
-    preferred_block_size_max: int = Field(default=3, ge=1, le=6)
+    quantum_minutes: int = Field(ge=15, le=120)
+    earliest_preferred_time: str
+    latest_preferred_time: str
+    midday_break_start: str
+    midday_break_end: str
+    max_session_coalescence: int = Field(ge=1, le=6)
+    preferred_block_size_min: int = Field(ge=1, le=6)
+    preferred_block_size_max: int = Field(ge=1, le=6)
+
+    # Theory course block penalties
+    theory_isolated_penalty: int = Field(
+        ge=0,
+        le=100,
+        description="Penalty for isolated theory sessions (after first)",
+    )
+    theory_oversized_penalty_per_quantum: int = Field(
+        ge=0, le=10, description="Penalty per quantum for theory blocks > 3"
+    )
+    theory_max_excused_isolated: int = Field(
+        ge=0,
+        le=3,
+        description="Number of isolated sessions excused per course per day",
+    )
+
+    # Practical course block penalties
+    practical_fragmentation_penalty: int = Field(
+        ge=0,
+        le=100,
+        description="Penalty per split for fragmented practical sessions",
+    )
+
+    # Legacy parameters (kept for backward compatibility, may be deprecated)
     isolated_session_penalty: int = Field(default=5, ge=0, le=100)
     oversized_block_penalty_per_quantum: int = Field(default=1, ge=0, le=10)
-    max_sessions_per_day: int = Field(default=5, ge=1, le=12)
+
+    max_sessions_per_day: int = Field(ge=1, le=12)
 
 
 class IOConfig(BaseModel):
     """Input/output paths"""
 
-    data_dir: str = "data"
-    output_dir: str = "output"
+    data_dir: str
+    output_dir: str
 
 
 class CalendarConfig(BaseModel):
     """Calendar display settings"""
 
-    show_instructor: bool = True
+    show_instructor: bool = True  # Keep default (rarely changes)
     show_room: bool = True
     show_group: bool = True
 

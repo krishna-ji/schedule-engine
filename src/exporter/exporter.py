@@ -13,7 +13,7 @@ from src.entities.decoded_session import CourseSession
 from src.encoder.quantum_time_system import QuantumTimeSystem
 
 # Config values (used internally only)
-from config.calendar_config import (
+from src.config.calendar_config import (
     EXCAL_QUANTUM_MINUTES,
     EXCAL_START_HOUR,
     EXCAL_END_HOUR,

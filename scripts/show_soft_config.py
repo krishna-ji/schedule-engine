@@ -8,7 +8,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from config import get_config  # get_config().soft_constraints
+from src.config import get_config  # get_config().soft_constraints
 from src.constraints.soft import get_enabled_soft_constraints
 from src.utils.console import write_header, write_separator, write_info
 

@@ -1,0 +1,169 @@
+# ============================================================================
+# COMMON CONFIGURATION - Shared Defaults
+# ============================================================================
+# This file contains all common settings that are rarely changed across
+# environments. Environment-specific files (test/dev/prod) override only
+# what needs to change (like ngen, pop_size, weights).
+#
+# DO NOT duplicate these values in test/dev/prod configs!
+# Only override what's actually different per environment.
+
+# Time Configuration (Common)
+time:
+  quantum_minutes: 60
+  earliest_preferred_time: "10:00"
+  latest_preferred_time: "17:00"
+  midday_break_start: "12:00"
+  midday_break_end: "14:00"
+  max_session_coalescence: 3
+  max_sessions_per_day: 5
+  
+  # Block clustering settings
+  preferred_block_size_min: 2
+  preferred_block_size_max: 3
+  
+  # Theory course penalties (defaults - can override in prod)
+  theory_isolated_penalty: 2
+  theory_oversized_penalty_per_quantum: 1
+  theory_max_excused_isolated: 1
+  
+  # Practical course penalties (defaults - can override in prod)
+  practical_fragmentation_penalty: 20
+
+# I/O Paths (Common)
+io:
+  data_dir: data
+  output_dir: output
+
+# Calendar Display (Common)
+calendar:
+  show_instructor: true
+  show_room: true
+  show_group: true
+
+# GA Settings (Defaults - Always override in test/dev/prod!)
+ga:
+  cxpb: 0.8
+  mutpb: 0.3
+  elite_preservation: true
+  elite_size: 0.05
+  use_adaptive_probabilities: true
+  use_constraint_guided_mutation: true
+  population_strategy: hybrid
+  validate_population_integrity: false
+
+# Repair Heuristics (Defaults - Override per environment)
+repair:
+  enabled: true
+  apply_after_mutation: true
+  apply_after_crossover: true
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: true
+
+# Feasibility Checks (Common)
+feasibility:
+  enable_checks: true
+  tolerance_margin: 0.02
+  generate_report: true
+  show_console_output: true
+  save_report_on_success: true
+  checks:
+    instructor_workload:
+      enabled: true
+      severity: critical
+    instructor_qualification_bottleneck:
+      enabled: true
+      severity: critical
+    room_capacity_bottleneck:
+      enabled: true
+      severity: critical
+    room_feature_bottleneck:
+      enabled: true
+      severity: critical
+    group_pigeonhole:
+      enabled: true
+      severity: critical
+
+# Hard Constraints (Default Weights - Override in prod for stricter)
+hard_constraints:
+  no_group_overlap:
+    enabled: true
+    weight: 2.0
+  no_instructor_conflict:
+    enabled: true
+    weight: 2.0
+  instructor_not_qualified:
+    enabled: true
+    weight: 2.0
+  room_type_mismatch:
+    enabled: true
+    weight: 2.0
+  availability_violations:
+    enabled: true
+    weight: 2.0
+  incomplete_or_extra_sessions:
+    enabled: true
+    weight: 1.0
+  session_block_clustering_penalty:
+    enabled: true
+    weight: 2.0
+
+# Soft Constraints (Default Weights)
+soft_constraints:
+  group_gaps_penalty:
+    enabled: true
+    weight: 1.0
+    gap_penalty_per_quantum: 1  # Penalty for each gap quantum in group schedule
+  instructor_gaps_penalty:
+    enabled: true
+    weight: 1.0
+    gap_penalty_per_quantum: 1  # Penalty for each gap quantum in instructor schedule
+  group_midday_break_violation:
+    enabled: true
+    weight: 1.0
+    distance_penalty_per_quantum: 1  # Penalty per quantum distance from midday break
+  soft_weight_factor: 0.01
+
+# Enhancements (Common Defaults)
+enhancements:
+  master_enabled: true
+  
+  # Phase 1
+  memetic_mode: false
+  increased_population: false
+  frequent_repair: false
+  
+  # Phase 2
+  hypermutation:
+    enabled: false
+    trigger_on_stagnation: true
+    stagnation_window: 5
+    duration_generations: 2
+    mutation_rate: 0.8
+  
+  constraint_priorities:
+    enabled: true
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  
+  greedy_initialization_percent: 0.25
+  
+  # Phase 3
+  population_restart:
+    enabled: false
+    trigger_stagnation_gens: 15
+    restart_percentage: 0.5
+    min_interval_gens: 50
+  
+  violation_heatmap:
+    enabled: true
+    target_hot_genes: true
+    top_n_hotspots: 20
+    persistence_file: "violation_heatmap.json"
+  
+  multi_neighborhood:
+    enabled: true
+    max_combinations: 50
+    fallback_to_single: true

@@ -30,7 +30,7 @@ from src.ga.population import generate_course_group_aware_population
 from src.ga.operators.crossover import crossover_course_group_aware
 from src.ga.operators.mutation import mutate_individual
 from src.ga.evaluator.fitness import evaluate
-from config import get_config
+from src.config import get_config
 from src.ga.evaluator.detailed_fitness import evaluate_detailed
 from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
@@ -530,6 +530,10 @@ class GAScheduler:
                 soft_breakdown=soft_details,
                 diversity=diversity,
                 time_seconds=eval_time,
+                hypervolume=0.0,  # Will be calculated in first _track_metrics call
+                spacing=0.0,
+                igd=0.0,
+                spread=0.0,
                 repair_stats={},
                 events=[],
                 notes="Initial population",
@@ -704,6 +708,11 @@ class GAScheduler:
             "clustering_fixes": 0,
             "session_count_fixes": 0,
             "total_fixes": 0,
+            # NEW: Per-individual tracking
+            "individuals_repaired": 0,  # Count of individuals that had repairs
+            "crossover_repairs": 0,  # Total repairs after crossover
+            "mutation_repairs": 0,  # Total repairs after mutation
+            "memetic_repairs": 0,  # Total repairs from memetic search
         }
 
         # ADAPTIVE REPAIR: Hybrid trigger logic (stagnation + periodic)
@@ -876,10 +885,42 @@ class GAScheduler:
                         selective=selective_mode,
                     )
 
+                    # Track if any repairs were made
+                    total_fixes_this_pair = stats1.get("total_fixes", 0) + stats2.get(
+                        "total_fixes", 0
+                    )
+                    if total_fixes_this_pair > 0:
+                        if "crossover_repair_applied" not in [
+                            e for e in event_tracker.events
+                        ]:
+                            event_tracker.add("crossover_repair_applied")
+
+                        # Count individuals repaired
+                        if stats1.get("total_fixes", 0) > 0:
+                            generation_repair_stats["individuals_repaired"] += 1
+                        if stats2.get("total_fixes", 0) > 0:
+                            generation_repair_stats["individuals_repaired"] += 1
+
+                        # Track crossover-specific repairs
+                        generation_repair_stats[
+                            "crossover_repairs"
+                        ] += total_fixes_this_pair
+
                     # Aggregate all repair stats
-                    for key in generation_repair_stats.keys():
-                        if key in stats1 and key in stats2:
-                            generation_repair_stats[key] += stats1[key] + stats2[key]
+                    for key in [
+                        "instructor_availability_fixes",
+                        "overlap_fixes",
+                        "room_fixes",
+                        "instructor_conflict_fixes",
+                        "qualification_fixes",
+                        "room_type_fixes",
+                        "clustering_fixes",
+                        "session_count_fixes",
+                    ]:
+                        if key in stats1:
+                            generation_repair_stats[key] += stats1[key]
+                        if key in stats2:
+                            generation_repair_stats[key] += stats2[key]
 
         # Mutation (using adaptive probability)
         for mutant in offspring:
@@ -911,8 +952,31 @@ class GAScheduler:
                             selective=selective_mode,
                         )
 
+                        # Track if any repairs were made
+                        total_fixes = stats.get("total_fixes", 0)
+                        if total_fixes > 0:
+                            if "mutation_repair_applied" not in [
+                                e for e in event_tracker.events
+                            ]:
+                                event_tracker.add("mutation_repair_applied")
+
+                            # Count individual repaired
+                            generation_repair_stats["individuals_repaired"] += 1
+
+                            # Track mutation-specific repairs
+                            generation_repair_stats["mutation_repairs"] += total_fixes
+
                         # Aggregate all repair stats
-                        for key in generation_repair_stats.keys():
+                        for key in [
+                            "instructor_availability_fixes",
+                            "overlap_fixes",
+                            "room_fixes",
+                            "instructor_conflict_fixes",
+                            "qualification_fixes",
+                            "room_type_fixes",
+                            "clustering_fixes",
+                            "session_count_fixes",
+                        ]:
                             if key in stats:
                                 generation_repair_stats[key] += stats[key]
 
@@ -943,6 +1007,8 @@ class GAScheduler:
         ):
             from src.ga.operators.repair import repair_individual_unified
 
+            event_tracker.add("memetic_repair_applied")
+
             # Use selective mode from config
             selective_mode = repair_config.get("selective_mode", True)
 
@@ -958,11 +1024,26 @@ class GAScheduler:
                     selective=selective_mode,
                 )
 
+                # Track memetic repairs
+                total_fixes = stats.get("total_fixes", 0)
+                if total_fixes > 0:
+                    generation_repair_stats["individuals_repaired"] += 1
+                    generation_repair_stats["memetic_repairs"] += total_fixes
+
                 # Invalidate fitness after repair
                 del individual.fitness.values
 
                 # Aggregate all memetic stats
-                for key in generation_repair_stats.keys():
+                for key in [
+                    "instructor_availability_fixes",
+                    "overlap_fixes",
+                    "room_fixes",
+                    "instructor_conflict_fixes",
+                    "qualification_fixes",
+                    "room_type_fixes",
+                    "clustering_fixes",
+                    "session_count_fixes",
+                ]:
                     if key in stats:
                         generation_repair_stats[key] += stats[key]
 
@@ -1131,6 +1212,9 @@ class GAScheduler:
             notes = ""
             if best.fitness.values[0] == 0:
                 notes = "Perfect solution"
+                if event_tracker and "perfect_solution" not in events:
+                    event_tracker.add("perfect_solution")
+                    events = event_tracker.get_events()  # Refresh events list
 
             # Log to constraint CSV (crash-safe - flushes immediately)
             self.constraint_logger.log_generation(
@@ -1141,6 +1225,10 @@ class GAScheduler:
                 soft_breakdown=soft_details,
                 diversity=diversity,
                 time_seconds=0.0,  # Will be updated by evolve() loop
+                hypervolume=hv,
+                spacing=spacing,
+                igd=self.metrics.igd[-1] if self.metrics.igd else 0.0,
+                spread=spread,
                 repair_stats=repair_stats,
                 events=events,
                 notes=notes,

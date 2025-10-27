@@ -8,7 +8,7 @@ import argparse
 from rich.console import Console
 from rich.panel import Panel
 from src.workflows import run_standard_workflow
-from config import init_config
+from src.config import init_config
 
 console = Console()
 
@@ -52,10 +52,14 @@ def main():
     )
     args = parser.parse_args()
 
-    # Determine config path
+    # Determine config strategy
     config_path = args.config
     if args.env:
-        config_path = f"configs/{args.env}.yaml"
+        # Set environment variable for common.yaml + env.yaml merge
+        import os
+
+        os.environ["ENVIRONMENT"] = args.env
+        config_path = None  # Trigger merge strategy in loader
 
     # Load configuration
     try:

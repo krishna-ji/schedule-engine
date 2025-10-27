@@ -1227,24 +1227,21 @@ def repair_session_clustering(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
     """
-    ENHANCED: Aggressively improve session clustering by rearranging quanta into ideal 2-3 blocks.
+    ENHANCED: Course-type-aware session clustering repair.
+
+    Theory courses:
+    - Rearrange into 2-3 quantum blocks
+    - Excuse first isolated session per day
+    - Split oversized blocks (>3)
+
+    Practical courses:
+    - CRITICAL: Force all sessions into a single coalesced block
+    - Heavy penalty for any fragmentation
+    - Try to consolidate all quanta on same day if possible
 
     CRITICAL: This repair ONLY rearranges existing quanta - NEVER adds or removes them.
     Preserves the population invariant that each course-group pair has exactly
     the required number of quanta.
-
-    ENHANCED Strategy (Much more aggressive than before):
-    1. Analyze entire gene to identify fragmentation pattern
-    2. For genes with 4+ quanta and poor clustering:
-       - Completely REBUILD quanta distribution from scratch
-       - Create optimal 2-3 quantum blocks across different days
-       - Use same clustering logic as initialization
-    3. For genes with isolated 1-quantum blocks:
-       - Try local moves to adjacent positions (original behavior)
-    4. For oversized blocks (4+ consecutive):
-       - Try to split into better 2-3 block distribution
-
-    This is MUCH more effective than the old "move one isolated quantum" approach!
 
     Args:
         individual: List of SessionGene objects to repair
@@ -1257,13 +1254,9 @@ def repair_session_clustering(
         get_midday_break_quanta,
         quantum_to_day_and_within_day,
     )
-    from src.utils.time_helpers import (
-        PREFERRED_BLOCK_SIZE_MIN,
-        PREFERRED_BLOCK_SIZE_MAX,
-        ISOLATED_SESSION_PENALTY,
-        OVERSIZED_BLOCK_PENALTY_PER_QUANTUM,
-    )
+    from src.config import get_config
 
+    cfg = get_config()
     qts = QuantumTimeSystem()
     fixes = 0
 
@@ -1272,96 +1265,170 @@ def repair_session_clustering(
         if len(gene.quanta) < 2:
             continue
 
-        # ENHANCED: Calculate current clustering penalty
-        current_penalty = _calculate_gene_clustering_penalty(gene, qts)
+        # Get course type for this gene
+        course = context.courses_by_id.get(gene.course_id)
+        if not course:
+            continue
+
+        course_type = course.course_type.lower()
+
+        # Calculate current clustering penalty
+        current_penalty = _calculate_gene_clustering_penalty_typed(
+            gene, qts, course_type, cfg
+        )
 
         # If already perfect, skip
         if current_penalty == 0:
             continue
 
-        # STRATEGY 1: For genes with 4+ quanta, try complete rebuild
-        if len(gene.quanta) >= 4 and current_penalty >= 5:
-            success = _rebuild_gene_clustering(gene, individual, context, qts)
+        # PRACTICAL COURSES: Force single block
+        if course_type == "practical":
+            success = _rebuild_practical_single_block(gene, individual, context, qts)
             if success:
-                new_penalty = _calculate_gene_clustering_penalty(gene, qts)
-                if new_penalty < current_penalty:
-                    fixes += 1
-                    continue  # Move to next gene
-
-        # STRATEGY 2: For oversized blocks, try to split them
-        if len(gene.quanta) >= 4:
-            success = _split_oversized_blocks(gene, individual, context, qts)
-            if success:
-                new_penalty = _calculate_gene_clustering_penalty(gene, qts)
+                new_penalty = _calculate_gene_clustering_penalty_typed(
+                    gene, qts, course_type, cfg
+                )
                 if new_penalty < current_penalty:
                     fixes += 1
                     continue
 
-        # STRATEGY 3: Original approach - move isolated quanta (kept for compatibility)
-        day_quanta_map = defaultdict(list)
-        for q in gene.quanta:
-            day, within_day = quantum_to_day_and_within_day(q, qts)
-            day_quanta_map[day].append((within_day, q))
-
-        # Find and fix isolated blocks
-        for day, quanta_pairs in day_quanta_map.items():
-            if len(quanta_pairs) < 2:
-                continue
-
-            sorted_pairs = sorted(quanta_pairs, key=lambda x: x[0])
-            within_day_quanta = [w for w, _ in sorted_pairs]
-            global_quanta = [g for _, g in sorted_pairs]
-
-            blocks = []
-            current_block = [0]
-
-            for i in range(1, len(within_day_quanta)):
-                if within_day_quanta[i] == within_day_quanta[i - 1] + 1:
-                    current_block.append(i)
-                else:
-                    blocks.append(current_block)
-                    current_block = [i]
-            blocks.append(current_block)
-
-            for block_indices in blocks:
-                if len(block_indices) == 1:
-                    isolated_idx = block_indices[0]
-                    isolated_within = within_day_quanta[isolated_idx]
-                    isolated_global = global_quanta[isolated_idx]
-
-                    success = _try_rearrange_isolated_quantum(
-                        gene,
-                        isolated_global,
-                        isolated_within,
-                        day,
-                        within_day_quanta,
-                        global_quanta,
-                        isolated_idx,
-                        individual,
-                        context,
-                        qts,
+        # THEORY COURSES: Optimize 2-3 block distribution
+        else:
+            # STRATEGY 1: For genes with 4+ quanta, try complete rebuild
+            if len(gene.quanta) >= 4 and current_penalty >= 5:
+                success = _rebuild_gene_clustering(gene, individual, context, qts)
+                if success:
+                    new_penalty = _calculate_gene_clustering_penalty_typed(
+                        gene, qts, course_type, cfg
                     )
-
-                    if success:
+                    if new_penalty < current_penalty:
                         fixes += 1
-                        break
+                        continue  # Move to next gene
+
+            # STRATEGY 2: For oversized blocks, try to split them
+            if len(gene.quanta) >= 4:
+                success = _split_oversized_blocks(gene, individual, context, qts)
+                if success:
+                    new_penalty = _calculate_gene_clustering_penalty_typed(
+                        gene, qts, course_type, cfg
+                    )
+                    if new_penalty < current_penalty:
+                        fixes += 1
+                        continue
+
+            # STRATEGY 3: Original approach - move isolated quanta (kept for compatibility)
+            day_quanta_map = defaultdict(list)
+            for q in gene.quanta:
+                day, within_day = quantum_to_day_and_within_day(q, qts)
+                day_quanta_map[day].append((within_day, q))
+
+            # Find and fix isolated blocks
+            for day, quanta_pairs in day_quanta_map.items():
+                if len(quanta_pairs) < 2:
+                    continue
+
+                sorted_pairs = sorted(quanta_pairs, key=lambda x: x[0])
+                within_day_quanta = [w for w, _ in sorted_pairs]
+                global_quanta = [g for _, g in sorted_pairs]
+
+                blocks = []
+                current_block = [0]
+
+                for i in range(1, len(within_day_quanta)):
+                    if within_day_quanta[i] == within_day_quanta[i - 1] + 1:
+                        current_block.append(i)
+                    else:
+                        blocks.append(current_block)
+                        current_block = [i]
+                blocks.append(current_block)
+
+                for block_indices in blocks:
+                    if len(block_indices) == 1:
+                        isolated_idx = block_indices[0]
+                        isolated_within = within_day_quanta[isolated_idx]
+                        isolated_global = global_quanta[isolated_idx]
+
+                        success = _try_rearrange_isolated_quantum(
+                            gene,
+                            isolated_global,
+                            isolated_within,
+                            day,
+                            within_day_quanta,
+                            global_quanta,
+                            isolated_idx,
+                            individual,
+                            context,
+                            qts,
+                        )
+
+                        if success:
+                            fixes += 1
+                            break
 
     return fixes
 
 
-def _calculate_gene_clustering_penalty(
-    gene: SessionGene, qts: QuantumTimeSystem
+def _rebuild_practical_single_block(
+    gene: SessionGene,
+    individual: List[SessionGene],
+    context: SchedulingContext,
+    qts: QuantumTimeSystem,
+) -> bool:
+    """
+    Rebuild practical course gene to have all quanta in a single consecutive block.
+
+    Strategy:
+    1. Try to find a single day with enough consecutive free slots
+    2. If not possible on one day, find best consecutive block across any days
+    3. Preserve existing day if possible to minimize disruption
+
+    Args:
+        gene: SessionGene to repair
+        individual: Full individual for conflict checking
+        context: Scheduling context
+        qts: QuantumTimeSystem instance
+
+    Returns:
+        True if successfully consolidated, False otherwise
+    """
+    from src.utils.time_helpers import quantum_to_day_and_within_day
+
+    num_quanta = len(gene.quanta)
+
+    # Get all available quanta for this gene (considering conflicts)
+    free_quanta_by_day = _get_free_quanta_by_day(gene, individual, context, qts)
+
+    # Try each day to find consecutive block of required length
+    for day, free_quanta in free_quanta_by_day.items():
+        if len(free_quanta) < num_quanta:
+            continue
+
+        # Sort quanta to find consecutive blocks
+        sorted_quanta = sorted(free_quanta)
+
+        # Look for consecutive block of required size
+        for i in range(len(sorted_quanta) - num_quanta + 1):
+            # Check if we have num_quanta consecutive quanta starting at i
+            candidate_block = sorted_quanta[i : i + num_quanta]
+
+            # Verify they are truly consecutive
+            is_consecutive = all(
+                candidate_block[j] == candidate_block[0] + j for j in range(num_quanta)
+            )
+
+            if is_consecutive:
+                # Found a valid consecutive block!
+                gene.quanta = sorted(candidate_block)
+                return True
+
+    return False
+
+
+def _calculate_gene_clustering_penalty_typed(
+    gene: SessionGene, qts: QuantumTimeSystem, course_type: str, cfg
 ) -> int:
-    """Calculate clustering penalty for a single gene's quanta."""
-    from src.utils.time_helpers import (
-        get_midday_break_quanta,
-        quantum_to_day_and_within_day,
-    )
-    from src.utils.time_helpers import (
-        PREFERRED_BLOCK_SIZE_MAX,
-        ISOLATED_SESSION_PENALTY,
-        OVERSIZED_BLOCK_PENALTY_PER_QUANTUM,
-    )
+    """Calculate clustering penalty for a single gene's quanta based on course type."""
+    from src.utils.time_helpers import quantum_to_day_and_within_day
 
     penalty = 0
     day_quanta_map = defaultdict(list)
@@ -1384,13 +1451,22 @@ def _calculate_gene_clustering_penalty(
                     current_block_size = 1
             blocks.append(current_block_size)
 
-        for block_size in blocks:
-            if block_size == 1:
-                penalty += ISOLATED_SESSION_PENALTY
-            elif block_size > PREFERRED_BLOCK_SIZE_MAX:
-                penalty += (
-                    block_size - PREFERRED_BLOCK_SIZE_MAX
-                ) * OVERSIZED_BLOCK_PENALTY_PER_QUANTUM
+        # Apply course-type-specific penalties
+        if course_type == "practical":
+            # Practical: penalize any fragmentation
+            if len(blocks) > 1:
+                penalty += cfg.time.practical_fragmentation_penalty * (len(blocks) - 1)
+        else:
+            # Theory: refined penalty logic
+            isolated_count = 0
+            for block_size in blocks:
+                if block_size == 1:
+                    isolated_count += 1
+                    if isolated_count > cfg.time.theory_max_excused_isolated:
+                        penalty += cfg.time.theory_isolated_penalty
+                elif block_size > cfg.time.preferred_block_size_max:
+                    excess = block_size - cfg.time.preferred_block_size_max
+                    penalty += excess * cfg.time.theory_oversized_penalty_per_quantum
 
     return penalty
 
@@ -2014,7 +2090,7 @@ def repair_individual(
         return stats
 
     # ENHANCEMENT: Apply constraint-specific priority weighting
-    from config import get_config
+    from src.config import get_config
 
     enhancement_cfg = get_config().enhancements
     if enhancement_cfg.master_enabled and enhancement_cfg.constraint_priorities.enabled:
@@ -2110,7 +2186,7 @@ def repair_individual_unified(
         >>> # Testing: Compare with original
         >>> stats_full = repair_individual_unified(individual, context, selective=False)
     """
-    from config import get_config
+    from src.config import get_config
 
     # PHASE 3 ENHANCEMENT: Multi-Neighborhood Local Search
     enhancement_cfg = get_config().enhancements

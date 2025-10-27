@@ -15,7 +15,7 @@ from src.utils.time_helpers import (
     get_midday_break_quanta,
     quantum_to_day_and_within_day,
 )
-from config import get_config
+from src.config import get_config
 
 # Global QuantumTimeSystem instance (initialized once)
 _QTS = QuantumTimeSystem()
@@ -37,6 +37,8 @@ def group_gaps_penalty(sessions: List[CourseSession]) -> int:
     Returns:
         Total penalty points for group schedule gaps (excluding break time gaps).
     """
+    cfg = get_config()
+    gap_penalty = cfg.soft_constraints.group_gaps_penalty.gap_penalty_per_quantum or 1
     penalty = 0
 
     # Get midday break quanta for each day
@@ -73,7 +75,7 @@ def group_gaps_penalty(sessions: List[CourseSession]) -> int:
                         continue
                     else:
                         # Gap during non-break time - PENALIZE (idle/wasted time)
-                        penalty += 1
+                        penalty += gap_penalty
 
     return penalty
 
@@ -94,6 +96,10 @@ def instructor_gaps_penalty(sessions: List[CourseSession]) -> int:
     Returns:
         Total penalty points for instructor schedule gaps (excluding break time gaps).
     """
+    cfg = get_config()
+    gap_penalty = (
+        cfg.soft_constraints.instructor_gaps_penalty.gap_penalty_per_quantum or 1
+    )
     penalty = 0
 
     # Get midday break quanta for each day
@@ -128,7 +134,7 @@ def instructor_gaps_penalty(sessions: List[CourseSession]) -> int:
                         continue
                     else:
                         # Gap during non-break time - PENALIZE (idle/wasted time)
-                        penalty += 1
+                        penalty += gap_penalty
 
     return penalty
 
@@ -139,7 +145,8 @@ def group_midday_break_violation(sessions: List[CourseSession]) -> int:
     Penalizes groups that do not have a break during the midday break period.
 
     For each group per day, if no session falls in the break window,
-    penalize by the minimum distance from any scheduled quantum to the break block.
+    penalize by the minimum distance from any scheduled quantum to the break block,
+    multiplied by the distance penalty factor from config.
 
     Args:
         sessions (List[CourseSession]): List of CourseSession objects.
@@ -147,7 +154,13 @@ def group_midday_break_violation(sessions: List[CourseSession]) -> int:
     Returns:
         int: Total break violation penalty across all groups and days.
     """
+    cfg = get_config()
+    distance_penalty = (
+        cfg.soft_constraints.group_midday_break_violation.distance_penalty_per_quantum
+        or 1
+    )
     penalty = 0
+
     # Get break quanta for each day (day_name -> set of within-day quanta)
     break_quanta_by_day = get_midday_break_quanta(_QTS)
 
@@ -171,87 +184,7 @@ def group_midday_break_violation(sessions: List[CourseSession]) -> int:
                 continue  # No penalty if group is free during break
             # Compute min distance to break window
             nearest_dist = min(abs(q - bq) for q in quanta for bq in break_quanta)
-            penalty += nearest_dist
-
-    return penalty
-
-
-# 4. Session Block Size Preference
-def session_block_clustering_penalty(sessions: List[CourseSession]) -> int:
-    """
-    Penalizes course sessions that are fragmented into undesirable block sizes.
-
-    Encourages sessions to be clustered into blocks of 2-3 consecutive quanta
-    rather than isolated single quanta or overly large blocks.
-
-    Penalty logic:
-    - Block size 1 (isolated): Heavy penalty (configurable)
-    - Block size 2-3: No penalty (preferred)
-    - Block size 4+: Moderate penalty for each quantum beyond 3
-
-    Example:
-    - 6 quanta as [3,3] → 0 penalty (ideal)
-    - 6 quanta as [2,2,2] → 0 penalty (acceptable)
-    - 6 quanta as [1,2,3] → penalty for the isolated 1
-    - 6 quanta as [6] → penalty for oversized block (6-3=3 penalty)
-
-    Args:
-        sessions: List of course sessions to evaluate.
-
-    Returns:
-        Total penalty for non-preferred block sizes.
-    """
-    cfg = get_config().time
-
-    penalty = 0
-
-    # Group sessions by (course_id, course_type, day) to find blocks
-    course_day_quanta = defaultdict(lambda: defaultdict(list))
-
-    for session in sessions:
-        # Use course_id + course_type as unique identifier
-        course_key = (session.course_id, session.course_type)
-
-        for q in session.session_quanta:
-            day, within_day = quantum_to_day_and_within_day(q, _QTS)
-            course_day_quanta[course_key][day].append(within_day)
-
-    # Analyze block sizes for each course on each day
-    for course_days in course_day_quanta.values():
-        for day_quanta in course_days.values():
-            # Sort quanta to identify consecutive blocks
-            sorted_quanta = sorted(day_quanta)
-
-            # Find consecutive blocks
-            blocks = []
-            if sorted_quanta:
-                current_block = [sorted_quanta[0]]
-
-                for i in range(1, len(sorted_quanta)):
-                    if sorted_quanta[i] == sorted_quanta[i - 1] + 1:
-                        # Consecutive - add to current block
-                        current_block.append(sorted_quanta[i])
-                    else:
-                        # Gap - start new block
-                        blocks.append(len(current_block))
-                        current_block = [sorted_quanta[i]]
-
-                # Don't forget the last block
-                blocks.append(len(current_block))
-
-            # Penalize based on block sizes
-            for block_size in blocks:
-                if block_size == 1:
-                    # Isolated single quantum - heavy penalty
-                    penalty += cfg.isolated_session_penalty
-                elif block_size < cfg.preferred_block_size_min:
-                    # Below minimum preferred size (shouldn't happen if min=2 and we penalize 1)
-                    penalty += cfg.preferred_block_size_min - block_size
-                elif block_size > cfg.preferred_block_size_max:
-                    # Oversized block - penalize excess quanta
-                    excess = block_size - cfg.preferred_block_size_max
-                    penalty += excess * cfg.oversized_block_penalty_per_quantum
-                # else: block_size is 2 or 3 → no penalty (preferred)
+            penalty += nearest_dist * distance_penalty
 
     return penalty
 
@@ -263,11 +196,10 @@ def get_all_soft_constraints():
     """
     Returns a dictionary of all available soft constraint functions.
 
-    Soft constraints (4 total):
+    Soft constraints (3 total):
     1. group_gaps_penalty - Penalize gaps in group schedules
     2. instructor_gaps_penalty - Penalize gaps in instructor schedules
     3. group_midday_break_violation - Penalize sessions during midday break
-    4. session_block_clustering_penalty - Encourage 2-3 quantum session blocks
 
     Returns:
         Dict[str, callable]: Mapping of constraint names to their functions.
@@ -276,7 +208,6 @@ def get_all_soft_constraints():
         "group_gaps_penalty": group_gaps_penalty,
         "instructor_gaps_penalty": instructor_gaps_penalty,
         "group_midday_break_violation": group_midday_break_violation,
-        "session_block_clustering_penalty": session_block_clustering_penalty,
     }
 
 
