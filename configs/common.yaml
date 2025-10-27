@@ -46,7 +46,7 @@ ga:
   cxpb: 0.8
   mutpb: 0.3
   elite_preservation: true
-  elite_size: 0.05
+  elite_size: 0.10
   use_adaptive_probabilities: true
   use_constraint_guided_mutation: true
   population_strategy: hybrid
@@ -60,6 +60,30 @@ repair:
   selective_mode: true
   detection_strategy: hybrid
   recheck_after_repair: true
+  
+  # Adaptive repair triggers
+  adaptive_repair:
+    # Stagnation-triggered repair (SOFT - quick fixes)
+    stagnation_trigger:
+      enabled: true
+      window: 5  # Detect stagnation after 5 gens without improvement
+      threshold: 0.0  # Any improvement counts
+    
+    # Periodic repair (every N generations - SOFT)
+    periodic_trigger:
+      enabled: true
+      interval: 10  # Regular soft repair every 10 generations
+      intensive_interval: 20  # HARD repair every 20 generations
+    
+    # Stagnation action (SOFT repair)
+    trigger_action:
+      repair_mode: selective  # Fast, targeted repair
+      max_iterations: 5  # Limited iterations
+    
+    # Intensive periodic action (HARD repair - every 20 gens)
+    intensive_action:
+      repair_mode: full  # Thorough, can take infinite time
+      max_iterations: 100  # High limit - prioritize quality over speed
 
 # Feasibility Checks (Common)
 feasibility:

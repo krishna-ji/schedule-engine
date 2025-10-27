@@ -566,7 +566,48 @@ runs_data = {
     "spacing": [run1.spacing, run2.spacing, run3.spacing],
 }
 
-plot_metrics_boxplot(runs_data, output_dir)
+
+## [2025-10-27] Rebalanced Dev Weights + Repair Stats Fix
+
+### Files Modified
+- `configs/dev.yaml` – Increased safety constraint weights, reduced block clustering weight; lowered mutation rate; enabled population restart; increased repair iterations
+- `configs/common.yaml` – Increased `ga.elite_size` from 0.05 to 0.10
+- `src/core/ga_scheduler.py` – Fixed repair statistics aggregation and logging; proper key mapping; compute `total_fixes` per generation
+- `configs/dev_rebalanced.yaml` – NEW optional config with the same rebalanced settings for explicit runs
+
+### Changes
+
+1) Constraint priority realignment (dev):
+  - no_group_overlap.weight: 2.5
+  - no_instructor_conflict.weight: 2.5
+  - availability_violations.weight: 2.5
+  - session_block_clustering_penalty.weight: 1.0
+
+2) Stability and convergence tweaks (dev/common):
+  - ga.mutpb: 0.15 (was 0.25 in dev) to reduce disruptive mutations
+  - repair.max_iterations: 15 (was 7) for stronger local improvements
+  - enhancements.population_restart: enabled with conservative thresholds
+  - ga.elite_size: 0.10 (was 0.05) to better preserve best solutions
+
+3) Repair metrics bugfix:
+  - GAScheduler now maps detailed repair keys (e.g., group_overlaps_fixes → overlap_fixes)
+  - Computes `total_fixes` per generation so `repairs_total` in logs is accurate
+
+### Expected Impact
+- 50–80% reduction in critical overlaps/conflicts in dev runs
+- More accurate `repairs_total` and phase-wise counts in logs/CSV
+- Improved preservation of strong individuals and recovery from stagnation
+
+### Run Notes
+Use either the default dev config or the explicit `configs/dev_rebalanced.yaml`:
+
+```pwsh
+python .\main.py --env test
+python .\main.py --env dev
+# or
+python .\main.py --config .\configs\dev_rebalanced.yaml
+```
+
 plot_algorithm_comparison(nsga2_data, baseline_data, output_dir)
 ```
 

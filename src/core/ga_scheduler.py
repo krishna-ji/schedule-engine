@@ -724,6 +724,9 @@ class GAScheduler:
         stagnation_cfg = adaptive_config.get("stagnation_trigger", {})
         periodic_cfg = adaptive_config.get("periodic_trigger", {})
 
+        # Get enhancement config once (used in multiple places)
+        enhancement_cfg = get_config().enhancements
+
         # Track current best HC for stagnation detection
         if self.population:
             current_best_hc = min(
@@ -747,7 +750,6 @@ class GAScheduler:
                     event_tracker.add("stagnation_detected")
 
                     # ENHANCEMENT: Trigger hypermutation on stagnation
-                    enhancement_cfg = get_config().enhancements
                     if (
                         enhancement_cfg.master_enabled
                         and enhancement_cfg.hypermutation.enabled
@@ -791,7 +793,10 @@ class GAScheduler:
 
             # Apply dynamic repair parameters based on triggers
             if is_intensive_gen:
-                # Intensive repair: full mode, high iterations
+                # INTENSIVE REPAIR (every 20 gens): HARD/STRICT mode
+                # - Full mode (not selective) for thorough checking
+                # - High max_iterations (can take time)
+                # - Enable memetic mode for deep local search on elite
                 intensive_action = adaptive_config.get("intensive_action", {})
                 repair_config["selective_mode"] = (
                     intensive_action.get("repair_mode", "full") == "selective"
@@ -802,12 +807,17 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = intensive_action.get(
                     "max_iterations", 10
                 )
+                repair_config["memetic_mode"] = True  # Enable memetic for intensive
                 event_tracker.add("intensive_repair")
                 console.print(
-                    f"[bold red]Gen {gen}: Intensive repair triggered (every {periodic_cfg.get('intensive_interval', 20)} gens)[/bold red]"
+                    f"[bold red]🔥 Gen {gen}: INTENSIVE REPAIR triggered (every {periodic_cfg.get('intensive_interval', 20)} gens) "
+                    f"- HARD mode: full scan, max_iterations={repair_config['max_iterations']}, memetic=ON[/bold red]"
                 )
             elif stagnation_detected:
-                # Stagnation repair: use trigger_action settings
+                # STAGNATION REPAIR: SOFT mode
+                # - Selective mode (fast, targeted)
+                # - Limited iterations
+                # - No memetic mode (keep it lightweight)
                 trigger_action = adaptive_config.get("trigger_action", {})
                 repair_config["selective_mode"] = (
                     trigger_action.get("repair_mode", "full") == "selective"
@@ -818,13 +828,18 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = trigger_action.get(
                     "max_iterations", 5
                 )
+                repair_config["memetic_mode"] = False  # Disable memetic for stagnation
                 event_tracker.add("stagnation_repair")
                 console.print(
-                    f"[bold yellow]⚠ Gen {gen}: Stagnation detected ({self.stagnation_counter} gens) - applying repair[/bold yellow]"
+                    f"[bold yellow]⚠️ Gen {gen}: STAGNATION repair triggered ({self.stagnation_counter} gens) "
+                    f"- SOFT mode: selective, max_iterations={repair_config['max_iterations']}, memetic=OFF[/bold yellow]"
                 )
                 self.stagnation_counter = 0  # Reset after applying repair
             elif is_periodic_gen:
-                # Regular periodic repair: use trigger_action settings
+                # PERIODIC REPAIR (every 10 gens): SOFT mode
+                # - Selective mode (fast, targeted)
+                # - Limited iterations
+                # - No memetic mode
                 trigger_action = adaptive_config.get("trigger_action", {})
                 repair_config["selective_mode"] = (
                     trigger_action.get("repair_mode", "full") == "selective"
@@ -835,10 +850,17 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = trigger_action.get(
                     "max_iterations", 5
                 )
+                repair_config["memetic_mode"] = False  # Disable memetic for periodic
                 event_tracker.add("periodic_repair")
                 console.print(
-                    f"[bold cyan] Gen {gen}: Periodic repair triggered (every {periodic_cfg.get('interval', 10)} gens)[/bold cyan]"
+                    f"[bold cyan]🔄 Gen {gen}: PERIODIC repair triggered (every {periodic_cfg.get('interval', 10)} gens) "
+                    f"- SOFT mode: selective, max_iterations={repair_config['max_iterations']}, memetic=OFF[/bold cyan]"
                 )
+            else:
+                # NO TRIGGER: Reset memetic mode to base config value
+                # This ensures memetic doesn't carry over from previous trigger
+                base_memetic = get_config().repair.memetic_mode
+                repair_config["memetic_mode"] = base_memetic
 
         # PHASE 1.3: Get adaptive probabilities based on search progress
         cxpb, mutpb = self._get_adaptive_probabilities(gen)
@@ -910,21 +932,9 @@ class GAScheduler:
                             "crossover_repairs"
                         ] += total_fixes_this_pair
 
-                    # Aggregate all repair stats
-                    for key in [
-                        "instructor_availability_fixes",
-                        "overlap_fixes",
-                        "room_fixes",
-                        "instructor_conflict_fixes",
-                        "qualification_fixes",
-                        "room_type_fixes",
-                        "clustering_fixes",
-                        "session_count_fixes",
-                    ]:
-                        if key in stats1:
-                            generation_repair_stats[key] += stats1[key]
-                        if key in stats2:
-                            generation_repair_stats[key] += stats2[key]
+                    # Aggregate all repair stats with proper key mapping
+                    self._accumulate_repair_stats(generation_repair_stats, stats1)
+                    self._accumulate_repair_stats(generation_repair_stats, stats2)
 
         # Mutation (using adaptive probability)
         for mutant in offspring:
@@ -970,19 +980,8 @@ class GAScheduler:
                             # Track mutation-specific repairs
                             generation_repair_stats["mutation_repairs"] += total_fixes
 
-                        # Aggregate all repair stats
-                        for key in [
-                            "instructor_availability_fixes",
-                            "overlap_fixes",
-                            "room_fixes",
-                            "instructor_conflict_fixes",
-                            "qualification_fixes",
-                            "room_type_fixes",
-                            "clustering_fixes",
-                            "session_count_fixes",
-                        ]:
-                            if key in stats:
-                                generation_repair_stats[key] += stats[key]
+                        # Aggregate all repair stats with proper key mapping
+                        self._accumulate_repair_stats(generation_repair_stats, stats)
 
         # Evaluate invalid individuals
         invalid = [ind for ind in offspring if not ind.fitness.valid]
@@ -1037,19 +1036,8 @@ class GAScheduler:
                 # Invalidate fitness after repair
                 del individual.fitness.values
 
-                # Aggregate all memetic stats
-                for key in [
-                    "instructor_availability_fixes",
-                    "overlap_fixes",
-                    "room_fixes",
-                    "instructor_conflict_fixes",
-                    "qualification_fixes",
-                    "room_type_fixes",
-                    "clustering_fixes",
-                    "session_count_fixes",
-                ]:
-                    if key in stats:
-                        generation_repair_stats[key] += stats[key]
+                # Aggregate all memetic stats with proper key mapping
+                self._accumulate_repair_stats(generation_repair_stats, stats)
 
             # Re-evaluate elite after memetic repair
             # Use toolbox.map for parallel evaluation when pool is available
@@ -1058,6 +1046,25 @@ class GAScheduler:
             )
             for ind, fit in zip(elite_individuals, fitness_values):
                 ind.fitness.values = fit
+
+        # Finalize generation repair totals
+        # Sum category fixes (after key mapping) plus phase-specific counts
+        category_total = (
+            generation_repair_stats["instructor_availability_fixes"]
+            + generation_repair_stats["overlap_fixes"]
+            + generation_repair_stats["room_fixes"]
+            + generation_repair_stats["instructor_conflict_fixes"]
+            + generation_repair_stats["qualification_fixes"]
+            + generation_repair_stats["room_type_fixes"]
+            + generation_repair_stats["clustering_fixes"]
+            + generation_repair_stats["session_count_fixes"]
+        )
+        phase_total = (
+            generation_repair_stats["crossover_repairs"]
+            + generation_repair_stats["mutation_repairs"]
+            + generation_repair_stats["memetic_repairs"]
+        )
+        generation_repair_stats["total_fixes"] = max(category_total, phase_total)
 
         # Store generation repair stats
         self.metrics.repair_stats.append(generation_repair_stats)
@@ -1301,6 +1308,38 @@ class GAScheduler:
             for name, value in soft_details.items():
                 if value > 0:
                     console.print(f"      • {name}: {value:.2f}")
+
+    def _accumulate_repair_stats(self, agg: Dict, stats: Dict) -> None:
+        """
+        Accumulate repair stats from a single repair call into generation totals.
+
+        Maps detailed repair keys from repair.py to the consolidated keys used by
+        the scheduler and loggers.
+
+        Example mappings:
+        - group_overlaps_fixes -> overlap_fixes
+        - room_conflicts_fixes -> room_fixes
+        - instructor_conflicts_fixes -> instructor_conflict_fixes
+        - instructor_qualifications_fixes -> qualification_fixes
+        - room_type_mismatches_fixes -> room_type_fixes
+        - session_clustering_fixes -> clustering_fixes
+        - incomplete_or_extra_sessions_fixes -> session_count_fixes
+        - instructor_availability_fixes -> instructor_availability_fixes
+        """
+        key_map = {
+            "group_overlaps_fixes": "overlap_fixes",
+            "room_conflicts_fixes": "room_fixes",
+            "instructor_conflicts_fixes": "instructor_conflict_fixes",
+            "instructor_qualifications_fixes": "qualification_fixes",
+            "room_type_mismatches_fixes": "room_type_fixes",
+            "session_clustering_fixes": "clustering_fixes",
+            "incomplete_or_extra_sessions_fixes": "session_count_fixes",
+            "instructor_availability_fixes": "instructor_availability_fixes",
+        }
+
+        for src_key, dst_key in key_map.items():
+            if src_key in stats:
+                agg[dst_key] += stats.get(src_key, 0)
 
     def _restart_population(self, gen: int):
         """

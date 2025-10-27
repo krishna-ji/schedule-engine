@@ -5,17 +5,45 @@ ga:
   ngen: 150
   pop_size: 100
   cxpb: 0.85
-  mutpb: 0.25
+  mutpb: 0.15
 
 parallel:
   use_multiprocessing: true
   num_workers: null
 
 repair:
-  max_iterations: 7
-  memetic_mode: true
+  max_iterations: 10
+  memetic_mode: false  # Disable always-on memetic; use adaptive instead
   elite_percentage: 0.25
   memetic_iterations: 3
+  
+  # Override adaptive repair for dev environment
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: true
+      window: 3  # Faster stagnation detection in dev
+      threshold: 0.0
+    periodic_trigger:
+      enabled: true
+      interval: 10
+      intensive_interval: 20  # HARD repair every 20 generations
+    trigger_action:
+      repair_mode: selective  # SOFT: stagnation repair
+      max_iterations: 5
+    intensive_action:
+      repair_mode: full  # HARD: intensive periodic repair
+      max_iterations: 100  # Can take time, must reduce violations
+
+# Rebalance critical vs quality constraints for dev
+hard_constraints:
+  no_group_overlap:
+    weight: 2.5
+  no_instructor_conflict:
+    weight: 2.5
+  availability_violations:
+    weight: 2.5
+  session_block_clustering_penalty:
+    weight: 1.0
 
 feasibility:
   fail_on_infeasibility: false
@@ -30,3 +58,8 @@ enhancements:
     top_n_hotspots: 30
   multi_neighborhood:
     max_combinations: 100
+  population_restart:
+    enabled: true
+    trigger_stagnation_gens: 10
+    restart_percentage: 0.3
+    min_interval_gens: 50
