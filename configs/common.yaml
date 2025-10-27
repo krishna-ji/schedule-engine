@@ -52,39 +52,6 @@ ga:
   population_strategy: hybrid
   validate_population_integrity: false
 
-# Repair Heuristics (Defaults - Override per environment)
-repair:
-  enabled: true
-  apply_after_mutation: true
-  apply_after_crossover: true
-  selective_mode: true
-  detection_strategy: hybrid
-  recheck_after_repair: true
-  
-  # Adaptive repair triggers
-  adaptive_repair:
-    # Stagnation-triggered repair (SOFT - quick fixes)
-    stagnation_trigger:
-      enabled: true
-      window: 5  # Detect stagnation after 5 gens without improvement
-      threshold: 0.0  # Any improvement counts
-    
-    # Periodic repair (every N generations - SOFT)
-    periodic_trigger:
-      enabled: true
-      interval: 10  # Regular soft repair every 10 generations
-      intensive_interval: 20  # HARD repair every 20 generations
-    
-    # Stagnation action (SOFT repair)
-    trigger_action:
-      repair_mode: selective  # Fast, targeted repair
-      max_iterations: 5  # Limited iterations
-    
-    # Intensive periodic action (HARD repair - every 20 gens)
-    intensive_action:
-      repair_mode: full  # Thorough, can take infinite time
-      max_iterations: 100  # High limit - prioritize quality over speed
-
 # Feasibility Checks (Common)
 feasibility:
   enable_checks: true
@@ -149,45 +116,3 @@ soft_constraints:
     distance_penalty_per_quantum: 1  # Penalty per quantum distance from midday break
   soft_weight_factor: 0.01
 
-# Enhancements (Common Defaults)
-enhancements:
-  master_enabled: true
-  
-  # Phase 1
-  memetic_mode: false
-  increased_population: false
-  frequent_repair: false
-  
-  # Phase 2
-  hypermutation:
-    enabled: false
-    trigger_on_stagnation: true
-    stagnation_window: 5
-    duration_generations: 2
-    mutation_rate: 0.8
-  
-  constraint_priorities:
-    enabled: true
-    availability_weight: 0.8
-    overlap_weight: 0.15
-    other_weight: 0.05
-  
-  greedy_initialization_percent: 0.25
-  
-  # Phase 3
-  population_restart:
-    enabled: false
-    trigger_stagnation_gens: 15
-    restart_percentage: 0.5
-    min_interval_gens: 50
-  
-  violation_heatmap:
-    enabled: true
-    target_hot_genes: true
-    top_n_hotspots: 20
-    persistence_file: "violation_heatmap.json"
-  
-  multi_neighborhood:
-    enabled: true
-    max_combinations: 50
-    fallback_to_single: true

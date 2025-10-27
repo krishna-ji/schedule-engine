@@ -4,29 +4,95 @@ environment: prod
 ga:
   ngen: 2000
   pop_size: 200
-  cxpb: 0.85
-  mutpb: 0.25
+  cxpb: 0.9
+  mutpb: 0.4
 
 parallel:
   use_multiprocessing: true
   num_workers: null
 
+# Repair Heuristics
 repair:
-  max_iterations: 7
+  enabled: true
+  apply_after_mutation: true
+  apply_after_crossover: true
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: true
+  max_iterations: 20
   memetic_mode: true
-  elite_percentage: 0.25
-  memetic_iterations: 3
+  elite_percentage: 0.3
+  memetic_iterations: 5
+  
+  # Adaptive repair triggers
+  adaptive_repair:
+    # Stagnation-triggered repair (SOFT - quick fixes)
+    stagnation_trigger:
+      enabled: true
+      window: 3  # Aggressive stagnation detection
+      threshold: 0.0
+    
+    # Periodic repair (every N generations - SOFT)
+    periodic_trigger:
+      enabled: true
+      interval: 5  # Frequent soft repair
+      intensive_interval: 15  # HARD repair every 15 generations
+    
+    # Stagnation action (SOFT repair)
+    trigger_action:
+      repair_mode: selective
+      max_iterations: 10
+    
+    # Intensive periodic action (HARD repair)
+    intensive_action:
+      repair_mode: full
+      max_iterations: 200  # Very aggressive
 
 feasibility:
   fail_on_infeasibility: true
+  tolerance_margin: 0.05
 
+# Enhancements
 enhancements:
+  master_enabled: true
+  
+  # Phase 1
   memetic_mode: true
   increased_population: true
-  greedy_initialization_percent: 0.4
+  frequent_repair: true
+  
+  # Phase 2
   hypermutation:
     enabled: true
+    trigger_on_stagnation: true
+    stagnation_window: 3
+    duration_generations: 3
+    mutation_rate: 0.9
+  
+  constraint_priorities:
+    enabled: true
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  
+  greedy_initialization_percent: 0.5
+  
+  # Phase 3
+  population_restart:
+    enabled: true
+    trigger_stagnation_gens: 10
+    restart_percentage: 0.4
+    min_interval_gens: 30
+  
   violation_heatmap:
-    top_n_hotspots: 30
+    enabled: true
+    target_hot_genes: true
+    top_n_hotspots: 50
+    persistence_file: "violation_heatmap.json"
+  
   multi_neighborhood:
-    max_combinations: 100
+    enabled: true
+    max_combinations: 150
+    fallback_to_single: true
+
+

@@ -4,30 +4,95 @@ environment: test
 ga:
   ngen: 10
   pop_size: 4
-  cxpb: 0.8
-  mutpb: 0.3
+  cxpb: 0.7
+  mutpb: 0.2
 
 parallel:
   use_multiprocessing: false
   num_workers: null
 
+# Repair Heuristics
 repair:
+  enabled: true
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
   max_iterations: 2
   memetic_mode: false
   elite_percentage: 0.05
   memetic_iterations: 1
+  
+  # Adaptive repair triggers
+  adaptive_repair:
+    # Stagnation-triggered repair (SOFT - quick fixes)
+    stagnation_trigger:
+      enabled: false
+      window: 10
+      threshold: 0.0
+    
+    # Periodic repair (every N generations - SOFT)
+    periodic_trigger:
+      enabled: false
+      interval: 20
+      intensive_interval: 50
+    
+    # Stagnation action (SOFT repair)
+    trigger_action:
+      repair_mode: selective
+      max_iterations: 2
+    
+    # Intensive periodic action (HARD repair)
+    intensive_action:
+      repair_mode: full
+      max_iterations: 10
 
 feasibility:
   fail_on_infeasibility: false
-  tolerance_margin: 0.05
+  tolerance_margin: 0.1
 
+# Enhancements
 enhancements:
+  master_enabled: false
+  
+  # Phase 1
   memetic_mode: false
   increased_population: false
-  greedy_initialization_percent: 0.25
+  frequent_repair: false
+  
+  # Phase 2
   hypermutation:
     enabled: false
+    trigger_on_stagnation: false
+    stagnation_window: 10
+    duration_generations: 1
+    mutation_rate: 0.5
+  
+  constraint_priorities:
+    enabled: false
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  
+  greedy_initialization_percent: 0.0
+  
+  # Phase 3
+  population_restart:
+    enabled: false
+    trigger_stagnation_gens: 50
+    restart_percentage: 0.1
+    min_interval_gens: 100
+  
   violation_heatmap:
-    top_n_hotspots: 10
+    enabled: false
+    target_hot_genes: false
+    top_n_hotspots: 5
+    persistence_file: "violation_heatmap.json"
+  
   multi_neighborhood:
-    max_combinations: 20
+    enabled: false
+    max_combinations: 10
+    fallback_to_single: true
+
+
