@@ -1,0 +1,58 @@
+# ============================================================================
+# PROD_SAFE CONFIGURATION - VM-Optimized Production
+# ============================================================================
+# Safe production configuration optimized for typical VM resources.
+# Balances quality and runtime for 4-8 core VMs with 8-16GB RAM.
+
+name: "Production Safe - IGLS System (VM-Optimized)"
+environment: prod
+description: "VM-friendly production config with strategic IGLS triggers (200-300 gens, 4-6 hour runtime)"
+
+# Environment-specific GA settings
+ga:
+  ngen: 250  # Balanced: long enough for quality, short enough to complete
+  pop_size: 50  # Moderate population for VM
+
+# Environment-specific parallel settings
+parallel:
+  use_multiprocessing: true
+  num_workers: null  # Auto-detect (or set explicitly: 4, 6, 8)
+
+# Override IGLS settings for production safety
+repair:
+  enabled: true
+  
+  # Legacy parameters
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false
+  
+  # TIER 1: Exhaustive Search - More strategic triggers for long runs
+  exhaustive_search:
+    enabled: true
+    generations: [3, 30, 100, 180, 240]  # Strategic: early, mid, late phases
+    population_coverage: 0.25  # Top 25% (12-13 individuals with pop=50)
+    max_neighborhood_size: 100  # Increased for better search
+    timeout_seconds: 300  # 5 minutes (safe for 12-13 individuals)
+  
+  # TIER 2: Stagnation-Triggered Greedy - Less aggressive for long runs
+  stagnation_repair:
+    enabled: true
+    patience: 10  # Allow more generations before triggering
+    min_generation: 15  # Start later to avoid early noise
+    population_coverage: 0.3  # Top 30% (15 individuals)
+    max_iterations: 15  # More iterations for quality
+    timeout_seconds: 120  # 2 minutes
+    cooldown: 5  # Longer cooldown for expensive operation
+  
+  # TIER 3: Selective Probabilistic - Keep standard
+  selective_repair:
+    enabled: true
+    apply_probability: 0.3
+    apply_after_mutation: true
+    apply_after_crossover: false
+    detection_strategy: hybrid

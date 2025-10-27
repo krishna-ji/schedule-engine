@@ -1,0 +1,54 @@
+# ============================================================================
+# PROD_TEST CONFIGURATION - Test Production Scale
+# ============================================================================
+# Test production settings with limited generations to validate performance.
+# Use this BEFORE running full production to check resource usage.
+
+name: "Production Test - IGLS System (30 Gen Test)"
+environment: prod
+description: "Test prod scale (100 pop) with limited gens to verify resource usage"
+
+# Full production scale for testing
+ga:
+  ngen: 30  # Limited for testing
+  pop_size: 100  # Full production population
+
+# Production parallel settings
+parallel:
+  use_multiprocessing: true
+  num_workers: null  # Auto-detect
+
+# Test exhaustive at gen 3 & 25 with full population
+repair:
+  enabled: true
+  
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false
+  
+  # Test exhaustive with production scale
+  exhaustive_search:
+    enabled: true
+    generations: [3, 25]
+    population_coverage: 0.2  # Top 20% = 20 individuals (more realistic)
+    max_neighborhood_size: 80
+    timeout_seconds: 600  # 10 minutes (will show if timing is viable)
+  
+  stagnation_repair:
+    enabled: true
+    patience: 5
+    min_generation: 8
+    population_coverage: 0.3  # 30 individuals
+    max_iterations: 10
+    timeout_seconds: 180  # 3 minutes
+    cooldown: 3
+  
+  selective_repair:
+    enabled: true
+    apply_probability: 0.3
+    apply_after_mutation: true
+    apply_after_crossover: false

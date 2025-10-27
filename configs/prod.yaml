@@ -1,98 +1,61 @@
-name: "Production Configuration"
+# ============================================================================
+# PROD CONFIGURATION - High-Quality Production
+# ============================================================================
+# Full-scale production configuration for final quality runs.
+# Requires good hardware: 8+ cores, 16+ GB RAM.
+# Expected runtime: 12-24 hours.
+
+name: "Production Configuration - IGLS System (Full Scale)"
 environment: prod
+description: "Full-scale production with strategic IGLS triggers (500 gens, ~24h runtime)"
 
+# Environment-specific GA settings
 ga:
-  ngen: 2000
-  pop_size: 200
-  cxpb: 0.9
-  mutpb: 0.4
+  ngen: 500  # Long run for production quality
+  pop_size: 100  # Large population
 
+# Environment-specific parallel settings
 parallel:
-  use_multiprocessing: true
-  num_workers: null
+  use_multiprocessing: true  # Enable for production
+  num_workers: null  # Auto-detect
 
-# Repair Heuristics
+# Production-optimized IGLS settings
 repair:
   enabled: true
-  apply_after_mutation: true
-  apply_after_crossover: true
+  
+  # Legacy parameters
+  apply_after_mutation: false
+  apply_after_crossover: false
   selective_mode: true
   detection_strategy: hybrid
-  recheck_after_repair: true
-  max_iterations: 20
-  memetic_mode: true
-  elite_percentage: 0.3
-  memetic_iterations: 5
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false
   
-  # Adaptive repair triggers
-  adaptive_repair:
-    # Stagnation-triggered repair (SOFT - quick fixes)
-    stagnation_trigger:
-      enabled: true
-      window: 3  # Aggressive stagnation detection
-      threshold: 0.0
-    
-    # Periodic repair (every N generations - SOFT)
-    periodic_trigger:
-      enabled: true
-      interval: 5  # Frequent soft repair
-      intensive_interval: 15  # HARD repair every 15 generations
-    
-    # Stagnation action (SOFT repair)
-    trigger_action:
-      repair_mode: selective
-      max_iterations: 10
-    
-    # Intensive periodic action (HARD repair)
-    intensive_action:
-      repair_mode: full
-      max_iterations: 200  # Very aggressive
-
-feasibility:
-  fail_on_infeasibility: true
-  tolerance_margin: 0.05
-
-# Enhancements
-enhancements:
-  master_enabled: true
-  
-  # Phase 1
-  memetic_mode: true
-  increased_population: true
-  frequent_repair: true
-  
-  # Phase 2
-  hypermutation:
+  # TIER 1: Exhaustive Search - Strategic triggers throughout evolution
+  exhaustive_search:
     enabled: true
-    trigger_on_stagnation: true
-    stagnation_window: 3
-    duration_generations: 3
-    mutation_rate: 0.9
+    generations: [3, 30, 100, 200, 350, 480]  # 6 triggers: early, mid, late phases
+    population_coverage: 0.15  # Top 15% (15 individuals) - manageable with timeout
+    max_neighborhood_size: 120  # More thorough search
+    timeout_seconds: 600  # 10 minutes per trigger
   
-  constraint_priorities:
+  # TIER 2: Stagnation-Triggered Greedy - Conservative for long runs
+  stagnation_repair:
     enabled: true
-    availability_weight: 0.8
-    overlap_weight: 0.15
-    other_weight: 0.05
+    patience: 15  # Allow more generations (long run = natural fluctuations)
+    min_generation: 20  # Start later to avoid early noise
+    population_coverage: 0.2  # Top 20% (20 individuals)
+    max_iterations: 15  # More iterations for quality
+    timeout_seconds: 180  # 3 minutes
+    cooldown: 8  # Longer cooldown to avoid over-repair
   
-  greedy_initialization_percent: 0.5
-  
-  # Phase 3
-  population_restart:
+  # TIER 3: Selective Probabilistic - Standard settings
+  selective_repair:
     enabled: true
-    trigger_stagnation_gens: 10
-    restart_percentage: 0.4
-    min_interval_gens: 30
-  
-  violation_heatmap:
-    enabled: true
-    target_hot_genes: true
-    top_n_hotspots: 50
-    persistence_file: "violation_heatmap.json"
-  
-  multi_neighborhood:
-    enabled: true
-    max_combinations: 150
-    fallback_to_single: true
+    apply_probability: 0.3
+    apply_after_mutation: true
+    apply_after_crossover: false
+    detection_strategy: hybrid
 
 

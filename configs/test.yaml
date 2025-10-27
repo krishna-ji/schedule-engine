@@ -1,98 +1,21 @@
-name: "Quick Test Configuration"
+# ============================================================================
+# TEST CONFIGURATION
+# ============================================================================
+# Fast smoke test configuration - minimal generations for quick validation.
+# Only overrides what differs from common.yaml (ngen, pop_size, parallel).
+
+name: "Test Configuration - IGLS System"
 environment: test
+description: "Fast smoke test with IGLS repair (30 gens to test both exhaustive triggers)"
 
+# Environment-specific GA settings
 ga:
-  ngen: 10
-  pop_size: 4
-  cxpb: 0.7
-  mutpb: 0.2
+  ngen: 30  # Extended to test gen 3 and gen 25 triggers
+  pop_size: 10  # Small for fast testing
 
+# Environment-specific parallel settings
 parallel:
-  use_multiprocessing: false
+  use_multiprocessing: false  # Disabled for easier debugging
   num_workers: null
-
-# Repair Heuristics
-repair:
-  enabled: true
-  apply_after_mutation: false
-  apply_after_crossover: false
-  selective_mode: true
-  detection_strategy: hybrid
-  recheck_after_repair: false
-  max_iterations: 2
-  memetic_mode: false
-  elite_percentage: 0.05
-  memetic_iterations: 1
-  
-  # Adaptive repair triggers
-  adaptive_repair:
-    # Stagnation-triggered repair (SOFT - quick fixes)
-    stagnation_trigger:
-      enabled: false
-      window: 10
-      threshold: 0.0
-    
-    # Periodic repair (every N generations - SOFT)
-    periodic_trigger:
-      enabled: false
-      interval: 20
-      intensive_interval: 50
-    
-    # Stagnation action (SOFT repair)
-    trigger_action:
-      repair_mode: selective
-      max_iterations: 2
-    
-    # Intensive periodic action (HARD repair)
-    intensive_action:
-      repair_mode: full
-      max_iterations: 10
-
-feasibility:
-  fail_on_infeasibility: false
-  tolerance_margin: 0.1
-
-# Enhancements
-enhancements:
-  master_enabled: false
-  
-  # Phase 1
-  memetic_mode: false
-  increased_population: false
-  frequent_repair: false
-  
-  # Phase 2
-  hypermutation:
-    enabled: false
-    trigger_on_stagnation: false
-    stagnation_window: 10
-    duration_generations: 1
-    mutation_rate: 0.5
-  
-  constraint_priorities:
-    enabled: false
-    availability_weight: 0.8
-    overlap_weight: 0.15
-    other_weight: 0.05
-  
-  greedy_initialization_percent: 0.0
-  
-  # Phase 3
-  population_restart:
-    enabled: false
-    trigger_stagnation_gens: 50
-    restart_percentage: 0.1
-    min_interval_gens: 100
-  
-  violation_heatmap:
-    enabled: false
-    target_hot_genes: false
-    top_n_hotspots: 5
-    persistence_file: "violation_heatmap.json"
-  
-  multi_neighborhood:
-    enabled: false
-    max_combinations: 10
-    fallback_to_single: true
 
 
