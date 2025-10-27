@@ -55,7 +55,7 @@ class ExhaustiveSearchConfig(BaseModel):
         default=100, ge=10, le=500, description="Maximum neighbors to evaluate per gene"
     )
     timeout_seconds: int = Field(
-        default=180, ge=30, le=600, description="Abort if operation exceeds this time"
+        default=180, ge=30, le=1001, description="Abort if operation exceeds this time"
     )
 
 
