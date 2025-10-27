@@ -28,7 +28,7 @@ time:
   theory_max_excused_isolated: 1
   
   # Practical course penalties (defaults - can override in prod)
-  practical_fragmentation_penalty: 20
+  practical_fragmentation_penalty: 2
 
 # I/O Paths (Common)
 io:
@@ -85,29 +85,29 @@ feasibility:
       enabled: true
       severity: critical
 
-# Hard Constraints (Default Weights - Override in prod for stricter)
+# Hard Constraints (All weights set to 1.0 for baseline experiment)
 hard_constraints:
   no_group_overlap:
     enabled: true
-    weight: 2.0
+    weight: 1.0
   no_instructor_conflict:
     enabled: true
-    weight: 2.0
+    weight: 1.0
   instructor_not_qualified:
     enabled: true
-    weight: 2.0
+    weight: 1.0
   room_type_mismatch:
     enabled: true
-    weight: 2.0
+    weight: 1.0
   availability_violations:
     enabled: true
-    weight: 2.0
+    weight: 1.0
   incomplete_or_extra_sessions:
     enabled: true
     weight: 1.0
   session_block_clustering_penalty:
     enabled: true
-    weight: 2.0
+    weight: 1.0
 
 # Soft Constraints (Default Weights)
 soft_constraints:

@@ -81,7 +81,11 @@ def _worker_init(data_dir: str, seed: int):
 
     # Set up DEAP creator types (required for Windows spawn)
     if not hasattr(creator, "FitnessMulti"):
-        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -0.01))
+        # Use two-objective minimization: hard penalties, soft penalties
+        # Both objectives are minimized equally in terms of direction; relative
+        # importance is controlled via constraint weights and soft_weight_factor
+        # in configuration, not by magnitudes here.
+        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -1.0))
     if not hasattr(creator, "Individual"):
         creator.create("Individual", list, fitness=creator.FitnessMulti)
 
