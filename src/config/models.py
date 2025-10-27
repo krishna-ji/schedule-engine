@@ -41,7 +41,7 @@ class RepairConfig(BaseModel):
     """Repair heuristics configuration"""
 
     enabled: bool = True
-    max_iterations: int = Field(default=3, ge=1, le=10)
+    max_iterations: int = Field(default=3, ge=1, le=500)
     apply_after_mutation: bool = True
     apply_after_crossover: bool = True
     memetic_mode: bool = False
