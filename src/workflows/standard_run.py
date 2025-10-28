@@ -476,6 +476,9 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
     """
     Load and link all input entities.
 
+    PARALLELIZED: JSON files are loaded concurrently using ThreadPoolExecutor.
+    Expected speedup: 2-3x on I/O-bound operations.
+
     Only includes courses that are enrolled by at least one group,
     filtering out the rest of the university course database.
 
@@ -485,11 +488,43 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
     Returns:
         Tuple of (QuantumTimeSystem, SchedulingContext)
     """
-    # Initialize time system
+    from concurrent.futures import ThreadPoolExecutor
+    import time
+
+    start_time = time.time()
+
+    # Initialize time system (must be first, used by other loaders)
     qts = QuantumTimeSystem()
 
-    # Step 1: Load groups first to know which course codes are enrolled
-    groups = load_groups(os.path.join(data_dir, "Groups.json"), qts)
+    # ========================================
+    # PARALLEL LOADING SECTION
+    # ========================================
+    # Load JSON files concurrently (I/O-bound operations)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        # Submit all loading tasks
+        future_groups = executor.submit(
+            load_groups, os.path.join(data_dir, "Groups.json"), qts
+        )
+        future_courses = executor.submit(
+            load_courses, os.path.join(data_dir, "Course.json")
+        )
+        future_instructors = executor.submit(
+            load_instructors, os.path.join(data_dir, "Instructors.json"), qts
+        )
+        future_rooms = executor.submit(
+            load_rooms, os.path.join(data_dir, "Rooms.json"), qts
+        )
+
+        # Collect results (blocks until all complete)
+        groups = future_groups.result()
+        all_courses = future_courses.result()
+        instructors = future_instructors.result()
+        rooms = future_rooms.result()
+
+    # ========================================
+    # SEQUENTIAL PROCESSING SECTION
+    # ========================================
+    # (Depends on loaded data, must be sequential)
 
     # Step 2: Collect all enrolled course codes from groups
     enrolled_course_codes = set()
@@ -500,10 +535,7 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
         f"[INFO] Found {len(enrolled_course_codes)} unique course codes enrolled by groups"
     )
 
-    # Step 3: Load ALL courses from database
-    all_courses = load_courses(os.path.join(data_dir, "Course.json"))
-
-    # Step 4: Filter to only keep courses whose course_code is enrolled
+    # Step 3: Filter to only keep courses whose course_code is enrolled
     # Note: Dict keyed by (course_code, course_type) tuples
     # A single course_code may have both theory and practical versions
     courses = {}
@@ -519,13 +551,12 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
     )
     print(f"[INFO] ({excluded_count} courses excluded - not enrolled by any group)")
 
-    # Step 5: Load other entities
-    instructors = load_instructors(os.path.join(data_dir, "Instructors.json"), qts)
-    rooms = load_rooms(os.path.join(data_dir, "Rooms.json"), qts)
-
-    # Step 6: Link relationships (only for enrolled courses)
+    # Step 4: Link relationships (only for enrolled courses)
     link_courses_and_groups(courses, groups)
     link_courses_and_instructors(courses, instructors)
+
+    elapsed = time.time() - start_time
+    print(f"[INFO] Data loading completed in {elapsed:.2f}s (parallel)")
 
     # Create context with filtered courses
     context = SchedulingContext(

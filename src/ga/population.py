@@ -2,6 +2,8 @@ from typing import List, Tuple
 import random
 import os
 from rich.console import Console
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing
 
 from src.ga.sessiongene import SessionGene
 from src.ga.individual import create_individual
@@ -12,9 +14,64 @@ from src.core.types import SchedulingContext
 console = Console()
 
 
-def generate_course_group_aware_population(n: int, context: SchedulingContext) -> List:
+def _create_single_individual_wrapper(args):
+    """
+    Wrapper function for parallel individual creation.
+
+    Args:
+        args: Tuple of (individual_idx, course_group_pairs, context, silent)
+
+    Returns:
+        Individual (list of SessionGenes) or None if creation failed
+    """
+    individual_idx, course_group_pairs, context, silent = args
+
+    genes = []
+    used_quanta = set()
+    instructor_schedule = {}
+    group_schedule = {}
+
+    # Create genes for this individual
+    for course_id, group_ids in course_group_pairs:
+        course = context.courses.get(course_id)
+        if not course:
+            continue
+
+        session_type = course.course_type
+        num_quanta = course.quanta_per_week
+
+        session_gene = create_session_gene_with_conflict_avoidance(
+            course_id,
+            group_ids,
+            session_type,
+            num_quanta,
+            course,
+            context,
+            used_quanta,
+            instructor_schedule,
+            group_schedule,
+        )
+        if session_gene:
+            genes.append(session_gene)
+
+    if genes:
+        return create_individual(genes)
+    else:
+        if not silent:
+            print(f"Warning: Individual {individual_idx+1} has no genes!")
+        return None
+
+
+def generate_course_group_aware_population(
+    n: int,
+    context: SchedulingContext,
+    parallel: bool = True,  # NEW: Enable/disable parallelization
+) -> List:
     """
     Generate population using simple course-group enrollment structure.
+
+    PARALLELIZED: Individuals are generated concurrently using ProcessPoolExecutor.
+    Expected speedup: 3-6x on multi-core systems.
 
     NEW ARCHITECTURE: No parent groups!
     - Each group is independent (subgroups are just regular groups)
@@ -42,12 +99,11 @@ def generate_course_group_aware_population(n: int, context: SchedulingContext) -
     Args:
         n: Population size
         context: Dict containing courses, groups, instructors, rooms, available_quanta
+        parallel: Use parallel individual generation (default True)
 
     Returns:
         List of individuals (each is a list of SessionGenes)
     """
-    population = []
-
     # Step 1: Analyze group hierarchy and generate proper course-group pairs
     # This respects parent-subgroup relationships:
     # - Theory: Lists all subgroups explicitly (e.g., ["BAE2A", "BAE2B"])
@@ -77,50 +133,74 @@ def generate_course_group_aware_population(n: int, context: SchedulingContext) -
     if not silent:
         print(f"Found {len(course_group_pairs)} course-group pairs to schedule")
 
-    # Generate population without progress bar for simplicity
-    # Progress is already shown at higher level in ga_scheduler
-    for individual_idx in range(n):
-        genes = []
-        used_quanta = set()  # Track used quanta for this individual to avoid conflicts
-        instructor_schedule = {}  # Track instructor schedules to avoid conflicts
-        group_schedule = {}  # Track group schedules to avoid conflicts
+    # Determine parallelization strategy
+    num_workers = max(1, multiprocessing.cpu_count() - 1) if parallel else 1
 
-        # Step 2: For each (course, groups) pair, create ONE session gene
-        for course_id, group_ids in course_group_pairs:
-            course = context.courses.get(course_id)
-            if not course:
-                continue
+    # For small populations or debugging, use sequential generation
+    if n < 10 or not parallel or num_workers == 1:
+        # SEQUENTIAL: Original behavior
+        population = []
+        for individual_idx in range(n):
+            genes = []
+            used_quanta = set()
+            instructor_schedule = {}
+            group_schedule = {}
 
-            # Get session type from Course object (not from name parsing)
-            session_type = course.course_type
-            num_quanta = course.quanta_per_week
+            for course_id, group_ids in course_group_pairs:
+                course = context.courses.get(course_id)
+                if not course:
+                    continue
 
-            # Create ONE session gene for this (course, groups) combination
-            # group_ids is already a list (may contain multiple groups for theory)
-            session_gene = create_session_gene_with_conflict_avoidance(
-                course_id,
-                group_ids,  # List of groups (multiple for theory, single for practical)
-                session_type,
-                num_quanta,
-                course,
-                context,
-                used_quanta,
-                instructor_schedule,
-                group_schedule,
+                session_type = course.course_type
+                num_quanta = course.quanta_per_week
+
+                session_gene = create_session_gene_with_conflict_avoidance(
+                    course_id,
+                    group_ids,
+                    session_type,
+                    num_quanta,
+                    course,
+                    context,
+                    used_quanta,
+                    instructor_schedule,
+                    group_schedule,
+                )
+                if session_gene:
+                    genes.append(session_gene)
+
+            if genes:
+                population.append(create_individual(genes))
+            else:
+                if not silent:
+                    print(f"Warning: Individual {individual_idx+1} has no genes!")
+
+    else:
+        # PARALLEL: Generate individuals concurrently
+        population = []
+
+        # Prepare tasks for parallel execution
+        tasks = [(idx, course_group_pairs, context, silent) for idx in range(n)]
+
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            # Generate all individuals in parallel
+            results = list(executor.map(_create_single_individual_wrapper, tasks))
+
+        # Filter out None results (failed individuals)
+        population = [ind for ind in results if ind is not None]
+
+        if len(population) < n and not silent:
+            print(
+                f"Warning: Only generated {len(population)}/{n} individuals successfully"
             )
-            if session_gene:
-                genes.append(session_gene)
-
-        if genes:
-            population.append(create_individual(genes))
-        else:
-            if not silent:
-                print(f"Warning: Individual {individual_idx+1} has no genes!")
 
     if not silent:
-        print(
-            f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population)/len(population):.1f} genes each"
-        )
+        if population:
+            print(
+                f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population)/len(population):.1f} genes each"
+            )
+        else:
+            print("Warning: Failed to generate any individuals!")
+
     return population
 
 
@@ -502,7 +582,10 @@ def assign_conflict_free_quanta(
 
     # CLUSTER-AWARE ASSIGNMENT
     from src.encoder.quantum_time_system import QuantumTimeSystem
-    from src.utils.time_helpers import get_midday_break_quanta, quantum_to_day_and_within_day
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
 
     qts = QuantumTimeSystem()
 
@@ -560,7 +643,10 @@ def _assign_clustered_blocks(quanta_needed: int, free_quanta: List, qts) -> List
 
     Returns list of assigned quanta or None if clustering fails.
     """
-    from src.utils.time_helpers import get_midday_break_quanta, quantum_to_day_and_within_day
+    from src.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
 
     # Determine ideal block distribution
     if quanta_needed == 4:

@@ -5,6 +5,9 @@ Orchestrates intensive local search operations on populations for deep optimizat
 Works at population level, applying local search to multiple individuals with
 performance controls (timeouts, population sampling, parallelization).
 
+PARALLELIZATION: Gene-level parallel optimization using ProcessPoolExecutor.
+Expected speedup: 4-8x on multi-core systems.
+
 Strategies:
 - Exhaustive: Steepest descent on all genes (gen 3, 25)
 - Greedy: Hill climbing on all genes (stagnation trigger)
@@ -39,10 +42,54 @@ Usage:
 from typing import List, Dict, Tuple
 import time
 from copy import deepcopy
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
 from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
 from src.ga.operators.local_search import optimize_gene_greedy, optimize_gene_exhaustive
+
+
+def _optimize_gene_wrapper_exhaustive(args):
+    """
+    Wrapper for parallel gene optimization (exhaustive).
+
+    Args:
+        args: Tuple of (gene, individual, gene_index, context, max_neighborhood_size)
+
+    Returns:
+        Tuple of (gene_index, improved_gene, improvement)
+    """
+    gene, individual, gene_index, context, max_neighborhood_size = args
+    improved_gene, improvement = optimize_gene_exhaustive(
+        gene=gene,
+        individual=individual,
+        gene_index=gene_index,
+        context=context,
+        max_neighborhood_size=max_neighborhood_size,
+    )
+    return (gene_index, improved_gene, improvement)
+
+
+def _optimize_gene_wrapper_greedy(args):
+    """
+    Wrapper for parallel gene optimization (greedy).
+
+    Args:
+        args: Tuple of (gene, individual, gene_index, context, max_iterations)
+
+    Returns:
+        Tuple of (gene_index, improved_gene, improvement)
+    """
+    gene, individual, gene_index, context, max_iterations = args
+    improved_gene, improvement = optimize_gene_greedy(
+        gene=gene,
+        individual=individual,
+        gene_index=gene_index,
+        context=context,
+        max_iterations=max_iterations,
+    )
+    return (gene_index, improved_gene, improvement)
 
 
 def apply_exhaustive_search(
@@ -51,9 +98,13 @@ def apply_exhaustive_search(
     population_coverage: float = 0.3,
     max_neighborhood_size: int = 100,
     timeout_seconds: int = 180,
+    parallel: bool = True,  # NEW: Enable/disable parallelization
 ) -> Tuple[List[List[SessionGene]], Dict]:
     """
     Apply exhaustive local search to population.
+
+    PARALLELIZED: Optimizes all genes of an individual in parallel using ProcessPoolExecutor.
+    Expected speedup: 4-8x on multi-core systems.
 
     Used for fixed-generation intensive optimization (e.g., gen 3, 25).
     Performs steepest descent on ALL genes in selected individuals.
@@ -64,6 +115,7 @@ def apply_exhaustive_search(
         population_coverage: Fraction of population to optimize (0.3 = top 30%)
         max_neighborhood_size: Max neighbors per gene
         timeout_seconds: Abort if exceeds this time
+        parallel: Use parallel gene optimization (default True)
 
     Returns:
         Tuple of (improved_population, metrics_dict)
@@ -102,6 +154,9 @@ def apply_exhaustive_search(
 
     improved_population = population.copy()
 
+    # Determine number of workers
+    num_workers = max(1, multiprocessing.cpu_count() - 1) if parallel else 1
+
     for pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout
         elapsed = time.time() - start_time
@@ -112,29 +167,78 @@ def apply_exhaustive_search(
         # Deep copy to avoid modifying original
         improved_ind = deepcopy(original_ind)
 
-        # Optimize each gene in individual
-        for gene_idx in range(len(improved_ind)):
-            # Check timeout again (gene-level)
-            elapsed = time.time() - start_time
-            if elapsed > timeout_seconds:
-                metrics["timed_out"] = True
-                break
+        if parallel and num_workers > 1:
+            # PARALLEL: Optimize all genes concurrently
+            gene_tasks = [
+                (
+                    improved_ind[gene_idx],
+                    improved_ind,
+                    gene_idx,
+                    context,
+                    max_neighborhood_size,
+                )
+                for gene_idx in range(len(improved_ind))
+            ]
 
-            improved_gene, improvement = optimize_gene_exhaustive(
-                gene=improved_ind[gene_idx],
-                individual=improved_ind,
-                gene_index=gene_idx,
-                context=context,
-                max_neighborhood_size=max_neighborhood_size,
-            )
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                # Submit all gene optimization tasks
+                futures = {
+                    executor.submit(_optimize_gene_wrapper_exhaustive, task): idx
+                    for idx, task in enumerate(gene_tasks)
+                }
 
-            # Update gene if improved
-            if improvement > 0:
-                improved_ind[gene_idx] = improved_gene
-                metrics["genes_improved"] += 1
-                metrics["total_improvement"] += improvement
+                # Collect results as they complete
+                for future in as_completed(futures):
+                    # Check timeout
+                    elapsed = time.time() - start_time
+                    if elapsed > timeout_seconds:
+                        metrics["timed_out"] = True
+                        # Cancel remaining tasks
+                        for f in futures:
+                            f.cancel()
+                        break
 
-            metrics["genes_evaluated"] += 1
+                    try:
+                        gene_idx, improved_gene, improvement = future.result(timeout=5)
+
+                        # Update gene if improved
+                        if improvement > 0:
+                            improved_ind[gene_idx] = improved_gene
+                            metrics["genes_improved"] += 1
+                            metrics["total_improvement"] += improvement
+
+                        metrics["genes_evaluated"] += 1
+
+                    except Exception as e:
+                        # Log error but continue
+                        print(
+                            f"[WARNING] Gene optimization failed for gene {futures[future]}: {e}"
+                        )
+
+        else:
+            # SEQUENTIAL: Fallback for small populations or debugging
+            for gene_idx in range(len(improved_ind)):
+                # Check timeout
+                elapsed = time.time() - start_time
+                if elapsed > timeout_seconds:
+                    metrics["timed_out"] = True
+                    break
+
+                improved_gene, improvement = optimize_gene_exhaustive(
+                    gene=improved_ind[gene_idx],
+                    individual=improved_ind,
+                    gene_index=gene_idx,
+                    context=context,
+                    max_neighborhood_size=max_neighborhood_size,
+                )
+
+                # Update gene if improved
+                if improvement > 0:
+                    improved_ind[gene_idx] = improved_gene
+                    metrics["genes_improved"] += 1
+                    metrics["total_improvement"] += improvement
+
+                metrics["genes_evaluated"] += 1
 
         # Replace in population
         original_index = population.index(original_ind)
@@ -155,9 +259,13 @@ def apply_greedy_search(
     population_coverage: float = 0.5,
     max_iterations: int = 10,
     timeout_seconds: int = 60,
+    parallel: bool = True,  # NEW: Enable/disable parallelization
 ) -> Tuple[List[List[SessionGene]], Dict]:
     """
     Apply greedy local search to population.
+
+    PARALLELIZED: Optimizes all genes of an individual in parallel using ProcessPoolExecutor.
+    Expected speedup: 4-8x on multi-core systems.
 
     Used for stagnation-triggered adaptive optimization.
     Performs hill climbing on ALL genes in selected individuals.
@@ -169,6 +277,7 @@ def apply_greedy_search(
         population_coverage: Fraction of population to optimize (0.5 = top 50%)
         max_iterations: Max iterations per gene for greedy search
         timeout_seconds: Abort if exceeds this time
+        parallel: Use parallel gene optimization (default True)
 
     Returns:
         Tuple of (improved_population, metrics_dict)
@@ -207,6 +316,9 @@ def apply_greedy_search(
 
     improved_population = population.copy()
 
+    # Determine number of workers
+    num_workers = max(1, multiprocessing.cpu_count() - 1) if parallel else 1
+
     for pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout
         elapsed = time.time() - start_time
@@ -217,29 +329,78 @@ def apply_greedy_search(
         # Deep copy to avoid modifying original
         improved_ind = deepcopy(original_ind)
 
-        # Optimize each gene in individual
-        for gene_idx in range(len(improved_ind)):
-            # Check timeout again (gene-level)
-            elapsed = time.time() - start_time
-            if elapsed > timeout_seconds:
-                metrics["timed_out"] = True
-                break
+        if parallel and num_workers > 1:
+            # PARALLEL: Optimize all genes concurrently
+            gene_tasks = [
+                (
+                    improved_ind[gene_idx],
+                    improved_ind,
+                    gene_idx,
+                    context,
+                    max_iterations,
+                )
+                for gene_idx in range(len(improved_ind))
+            ]
 
-            improved_gene, improvement = optimize_gene_greedy(
-                gene=improved_ind[gene_idx],
-                individual=improved_ind,
-                gene_index=gene_idx,
-                context=context,
-                max_iterations=max_iterations,
-            )
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                # Submit all gene optimization tasks
+                futures = {
+                    executor.submit(_optimize_gene_wrapper_greedy, task): idx
+                    for idx, task in enumerate(gene_tasks)
+                }
 
-            # Update gene if improved
-            if improvement > 0:
-                improved_ind[gene_idx] = improved_gene
-                metrics["genes_improved"] += 1
-                metrics["total_improvement"] += improvement
+                # Collect results as they complete
+                for future in as_completed(futures):
+                    # Check timeout
+                    elapsed = time.time() - start_time
+                    if elapsed > timeout_seconds:
+                        metrics["timed_out"] = True
+                        # Cancel remaining tasks
+                        for f in futures:
+                            f.cancel()
+                        break
 
-            metrics["genes_evaluated"] += 1
+                    try:
+                        gene_idx, improved_gene, improvement = future.result(timeout=5)
+
+                        # Update gene if improved
+                        if improvement > 0:
+                            improved_ind[gene_idx] = improved_gene
+                            metrics["genes_improved"] += 1
+                            metrics["total_improvement"] += improvement
+
+                        metrics["genes_evaluated"] += 1
+
+                    except Exception as e:
+                        # Log error but continue
+                        print(
+                            f"[WARNING] Gene optimization failed for gene {futures[future]}: {e}"
+                        )
+
+        else:
+            # SEQUENTIAL: Fallback for small populations or debugging
+            for gene_idx in range(len(improved_ind)):
+                # Check timeout
+                elapsed = time.time() - start_time
+                if elapsed > timeout_seconds:
+                    metrics["timed_out"] = True
+                    break
+
+                improved_gene, improvement = optimize_gene_greedy(
+                    gene=improved_ind[gene_idx],
+                    individual=improved_ind,
+                    gene_index=gene_idx,
+                    context=context,
+                    max_iterations=max_iterations,
+                )
+
+                # Update gene if improved
+                if improvement > 0:
+                    improved_ind[gene_idx] = improved_gene
+                    metrics["genes_improved"] += 1
+                    metrics["total_improvement"] += improvement
+
+                metrics["genes_evaluated"] += 1
 
         # Replace in population
         original_index = population.index(original_ind)
