@@ -598,12 +598,13 @@ class GAScheduler:
             )
             cpu_bars.append(cpu_bar)
 
-        # Create Memory monitoring bar (process-specific) - WIDER bar
+        # Create Memory monitoring bar (process-specific) - Show multiple metrics
         memory_bar = Progress(
             TextColumn("[dim]memory:[/dim]"),
             BarColumn(bar_width=20),
-            TextColumn("[magenta]{task.fields[mem_used]}[/magenta]"),
-            TextColumn("[dim](Peak: {task.fields[mem_peak]})[/dim]"),
+            TextColumn("[magenta]{task.fields[mem_rss]}[/magenta]"),
+            TextColumn("[dim cyan]({task.fields[mem_percent]})[/dim cyan]"),
+            TextColumn("[dim]Peak: {task.fields[mem_peak]}[/dim]"),
             console=console,
             refresh_per_second=10,
         )
@@ -715,13 +716,17 @@ class GAScheduler:
                 )
                 cpu_tasks.append(cpu_task)
 
-            # Initialize Memory monitoring task (process-specific)
+            # Initialize Memory monitoring task (process-specific + children)
             mem_info = process.memory_info()
+            system_total = psutil.virtual_memory().total
+            mem_percent_init = (mem_info.rss / system_total) * 100
+
             memory_task = memory_bar.add_task(
                 "",
                 total=100,
-                mem_used=f"{mem_info.rss / (1024**3):.2f}GB",
-                mem_peak=f"{mem_info.rss / (1024**3):.2f}GB",
+                mem_rss=f"{mem_info.rss / (1024**3):.2f}GiB",
+                mem_percent=f"{mem_percent_init:.1f}%",
+                mem_peak=f"{mem_info.rss / (1024**3):.2f}GiB",
             )
 
             # Initialize legend bar tasks (static display)
@@ -738,11 +743,44 @@ class GAScheduler:
             def update_resource_monitors():
                 """Background thread to update CPU and Memory metrics every second"""
                 nonlocal peak_memory
+                # Initialize CPU monitoring baseline (first call must establish baseline)
+                psutil.cpu_percent(interval=0.1, percpu=True)
+
                 while monitoring_active:
                     try:
-                        # Update CPU monitoring (per-core, process-specific)
-                        # Get per-core CPU percentages (system-wide)
-                        cpu_percentages = psutil.cpu_percent(interval=0.5, percpu=True)
+                        # Update Memory monitoring FIRST (process-specific + children) - non-blocking
+                        current_mem_info = process.memory_info()
+                        current_mem_rss = current_mem_info.rss
+
+                        # Include child processes (for multiprocessing workers)
+                        try:
+                            children = process.children(recursive=True)
+                            for child in children:
+                                try:
+                                    current_mem_rss += child.memory_info().rss
+                                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                    pass  # Child process may have terminated
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            pass  # Parent process issue
+
+                        if current_mem_rss > peak_memory:
+                            peak_memory = current_mem_rss
+
+                        # Calculate percentage of system memory used by this process + children
+                        system_total = psutil.virtual_memory().total
+                        mem_percent = (current_mem_rss / system_total) * 100
+
+                        memory_bar.update(
+                            memory_task,
+                            completed=mem_percent,
+                            mem_rss=f"{current_mem_rss / (1024**3):.2f}GiB",
+                            mem_percent=f"{mem_percent:.1f}%",
+                            mem_peak=f"{peak_memory / (1024**3):.2f}GiB",
+                        )
+
+                        # Update CPU monitoring (per-core, non-blocking after baseline)
+                        # interval=None uses time since last call (non-blocking)
+                        cpu_percentages = psutil.cpu_percent(interval=None, percpu=True)
                         for i, (cpu_bar, cpu_task) in enumerate(
                             zip(cpu_bars, cpu_tasks)
                         ):
@@ -752,23 +790,6 @@ class GAScheduler:
                                     completed=cpu_percentages[i],
                                     cpu_percent=cpu_percentages[i],
                                 )
-
-                        # Update Memory monitoring (process-specific)
-                        current_mem_info = process.memory_info()
-                        current_mem = current_mem_info.rss
-                        if current_mem > peak_memory:
-                            peak_memory = current_mem
-
-                        # Calculate percentage of system memory used by this process
-                        system_total = psutil.virtual_memory().total
-                        mem_percent = (current_mem / system_total) * 100
-
-                        memory_bar.update(
-                            memory_task,
-                            completed=mem_percent,
-                            mem_used=f"{current_mem / (1024**3):.2f}GB",
-                            mem_peak=f"{peak_memory / (1024**3):.2f}GB",
-                        )
 
                         time.sleep(0.5)  # Update twice per second for smoother display
                     except Exception:
