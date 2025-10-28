@@ -39,8 +39,8 @@ calendar:
 
 # GA Settings - PROD: 1000 gens, 100 population
 ga:
-  ngen: 1000
-  pop_size: 100
+  ngen: 2000
+  pop_size: 200
   cxpb: 0.75
   mutpb: 0.25
   elite_preservation: true

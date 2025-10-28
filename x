@@ -42,26 +42,26 @@ def show_menu():
     print("\n" + "=" * 50)
     print("  Schedule Engine - Environment Selection")
     print("=" * 50)
-    print("\n  1) dev   - Development (100 generations)")
-    print("  2) test  - Quick test (10 generations)")
-    print("  3) prod  - Production (200+ generations)")
+    print("\n  d) dev   - Development (100 generations)")
+    print("  t) test  - Quick test (10 generations)")
+    print("  p) prod  - Production (200+ generations)")
     print("\n" + "=" * 50)
 
     while True:
         try:
-            choice = input("\nEnter choice (1-3) or 'q' to quit: ").strip().lower()
+            choice = input("\nEnter choice (d/t/p) or 'q' to quit: ").strip().lower()
 
             if choice == "q":
                 print("\n[!bye] Goodbye!")
                 sys.exit(0)
-            elif choice == "1":
+            elif choice == "d":
                 return "dev"
-            elif choice == "2":
+            elif choice == "t":
                 return "test"
-            elif choice == "3":
+            elif choice == "p":
                 return "prod"
             else:
-                print("[err!] Invalid choice. Please enter 1, 2, 3, or 'q'.")
+                print("[err!] Invalid choice. Please enter d, t, p, or 'q'.")
         except (KeyboardInterrupt, EOFError):
             print("\n\n[!bye] Goodbye!")
             sys.exit(0)
