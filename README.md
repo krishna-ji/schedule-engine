@@ -61,4 +61,16 @@ python main.py --config path/to/custom.yaml
 
 See `docs/` folder for detailed documentation:
 
+### 📊 Library Comparison & Analysis
+
+**Wondering if Google OR-Tools or other libraries would be better?**
+
+- **[Library Comparison Guide](docs/LIBRARY_COMPARISON.md)** - Comprehensive analysis comparing DEAP vs OR-Tools vs alternatives
+- **[When to Use What](docs/WHEN_TO_USE_WHAT.md)** - Quick decision guide for choosing the right approach
+- **[OR-Tools Proof-of-Concept](docs/ortools_poc.py)** - Demonstration comparing constraint programming vs evolutionary approach
+
+**TL;DR:** The current DEAP-based implementation is well-suited for this problem. OR-Tools could be complementary but not a replacement. See guides for detailed analysis.
+
+### 📚 Other Documentation
+
 
