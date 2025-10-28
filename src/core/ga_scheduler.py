@@ -81,7 +81,11 @@ def _worker_init(data_dir: str, seed: int):
 
     # Set up DEAP creator types (required for Windows spawn)
     if not hasattr(creator, "FitnessMulti"):
-        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -0.01))
+        # Use two-objective minimization: hard penalties, soft penalties
+        # Both objectives are minimized equally in terms of direction; relative
+        # importance is controlled via constraint weights and soft_weight_factor
+        # in configuration, not by magnitudes here.
+        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -1.0))
     if not hasattr(creator, "Individual"):
         creator.create("Individual", list, fitness=creator.FitnessMulti)
 
@@ -698,6 +702,8 @@ class GAScheduler:
         event_tracker = EventTracker()
 
         repair_config = self.config.repair_config
+        igls_config = get_config().repair  # Get IGLS config early
+
         generation_repair_stats = {
             "instructor_availability_fixes": 0,
             "overlap_fixes": 0,
@@ -719,6 +725,9 @@ class GAScheduler:
         adaptive_config = repair_config.get("adaptive_repair", {})
         stagnation_cfg = adaptive_config.get("stagnation_trigger", {})
         periodic_cfg = adaptive_config.get("periodic_trigger", {})
+
+        # Get enhancement config once (used in multiple places)
+        enhancement_cfg = get_config().enhancements
 
         # Track current best HC for stagnation detection
         if self.population:
@@ -743,7 +752,6 @@ class GAScheduler:
                     event_tracker.add("stagnation_detected")
 
                     # ENHANCEMENT: Trigger hypermutation on stagnation
-                    enhancement_cfg = get_config().enhancements
                     if (
                         enhancement_cfg.master_enabled
                         and enhancement_cfg.hypermutation.enabled
@@ -787,7 +795,10 @@ class GAScheduler:
 
             # Apply dynamic repair parameters based on triggers
             if is_intensive_gen:
-                # Intensive repair: full mode, high iterations
+                # INTENSIVE REPAIR (every 20 gens): HARD/STRICT mode
+                # - Full mode (not selective) for thorough checking
+                # - High max_iterations (can take time)
+                # - Enable memetic mode for deep local search on elite
                 intensive_action = adaptive_config.get("intensive_action", {})
                 repair_config["selective_mode"] = (
                     intensive_action.get("repair_mode", "full") == "selective"
@@ -798,12 +809,17 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = intensive_action.get(
                     "max_iterations", 10
                 )
+                repair_config["memetic_mode"] = True  # Enable memetic for intensive
                 event_tracker.add("intensive_repair")
                 console.print(
-                    f"[bold red]Gen {gen}: Intensive repair triggered (every {periodic_cfg.get('intensive_interval', 20)} gens)[/bold red]"
+                    f"[bold red]🔥 Gen {gen}: INTENSIVE REPAIR triggered (every {periodic_cfg.get('intensive_interval', 20)} gens) "
+                    f"- HARD mode: full scan, max_iterations={repair_config['max_iterations']}, memetic=ON[/bold red]"
                 )
             elif stagnation_detected:
-                # Stagnation repair: use trigger_action settings
+                # STAGNATION REPAIR: SOFT mode
+                # - Selective mode (fast, targeted)
+                # - Limited iterations
+                # - No memetic mode (keep it lightweight)
                 trigger_action = adaptive_config.get("trigger_action", {})
                 repair_config["selective_mode"] = (
                     trigger_action.get("repair_mode", "full") == "selective"
@@ -814,13 +830,18 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = trigger_action.get(
                     "max_iterations", 5
                 )
+                repair_config["memetic_mode"] = False  # Disable memetic for stagnation
                 event_tracker.add("stagnation_repair")
                 console.print(
-                    f"[bold yellow]⚠ Gen {gen}: Stagnation detected ({self.stagnation_counter} gens) - applying repair[/bold yellow]"
+                    f"[bold yellow]⚠️ Gen {gen}: STAGNATION repair triggered ({self.stagnation_counter} gens) "
+                    f"- SOFT mode: selective, max_iterations={repair_config['max_iterations']}, memetic=OFF[/bold yellow]"
                 )
                 self.stagnation_counter = 0  # Reset after applying repair
             elif is_periodic_gen:
-                # Regular periodic repair: use trigger_action settings
+                # PERIODIC REPAIR (every 10 gens): SOFT mode
+                # - Selective mode (fast, targeted)
+                # - Limited iterations
+                # - No memetic mode
                 trigger_action = adaptive_config.get("trigger_action", {})
                 repair_config["selective_mode"] = (
                     trigger_action.get("repair_mode", "full") == "selective"
@@ -831,10 +852,17 @@ class GAScheduler:
                 repair_config["memetic_iterations"] = trigger_action.get(
                     "max_iterations", 5
                 )
+                repair_config["memetic_mode"] = False  # Disable memetic for periodic
                 event_tracker.add("periodic_repair")
                 console.print(
-                    f"[bold cyan] Gen {gen}: Periodic repair triggered (every {periodic_cfg.get('interval', 10)} gens)[/bold cyan]"
+                    f"[bold cyan]🔄 Gen {gen}: PERIODIC repair triggered (every {periodic_cfg.get('interval', 10)} gens) "
+                    f"- SOFT mode: selective, max_iterations={repair_config['max_iterations']}, memetic=OFF[/bold cyan]"
                 )
+            else:
+                # NO TRIGGER: Reset memetic mode to base config value
+                # This ensures memetic doesn't carry over from previous trigger
+                base_memetic = get_config().repair.memetic_mode
+                repair_config["memetic_mode"] = base_memetic
 
         # PHASE 1.3: Get adaptive probabilities based on search progress
         cxpb, mutpb = self._get_adaptive_probabilities(gen)
@@ -863,64 +891,43 @@ class GAScheduler:
                 del offspring[i - 1].fitness.values
                 del offspring[i].fitness.values
 
-                # Apply repairs after crossover if enabled
-                if repair_config.get("enabled", False) and repair_config.get(
-                    "apply_after_crossover", False
+                # Apply PROBABILISTIC repairs after crossover if enabled (Tier 3: Selective)
+                # Only applies to a fraction of crossover offspring
+                if (
+                    repair_config.get("enabled", False)
+                    and igls_config.selective_repair.enabled
+                    and igls_config.selective_repair.apply_after_crossover
                 ):
-                    from src.ga.operators.repair import repair_individual_unified
 
-                    # Use selective mode from config
-                    selective_mode = repair_config.get("selective_mode", True)
+                    # Probabilistic gate
+                    if random.random() < igls_config.selective_repair.apply_probability:
+                        from src.ga.operators.intensive_local_search import (
+                            apply_selective_probabilistic,
+                        )
 
-                    stats1 = repair_individual_unified(
-                        offspring[i - 1],
-                        self.context,
-                        max_iterations=repair_config.get("max_iterations", 3),
-                        selective=selective_mode,
-                    )
-                    stats2 = repair_individual_unified(
-                        offspring[i],
-                        self.context,
-                        max_iterations=repair_config.get("max_iterations", 3),
-                        selective=selective_mode,
-                    )
+                        offspring[i - 1], was_repaired1 = apply_selective_probabilistic(
+                            individual=offspring[i - 1],
+                            context=self.context,
+                            apply_probability=1.0,  # Already gated above
+                        )
+                        offspring[i], was_repaired2 = apply_selective_probabilistic(
+                            individual=offspring[i],
+                            context=self.context,
+                            apply_probability=1.0,  # Already gated above
+                        )
 
-                    # Track if any repairs were made
-                    total_fixes_this_pair = stats1.get("total_fixes", 0) + stats2.get(
-                        "total_fixes", 0
-                    )
-                    if total_fixes_this_pair > 0:
-                        if "crossover_repair_applied" not in [
-                            e for e in event_tracker.events
-                        ]:
-                            event_tracker.add("crossover_repair_applied")
+                        if was_repaired1 or was_repaired2:
+                            if "crossover_repair_applied" not in [
+                                e for e in event_tracker.events
+                            ]:
+                                event_tracker.add("crossover_repair_applied")
 
-                        # Count individuals repaired
-                        if stats1.get("total_fixes", 0) > 0:
-                            generation_repair_stats["individuals_repaired"] += 1
-                        if stats2.get("total_fixes", 0) > 0:
-                            generation_repair_stats["individuals_repaired"] += 1
-
-                        # Track crossover-specific repairs
-                        generation_repair_stats[
-                            "crossover_repairs"
-                        ] += total_fixes_this_pair
-
-                    # Aggregate all repair stats
-                    for key in [
-                        "instructor_availability_fixes",
-                        "overlap_fixes",
-                        "room_fixes",
-                        "instructor_conflict_fixes",
-                        "qualification_fixes",
-                        "room_type_fixes",
-                        "clustering_fixes",
-                        "session_count_fixes",
-                    ]:
-                        if key in stats1:
-                            generation_repair_stats[key] += stats1[key]
-                        if key in stats2:
-                            generation_repair_stats[key] += stats2[key]
+                            if was_repaired1:
+                                generation_repair_stats["individuals_repaired"] += 1
+                                generation_repair_stats["crossover_repairs"] += 1
+                            if was_repaired2:
+                                generation_repair_stats["individuals_repaired"] += 1
+                                generation_repair_stats["crossover_repairs"] += 1
 
         # Mutation (using adaptive probability)
         for mutant in offspring:
@@ -928,57 +935,34 @@ class GAScheduler:
                 self.toolbox.mutate(mutant)
                 del mutant.fitness.values
 
-                # Apply repairs after mutation if enabled
-                if repair_config.get("enabled", False) and repair_config.get(
-                    "apply_after_mutation", False
+                # Apply PROBABILISTIC repairs after mutation if enabled (Tier 3: Selective)
+                # Only applies to a fraction of mutated offspring (e.g., 30%)
+                if (
+                    repair_config.get("enabled", False)
+                    and igls_config.selective_repair.enabled
+                    and igls_config.selective_repair.apply_after_mutation
                 ):
-                    from src.ga.operators.repair import repair_individual_unified
 
-                    # Use selective mode from config
-                    selective_mode = repair_config.get("selective_mode", True)
-
-                    # Check violation threshold if specified
-                    threshold = repair_config.get("violation_threshold")
-                    should_repair = True
-
-                    if threshold is not None and mutant.fitness.valid:
-                        should_repair = mutant.fitness.values[0] > threshold
-
-                    if should_repair:
-                        stats = repair_individual_unified(
-                            mutant,
-                            self.context,
-                            max_iterations=repair_config.get("max_iterations", 3),
-                            selective=selective_mode,
+                    # Probabilistic gate
+                    if random.random() < igls_config.selective_repair.apply_probability:
+                        from src.ga.operators.intensive_local_search import (
+                            apply_selective_probabilistic,
                         )
 
-                        # Track if any repairs were made
-                        total_fixes = stats.get("total_fixes", 0)
-                        if total_fixes > 0:
+                        mutant, was_repaired = apply_selective_probabilistic(
+                            individual=mutant,
+                            context=self.context,
+                            apply_probability=1.0,  # Already gated above
+                        )
+
+                        if was_repaired:
                             if "mutation_repair_applied" not in [
                                 e for e in event_tracker.events
                             ]:
                                 event_tracker.add("mutation_repair_applied")
 
-                            # Count individual repaired
                             generation_repair_stats["individuals_repaired"] += 1
-
-                            # Track mutation-specific repairs
-                            generation_repair_stats["mutation_repairs"] += total_fixes
-
-                        # Aggregate all repair stats
-                        for key in [
-                            "instructor_availability_fixes",
-                            "overlap_fixes",
-                            "room_fixes",
-                            "instructor_conflict_fixes",
-                            "qualification_fixes",
-                            "room_type_fixes",
-                            "clustering_fixes",
-                            "session_count_fixes",
-                        ]:
-                            if key in stats:
-                                generation_repair_stats[key] += stats[key]
+                            generation_repair_stats["mutation_repairs"] += 1
 
         # Evaluate invalid individuals
         invalid = [ind for ind in offspring if not ind.fitness.valid]
@@ -1033,19 +1017,8 @@ class GAScheduler:
                 # Invalidate fitness after repair
                 del individual.fitness.values
 
-                # Aggregate all memetic stats
-                for key in [
-                    "instructor_availability_fixes",
-                    "overlap_fixes",
-                    "room_fixes",
-                    "instructor_conflict_fixes",
-                    "qualification_fixes",
-                    "room_type_fixes",
-                    "clustering_fixes",
-                    "session_count_fixes",
-                ]:
-                    if key in stats:
-                        generation_repair_stats[key] += stats[key]
+                # Aggregate all memetic stats with proper key mapping
+                self._accumulate_repair_stats(generation_repair_stats, stats)
 
             # Re-evaluate elite after memetic repair
             # Use toolbox.map for parallel evaluation when pool is available
@@ -1054,6 +1027,133 @@ class GAScheduler:
             )
             for ind, fit in zip(elite_individuals, fitness_values):
                 ind.fitness.values = fit
+
+        # Finalize generation repair totals
+        # Sum category fixes (after key mapping) plus phase-specific counts
+        category_total = (
+            generation_repair_stats["instructor_availability_fixes"]
+            + generation_repair_stats["overlap_fixes"]
+            + generation_repair_stats["room_fixes"]
+            + generation_repair_stats["instructor_conflict_fixes"]
+            + generation_repair_stats["qualification_fixes"]
+            + generation_repair_stats["room_type_fixes"]
+            + generation_repair_stats["clustering_fixes"]
+            + generation_repair_stats["session_count_fixes"]
+        )
+        phase_total = (
+            generation_repair_stats["crossover_repairs"]
+            + generation_repair_stats["mutation_repairs"]
+            + generation_repair_stats["memetic_repairs"]
+        )
+        generation_repair_stats["total_fixes"] = max(category_total, phase_total)
+
+        # ========================================================================
+        # NEW: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
+        # ========================================================================
+        # Three-tier repair strategy with priority resolution:
+        #   Tier 1: Exhaustive search (fixed generations: 3, 25)
+        #   Tier 2: Greedy full search (stagnation-triggered)
+        #   Tier 3: Selective probabilistic (post-mutation cleanup)
+        # ========================================================================
+
+        repair_triggered = None  # Track which repair was applied
+        igls_metrics = {}
+
+        # TIER 1: Exhaustive Search (Fixed Generations)
+        if (
+            igls_config.exhaustive_search.enabled
+            and gen in igls_config.exhaustive_search.generations
+        ):
+
+            console.print(
+                f"\n[bold red]🔥 Gen {gen}: EXHAUSTIVE SEARCH triggered "
+                f"(steepest descent on top {igls_config.exhaustive_search.population_coverage*100:.0f}%)[/bold red]"
+            )
+
+            from src.ga.operators.intensive_local_search import apply_exhaustive_search
+
+            start_time = time.time()
+            self.population, igls_metrics = apply_exhaustive_search(
+                population=self.population,
+                context=self.context,
+                population_coverage=igls_config.exhaustive_search.population_coverage,
+                max_neighborhood_size=igls_config.exhaustive_search.max_neighborhood_size,
+                timeout_seconds=igls_config.exhaustive_search.timeout_seconds,
+            )
+
+            # Re-evaluate population after exhaustive search
+            fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
+            for ind, fit in zip(self.population, fitnesses):
+                ind.fitness.values = fit
+
+            repair_triggered = "exhaustive"
+            event_tracker.add("igls_exhaustive_search")
+
+            console.print(
+                f"[bold green]   ✓ Exhaustive search complete: "
+                f"{igls_metrics['genes_improved']} genes improved, "
+                f"total reduction: {igls_metrics['total_improvement']}, "
+                f"time: {igls_metrics['execution_time']:.1f}s"
+                f"{' [TIMED OUT]' if igls_metrics.get('timed_out') else ''}[/bold green]"
+            )
+
+        # TIER 2: Greedy Full Search (Stagnation-Triggered)
+        elif (
+            igls_config.stagnation_repair.enabled
+            and gen >= igls_config.stagnation_repair.min_generation
+            and self.stagnation_counter >= igls_config.stagnation_repair.patience
+            and (gen - getattr(self, "_last_stagnation_repair_gen", -999))
+            >= igls_config.stagnation_repair.cooldown
+        ):
+
+            console.print(
+                f"\n[bold yellow]⚡ Gen {gen}: STAGNATION REPAIR triggered "
+                f"(greedy search on top {igls_config.stagnation_repair.population_coverage*100:.0f}%, "
+                f"{self.stagnation_counter} gens stagnant)[/bold yellow]"
+            )
+
+            from src.ga.operators.intensive_local_search import apply_greedy_search
+
+            start_time = time.time()
+            self.population, igls_metrics = apply_greedy_search(
+                population=self.population,
+                context=self.context,
+                population_coverage=igls_config.stagnation_repair.population_coverage,
+                max_iterations=igls_config.stagnation_repair.max_iterations,
+                timeout_seconds=igls_config.stagnation_repair.timeout_seconds,
+            )
+
+            # Re-evaluate population after greedy search
+            fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
+            for ind, fit in zip(self.population, fitnesses):
+                ind.fitness.values = fit
+
+            repair_triggered = "greedy_stagnation"
+            event_tracker.add("igls_stagnation_repair")
+
+            # Reset stagnation counter and update last repair generation
+            self.stagnation_counter = 0
+            self._last_stagnation_repair_gen = gen
+
+            console.print(
+                f"[bold green]   ✓ Stagnation repair complete: "
+                f"{igls_metrics['genes_improved']} genes improved, "
+                f"total reduction: {igls_metrics['total_improvement']}, "
+                f"time: {igls_metrics['execution_time']:.1f}s"
+                f"{' [TIMED OUT]' if igls_metrics.get('timed_out') else ''}[/bold green]"
+            )
+
+        # Store IGLS metrics if repair was triggered
+        if repair_triggered:
+            igls_metrics["repair_type"] = repair_triggered
+            igls_metrics["generation"] = gen
+            if not hasattr(self.metrics, "igls_history"):
+                self.metrics.igls_history = []
+            self.metrics.igls_history.append(igls_metrics)
+
+        # ========================================================================
+        # END: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
+        # ========================================================================
 
         # Store generation repair stats
         self.metrics.repair_stats.append(generation_repair_stats)
@@ -1297,6 +1397,38 @@ class GAScheduler:
             for name, value in soft_details.items():
                 if value > 0:
                     console.print(f"      • {name}: {value:.2f}")
+
+    def _accumulate_repair_stats(self, agg: Dict, stats: Dict) -> None:
+        """
+        Accumulate repair stats from a single repair call into generation totals.
+
+        Maps detailed repair keys from repair.py to the consolidated keys used by
+        the scheduler and loggers.
+
+        Example mappings:
+        - group_overlaps_fixes -> overlap_fixes
+        - room_conflicts_fixes -> room_fixes
+        - instructor_conflicts_fixes -> instructor_conflict_fixes
+        - instructor_qualifications_fixes -> qualification_fixes
+        - room_type_mismatches_fixes -> room_type_fixes
+        - session_clustering_fixes -> clustering_fixes
+        - incomplete_or_extra_sessions_fixes -> session_count_fixes
+        - instructor_availability_fixes -> instructor_availability_fixes
+        """
+        key_map = {
+            "group_overlaps_fixes": "overlap_fixes",
+            "room_conflicts_fixes": "room_fixes",
+            "instructor_conflicts_fixes": "instructor_conflict_fixes",
+            "instructor_qualifications_fixes": "qualification_fixes",
+            "room_type_mismatches_fixes": "room_type_fixes",
+            "session_clustering_fixes": "clustering_fixes",
+            "incomplete_or_extra_sessions_fixes": "session_count_fixes",
+            "instructor_availability_fixes": "instructor_availability_fixes",
+        }
+
+        for src_key, dst_key in key_map.items():
+            if src_key in stats:
+                agg[dst_key] += stats.get(src_key, 0)
 
     def _restart_population(self, gen: int):
         """

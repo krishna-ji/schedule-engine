@@ -1,0 +1,159 @@
+name: "IGLS Test Configuration"
+environment: test
+description: "Test configuration for Intensive Global Local Search system"
+
+ga:
+  ngen: 30  # Extended to test gen 3 and gen 25 triggers
+  pop_size: 10  # Small population for fast testing
+  cxpb: 0.7
+  mutpb: 0.2
+  elite_preservation: true
+  elite_size: 0.1
+  population_strategy: "hybrid"
+
+parallel:
+  use_multiprocessing: false  # Disabled for easier debugging
+  num_workers: null
+
+# NEW: IGLS Repair System Configuration
+repair:
+  enabled: true
+  
+  # Legacy repair parameters (kept for backward compatibility)
+  apply_after_mutation: false  # Disabled - using probabilistic IGLS instead
+  apply_after_crossover: false  # Disabled - using probabilistic IGLS instead
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false
+  
+  # Adaptive repair (legacy system - disabled in favor of IGLS)
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: false
+    periodic_trigger:
+      enabled: false
+  
+  # =========================================================================
+  # NEW: IGLS THREE-TIER REPAIR SYSTEM
+  # =========================================================================
+  
+  # TIER 1: Exhaustive Search (Fixed Generations)
+  exhaustive_search:
+    enabled: true
+    generations: [3, 25]  # Two-shot: early + late
+    population_coverage: 0.3  # Top 30% of population
+    max_neighborhood_size: 80  # Reduced for testing
+    timeout_seconds: 120  # 2 minutes max
+  
+  # TIER 2: Stagnation-Triggered Greedy Repair
+  stagnation_repair:
+    enabled: true
+    patience: 5  # Trigger after 5 gens without improvement
+    min_generation: 8  # Don't trigger before gen 8
+    population_coverage: 0.5  # Top 50% of population
+    max_iterations: 10  # Max greedy iterations per gene
+    timeout_seconds: 60  # 1 minute max
+    cooldown: 3  # Wait 3 gens before re-triggering
+  
+  # TIER 3: Selective Probabilistic Repair (Post-Mutation/Crossover)
+  selective_repair:
+    enabled: true
+    apply_probability: 0.3  # Apply to 30% of offspring
+    apply_after_mutation: true
+    apply_after_crossover: false  # Typically false to preserve exploration
+    detection_strategy: "hybrid"
+
+# Feasibility checks
+feasibility:
+  enable_checks: true
+  fail_on_infeasibility: false
+  tolerance_margin: 0.1
+  generate_report: true
+  show_console_output: true
+
+# Hard constraints
+hard_constraints:
+  no_group_overlap:
+    enabled: true
+    weight: 2.0
+  no_instructor_conflict:
+    enabled: true
+    weight: 2.0
+  instructor_not_qualified:
+    enabled: true
+    weight: 2.0
+  room_type_mismatch:
+    enabled: true
+    weight: 2.0
+  availability_violations:
+    enabled: true
+    weight: 2.0
+  incomplete_or_extra_sessions:
+    enabled: true
+    weight: 1.0
+  session_block_clustering_penalty:
+    enabled: true
+    weight: 2.0
+
+# Soft constraints
+soft_constraints:
+  group_gaps_penalty:
+    enabled: true
+    weight: 1.0
+    gap_penalty_per_quantum: 1
+  instructor_gaps_penalty:
+    enabled: true
+    weight: 1.0
+    gap_penalty_per_quantum: 1
+  group_midday_break_violation:
+    enabled: true
+    weight: 1.0
+    distance_penalty_per_quantum: 1
+  soft_weight_factor: 0.01
+
+# Time configuration
+time:
+  quantum_minutes: 60
+  earliest_preferred_time: "08:00"
+  latest_preferred_time: "17:00"
+  midday_break_start: "12:00"
+  midday_break_end: "13:00"
+  max_session_coalescence: 3
+  preferred_block_size_min: 2
+  preferred_block_size_max: 3
+  theory_isolated_penalty: 5
+  theory_oversized_penalty_per_quantum: 1
+  theory_max_excused_isolated: 1
+  practical_fragmentation_penalty: 10
+  max_sessions_per_day: 6
+
+# IO paths
+io:
+  data_dir: "data"
+  output_dir: "output"
+
+# Calendar display
+calendar:
+  show_instructor: true
+  show_room: true
+  show_group: true
+
+# Enhancements (disabled for clean IGLS testing)
+enhancements:
+  master_enabled: false
+  memetic_mode: false
+  increased_population: false
+  frequent_repair: false
+  hypermutation:
+    enabled: false
+  constraint_priorities:
+    enabled: false
+  greedy_initialization_percent: 0.0
+  population_restart:
+    enabled: false
+  violation_heatmap:
+    enabled: false
+  multi_neighborhood:
+    enabled: false

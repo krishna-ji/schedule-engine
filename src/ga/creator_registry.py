@@ -20,17 +20,20 @@ def _initialize_creator():
     Initialize DEAP creator types if not already registered.
 
     Creates:
-        - FitnessMulti: Multi-objective fitness with weights (-1.0, -0.01)
-                        for hard and soft constraint minimization
+        - FitnessMulti: Multi-objective fitness with weights (-1.0, -1.0)
+                        for hard and soft constraint minimization (both minimized)
         - Individual: List-based individual with FitnessMulti fitness
 
     Weights rationale:
-        - Hard constraints: weight=-1.0 (strict violations)
-        - Soft constraints: weight=-0.01 (normalized from ~500 range)
+        - Both objectives are minimized. Relative priority should be set via
+          constraint weights in YAML and the soft_weight_factor in config,
+          not by changing FitnessMulti magnitudes under NSGA-II.
     """
     # Only create if not already registered (prevents DEAP re-registration errors)
     if not hasattr(creator, "FitnessMulti"):
-        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -0.01))
+        # Minimize both objectives (hard, soft). Magnitude shouldn't be used to
+        # prioritize objectives under NSGA-II; use config weights instead.
+        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -1.0))
 
     if not hasattr(creator, "Individual"):
         creator.create("Individual", list, fitness=creator.FitnessMulti)

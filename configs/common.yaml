@@ -3,32 +3,32 @@
 # ============================================================================
 # This file contains all common settings that are rarely changed across
 # environments. Environment-specific files (test/dev/prod) override only
-# what needs to change (like ngen, pop_size, weights).
+# what needs to change (like ngen, pop_size, parallel settings).
 #
 # DO NOT duplicate these values in test/dev/prod configs!
 # Only override what's actually different per environment.
 
-# Time Configuration (Common)
+# Time Configuration (Common - Production-Optimized)
 time:
-  quantum_minutes: 60
-  earliest_preferred_time: "10:00"
-  latest_preferred_time: "17:00"
+  quantum_minutes: 60  # Standard 1-hour slots
+  earliest_preferred_time: "08:00"  # Earlier start (was 10:00) - more scheduling flexibility
+  latest_preferred_time: "18:00"  # Later end (was 17:00) - more flexibility
   midday_break_start: "12:00"
-  midday_break_end: "14:00"
-  max_session_coalescence: 3
-  max_sessions_per_day: 5
+  midday_break_end: "13:00"  # Tighter break (was 14:00) - standard 1-hour lunch
+  max_session_coalescence: 3  # Up to 3-hour blocks
+  max_sessions_per_day: 6  # Increased from 5 - more realistic for full day
   
-  # Block clustering settings
+  # Block clustering settings (production-tuned)
   preferred_block_size_min: 2
   preferred_block_size_max: 3
   
-  # Theory course penalties (defaults - can override in prod)
-  theory_isolated_penalty: 2
-  theory_oversized_penalty_per_quantum: 1
-  theory_max_excused_isolated: 1
+  # Theory course penalties (increased for quality)
+  theory_isolated_penalty: 5  # Increased from 2 - strongly discourage isolated theory
+  theory_oversized_penalty_per_quantum: 2  # Doubled - blocks > 3 hours are exhausting
+  theory_max_excused_isolated: 1  # One isolated session per course per day is OK
   
-  # Practical course penalties (defaults - can override in prod)
-  practical_fragmentation_penalty: 20
+  # Practical course penalties (increased for quality)
+  practical_fragmentation_penalty: 10  # Increased from 2 - practicals MUST be continuous
 
 # I/O Paths (Common)
 io:
@@ -41,33 +41,25 @@ calendar:
   show_room: true
   show_group: true
 
-# GA Settings (Defaults - Always override in test/dev/prod!)
+# GA Settings (Common - only ngen/pop_size differ per env)
 ga:
-  cxpb: 0.8
-  mutpb: 0.3
+  cxpb: 0.75  # Increased from 0.7 - more crossover for better solution mixing
+  mutpb: 0.25  # Increased from 0.2 - balanced exploration/exploitation
   elite_preservation: true
-  elite_size: 0.05
+  elite_size: 0.1  # Keep top 10% untouched
   use_adaptive_probabilities: true
   use_constraint_guided_mutation: true
-  population_strategy: hybrid
-  validate_population_integrity: false
+  population_strategy: hybrid  # 25% greedy, 50% smart, 25% random - best balance
+  validate_population_integrity: false  # Disable for performance (trust operators)
 
-# Repair Heuristics (Defaults - Override per environment)
-repair:
-  enabled: true
-  apply_after_mutation: true
-  apply_after_crossover: true
-  selective_mode: true
-  detection_strategy: hybrid
-  recheck_after_repair: true
-
-# Feasibility Checks (Common)
+# Feasibility Checks (Common - Production-Optimized)
 feasibility:
   enable_checks: true
-  tolerance_margin: 0.02
+  tolerance_margin: 0.05  # Tighter from 0.1 - more strict feasibility checks
+  fail_on_infeasibility: false  # Don't abort - attempt best-effort solution
   generate_report: true
   show_console_output: true
-  save_report_on_success: true
+  save_report_on_success: true  # Keep reports even on success for analysis
   checks:
     instructor_workload:
       enabled: true
@@ -85,85 +77,140 @@ feasibility:
       enabled: true
       severity: critical
 
-# Hard Constraints (Default Weights - Override in prod for stricter)
+# Hard Constraints (Common - Production-Optimized Weights)
 hard_constraints:
   no_group_overlap:
     enabled: true
-    weight: 2.0
+    weight: 3.0  # CRITICAL: Increased - students can't be in two places at once
   no_instructor_conflict:
     enabled: true
-    weight: 2.0
+    weight: 3.0  # CRITICAL: Increased - instructor availability is hard constraint
   instructor_not_qualified:
     enabled: true
-    weight: 2.0
+    weight: 3.0  # CRITICAL: Increased - qualification is non-negotiable
   room_type_mismatch:
     enabled: true
-    weight: 2.0
+    weight: 2.5  # HIGH: Increased - lab courses need labs, but some flexibility
   availability_violations:
     enabled: true
-    weight: 2.0
+    weight: 3.0  # CRITICAL: Increased - respect stated availability
   incomplete_or_extra_sessions:
     enabled: true
-    weight: 1.0
+    weight: 2.0  # HIGH: Increased - must meet required session counts
   session_block_clustering_penalty:
     enabled: true
-    weight: 2.0
+    weight: 2.0  # HIGH: Important for pedagogical reasons
 
-# Soft Constraints (Default Weights)
+# Soft Constraints (Common - Production-Optimized)
 soft_constraints:
   group_gaps_penalty:
     enabled: true
-    weight: 1.0
-    gap_penalty_per_quantum: 1  # Penalty for each gap quantum in group schedule
+    weight: 1.5  # Increased - student schedule quality is important
+    gap_penalty_per_quantum: 2  # Doubled - gaps are quite disruptive
   instructor_gaps_penalty:
     enabled: true
-    weight: 1.0
-    gap_penalty_per_quantum: 1  # Penalty for each gap quantum in instructor schedule
+    weight: 1.0  # Keep standard - instructors are more flexible
+    gap_penalty_per_quantum: 1
   group_midday_break_violation:
     enabled: true
-    weight: 1.0
-    distance_penalty_per_quantum: 1  # Penalty per quantum distance from midday break
-  soft_weight_factor: 0.01
+    weight: 1.2  # Increased - lunch breaks are important for students
+    distance_penalty_per_quantum: 2  # Doubled - far from break time is worse
+  soft_weight_factor: 0.01  # Keep at 1% - maintains hard >> soft priority
 
-# Enhancements (Common Defaults)
-enhancements:
-  master_enabled: true
+# ============================================================================
+# NEW: IGLS REPAIR SYSTEM (Common Configuration)
+# ============================================================================
+# Three-tier intensive repair system:
+#   TIER 1: Exhaustive search (fixed generations) - steepest descent
+#   TIER 2: Stagnation-triggered greedy repair - hill climbing
+#   TIER 3: Selective probabilistic repair - post-operator cleanup
+
+repair:
+  enabled: true
   
-  # Phase 1
+  # Legacy parameters (backward compatibility)
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false
+  elite_percentage: 0.05
+  memetic_iterations: 1
+  
+  # Legacy adaptive repair (disabled in favor of IGLS)
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: false
+    periodic_trigger:
+      enabled: false
+  
+  # TIER 1: Exhaustive Search (Fixed Generations)
+  # Production: More triggers, strategic placement, better coverage
+  exhaustive_search:
+    enabled: true
+    generations: [3, 30, 100]  # Three-shot: early quick fix, mid consolidation, late refinement
+    population_coverage: 0.25  # Top 25% - more focused on best solutions
+    max_neighborhood_size: 120  # Increased from 80 - more thorough search
+    timeout_seconds: 300  # 5 min - allow more time for quality (was 2 min)
+  
+  # TIER 2: Stagnation-Triggered Greedy Repair
+  # Production: More aggressive stagnation response
+  stagnation_repair:
+    enabled: true
+    patience: 8  # Increased from 5 - allow natural convergence, avoid over-repair
+    min_generation: 12  # Increased from 8 - wait for initial exploration
+    population_coverage: 0.4  # Reduced from 0.5 - focus on top performers
+    max_iterations: 15  # Increased from 10 - more thorough when triggered
+    timeout_seconds: 120  # Doubled to 2 min - quality over speed
+    cooldown: 5  # Increased from 3 - avoid repair fatigue
+  
+  # TIER 3: Selective Probabilistic Repair (Post-Mutation/Crossover)
+  # Production: More aggressive cleanup for quality
+  selective_repair:
+    enabled: true
+    apply_probability: 0.4  # Increased from 0.3 - repair 40% of offspring
+    apply_after_mutation: true
+    apply_after_crossover: true  # ENABLED for production - clean up crossover artifacts
+    detection_strategy: hybrid  # Best balance of speed and accuracy
+
+# Enhancements (Common - all disabled for clean IGLS testing)
+enhancements:
+  master_enabled: false
   memetic_mode: false
   increased_population: false
   frequent_repair: false
   
-  # Phase 2
   hypermutation:
     enabled: false
-    trigger_on_stagnation: true
-    stagnation_window: 5
-    duration_generations: 2
-    mutation_rate: 0.8
+    trigger_on_stagnation: false
+    stagnation_window: 10
+    duration_generations: 1
+    mutation_rate: 0.5
   
   constraint_priorities:
-    enabled: true
+    enabled: false
     availability_weight: 0.8
     overlap_weight: 0.15
     other_weight: 0.05
   
-  greedy_initialization_percent: 0.25
+  greedy_initialization_percent: 0.0
   
-  # Phase 3
   population_restart:
     enabled: false
-    trigger_stagnation_gens: 15
-    restart_percentage: 0.5
-    min_interval_gens: 50
+    trigger_stagnation_gens: 50
+    restart_percentage: 0.3
+    min_interval_gens: 100
   
   violation_heatmap:
-    enabled: true
-    target_hot_genes: true
-    top_n_hotspots: 20
+    enabled: false
+    target_hot_genes: false
+    top_n_hotspots: 5
     persistence_file: "violation_heatmap.json"
   
   multi_neighborhood:
-    enabled: true
-    max_combinations: 50
+    enabled: false
+    max_combinations: 10
     fallback_to_single: true
+

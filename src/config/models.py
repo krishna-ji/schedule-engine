@@ -4,7 +4,7 @@ All configs loaded from YAML files with full validation.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Dict, Optional, Literal, Any
+from typing import Dict, Optional, Literal, Any, List
 from pathlib import Path
 
 
@@ -37,11 +37,78 @@ class ParallelConfig(BaseModel):
     num_workers: Optional[int] = Field(default=None, ge=1, le=64)
 
 
-class RepairConfig(BaseModel):
-    """Repair heuristics configuration"""
+class ExhaustiveSearchConfig(BaseModel):
+    """Exhaustive local search configuration (fixed generations)"""
 
     enabled: bool = True
-    max_iterations: int = Field(default=3, ge=1, le=10)
+    generations: List[int] = Field(
+        default=[3, 25],
+        description="Generations to trigger exhaustive search (e.g., [3, 25])",
+    )
+    population_coverage: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Fraction of population to optimize (0.3 = top 30%)",
+    )
+    max_neighborhood_size: int = Field(
+        default=100, ge=10, le=500, description="Maximum neighbors to evaluate per gene"
+    )
+    timeout_seconds: int = Field(
+        default=180, ge=30, le=1001, description="Abort if operation exceeds this time"
+    )
+
+
+class StagnationRepairConfig(BaseModel):
+    """Stagnation-triggered greedy repair configuration"""
+
+    enabled: bool = True
+    patience: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Trigger after N generations without improvement",
+    )
+    min_generation: int = Field(
+        default=8, ge=0, le=100, description="Don't trigger before this generation"
+    )
+    population_coverage: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Fraction of population to optimize (0.5 = top 50%)",
+    )
+    max_iterations: int = Field(
+        default=10, ge=1, le=50, description="Max iterations per gene for greedy search"
+    )
+    timeout_seconds: int = Field(
+        default=60, ge=10, le=300, description="Abort if operation exceeds this time"
+    )
+    cooldown: int = Field(
+        default=3, ge=0, le=20, description="Generations to wait before re-triggering"
+    )
+
+
+class SelectiveRepairConfig(BaseModel):
+    """Selective repair configuration (post-mutation cleanup)"""
+
+    enabled: bool = True
+    apply_probability: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Probability of applying repair (0.3 = 30% of offspring)",
+    )
+    apply_after_mutation: bool = True
+    apply_after_crossover: bool = False
+    detection_strategy: Literal["fast", "full", "hybrid"] = "hybrid"
+
+
+class RepairConfig(BaseModel):
+    """Repair heuristics configuration (legacy + new IGLS)"""
+
+    enabled: bool = True
+    max_iterations: int = Field(default=3, ge=1, le=500)
     apply_after_mutation: bool = True
     apply_after_crossover: bool = True
     memetic_mode: bool = False
@@ -53,6 +120,17 @@ class RepairConfig(BaseModel):
     recheck_after_repair: bool = True
     adaptive_repair: Dict[str, Any] = Field(default_factory=dict)
     heuristics: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+    # NEW: IGLS System
+    exhaustive_search: ExhaustiveSearchConfig = Field(
+        default_factory=ExhaustiveSearchConfig
+    )
+    stagnation_repair: StagnationRepairConfig = Field(
+        default_factory=StagnationRepairConfig
+    )
+    selective_repair: SelectiveRepairConfig = Field(
+        default_factory=SelectiveRepairConfig
+    )
 
 
 class ConstraintConfig(BaseModel):

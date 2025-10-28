@@ -1,14 +1,18 @@
 # ============================================================================
-# TEST CONFIGURATION - Standalone
+# PROD_TEST CONFIGURATION - Standalone Test Production Scale
 # ============================================================================
-# Fast smoke test configuration - minimal generations for quick validation.
-# STANDALONE: Contains all required settings (no common.yaml dependency)
+# Test production settings with limited generations to validate performance.
+# Use this BEFORE running full production to check resource usage.
+# STANDALONE CONFIG: Includes all settings from common.yaml
+# 
+# Run with: python main.py --config configs/prod_test.yaml
+# Expected runtime: 30-60 minutes (30 gens, 100 pop, 2 exhaustive triggers)
 
-name: "Test Configuration - IGLS System"
+name: "Production Test - IGLS System (30 Gen Scale Test)"
 environment: test
-description: "Fast smoke test with IGLS repair (30 gens, 10 pop, ~5-10 min runtime)"
+description: "Standalone test of prod scale (100 pop) with 30 gens to validate resource usage"
 
-# Time Configuration
+# Time Configuration (from common.yaml - production-optimized)
 time:
   quantum_minutes: 60
   earliest_preferred_time: "08:00"
@@ -35,10 +39,10 @@ calendar:
   show_room: true
   show_group: true
 
-# GA Settings - TEST: 30 gens, 10 population
+# GA Settings - SCALE TEST: 30 gens, 100 population
 ga:
-  ngen: 30
-  pop_size: 10
+  ngen: 30  # Limited gens for quick test
+  pop_size: 100  # Full production population to test scale
   cxpb: 0.75
   mutpb: 0.25
   elite_preservation: true
@@ -48,12 +52,12 @@ ga:
   population_strategy: hybrid
   validate_population_integrity: false
 
-# Parallel Processing - DISABLED for easier debugging
+# Parallel Processing - ENABLED for scale test
 parallel:
-  use_multiprocessing: false
-  num_workers: null
+  use_multiprocessing: true
+  num_workers: null  # Auto-detect cores
 
-# Feasibility Checks
+# Feasibility Checks (from common.yaml)
 feasibility:
   enable_checks: true
   tolerance_margin: 0.05
@@ -78,7 +82,7 @@ feasibility:
       enabled: true
       severity: critical
 
-# Hard Constraints
+# Hard Constraints (from common.yaml - production weights)
 hard_constraints:
   no_group_overlap:
     enabled: true
@@ -102,7 +106,7 @@ hard_constraints:
     enabled: true
     weight: 2.0
 
-# Soft Constraints
+# Soft Constraints (from common.yaml - production-optimized)
 soft_constraints:
   group_gaps_penalty:
     enabled: true
@@ -118,7 +122,7 @@ soft_constraints:
     distance_penalty_per_quantum: 2
   soft_weight_factor: 0.01
 
-# IGLS REPAIR SYSTEM - TEST: Only 2 triggers (gen 3 & 25)
+# IGLS REPAIR SYSTEM (from common.yaml - production settings)
 repair:
   enabled: true
   apply_after_mutation: false
@@ -137,13 +141,15 @@ repair:
     periodic_trigger:
       enabled: false
   
+  # TIER 1: Only 2 triggers for 30-gen test (gen 3 and gen 25)
   exhaustive_search:
     enabled: true
-    generations: [3, 25]
+    generations: [3, 25]  # Quick early fix + late refinement
     population_coverage: 0.25
     max_neighborhood_size: 120
     timeout_seconds: 300
   
+  # TIER 2: Production stagnation settings
   stagnation_repair:
     enabled: true
     patience: 8
@@ -153,6 +159,7 @@ repair:
     timeout_seconds: 120
     cooldown: 5
   
+  # TIER 3: Production selective repair
   selective_repair:
     enabled: true
     apply_probability: 0.4
@@ -160,7 +167,7 @@ repair:
     apply_after_crossover: true
     detection_strategy: hybrid
 
-# Enhancements (all disabled)
+# Enhancements (all disabled for clean IGLS testing)
 enhancements:
   master_enabled: false
   memetic_mode: false
@@ -192,5 +199,3 @@ enhancements:
     enabled: false
     max_combinations: 10
     fallback_to_single: true
-
-

@@ -21,3 +21,9 @@ test/
 venv/
 env/
 ENV/
+
+# UV specific
+uv.lock
+.uv/
+
+report/

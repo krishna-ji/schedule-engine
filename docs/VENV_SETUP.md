@@ -1,14 +1,14 @@
 # Virtual Environment Setup
 
-This project uses a **local Python virtual environment** (`.venv`) instead of conda.
+This project uses **UV** for blazingly fast dependency management (10-100x faster than pip).
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Windows (PowerShell)
 
 ```powershell
-# Run the setup script
-.\setup-venv.ps1
+# Run the UV setup script (auto-installs UV if needed)
+.\setup-uv.ps1
 
 # Activate the environment
 .\.venv\Scripts\Activate.ps1
@@ -20,11 +20,8 @@ python main.py --env test
 ### Linux/Mac (Bash)
 
 ```bash
-# Make the script executable
-chmod +x setup-venv.sh
-
-# Run the setup script
-./setup-venv.sh
+# Run the UV setup script (auto-installs UV if needed)
+./setup-uv.sh
 
 # Activate the environment
 source .venv/bin/activate
@@ -33,24 +30,35 @@ source .venv/bin/activate
 python main.py --env test
 ```
 
-## Manual Setup (if scripts don't work)
+**See `docs/UV_QUICKSTART.md` for more details.**
 
-### 1. Create Virtual Environment
+## Manual Setup
 
-```bash
-python -m venv .venv
+### Option 1: UV (Recommended - Fast!)
+
+#### 1. Install UV (standalone, no pip needed)
+
+**Windows:**
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### 2. Activate Virtual Environment
+**Linux/Mac:**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+#### 2. Create Virtual Environment
+
+```bash
+uv venv .venv
+```
+
+#### 3. Activate Virtual Environment
 
 **Windows PowerShell:**
 ```powershell
 .\.venv\Scripts\Activate.ps1
-```
-
-**Windows Command Prompt:**
-```cmd
-.venv\Scripts\activate.bat
 ```
 
 **Linux/Mac:**
@@ -58,12 +66,17 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Dependencies
+#### 4. Install Dependencies
 
 ```bash
-pip install --upgrade pip
-pip install -r requirements.txt
+# From pyproject.toml (recommended)
+uv pip install -e .
+
+# Or from requirements.txt
+uv pip install -r requirements.txt
 ```
+
+
 
 ## Deactivating the Environment
 
@@ -121,24 +134,26 @@ If you get import errors, reinstall dependencies:
 pip install --force-reinstall -r requirements.txt
 ```
 
-## Comparison with Conda
+## Why UV?
 
-| Feature | Virtual Environment (.venv) | Conda |
-|---------|----------------------------|-------|
-| Size | ~50MB | ~3GB |
-| Setup Time | ~30 seconds | ~5 minutes |
-| Python-only | ✅ Yes | ❌ No (includes system libs) |
-| Project-specific | ✅ Yes | ⚠️ Can be shared |
-| Standard Python | ✅ Yes | ⚠️ Conda-specific |
+| Feature | UV | pip | Conda |
+|---------|----|----|-------|
+| Size | ~50MB | ~50MB | ~3GB |
+| Setup Time | **3-5 seconds** | 30-45 seconds | 5+ minutes |
+| Installation Speed | **10-100x faster** | Baseline | Slower than pip |
+| Dependency Resolution | ✅ Excellent | ⚠️ Good | ✅ Excellent |
+| No pip needed | ✅ Yes | N/A | ✅ Yes |
+| Production Ready | ✅ Yes | ✅ Yes | ✅ Yes |
 
-## Why Not Conda?
+## UV vs Conda
 
-This project **does not require conda** because:
+This project uses **UV instead of Conda** because:
 
-1. All dependencies are pure Python packages
-2. No system-level C libraries needed
-3. Virtual environments are faster and lighter
-4. Standard Python tooling (pip + venv)
-5. Better for version control (.venv in .gitignore)
+1. ✅ **10-100x faster** installation
+2. ✅ **50x smaller** (50MB vs 3GB)
+3. ✅ **Pure Python** - no system libraries needed
+4. ✅ **Modern standard** - pyproject.toml (PEP 621)
+5. ✅ **Better for CI/CD** - faster builds
+6. ✅ **Standalone binary** - no pip dependency
 
-The `environment.yml` files are kept for historical reference only.
+UV is the modern choice for Python-only projects.
