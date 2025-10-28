@@ -10,50 +10,50 @@
 
 ### Installation with UV ⚡ (10-100x faster than pip)
 
-**Windows:**
-```powershell
-# Run the setup script (auto-installs UV if needed)
-.\setup-uv.ps1
-
-# Or manual setup:
-# 1. Install UV (standalone installer - no pip needed)
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# 2. Create environment and install dependencies
-uv venv .venv
-.\.venv\Scripts\Activate.ps1
-uv pip install -e .
-```
-
-**Linux/macOS:**
+**One-line setup (Windows/Linux/macOS):**
 ```bash
 # Run the setup script (auto-installs UV if needed)
-./setup-uv.sh
+python setup-uv
+```
 
-# Or manual setup:
-# 1. Install UV (standalone installer - no pip needed)
+**Manual setup:**
+```bash
+# 1. Install UV (if not already installed)
+# Windows (PowerShell):
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Linux/macOS:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Create environment and install dependencies
 uv venv .venv
-source .venv/bin/activate
-uv pip install -e .
+uv sync
 ```
 
 ### Running the Engine
 
+**Quick run (interactive menu):**
 ```bash
-# Test run (fast, 10 generations)
+python x
+```
+
+**Direct run (no menu):**
+```bash
+# Using the quick launcher
+python x test    # Fast test (10 generations)
+python x dev     # Development (100 generations)
+python x prod    # Production (200+ generations)
+
+# Or directly with main.py
 python main.py --env test
-
-# Development run (medium, 100 generations)
 python main.py --env dev
-
-# Production run (full quality, 200+ generations)
 python main.py --env prod
-
-# Custom configuration
 python main.py --config path/to/custom.yaml
+```
+
+**Using UV (no activation needed):**
+```bash
+uv run python main.py --env dev
 ```
 
 

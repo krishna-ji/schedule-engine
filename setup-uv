@@ -1,0 +1,269 @@
+#!/usr/bin/env python3
+"""
+Setup Script for Schedule Engine with UV
+Creates a local .venv and installs all dependencies using UV
+UV is a blazingly fast Python package installer (10-100x faster than pip)
+
+Cross-platform: Works on both Windows and Linux
+
+Usage:
+    python setup-uv
+
+On Linux/Mac, you can also make it executable:
+    chmod +x setup-uv
+    ./setup-uv
+"""
+import os
+import platform
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+class Colors:
+    """ANSI color codes for terminal output."""
+
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    WHITE = "\033[97m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+
+
+def colored(text: str, color: str) -> str:
+    """Return colored text for terminal output."""
+    # Windows terminal supports ANSI colors in modern versions
+    return f"{color}{text}{Colors.RESET}"
+
+
+def print_header(text: str):
+    """Print a formatted header."""
+    print()
+    print(colored("=" * 50, Colors.CYAN))
+    print(colored(text, Colors.CYAN + Colors.BOLD))
+    print(colored("=" * 50, Colors.CYAN))
+    print()
+
+
+def print_success(text: str):
+    """Print success message."""
+    print(colored(f"[OK] {text}", Colors.GREEN))
+
+
+def print_error(text: str):
+    """Print error message."""
+    print(colored(f"[ERROR] {text}", Colors.RED))
+
+
+def print_info(text: str):
+    """Print info message."""
+    print(colored(text, Colors.CYAN))
+
+
+def print_warning(text: str):
+    """Print warning message."""
+    print(colored(text, Colors.YELLOW))
+
+
+def check_uv_installed() -> bool:
+    """Check if UV is installed and available in PATH."""
+    try:
+        result = subprocess.run(
+            ["uv", "--version"], capture_output=True, text=True, check=False
+        )
+        if result.returncode == 0:
+            print_success(f"UV found: {result.stdout.strip()}")
+            return True
+    except FileNotFoundError:
+        pass
+
+    return False
+
+
+def install_uv():
+    """Install UV package manager."""
+    print_error("UV not found in PATH")
+    print()
+    print_warning("Installing UV (standalone installer - no pip needed)...")
+    print()
+
+    system = platform.system()
+
+    try:
+        if system == "Windows":
+            # Use PowerShell to install UV on Windows
+            cmd = [
+                "powershell",
+                "-Command",
+                "irm https://astral.sh/uv/install.ps1 | iex",
+            ]
+            subprocess.run(cmd, check=True)
+        else:
+            # Use curl/sh to install UV on Linux/Mac
+            cmd = "curl -LsSf https://astral.sh/uv/install.sh | sh"
+            subprocess.run(cmd, shell=True, check=True)
+
+        print()
+        print_success("UV installed successfully!")
+        print()
+        print_warning("Please restart your terminal and run this script again.")
+        sys.exit(0)
+
+    except subprocess.CalledProcessError:
+        print()
+        print_error("Failed to install UV")
+        print_warning("Please install manually: https://github.com/astral-sh/uv")
+        sys.exit(1)
+
+
+def remove_existing_venv() -> bool:
+    """Ask user if they want to remove existing .venv."""
+    venv_path = Path(".venv")
+
+    if not venv_path.exists():
+        return True
+
+    print()
+    response = (
+        input("Existing .venv found. Delete and recreate? (y/n): ").strip().lower()
+    )
+
+    if response in ["y", "yes"]:
+        print_warning("Removing existing .venv...")
+        try:
+            shutil.rmtree(venv_path)
+            return True
+        except Exception as e:
+            print_error(f"Failed to remove .venv: {e}")
+            return False
+    else:
+        print_warning("Keeping existing .venv. Exiting...")
+        return False
+
+
+def create_venv():
+    """Create virtual environment using UV."""
+    print()
+    print_info("Creating virtual environment with UV...")
+
+    try:
+        subprocess.run(["uv", "venv", ".venv"], check=True)
+
+        if not Path(".venv").exists():
+            print_error("Failed to create virtual environment")
+            sys.exit(1)
+
+        print_success("Virtual environment created at .venv/")
+
+    except subprocess.CalledProcessError:
+        print_error("Failed to create virtual environment")
+        sys.exit(1)
+
+
+def install_dependencies():
+    """Install dependencies using UV."""
+    print()
+    print_info("Installing dependencies with UV (much faster than pip!)...")
+
+    # Check which dependency file exists
+    if Path("pyproject.toml").exists():
+        print_info("Using pyproject.toml for installation...")
+        try:
+            subprocess.run(["uv", "sync"], check=True)
+        except subprocess.CalledProcessError:
+            print_error("Failed to install dependencies")
+            sys.exit(1)
+
+    elif Path("requirements.txt").exists():
+        print_info("Using requirements.txt for installation...")
+        try:
+            subprocess.run(
+                ["uv", "pip", "install", "-r", "requirements.txt"], check=True
+            )
+        except subprocess.CalledProcessError:
+            print_error("Failed to install dependencies")
+            sys.exit(1)
+    else:
+        print_error("No pyproject.toml or requirements.txt found")
+        sys.exit(1)
+
+
+def show_completion_message():
+    """Show installation completion message with usage instructions."""
+    print_header("Installation Complete!")
+
+    print(colored("Installed packages:", Colors.CYAN))
+    try:
+        subprocess.run(["uv", "pip", "list"], check=False)
+    except:
+        pass
+
+    print()
+    print(colored("To run the schedule engine (no activation needed!):", Colors.YELLOW))
+    print(colored("  uv run python main.py --env test", Colors.WHITE))
+    print(colored("  uv run python main.py --env dev", Colors.WHITE))
+    print(colored("  uv run python main.py --env prod", Colors.WHITE))
+
+    print()
+    print(colored("Or activate manually:", Colors.YELLOW))
+
+    if platform.system() == "Windows":
+        print(colored("  .venv\\Scripts\\Activate.ps1", Colors.WHITE))
+    else:
+        print(colored("  source .venv/bin/activate", Colors.WHITE))
+
+    print(colored("  python main.py --env test", Colors.WHITE))
+
+    print()
+    print(
+        colored("To add a new package (auto-updates pyproject.toml!):", Colors.YELLOW)
+    )
+    print(colored("  uv add package-name", Colors.WHITE))
+
+    print()
+    print(colored("To remove a package (auto-updates pyproject.toml!):", Colors.YELLOW))
+    print(colored("  uv remove package-name", Colors.WHITE))
+
+    print()
+    print(colored("To sync dependencies after editing pyproject.toml:", Colors.YELLOW))
+    print(colored("  uv sync", Colors.WHITE))
+    print()
+
+
+def main():
+    """Main setup workflow."""
+    print_header("Schedule Engine - UV Setup")
+
+    # Step 1: Check if UV is installed
+    if not check_uv_installed():
+        install_uv()
+        return
+
+    # Step 2: Handle existing .venv
+    if not remove_existing_venv():
+        sys.exit(0)
+
+    # Step 3: Create virtual environment
+    create_venv()
+
+    # Step 4: Install dependencies
+    install_dependencies()
+
+    # Step 5: Show completion message
+    show_completion_message()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print()
+        print_warning("\n\n👋 Setup cancelled by user.")
+        sys.exit(1)
+    except Exception as e:
+        print()
+        print_error(f"Unexpected error: {e}")
+        sys.exit(1)
