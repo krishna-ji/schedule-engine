@@ -4,6 +4,103 @@ This file tracks **enhancements** to the GA system (new features, performance im
 
 ---
 
+## [2025-10-28] Suppressed Duplicate Course Warnings During Population Generation
+
+### Files Modified
+- `src/ga/hybrid_population.py` - Set `silent=True` when calling `generate_course_group_pairs()`
+- `src/ga/population.py` - Always use `silent=True` for course-group pair generation
+
+### Changes
+
+**Removed duplicate warning messages during population initialization.**
+
+**Problem:** Missing course warnings appeared twice:
+1. First in the input encoder table (nice formatted table)
+2. Again during hybrid population generation (text warnings repeated for each individual)
+
+This created visual clutter with 8+ redundant warning lines.
+
+**Solution:** Set `silent=True` when calling `generate_course_group_pairs()` since the warnings are already clearly shown in the formatted table during data loading.
+
+**Before:**
+```
+⚠️  Courses Not Found (table with 16 entries)
+...
+Hybrid initialization: 2 greedy, 6 smart, 2 random
+[!] Warning: Course ME706 not found for group BME7
+[!] Warning: Course ENCE 256 not found for group BCE4
+... (repeated 8 times)
+```
+
+**After:**
+```
+⚠️  Courses Not Found (table with 16 entries)
+...
+Hybrid initialization: 2 greedy, 6 smart, 2 random
+Evaluating Initial Population...  (no duplicate warnings)
+```
+
+**Benefits:**
+- ✅ Cleaner console output
+- ✅ No information loss (table already shows all missing courses)
+- ✅ Easier to read evolution progress
+- ✅ Reduced visual clutter
+
+---
+
+## [2025-10-28] Real-Time CPU and RAM Monitoring During Evolution
+
+### Files Modified
+- `src/core/ga_scheduler.py` - Added background thread for real-time resource monitoring
+
+### Changes
+
+**Added per-core CPU and process-specific RAM monitoring that updates every 0.5 seconds during evolution.**
+
+**Implementation:**
+- Background thread runs independently of generation loop
+- Updates CPU and RAM metrics twice per second (0.5s interval)
+- CPU: Per-core percentages (system-wide, 0-100% per core)
+- RAM: Process-specific memory usage with peak tracking
+
+**Display Format:**
+```
+  Evolution Progress ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 30/30
+Elapsed: 0:02:26 • Remaining: 0:00:00 • 4.8s/gen
+CPU  0: ━━━━━━━━━━━╸━━━━━━━━  58.8%
+CPU  1: ━━━━╸━━━━━━━━━━━━━━━  24.2%
+...
+CPU 15: ━━━━━━━╸━━━━━━━━━━━━  39.4%
+RAM   : ━━━━━━━━━━━━━━━━━━━━ 0.18GB (Peak: 0.18GB)
+```
+
+**Technical Details:**
+- Uses `psutil.cpu_percent(percpu=True)` for per-core CPU usage
+- Uses `psutil.Process(os.getpid()).memory_info()` for process-specific RAM
+- Thread-safe updates via Rich Progress API
+- Thread stops cleanly when evolution completes
+- Zero impact on GA performance (monitoring runs in parallel)
+
+**Benefits:**
+1. ✅ **Real-time visibility** - See resource usage as it happens
+2. ✅ **Process-specific** - Only this Python program, not entire system
+3. ✅ **Per-core detail** - Identify which CPU cores are being used
+4. ✅ **Peak tracking** - Monitor maximum memory consumption
+5. ✅ **Zero overhead** - Background thread doesn't slow down GA
+6. ✅ **Smooth updates** - 2Hz refresh rate (0.5s interval)
+
+**Use Cases:**
+- Identify CPU bottlenecks (which cores are saturated)
+- Monitor memory leaks or excessive RAM usage
+- Verify parallelization is distributing work across cores
+- Detect performance issues during long runs
+
+**Dependencies:**
+- `psutil>=5.9.0` (already in pyproject.toml)
+- `threading` (Python standard library)
+
+---
+
 ## [2025-01-27] Comprehensive Parallelization Implementation (Priority 1+2)
 
 ### Files Modified

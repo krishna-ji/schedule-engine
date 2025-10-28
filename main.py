@@ -65,12 +65,10 @@ def main():
     try:
         config = init_config(config_path)
         console.print()
-        console.print(
-            Panel(config.summary(), title="Configuration", border_style="cyan")
-        )
+        console.print(config.summary())
         console.print()
     except Exception as e:
-        console.print(f"[bold red][!ERR] Failed to load config:[/bold red] {e}")
+        console.print(f"[bold red][!err] failed to load config:[/bold red] {e}")
         return 1
 
     # Run workflow with config
@@ -85,26 +83,21 @@ def main():
 
     # Print final summary with beautiful rich formatting
     console.print()
-    console.rule("[bold green]FINAL RESULTS[/bold green]", style="green")
+    console.print("[bold cyan]results[/bold cyan]")
     console.print()
 
     hard_viol = result["best_individual"].fitness.values[0]
     soft_pen = result["best_individual"].fitness.values[1]
 
     if hard_viol == 0:
-        console.print(
-            "[OK] [bold green]Perfect schedule found (no hard constraint violations)![/bold green]"
-        )
+        console.print("[green][!ok] perfect schedule (no hard violations)[/green]")
     else:
-        console.print(
-            f"[!] [yellow]Hard constraint violations: {hard_viol:.0f}[/yellow]"
-        )
+        console.print(f"[yellow][!warn] hard violations:[/yellow] {hard_viol:.0f}")
 
-    console.print(f"[cyan]Soft constraint penalty: {soft_pen:.2f}[/cyan]")
-    console.print(f"[cyan]Schedule sessions: {len(result['decoded_schedule'])}[/cyan]")
-    console.print(f"[cyan]Output location: {result['output_path']}[/cyan]")
+    console.print(f"  [dim]soft penalty:[/dim] {soft_pen:.2f}")
+    console.print(f"  [dim]sessions:[/dim] {len(result['decoded_schedule'])}")
+    console.print(f"  [dim]output:[/dim] {result['output_path']}")
     console.print()
-    console.rule(style="green")
 
 
 if __name__ == "__main__":

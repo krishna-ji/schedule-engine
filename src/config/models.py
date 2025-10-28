@@ -457,12 +457,17 @@ class Config(BaseModel):
             yaml.dump(self.dict(), f, default_flow_style=False, sort_keys=False)
 
     def summary(self) -> str:
-        """Human-readable summary"""
-        return f"""
-Configuration: {self.name} ({self.environment})
-- GA: {self.ga.ngen} gen x {self.ga.pop_size} pop (CX={self.ga.cxpb}, MUT={self.ga.mutpb})
-- Parallel: {"ON" if self.parallel.use_multiprocessing else "OFF"} ({self.parallel.num_workers or "auto"} workers)
-- Repair: {"ON" if self.repair.enabled else "OFF"} (max {self.repair.max_iterations} iter)
-- Feasibility: {"ON" if self.feasibility.enable_checks else "OFF"} (fail={self.feasibility.fail_on_infeasibility})
-- I/O: {self.io.data_dir} -> {self.io.output_dir}
+        """Human-readable configuration summary"""
+        parallel_mode = "enabled" if self.parallel.use_multiprocessing else "disabled"
+        parallel_workers = self.parallel.num_workers or "auto"
+        repair_mode = "enabled" if self.repair.enabled else "disabled"
+        feasibility_mode = "enabled" if self.feasibility.enable_checks else "disabled"
+
+        return f"""[bold cyan]configuration[/bold cyan]
+  [dim]profile:[/dim] {self.name} ({self.environment})
+  [dim]genetic algorithm:[/dim] {self.ga.ngen} gen x {self.ga.pop_size} pop | cx={self.ga.cxpb} mut={self.ga.mutpb}
+  [dim]parallelization:[/dim] {parallel_mode} ({parallel_workers} workers)
+  [dim]repair heuristics:[/dim] {repair_mode} (max {self.repair.max_iterations} iterations)
+  [dim]feasibility checks:[/dim] {feasibility_mode}
+  [dim]data:[/dim] {self.io.data_dir}/ to {self.io.output_dir}/
         """.strip()

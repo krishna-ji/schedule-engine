@@ -212,7 +212,7 @@ def apply_exhaustive_search(
                     except Exception as e:
                         # Log error but continue
                         print(
-                            f"[WARNING] Gene optimization failed for gene {futures[future]}: {e}"
+                            f"[!warn] Gene optimization failed for gene {futures[future]}: {e}"
                         )
 
         else:
@@ -374,7 +374,7 @@ def apply_greedy_search(
                     except Exception as e:
                         # Log error but continue
                         print(
-                            f"[WARNING] Gene optimization failed for gene {futures[future]}: {e}"
+                            f"[!warn] Gene optimization failed for gene {futures[future]}: {e}"
                         )
 
         else:

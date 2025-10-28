@@ -139,7 +139,7 @@ Get-ChildItem output -Directory | Sort-Object LastWriteTime -Descending | Select
 
 3. **Generation Progress**
 ```
-...OK!... Gen 25/250: Hard=2306, Soft=487.00, Time=1.2s
+[!ok] Gen 25/250: Hard=2306, Soft=487.00, Time=1.2s
 ```
 - Normal gens: < 2s
 - Exhaustive gens: 30-300s

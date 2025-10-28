@@ -73,9 +73,10 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
         )
 
     # Pre-generate course-group pairs ONCE (avoid duplicate warnings)
+    # Set silent=True since warnings already shown in input encoder table
     hierarchy = analyze_group_hierarchy(context.groups)
     pair_tuples = generate_course_group_pairs(
-        context.courses, context.groups, hierarchy, silent=silent
+        context.courses, context.groups, hierarchy, silent=True
     )
 
     # Generate greedy individuals (25%)

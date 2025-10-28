@@ -13,7 +13,7 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
     """Check for duplicate course enrollments in groups."""
 
     print(f"\n{'='*60}")
-    print("📊 DATA QUALITY DIAGNOSTIC REPORT")
+    print("[!report] DATA QUALITY DIAGNOSTIC REPORT")
     print(f"{'='*60}\n")
     print(f"Checking file: {groups_file}\n")
 
@@ -21,17 +21,17 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
         with open(groups_file, "r", encoding="utf-8") as f:
             data = json.load(f)
     except FileNotFoundError:
-        print(f"❌ ERROR: File not found: {groups_file}")
+        print(f"[err!] ERROR: File not found: {groups_file}")
         return []
     except json.JSONDecodeError as e:
-        print(f"❌ ERROR: Invalid JSON: {e}")
+        print(f"[err!] ERROR: Invalid JSON: {e}")
         return []
 
     if not isinstance(data, list):
-        print("❌ ERROR: Expected list of groups in JSON file")
+        print("[err!] ERROR: Expected list of groups in JSON file")
         return []
 
-    print(f"✅ Loaded {len(data)} groups\n")
+    print(f"[!yes] Loaded {len(data)} groups\n")
 
     # Track issues
     issues = []
@@ -87,12 +87,12 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
     print(f"{'-'*60}\n")
 
     if issues:
-        print(f"❌ FOUND {len(issues)} GROUPS WITH DUPLICATE ENROLLMENTS:\n")
+        print(f"[err!] FOUND {len(issues)} GROUPS WITH DUPLICATE ENROLLMENTS:\n")
 
         for issue in sorted(
             issues, key=lambda x: sum(x["duplicates"].values()), reverse=True
         ):
-            print(f"  📌 Group: {issue['group']}")
+            print(f"  [!attention] Group: {issue['group']}")
             print(
                 f"     Total courses: {issue['total_courses']} ({issue['unique_courses']} unique)"
             )
@@ -116,7 +116,7 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
         print(f"{'='*60}\n")
 
     else:
-        print("✅ NO DUPLICATE ENROLLMENTS FOUND!")
+        print("[!yes] NO DUPLICATE ENROLLMENTS FOUND!")
         print("   All groups have unique course assignments.\n")
 
     # Additional checks
@@ -147,7 +147,7 @@ def check_data_consistency(base_dir="data"):
     """Additional consistency checks across data files."""
 
     print(f"\n{'='*60}")
-    print("🔍 CROSS-FILE CONSISTENCY CHECKS")
+    print("[!search] CROSS-FILE CONSISTENCY CHECKS")
     print(f"{'='*60}\n")
 
     files = {
@@ -162,9 +162,9 @@ def check_data_consistency(base_dir="data"):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data[key] = json.load(f)
-            print(f"✅ Loaded {len(data[key])} {key}")
+            print(f"[!yes] Loaded {len(data[key])} {key}")
         except Exception as e:
-            print(f"❌ Failed to load {key}: {e}")
+            print(f"[err!] Failed to load {key}: {e}")
             return
 
     print()
@@ -186,13 +186,13 @@ def check_data_consistency(base_dir="data"):
         if len(missing_courses) > 20:
             print(f"   ... and {len(missing_courses) - 20} more")
     else:
-        print("✅ All group courses found in Course.json")
+        print("[!yes] All group courses found in Course.json")
 
     print(f"\n{'='*60}\n")
 
 
 if __name__ == "__main__":
-    print("\n🔬 Starting Data Quality Diagnostics...\n")
+    print("\n[!info] Starting Data Quality Diagnostics...\n")
 
     # Check for duplicate enrollments
     issues = check_duplicate_enrollments()
@@ -205,5 +205,5 @@ if __name__ == "__main__":
         print("⚠️  Please fix data quality issues before running GA!")
         sys.exit(1)
     else:
-        print("✅ All data quality checks passed!")
+        print("[!yes] All data quality checks passed!")
         sys.exit(0)

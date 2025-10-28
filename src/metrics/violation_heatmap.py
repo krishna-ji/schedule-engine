@@ -311,13 +311,11 @@ if __name__ == "__main__":
     # Test persistence
     test_file = "test_heatmap.json"
     heatmap.save_to_file(test_file)
-    console.print(f"\n[green]...OK!... Saved to {test_file}[/green]")
+    console.print(f"\n[green][!ok] Saved to {test_file}[/green]")
 
     # Load and verify
     loaded = ViolationHeatmap.load_from_file(test_file)
-    console.print(
-        f"[green]...OK!... Loaded {len(loaded.violations)} gene records[/green]"
-    )
+    console.print(f"[green][!ok] Loaded {len(loaded.violations)} gene records[/green]")
 
     import os
 

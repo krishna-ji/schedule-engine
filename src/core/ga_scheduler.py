@@ -11,6 +11,9 @@ from pathlib import Path
 from deap import base, tools
 import random
 import time
+import psutil
+import threading
+import os
 from rich.console import Console
 from rich.progress import (
     Progress,
@@ -489,7 +492,7 @@ class GAScheduler:
 
         eval_time = time.time() - eval_start
         console.print(
-            f"   [green]...OK!...[/green] Evaluated {len(self.population)} individuals in [cyan]{eval_time:.1f}s[/cyan] "
+            f"   [green][!ok][/green] Evaluated {len(self.population)} individuals in [cyan]{eval_time:.1f}s[/cyan] "
             f"([dim]{eval_time/len(self.population):.2f}s per individual[/dim])"
         )
 
@@ -499,6 +502,7 @@ class GAScheduler:
             f"   [dim]Initial Best:[/dim] Hard=[yellow]{best.fitness.values[0]:.0f}[/yellow], "
             f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
         )
+        console.print()
 
         # Track initial population as Generation 0
         self._track_metrics(gen=-1)  # Will be recorded as generation 0
@@ -547,22 +551,12 @@ class GAScheduler:
         """Run genetic algorithm evolution loop."""
         gen_times = []
 
-        # Create progress bar (first line)
-        progress_bar = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("[cyan]{task.completed}/{task.total}"),
-            console=console,
-            refresh_per_second=10,
-        )
-
-        # Create time info bar (second line) with custom always-show remaining time
+        # Create elapsed/remaining time bar (shows above progress bar)
         time_bar = Progress(
-            TextColumn("[dim]Elapsed:[/dim]"),
+            TextColumn("[dim]elapsed:[/dim]"),
             TimeElapsedColumn(),
             TextColumn("•"),
-            TextColumn("[dim]Remaining:[/dim]"),
+            TextColumn("[dim]remaining:[/dim]"),
             AlwaysShowTimeRemainingColumn(),  # Custom column that never shows blank
             TextColumn("•"),
             TextColumn("[dark_red]{task.fields[speed_display]}[/dark_red]"),
@@ -570,14 +564,140 @@ class GAScheduler:
             refresh_per_second=10,
         )
 
+        # Create progress bar (evolution progress with distinct thick style)
+        progress_bar = Progress(
+            SpinnerColumn(),
+            TextColumn("[bold white]{task.description}[/bold white]"),
+            BarColumn(
+                bar_width=40,
+                style="dim white",
+                complete_style="bold blue",
+                finished_style="bold green",
+            ),
+            TextColumn("[bold white]{task.completed}/{task.total}[/bold white]"),
+            console=console,
+            refresh_per_second=10,
+        )
+
+        # Get CPU count for per-core monitoring
+        cpu_count = psutil.cpu_count(logical=True)
+
+        # Get current process for process-specific monitoring
+        process = psutil.Process(os.getpid())
+
+        # Create CPU monitoring bars (one per core)
+        cpu_bars = []
+        cpu_tasks = []
+        for i in range(cpu_count):
+            cpu_bar = Progress(
+                TextColumn(f"[dim]cpu {i:2d}:[/dim]"),
+                BarColumn(bar_width=20),
+                TextColumn("[yellow]{task.fields[cpu_percent]:>5.1f}%[/yellow]"),
+                console=console,
+                refresh_per_second=10,
+            )
+            cpu_bars.append(cpu_bar)
+
+        # Create Memory monitoring bar (process-specific) - WIDER bar
+        memory_bar = Progress(
+            TextColumn("[dim]memory:[/dim]"),
+            BarColumn(bar_width=20),
+            TextColumn("[magenta]{task.fields[mem_used]}[/magenta]"),
+            TextColumn("[dim](Peak: {task.fields[mem_peak]})[/dim]"),
+            console=console,
+            refresh_per_second=10,
+        )
+
+        # Create spacing row for better terminal display
+        spacing_bar = Progress(
+            TextColumn(""),
+            console=console,
+            refresh_per_second=10,
+        )
+
+        # Create constraint legend rows (static text that always shows)
+        # Display in compact form: 3 constraints per row
+        legend_bars = []
+        legend_bars.append(
+            Progress(TextColumn(""), console=console, refresh_per_second=10)
+        )  # spacing
+        legend_bars.append(
+            Progress(
+                TextColumn("[dim]constraint mapping:[/dim]"),
+                console=console,
+                refresh_per_second=10,
+            )
+        )
+
+        # Get constraint names for the legend
+        best = tools.selBest(self.population, 1)[0]
+        hard_details, soft_details = evaluate_detailed(
+            best,
+            self.context.courses,
+            self.context.instructors,
+            self.context.groups,
+            self.context.rooms,
+        )
+
+        # Build hard constraint labels (3 per row)
+        hard_items = []
+        hc_counter = 1
+        for name in hard_details.keys():
+            clean_name = name.replace("_", " ")
+            hard_items.append(f"hc{hc_counter}={clean_name}")
+            hc_counter += 1
+
+        # Display hard constraints 3 per row
+        for i in range(0, len(hard_items), 3):
+            row_items = hard_items[i : i + 3]
+            row_text = "  [dim]" + " | ".join(row_items) + "[/dim]"
+            legend_bars.append(
+                Progress(
+                    TextColumn(row_text),
+                    console=console,
+                    refresh_per_second=10,
+                )
+            )
+
+        # Build soft constraint labels (3 per row)
+        soft_items = []
+        sc_counter = 1
+        for name in soft_details.keys():
+            clean_name = name.replace("_", " ")
+            soft_items.append(f"sc{sc_counter}={clean_name}")
+            sc_counter += 1
+
+        # Display soft constraints 3 per row
+        for i in range(0, len(soft_items), 3):
+            row_items = soft_items[i : i + 3]
+            row_text = "  [dim]" + " | ".join(row_items) + "[/dim]"
+            legend_bars.append(
+                Progress(
+                    TextColumn(row_text),
+                    console=console,
+                    refresh_per_second=10,
+                )
+            )
+
         # Combine both into a table for multi-line display
         progress_table = Table.grid()
-        progress_table.add_row(progress_bar)
+        progress_table.add_row(spacing_bar)  # spacing above
         progress_table.add_row(time_bar)
+        progress_table.add_row(progress_bar)
+        # Add Memory bar
+        progress_table.add_row(memory_bar)
+        # Add CPU bars
+        for cpu_bar in cpu_bars:
+            progress_table.add_row(cpu_bar)
+        # Add constraint legend rows below CPU
+        for legend_bar in legend_bars:
+            progress_table.add_row(legend_bar)
+        # Add spacing at bottom
+        progress_table.add_row(spacing_bar)
 
         with Live(progress_table, console=console, refresh_per_second=10):
             task1 = progress_bar.add_task(
-                "[bold green]Evolution Progress",
+                "evol prog",
                 total=self.config.generations,
             )
             task2 = time_bar.add_task(
@@ -585,6 +705,80 @@ class GAScheduler:
                 total=self.config.generations,
                 speed_display="--s/gen",
             )
+
+            # Initialize CPU monitoring tasks
+            for i, cpu_bar in enumerate(cpu_bars):
+                cpu_task = cpu_bar.add_task(
+                    "",
+                    total=100,
+                    cpu_percent=0.0,
+                )
+                cpu_tasks.append(cpu_task)
+
+            # Initialize Memory monitoring task (process-specific)
+            mem_info = process.memory_info()
+            memory_task = memory_bar.add_task(
+                "",
+                total=100,
+                mem_used=f"{mem_info.rss / (1024**3):.2f}GB",
+                mem_peak=f"{mem_info.rss / (1024**3):.2f}GB",
+            )
+
+            # Initialize legend bar tasks (static display)
+            for legend_bar in legend_bars:
+                legend_bar.add_task("")
+
+            # Initialize spacing task
+            spacing_bar.add_task("")
+
+            # Tracking variables for resource monitoring
+            monitoring_active = True
+            peak_memory = mem_info.rss
+
+            def update_resource_monitors():
+                """Background thread to update CPU and Memory metrics every second"""
+                nonlocal peak_memory
+                while monitoring_active:
+                    try:
+                        # Update CPU monitoring (per-core, process-specific)
+                        # Get per-core CPU percentages (system-wide)
+                        cpu_percentages = psutil.cpu_percent(interval=0.5, percpu=True)
+                        for i, (cpu_bar, cpu_task) in enumerate(
+                            zip(cpu_bars, cpu_tasks)
+                        ):
+                            if i < len(cpu_percentages):
+                                cpu_bar.update(
+                                    cpu_task,
+                                    completed=cpu_percentages[i],
+                                    cpu_percent=cpu_percentages[i],
+                                )
+
+                        # Update Memory monitoring (process-specific)
+                        current_mem_info = process.memory_info()
+                        current_mem = current_mem_info.rss
+                        if current_mem > peak_memory:
+                            peak_memory = current_mem
+
+                        # Calculate percentage of system memory used by this process
+                        system_total = psutil.virtual_memory().total
+                        mem_percent = (current_mem / system_total) * 100
+
+                        memory_bar.update(
+                            memory_task,
+                            completed=mem_percent,
+                            mem_used=f"{current_mem / (1024**3):.2f}GB",
+                            mem_peak=f"{peak_memory / (1024**3):.2f}GB",
+                        )
+
+                        time.sleep(0.5)  # Update twice per second for smoother display
+                    except Exception:
+                        pass  # Silently handle any errors in monitoring thread
+
+            # Start background monitoring thread
+            monitor_thread = threading.Thread(
+                target=update_resource_monitors, daemon=True
+            )
+            monitor_thread.start()
 
             for gen in range(self.config.generations):
                 gen_start = time.time()
@@ -612,13 +806,42 @@ class GAScheduler:
                 time_bar.update(task2, speed_display=speed_display)
 
                 # Show progress feedback after EVERY generation completes
-                # (User requested: display after every gen, not just first 5 or every 25)
+                # Display constraint breakdown for non-zero violations
                 best = tools.selBest(self.population, 1)[0]
+
+                # Get detailed constraint breakdown
+                hard_details, soft_details = evaluate_detailed(
+                    best,
+                    self.context.courses,
+                    self.context.instructors,
+                    self.context.groups,
+                    self.context.rooms,
+                )
+
+                # Build compact constraint lists with short names
+                hc_parts = []
+                hc_counter = 1
+                for name, val in hard_details.items():
+                    if val > 0:
+                        hc_parts.append(f"hc{hc_counter}={int(val)}")
+                        hc_counter += 1
+
+                sc_parts = []
+                sc_counter = 1
+                for name, val in soft_details.items():
+                    if val > 0:
+                        sc_parts.append(f"sc{sc_counter}={val:.1f}")
+                        sc_counter += 1
+
+                # Build constraint list strings
+                hc_list = ", ".join(hc_parts) if hc_parts else ""
+                sc_list = ", ".join(sc_parts) if sc_parts else ""
+
+                # Format exactly as requested: [!ok] gen x/y : hc = , sc = , t=4s,  hc1=, hc2=.. sc1=., sc2=...
                 console.print(
-                    f"[dim]...OK!... Gen {gen+1}/{self.config.generations}: "
-                    f"Hard={best.fitness.values[0]:.0f}, "
-                    f"Soft={best.fitness.values[1]:.2f}, "
-                    f"Time={gen_time:.1f}s[/dim]"
+                    f"[dim][!ok] gen {gen+1}/{self.config.generations} : "
+                    f"hc={best.fitness.values[0]:.0f}, sc={best.fitness.values[1]:.2f}, "
+                    f"t={gen_time:.1f}s,  {hc_list} {sc_list}[/dim]"
                 )
 
                 # Log generation metrics
@@ -646,7 +869,7 @@ class GAScheduler:
                 best = tools.selBest(self.population, 1)[0]
                 if best.fitness.values[0] == 0:
                     console.print(
-                        f"\n...OK!... [bold green]Perfect solution found at generation {gen + 1}![/bold green]"
+                        f"\n[!ok] [bold green]Perfect solution found at generation {gen + 1}![/bold green]"
                     )
 
                     # Log early stop
@@ -663,6 +886,40 @@ class GAScheduler:
                             notes="Early stop - perfect solution",
                         )
                     break
+
+            # Stop monitoring thread
+            monitoring_active = False
+            monitor_thread.join(timeout=1.0)
+
+        # Show constraint legend after evolution completes
+        # Get constraint names for legend (use best individual from last generation)
+        best = tools.selBest(self.population, 1)[0]
+        hard_details, soft_details = evaluate_detailed(
+            best,
+            self.context.courses,
+            self.context.instructors,
+            self.context.groups,
+            self.context.rooms,
+        )
+
+        console.print()
+        console.print("[dim]constraint mapping:[/dim]")
+
+        # Show hard constraints
+        hc_counter = 1
+        for name, val in hard_details.items():
+            clean_name = name.replace("_", " ")
+            console.print(f"  [dim]hc{hc_counter}:[/dim] {clean_name}")
+            hc_counter += 1
+
+        # Show soft constraints
+        sc_counter = 1
+        for name, val in soft_details.items():
+            clean_name = name.replace("_", " ")
+            console.print(f"  [dim]sc{sc_counter}:[/dim] {clean_name}")
+            sc_counter += 1
+
+        console.print()
 
         # ENHANCEMENT: Save violation heatmap at end
         if self.violation_heatmap:
@@ -763,7 +1020,7 @@ class GAScheduler:
                             enhancement_cfg.hypermutation.duration_generations
                         )
                         console.print(
-                            f"[bold magenta]⚡ Gen {gen}: HYPERMUTATION activated "
+                            f"[bold magenta] [!hurray] Gen {gen}: HYPERMUTATION activated "
                             f"(mutpb: {self.config.mutation_prob:.1f} → "
                             f"{enhancement_cfg.hypermutation.mutation_rate:.1f} "
                             f"for {self.hypermutation_countdown} gens)[/bold magenta]"
@@ -812,7 +1069,7 @@ class GAScheduler:
                 repair_config["memetic_mode"] = True  # Enable memetic for intensive
                 event_tracker.add("intensive_repair")
                 console.print(
-                    f"[bold red]🔥 Gen {gen}: INTENSIVE REPAIR triggered (every {periodic_cfg.get('intensive_interval', 20)} gens) "
+                    f"[bold red][!info] Gen {gen}: INTENSIVE REPAIR triggered (every {periodic_cfg.get('intensive_interval', 20)} gens) "
                     f"- HARD mode: full scan, max_iterations={repair_config['max_iterations']}, memetic=ON[/bold red]"
                 )
             elif stagnation_detected:
@@ -855,7 +1112,7 @@ class GAScheduler:
                 repair_config["memetic_mode"] = False  # Disable memetic for periodic
                 event_tracker.add("periodic_repair")
                 console.print(
-                    f"[bold cyan]🔄 Gen {gen}: PERIODIC repair triggered (every {periodic_cfg.get('interval', 10)} gens) "
+                    f"[bold cyan] [!info] Gen {gen}: PERIODIC repair triggered (every {periodic_cfg.get('interval', 10)} gens) "
                     f"- SOFT mode: selective, max_iterations={repair_config['max_iterations']}, memetic=OFF[/bold cyan]"
                 )
             else:
@@ -1066,7 +1323,7 @@ class GAScheduler:
         ):
 
             console.print(
-                f"\n[bold red]🔥 Gen {gen}: EXHAUSTIVE SEARCH triggered "
+                f"\n[bold red][!info] exhaustive search triggered on  gen {gen}: "
                 f"(steepest descent on top {igls_config.exhaustive_search.population_coverage*100:.0f}%)[/bold red]"
             )
 
@@ -1090,7 +1347,7 @@ class GAScheduler:
             event_tracker.add("igls_exhaustive_search")
 
             console.print(
-                f"[bold green]   ✓ Exhaustive search complete: "
+                f"[bold green][!done] exhaustive search complete: "
                 f"{igls_metrics['genes_improved']} genes improved, "
                 f"total reduction: {igls_metrics['total_improvement']}, "
                 f"time: {igls_metrics['execution_time']:.1f}s"
@@ -1107,7 +1364,7 @@ class GAScheduler:
         ):
 
             console.print(
-                f"\n[bold yellow]⚡ Gen {gen}: STAGNATION REPAIR triggered "
+                f"\n[bold yellow] [!info] Gen {gen}: STAGNATION REPAIR triggered "
                 f"(greedy search on top {igls_config.stagnation_repair.population_coverage*100:.0f}%, "
                 f"{self.stagnation_counter} gens stagnant)[/bold yellow]"
             )
@@ -1334,12 +1591,13 @@ class GAScheduler:
                 notes=notes,
             )
 
-        # Periodic detailed logging every 4 generations (user requested: longer loops now)
-        # Also show on first gen (gen=0) and last gen
-        if gen >= 0 and (
-            gen == 0 or (gen + 1) % 4 == 0 or gen == self.config.generations - 1
-        ):
-            self._log_generation_details(gen, best, hard_details, soft_details)
+        # Detailed periodic logging disabled (user prefers compact gen-by-gen format)
+        # User requested removal of verbose GEN X Hard=... breakdown
+        # All info now shown in compact format: [!ok] gen x/y : hc=, sc=, t=Xs, hc1=, hc2=...
+        # if gen >= 0 and (
+        #     gen == 0 or (gen + 1) % 4 == 0 or gen == self.config.generations - 1
+        # ):
+        #     self._log_generation_details(gen, best, hard_details, soft_details)
 
     def _log_generation_details(
         self, gen: int, best, hard_details: Dict, soft_details: Dict
@@ -1457,7 +1715,7 @@ class GAScheduler:
         elite_count = len(self.population) - restart_count
 
         console.print(
-            f"\n[bold red]🔄 Gen {gen}: POPULATION RESTART triggered![/bold red]"
+            f"\n[bold red] [!info] Gen {gen}: POPULATION RESTART triggered![/bold red]"
         )
         console.print(
             f"   [dim]Replacing worst {restart_count}/{len(self.population)} individuals "
@@ -1492,7 +1750,7 @@ class GAScheduler:
         new_diversity = average_pairwise_diversity(self.population)
 
         console.print(
-            f"   [green]...OK!... Restart complete! New diversity: {new_diversity:.4f}[/green]"
+            f"   [green][!ok] Restart complete! New diversity: {new_diversity:.4f}[/green]"
         )
 
         # Update tracking

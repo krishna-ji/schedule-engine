@@ -50,12 +50,12 @@ def print_header(text: str):
 
 def print_success(text: str):
     """Print success message."""
-    print(colored(f"[OK] {text}", Colors.GREEN))
+    print(colored(f"[!ok] {text}", Colors.GREEN))
 
 
 def print_error(text: str):
     """Print error message."""
-    print(colored(f"[ERROR] {text}", Colors.RED))
+    print(colored(f"[!err] {text}", Colors.RED))
 
 
 def print_info(text: str):

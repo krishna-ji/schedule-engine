@@ -188,7 +188,7 @@ def plot_pareto_front(population, output_dir):
                 linewidth=1.5,
                 zorder=5,
             )
-            plt.colorbar(im, ax=ax3, label="Density")
+            fig.colorbar(im, ax=ax3, label="Density")
         else:
             # Fallback: use 2D histogram for low-variance data
             # Create histogram
@@ -289,7 +289,7 @@ def plot_pareto_front(population, output_dir):
         zorder=5,
     )
 
-    plt.colorbar(scatter, ax=ax4, label="Point Frequency")
+    fig.colorbar(scatter, ax=ax4, label="Point Frequency")
     format_axis(
         ax4,
         xlabel="Hard Constraint Violations",

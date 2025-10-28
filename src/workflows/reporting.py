@@ -78,14 +78,14 @@ def generate_reports(
     # Export schedule (JSON + PDF) - sequential (tightly coupled operations)
     print("  [+] Exporting schedule...")
     export_everything(decoded_schedule, output_dir, qts)
-    print("      [OK] schedule.json")
-    print("      [OK] schedule.pdf")
+    print("      [!ok] schedule.json")
+    print("      [!ok] schedule.pdf")
 
     # Generate violation report - sequential (depends on export)
     if course_map:
         print("  [+] Generating violation report...")
         generate_violation_report(decoded_schedule, course_map, qts, output_dir)
-        print("      [OK] violation_report.txt")
+        print("      [!ok] violation_report.txt")
 
     # ========================================
     # PARALLEL PLOTTING SECTION
@@ -272,22 +272,22 @@ def generate_reports(
                 else:
                     failed_plots.append(plot_name)
             except Exception as exc:
-                print(f"      [ERROR] {plot_name} failed: {exc}")
+                print(f"      [!err] {plot_name} failed: {exc}")
                 failed_plots.append(plot_name)
 
     elapsed = time.time() - start_time
 
     # Report results
     print(
-        f"      [OK] Generated {len(completed_plots)} plots in {elapsed:.2f}s (parallel)"
+        f"      [!ok] Generated {len(completed_plots)} plots in {elapsed:.2f}s (parallel)"
     )
     for plot_name in sorted(completed_plots):
-        print(f"      [OK] {plot_name}")
+        print(f"      [!ok] {plot_name}")
 
     if failed_plots:
-        print(f"      [WARNING] {len(failed_plots)} plots failed:")
+        print(f"      [!warn] {len(failed_plots)} plots failed:")
         for plot_name in sorted(failed_plots):
-            print(f"      [ERROR] {plot_name}")
+            print(f"      [!err] {plot_name}")
 
     print("  [+] All reports generated successfully!")
 

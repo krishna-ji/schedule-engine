@@ -206,7 +206,7 @@ if __name__ == "__main__":
     table2.add_column("Status", justify="center")
 
     for name, info in enabled.items():
-        table2.add_row(name, str(info["priority"]), "[OK!]ENABLED")
+        table2.add_row(name, str(info["priority"]), "[[!ok]]ENABLED")
 
     console.print(table2)
     console.print(f"\n[dim]Total enabled: {len(enabled)}/{len(all_repairs)}[/dim]\n")

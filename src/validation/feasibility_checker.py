@@ -98,7 +98,7 @@ def check_feasibility(
 
     if get_config().feasibility.show_console_output:
         console.print()
-        console.rule("[bold cyan]FEASIBILITY ANALYSIS[/bold cyan]", style="cyan")
+        console.print("[bold cyan]feasibility analysis[/bold cyan]")
         console.print()
 
     results = []
@@ -221,7 +221,7 @@ def _check_instructor_workload(
 
     message = f"Demand: {total_demand} quanta, Supply: {total_supply} quanta"
     if passed:
-        message += f" [OK] (Utilization: {utilization_rate:.1f}%)"
+        message += f" [!ok] (Utilization: {utilization_rate:.1f}%)"
     else:
         shortage = total_demand - total_supply
         message += f" ✗ (Shortage: {shortage} quanta, {shortage * qts.QUANTUM_MINUTES // 60} hours)"
@@ -328,7 +328,7 @@ def _check_instructor_qualification_bottleneck(
     passed = len(bottlenecks) == 0
 
     if passed:
-        message = f"All {total_courses} courses have sufficient qualified instructor availability ...OK!..."
+        message = f"All {total_courses} courses have sufficient qualified instructor availability [!ok]"
     else:
         message = f"{problematic_courses}/{total_courses} courses lack qualified instructor capacity ✗"
 
@@ -449,7 +449,7 @@ def _check_room_capacity_bottleneck(
     )
 
     if passed:
-        message = f"Seat-hours sufficient: {total_seat_hours:,} available, {total_student_hours:,} needed [OK] ({utilization:.1f}%)"
+        message = f"Seat-hours sufficient: {total_seat_hours:,} available, {total_student_hours:,} needed [!ok] ({utilization:.1f}%)"
     else:
         message = f"Seat-hours insufficient ✗"
 
@@ -575,7 +575,7 @@ def _check_room_feature_bottleneck(
     passed = len(bottlenecks) == 0
 
     if passed:
-        message = f"All required room features have sufficient availability ...OK!..."
+        message = f"All required room features have sufficient availability [!ok]"
     else:
         message = f"{len(bottlenecks)} room feature(s) have capacity shortages ✗"
 
@@ -678,7 +678,7 @@ def _check_group_pigeonhole(
     passed = len(overloaded_groups) == 0
 
     if passed:
-        message = f"All {len(groups)} groups have feasible course loads ...OK!..."
+        message = f"All {len(groups)} groups have feasible course loads [!ok]"
         if max_utilization > 80:
             message += f" (Max utilization: {max_utilization:.1f}%)"
     else:
@@ -728,7 +728,7 @@ def _check_group_pigeonhole(
 def _print_check_result(result: FeasibilityResult):
     """Print a single check result with rich formatting."""
     if result.passed:
-        icon = "...OK!..."
+        icon = "[!ok]"
         color = "green"
     else:
         icon = "✗"
@@ -756,7 +756,8 @@ def _print_check_result(result: FeasibilityResult):
 
 def _print_summary(report: FeasibilityReport):
     """Print overall feasibility summary."""
-    console.rule("[bold]Summary[/bold]")
+    console.print()
+    console.print("[bold cyan]summary[/bold cyan]")
     console.print()
 
     # Create summary table
@@ -776,26 +777,22 @@ def _print_summary(report: FeasibilityReport):
     console.print()
 
     if report.is_feasible:
+        console.print("[green][!ok] problem is feasible[/green]")
         console.print(
-            Panel(
-                "[bold green][OK!]PROBLEM IS FEASIBLE[/bold green]\n\n"
-                "All critical checks passed. The GA should be able to find a solution.\n"
-                "[dim]Note: This doesn't guarantee a perfect solution exists, but fundamental constraints are satisfied.[/dim]",
-                border_style="green",
-            )
+            "  [dim]all critical checks passed. GA should find a solution.[/dim]"
+        )
+        console.print(
+            "  [dim]note: this doesn't guarantee a perfect solution exists[/dim]"
         )
     else:
+        console.print("[red][!err] problem is infeasible[/red]")
         console.print(
-            Panel(
-                "[bold red]✗ PROBLEM IS INFEASIBLE[/bold red]\n\n"
-                f"Found {report.summary['critical_failures']} critical issue(s) that make this problem unsolvable.\n"
-                "The GA will not be able to find a valid solution until these are fixed.",
-                border_style="red",
-            )
+            f"  [dim]found {report.summary['critical_failures']} critical issue(s)[/dim]"
+        )
+        console.print(
+            "  [dim]GA will not find valid solution until these are fixed[/dim]"
         )
 
-    console.print()
-    console.rule(style="cyan")
     console.print()
 
 

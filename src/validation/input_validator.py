@@ -373,7 +373,7 @@ class InputValidator:
 
             # Create table for better visualization
             table = Table(
-                title="⚠️  CRITICAL: Enrolled Courses Without Qualified Instructors",
+                title="[!err] CRITICAL: Enrolled Courses Without Qualified Instructors",
                 show_header=True,
                 header_style="bold red",
             )
@@ -573,19 +573,19 @@ class InputValidator:
         if self.errors:
             console.print()
             console.print(
-                "[bold red]✗ Validation FAILED![/bold red] Fix errors before running GA."
+                "[bold red][!err][/bold red] Validation FAILED! Fix errors before running GA."
             )
             console.print()
         elif self.warnings:
             console.print()
             console.print(
-                "[bold yellow]⚠[/bold yellow] Validation passed with warnings. Review before running GA."
+                "[bold yellow][!warn][/bold yellow] Validation passed with warnings. Review before running GA."
             )
             console.print()
         else:
             console.print()
             console.print(
-                "[bold green]...OK!...[/bold green] Validation passed! No issues found."
+                "[bold green][!ok][/bold green] Validation passed! No issues found."
             )
             console.print()
 

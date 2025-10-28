@@ -97,75 +97,75 @@ def run_standard_workflow(
 
             config = load_config()
 
-    # ========================================
-    # Step 1: Initialize
-    # ========================================
-    console.rule(
-        "[bold cyan]SCHEDULE ENGINE - Standard Workflow[/bold cyan]", style="cyan"
-    )
+    # ═══════════════════════════════════════════════════════════════
+    # INITIALIZATION
+    # ═══════════════════════════════════════════════════════════════
+    console.print()
+    console.print("[bold cyan]schedule engine[/bold cyan]")
     console.print()
 
     # Set random seed
     random.seed(seed)
-    console.print(f"[dim]Random seed: {seed}[/dim]")
+    console.print(f"[dim]seed:[/dim] {seed}")
 
     # Create output directory
     if output_dir is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = os.path.join("output", f"evaluation_{timestamp}")
     os.makedirs(output_dir, exist_ok=True)
-    console.print(f"[dim]Output directory: {output_dir}[/dim]")
+    console.print(f"[dim]output:[/dim] {output_dir}")
     console.print()
 
-    # ========================================
-    # Step 2: Load Data
-    # ========================================
+    # ═══════════════════════════════════════════════════════════════
+    # DATA LOADING
+    # ═══════════════════════════════════════════════════════════════
+    console.print("[bold cyan]loading data[/bold cyan]")
     with Progress(
         SpinnerColumn(),
-        TextColumn("[bold cyan]{task.description}"),
+        TextColumn("[dim]{task.description}"),
         BarColumn(),
-        TextColumn("[cyan]{task.percentage:>3.0f}%"),
+        TextColumn("[dim]{task.percentage:>3.0f}%"),
         console=console,
         transient=True,
     ) as progress:
-        task = progress.add_task("Loading Input Data...", total=5)
+        task = progress.add_task("reading json files...", total=5)
         qts, context = load_input_data(data_dir)
         progress.update(task, completed=5)
 
-    console.print(f"   [cyan]Courses:[/cyan] {len(context.courses)}")
-    console.print(f"   [cyan]Groups:[/cyan] {len(context.groups)}")
-    console.print(f"   [cyan]Instructors:[/cyan] {len(context.instructors)}")
-    console.print(f"   [cyan]Rooms:[/cyan] {len(context.rooms)}")
-    console.print(f"   [cyan]Time quanta:[/cyan] {len(context.available_quanta)}")
+    console.print(f"  [dim]courses:[/dim] {len(context.courses)}")
+    console.print(f"  [dim]groups:[/dim] {len(context.groups)}")
+    console.print(f"  [dim]instructors:[/dim] {len(context.instructors)}")
+    console.print(f"  [dim]rooms:[/dim] {len(context.rooms)}")
+    console.print(f"  [dim]quanta:[/dim] {len(context.available_quanta)}")
     console.print()
 
-    # ========================================
-    # Step 3: Validate (Optional)
-    # ========================================
+    # ═══════════════════════════════════════════════════════════════
+    # VALIDATION
+    # ═══════════════════════════════════════════════════════════════
     if validate:
+        console.print("[bold cyan]validating input[/bold cyan]")
         with Progress(
             SpinnerColumn(),
-            TextColumn("[bold green]{task.description}"),
+            TextColumn("[dim]{task.description}"),
             TimeElapsedColumn(),
             console=console,
             transient=True,
         ) as progress:
-            task = progress.add_task("Validating Input...", total=None)
+            task = progress.add_task("checking data consistency...", total=None)
             validation_result = validate_input(context, strict=False)
             progress.update(task, completed=1)
 
         if not validation_result:
             raise ValueError(
-                "[X] Input validation failed with ERRORS! Fix errors and try again."
+                "[!err] input validation failed! fix errors and try again."
             )
 
-        console.print("   [bold green]...OK!...[/bold green] Input validation passed\n")
+        console.print("  [green][!ok] validation passed[/green]")
+        console.print()
 
-    # ========================================
-    # Step 3.5: Feasibility Check
-    # ========================================
-    console.print("[bold magenta]Checking Problem Feasibility...[/bold magenta]\n")
-
+    # ═══════════════════════════════════════════════════════════════
+    # FEASIBILITY ANALYSIS
+    # ═══════════════════════════════════════════════════════════════
     is_feasible, feasibility_report = check_feasibility(
         context.courses, context.instructors, context.rooms, context.groups, qts
     )
@@ -176,20 +176,18 @@ def run_standard_workflow(
     ):
         feasibility_report_path = os.path.join(output_dir, "feasibility_report.txt")
         generate_feasibility_report_file(feasibility_report, feasibility_report_path)
-        console.print(
-            f"   [dim]Feasibility report:[/dim] [cyan]{feasibility_report_path}[/cyan]\n"
-        )
+        console.print(f"  [dim]saved:[/dim] {feasibility_report_path}")
+        console.print()
 
     # If not feasible and FAIL_ON_INFEASIBILITY=True, check_feasibility already exited
     # If we're here, either it's feasible or FAIL_ON_INFEASIBILITY=False
     if not is_feasible:
-        console.print(
-            "[yellow]⚠ Proceeding despite infeasibility (fail_on_infeasibility=False)[/yellow]\n"
-        )
+        console.print("[yellow][!warn] proceeding despite infeasibility[/yellow]")
+        console.print()
 
-    # ========================================
-    # Step 3.6: Create Multiprocessing Pool
-    # ========================================
+    # ═══════════════════════════════════════════════════════════════
+    # PARALLELIZATION SETUP
+    # ═══════════════════════════════════════════════════════════════
     pool = None
 
     if config.parallel.use_multiprocessing:
@@ -203,20 +201,15 @@ def run_standard_workflow(
             initializer=_worker_init,
             initargs=(data_dir, seed),
         )
-        console.print(
-            f"[cyan][OK] Multiprocessing enabled: {pool._processes} workers[/cyan]"
-        )
-        console.print(
-            f"   [dim]Workers load data from {data_dir}/ (zero pickling overhead)[/dim]\n"
-        )
+        console.print(f"[cyan][!info] parallel mode:[/cyan] {pool._processes} workers")
+        console.print()
     else:
-        console.print(
-            "[yellow]Running in single-threaded mode (use_multiprocessing=False)[/yellow]\n"
-        )
+        console.print("[yellow][!info] single-threaded mode[/yellow]")
+        console.print()
 
-    # ========================================
-    # Step 4: Configure GA
-    # ========================================
+    # ═══════════════════════════════════════════════════════════════
+    # GA CONFIGURATION
+    # ═══════════════════════════════════════════════════════════════
 
     # Convert config to dict format for GA scheduler
     repair_config = {
@@ -327,23 +320,25 @@ def run_standard_workflow(
     }
 
     logger = GALogger(output_dir, logger_config)
-    console.print(f"   [dim]Logger:[/dim] [cyan]{logger.get_log_path()}[/cyan]")
+    console.print(f"  [dim]logger:[/dim] {logger.get_log_path()}")
 
     # Initialize ConstraintLogger for detailed per-generation constraint breakdown
     constraint_logger = ConstraintLogger(output_dir, hard_names, soft_names)
-    console.print(
-        f"   [dim]Constraint Logger:[/dim] [cyan]{constraint_logger.get_log_path()}[/cyan]"
-    )
+    console.print(f"  [dim]constraint log:[/dim] {constraint_logger.get_log_path()}")
+    console.print()
 
-    console.print("[bold]Genetic Algorithm Configuration:[/bold]")
+    # ========================================
+    # Step 5: Run GA
+    # ========================================
+    console.print("[bold cyan]genetic algorithm[/bold cyan]")
     console.print(
-        f"   Population: [cyan]{ga_config.pop_size}[/cyan] | Generations: [cyan]{ga_config.generations}[/cyan]"
+        f"  [dim]population:[/dim] {ga_config.pop_size} | [dim]generations:[/dim] {ga_config.generations}"
     )
     console.print(
-        f"   Crossover: [cyan]{ga_config.crossover_prob:.1%}[/cyan] | Mutation: [cyan]{ga_config.mutation_prob:.1%}[/cyan]"
+        f"  [dim]crossover:[/dim] {ga_config.crossover_prob:.1%} | [dim]mutation:[/dim] {ga_config.mutation_prob:.1%}"
     )
     console.print(
-        f"   Constraints: [yellow]{len(hard_names)} hard[/yellow], [blue]{len(soft_names)} soft[/blue]"
+        f"  [dim]constraints:[/dim] {len(hard_names)} hard, {len(soft_names)} soft"
     )
 
     # Display repair configuration status
@@ -354,21 +349,15 @@ def run_standard_workflow(
         if config.repair.apply_after_crossover:
             repair_modes.append("crossover")
         if config.repair.memetic_mode:
-            repair_modes.append(f"memetic({config.repair.elite_percentage:.0%} elite)")
-
+            repair_modes.append(f"memetic({config.repair.elite_percentage:.0%})")
         modes_str = ", ".join(repair_modes) if repair_modes else "none"
         console.print(
-            f"   Repair Heuristics: [green][OK] enabled[/green] (after {modes_str}, max {config.repair.max_iterations} iter)"
+            f"  [dim]repair:[/dim] [green]enabled[/green] (after {modes_str}, max {config.repair.max_iterations} iter)"
         )
     else:
-        console.print(f"   Repair Heuristics: [dim]✗ disabled[/dim]")
+        console.print(f"  [dim]repair:[/dim] [dim]disabled[/dim]")
 
     console.print()
-
-    # ========================================
-    # Step 5: Run GA
-    # ========================================
-    console.print("[bold green]Running Genetic Algorithm...[/bold green]\n")
 
     logger.start_run()  # Mark start time
 
@@ -386,11 +375,11 @@ def run_standard_workflow(
     scheduler.initialize_population()
     scheduler.evolve()
 
-    # ========================================
-    # Step 6: Decode Best Solution
-    # ========================================
+    # ═══════════════════════════════════════════════════════════════
+    # SOLUTION DECODING
+    # ═══════════════════════════════════════════════════════════════
     console.print()
-    console.print("[bold]Processing Results...[/bold]")
+    console.print("[bold cyan]solution[/bold cyan]")
 
     best_individual = scheduler.get_best_solution()
     decoded_schedule = decode_individual(
@@ -402,12 +391,10 @@ def run_standard_workflow(
     )
 
     console.print(
-        f"   Hard Violations: [yellow]{best_individual.fitness.values[0]:.0f}[/yellow]"
+        f"  [dim]hard violations:[/dim] {best_individual.fitness.values[0]:.0f}"
     )
-    console.print(
-        f"   Soft Penalty: [blue]{best_individual.fitness.values[1]:.2f}[/blue]"
-    )
-    console.print(f"   Schedule sessions: [cyan]{len(decoded_schedule)}[/cyan]")
+    console.print(f"  [dim]soft penalty:[/dim] {best_individual.fitness.values[1]:.2f}")
+    console.print(f"  [dim]sessions:[/dim] {len(decoded_schedule)}")
     console.print()
 
     # Finalize logger
@@ -416,20 +403,19 @@ def run_standard_workflow(
         best_soft=best_individual.fitness.values[1],
         final_schedule_sessions=len(decoded_schedule),
     )
-    console.print(f"   [dim]Log saved:[/dim] [cyan]{logger.get_log_path()}[/cyan]")
-    console.print()
 
-    # ========================================
-    # Step 7: Generate Reports
-    # ========================================
+    # ═══════════════════════════════════════════════════════════════
+    # REPORT GENERATION
+    # ═══════════════════════════════════════════════════════════════
+    console.print("[bold cyan]generating reports[/bold cyan]")
     with Progress(
         SpinnerColumn(),
-        TextColumn("[bold magenta]{task.description}"),
+        TextColumn("[dim]{task.description}"),
         TimeElapsedColumn(),
         console=console,
         transient=True,
     ) as progress:
-        task = progress.add_task("Generating Reports...", total=None)
+        task = progress.add_task("creating visualizations...", total=None)
         generate_reports(
             decoded_schedule=decoded_schedule,
             metrics=scheduler.metrics,
@@ -440,22 +426,26 @@ def run_standard_workflow(
         )
         progress.update(task, completed=1)
 
-    # ========================================
-    # Done!
-    # ========================================
+    console.print(f"  [dim]saved:[/dim] {output_dir}")
     console.print()
-    console.rule("[bold green]WORKFLOW COMPLETE[/bold green]", style="green")
+
+    # ═══════════════════════════════════════════════════════════════
+    # COMPLETE
+    # ═══════════════════════════════════════════════════════════════
+    console.print("[bold green]complete[/bold green]")
     console.print()
-    console.print(f"[bold]Results saved to:[/bold] [cyan]{output_dir}[/cyan]")
-    console.print(f"   • [dim]schedule.json[/dim]: Schedule data")
-    console.print(f"   • [dim]schedule.pdf[/dim]: Visual calendar")
-    console.print(f"   • [dim]logger.txt[/dim]: Run summary and generation log")
+    console.print("[bold cyan]complete[/bold cyan]", style="cyan")
+    console.print()
+    console.print(f"[bold]output:[/bold] {output_dir}")
+    console.print(f"  [dim]schedule.json[/dim] - schedule data")
+    console.print(f"  [dim]schedule.pdf[/dim] - visual calendar")
+    console.print(f"  [dim]logger.txt[/dim] - run summary")
     console.print(
-        f"   • [dim]logger_all.csv[/dim]: Complete generation-wise data (constraints, metrics, events)"
+        f"  [dim]logger_all.csv[/dim] - generation data (constraints, metrics)"
     )
-    console.print(f"   • [dim]plots/[/dim]: Evolution charts")
+    console.print(f"  [dim]plots/[/dim] - evolution visualizations")
     console.print()
-    console.rule(style="green")
+    console.print(style="cyan")
     console.print()
 
     # Clean up multiprocessing pool
@@ -532,7 +522,7 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
         enrolled_course_codes.update(group.enrolled_courses)
 
     print(
-        f"[INFO] Found {len(enrolled_course_codes)} unique course codes enrolled by groups"
+        f"[!info] Found {len(enrolled_course_codes)} unique course codes enrolled by groups"
     )
 
     # Step 3: Filter to only keep courses whose course_code is enrolled
@@ -547,16 +537,16 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
 
     excluded_count = len(all_courses) - len(courses)
     print(
-        f"[INFO] Filtered {len(courses)} course objects from {len(all_courses)} total in database"
+        f"[!info] Filtered {len(courses)} course objects from {len(all_courses)} total in database"
     )
-    print(f"[INFO] ({excluded_count} courses excluded - not enrolled by any group)")
+    print(f"[!info] ({excluded_count} courses excluded - not enrolled by any group)")
 
     # Step 4: Link relationships (only for enrolled courses)
     link_courses_and_groups(courses, groups)
     link_courses_and_instructors(courses, instructors)
 
     elapsed = time.time() - start_time
-    print(f"[INFO] Data loading completed in {elapsed:.2f}s (parallel)")
+    print(f"[!info] Data loading completed in {elapsed:.2f}s (parallel)")
 
     # Create context with filtered courses
     context = SchedulingContext(

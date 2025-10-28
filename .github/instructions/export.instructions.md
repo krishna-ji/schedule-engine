@@ -146,7 +146,7 @@ def export_my_format(decoded_schedule, output_path, context):
     # Implementation
     with open(output_path, 'w') as f:
         # Write output
-    console.print(f"[OK] {output_path}")
+    console.print(f"[!ok] {output_path}")
 ```
 
 ### Step 2: Register in Reporting Workflow
@@ -158,7 +158,7 @@ def generate_reports(...):
     # Add new export
     console.print("  [+] Generating my format...")
     export_my_format(decoded_schedule, output_dir, context)
-    console.print("      [OK] my_format.txt")
+    console.print("      [!ok] my_format.txt")
 ```
 
 ### Step 3: Update Documentation

@@ -110,8 +110,8 @@ def generate_course_group_aware_population(
     # - Practical: Each subgroup separately (e.g., ["BAE2A"], then ["BAE2B"])
     hierarchy = analyze_group_hierarchy(context.groups)
 
-    # Detect if we're in a worker process (suppress warnings to avoid duplicates)
-    silent = os.environ.get("_GA_WORKER_PROCESS") == "1"
+    # Always silent=True since warnings already shown in input encoder table
+    silent = True
 
     # Generate course-group pairs using the proper function
     # Returns: List[Tuple[course_key, group_ids, session_type, num_quanta]]

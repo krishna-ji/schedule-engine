@@ -19,20 +19,20 @@ import sys
 
 def run_schedule_engine(env: str):
     """Run the schedule engine with the specified environment."""
-    print(f"\n🚀 Running with {env} environment...\n")
+    print(f"\n[yes!] Running with {env} environment...\n")
     cmd = ["uv", "run", "python", "main.py", "--env", env]
 
     try:
         result = subprocess.run(cmd, check=True)
         sys.exit(result.returncode)
     except subprocess.CalledProcessError as e:
-        print(f"\n❌ Error: Command failed with exit code {e.returncode}")
+        print(f"\n[err!] Error: Command failed with exit code {e.returncode}")
         sys.exit(e.returncode)
     except KeyboardInterrupt:
-        print("\n\n👋 Execution interrupted by user.")
+        print("\n\n[!bye] Execution interrupted by user.")
         sys.exit(130)  # Standard exit code for Ctrl+C
     except FileNotFoundError:
-        print("\n❌ Error: 'uv' not found. Please install uv first.")
+        print("\n[err!] Error: 'uv' not found. Please install uv first.")
         print("   Install: https://github.com/astral-sh/uv")
         sys.exit(1)
 
@@ -52,7 +52,7 @@ def show_menu():
             choice = input("\nEnter choice (1-3) or 'q' to quit: ").strip().lower()
 
             if choice == "q":
-                print("\n👋 Goodbye!")
+                print("\n[!bye] Goodbye!")
                 sys.exit(0)
             elif choice == "1":
                 return "dev"
@@ -61,9 +61,9 @@ def show_menu():
             elif choice == "3":
                 return "prod"
             else:
-                print("❌ Invalid choice. Please enter 1, 2, 3, or 'q'.")
+                print("[err!] Invalid choice. Please enter 1, 2, 3, or 'q'.")
         except (KeyboardInterrupt, EOFError):
-            print("\n\n👋 Goodbye!")
+            print("\n\n[!bye] Goodbye!")
             sys.exit(0)
 
 
@@ -75,7 +75,7 @@ def main():
         if env in ["dev", "test", "prod"]:
             run_schedule_engine(env)
         else:
-            print(f"❌ Error: Invalid environment '{env}'")
+            print(f"[err!] Error: Invalid environment '{env}'")
             print("   Valid options: dev, test, prod")
             sys.exit(1)
     else:
