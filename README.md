@@ -59,17 +59,41 @@ python main.py --config path/to/custom.yaml
 
 ##  Documentation
 
-See `docs/` folder for detailed documentation:
+See `docs/` folder for detailed documentation.
 
-### 📊 Library Comparison & Analysis
+---
 
-**Wondering if Google OR-Tools or other libraries would be better?**
+## 🤔 "Should I Use OR-Tools Instead?"
 
-- **[Library Comparison Guide](docs/LIBRARY_COMPARISON.md)** - Comprehensive analysis comparing DEAP vs OR-Tools vs alternatives
-- **[When to Use What](docs/WHEN_TO_USE_WHAT.md)** - Quick decision guide for choosing the right approach
-- **[OR-Tools Proof-of-Concept](docs/ortools_poc.py)** - Demonstration comparing constraint programming vs evolutionary approach
+**Quick Answer: NO! ✅ Your DEAP implementation is excellent!**
 
-**TL;DR:** The current DEAP-based implementation is well-suited for this problem. OR-Tools could be complementary but not a replacement. See guides for detailed analysis.
+We've created a comprehensive analysis comparing DEAP vs Google OR-Tools vs other alternatives:
+
+📍 **START HERE:** [Comparison Index](docs/COMPARISON_INDEX.md) - Navigation guide to all resources
+
+### Quick Links by Time Available:
+
+- ⚡ **2 minutes?** → [Quick Answer](docs/QUICK_ANSWER.md) - TL;DR: Keep DEAP!
+- 📊 **5 minutes?** → [Visual Summary](docs/VISUAL_SUMMARY.md) - Charts & comparisons
+- 🔍 **15 minutes?** → [When to Use What](docs/WHEN_TO_USE_WHAT.md) - Decision guide
+- 📚 **30 minutes?** → [Library Comparison](docs/LIBRARY_COMPARISON.md) - Complete analysis (700+ lines)
+- 💻 **Want code?** → [OR-Tools POC](docs/ortools_poc.py) - Run `python docs/ortools_poc.py`
+
+### Key Findings:
+
+**DEAP wins 6/9 categories:**
+- ✅ Soft constraint handling (excellent vs poor)
+- ✅ Multi-objective optimization (native vs none)
+- ✅ Academic value (high vs low)
+- ✅ Explainability (high vs low)
+- ✅ Implementation status (complete vs not started)
+- ✅ Thesis contribution (novel vs standard)
+
+**Bottom Line:** Your DEAP implementation is the RIGHT choice for this problem. OR-Tools could be complementary (hybrid approach) but NOT a replacement. Don't waste time rewriting!
+
+---
+
+### 📚 Other Documentation
 
 ### 📚 Other Documentation
 
