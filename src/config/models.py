@@ -30,6 +30,30 @@ class GAConfig(BaseModel):
         return v
 
 
+class ORToolsConfig(BaseModel):
+    """Google OR-Tools CP-SAT parameters"""
+
+    enabled: bool = True
+    time_limit: int = Field(
+        default=300, ge=1, le=3600, description="CP-SAT time limit in seconds"
+    )
+    num_solutions: int = Field(
+        default=50,
+        ge=1,
+        le=200,
+        description="Number of feasible solutions to generate",
+    )
+    random_seed: Optional[int] = Field(
+        default=None, description="Random seed for reproducibility"
+    )
+    use_hints: bool = Field(
+        default=False, description="Use solution hints for faster solving"
+    )
+    parallel_threads: int = Field(
+        default=0, ge=0, le=64, description="Number of threads (0 = auto)"
+    )
+
+
 class ParallelConfig(BaseModel):
     """Multiprocessing settings"""
 
@@ -421,6 +445,7 @@ class Config(BaseModel):
     environment: Literal["test", "dev", "prod"] = "dev"
 
     ga: GAConfig = Field(default_factory=GAConfig)
+    ortools: ORToolsConfig = Field(default_factory=ORToolsConfig)
     parallel: ParallelConfig = Field(default_factory=ParallelConfig)
     repair: RepairConfig = Field(default_factory=RepairConfig)
     hard_constraints: HardConstraintsConfig = Field(

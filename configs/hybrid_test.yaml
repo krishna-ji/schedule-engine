@@ -1,0 +1,117 @@
+# Hybrid CP-SAT + NSGA-II Test Configuration
+# Fast testing configuration with minimal population and generations
+
+name: "hybrid_test"
+environment: "test"
+
+# OR-Tools CP-SAT Configuration
+ortools:
+  enabled: true
+  time_limit: 60  # 1 minute for testing
+  num_solutions: 10  # Generate 10 feasible solutions
+  random_seed: 42
+  use_hints: false
+  parallel_threads: 0  # Auto
+
+# Genetic Algorithm Configuration (for Phase 2 optimization)
+ga:
+  ngen: 20  # Small number for testing
+  pop_size: 20  # Match num_solutions
+  cxpb: 0.8
+  mutpb: 0.3
+  elite_preservation: true
+  elite_size: 0.1
+  use_adaptive_probabilities: false
+  use_constraint_guided_mutation: false
+  population_strategy: "hybrid"
+  validate_population_integrity: false
+
+# Parallel Processing
+parallel:
+  use_multiprocessing: false  # Disable for testing
+  num_workers: 1
+
+# Repair (disabled for hybrid - CP-SAT ensures feasibility)
+repair:
+  enabled: false
+
+# Hard Constraints (all enforced by CP-SAT)
+hard_constraints:
+  no_group_overlap:
+    enabled: true
+    weight: 1.0
+  no_instructor_conflict:
+    enabled: true
+    weight: 1.0
+  instructor_not_qualified:
+    enabled: true
+    weight: 1.0
+  room_type_mismatch:
+    enabled: true
+    weight: 1.0
+  availability_violations:
+    enabled: true
+    weight: 1.0
+  incomplete_or_extra_sessions:
+    enabled: false
+    weight: 0.0
+  session_block_clustering_penalty:
+    enabled: false
+    weight: 0.0
+
+# Soft Constraints (optimized by NSGA-II in Phase 2)
+soft_constraints:
+  group_gap_penalty:
+    enabled: true
+    weight: 1.0
+  instructor_gap_penalty:
+    enabled: true
+    weight: 0.5
+  time_preference_violation:
+    enabled: true
+    weight: 2.0
+  consecutive_days_penalty:
+    enabled: true
+    weight: 0.3
+  instructor_overload_penalty:
+    enabled: true
+    weight: 1.0
+
+# Feasibility checks (optional - CP-SAT will catch these anyway)
+feasibility:
+  enable_checks: true
+  fail_on_infeasible: false
+  strict_mode: false
+
+# Time configuration
+time:
+  quantum_minutes: 60
+  earliest_preferred_time: "08:00"
+  latest_preferred_time: "17:00"
+  midday_break_start: "12:00"
+  midday_break_end: "13:00"
+  preferred_block_size_min: 2
+  preferred_block_size_max: 3
+  max_session_coalescence: 4
+  max_sessions_per_day: 6
+  theory_max_excused_isolated: 1
+  theory_isolated_penalty: 2
+  theory_oversized_penalty_per_quantum: 1
+  practical_fragmentation_penalty: 20
+
+# I/O paths
+io:
+  data_dir: "data"
+  output_dir: "output"
+  log_level: "INFO"
+
+# Calendar display (unchanged)
+calendar:
+  show_room_info: true
+  show_group_info: true
+  compact_mode: false
+
+# Color palette (unchanged)
+colors:
+  use_custom_colors: true
+  scheme: "vibrant"

@@ -14,6 +14,7 @@ license = {text = "MIT"}
 keywords = ["scheduling", "genetic-algorithm", "nsga-ii", "optimization", "timetabling"]
 
 dependencies = [
+    "ortools>=9.11.4210",
     "deap==1.4.1",
     "pydantic==2.10.3",
     "pyyaml==6.0.2",
