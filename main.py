@@ -97,7 +97,7 @@ def main():
 
 def run_hybrid_mode(config) -> Dict:
     """Run hybrid CP-SAT + NSGA-II workflow."""
-    from src.workflows.hybrid_workflow import run_hybrid_workflow
+    from src.workflows.hybrid_workflow_v2 import run_hybrid_workflow
     from src.workflows.standard_run import load_input_data
     from src.validation.input_validator import validate_input
 
