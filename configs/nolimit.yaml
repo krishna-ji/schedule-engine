@@ -5,10 +5,10 @@
 name: "cpsat_nolimit"
 environment: "prod"
 
-# OR-Tools CP-SAT Configuration - VERY HIGH TIME LIMIT
+# OR-Tools CP-SAT Configuration - NO TIME LIMIT
 ortools:
   enabled: true
-  time_limit: 86400 # 24 hours (86400 seconds) - effectively unlimited
+  time_limit: 0 # 0 = UNLIMITED - will run until solution found or Ctrl+C
   num_solutions: 1 # Only need 1 feasible solution
   random_seed: 42
   use_hints: false

@@ -407,9 +407,12 @@ class CPScheduler:
         # Configure solver - MINIMAL presolve for large problems
         solver = cp_model.CpSolver()
 
-        # Set time limit (0 = unlimited)
-        if not is_unlimited:
+        # Set time limit (0 = unlimited, don't set parameter at all)
+        if self.time_limit > 0:
             solver.parameters.max_time_in_seconds = self.time_limit
+        else:
+            # No time limit - let it run forever
+            pass
 
         solver.parameters.log_search_progress = True
 
