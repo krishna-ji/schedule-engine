@@ -35,7 +35,7 @@ class ORToolsConfig(BaseModel):
 
     enabled: bool = True
     time_limit: int = Field(
-        default=300, ge=1, le=3600, description="CP-SAT time limit in seconds"
+        default=300, ge=1, le=604800, description="CP-SAT time limit in seconds (max: 7 days)"
     )
     num_solutions: int = Field(
         default=50,
