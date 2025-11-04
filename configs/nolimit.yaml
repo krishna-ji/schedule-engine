@@ -1,0 +1,118 @@
+# CP-SAT No-Limit Configuration
+# For extremely large scheduling problems that may take hours/days to solve
+# WARNING: This configuration uses VERY HIGH time limit (effectively unlimited)
+
+name: "cpsat_nolimit"
+environment: "prod"
+
+# OR-Tools CP-SAT Configuration - VERY HIGH TIME LIMIT
+ortools:
+  enabled: true
+  time_limit: 86400 # 24 hours (86400 seconds) - effectively unlimited
+  num_solutions: 1 # Only need 1 feasible solution
+  random_seed: 42
+  use_hints: false
+  parallel_threads: 0 # 0 = use all available CPU cores
+
+# GA Configuration (not used in cpsat mode, but required by config schema)
+ga:
+  ngen: 1
+  pop_size: 2
+  cxpb: 0.8
+  mutpb: 0.3
+  elite_preservation: false
+  elite_size: 0.1
+  use_adaptive_probabilities: false
+  use_constraint_guided_mutation: false
+  population_strategy: "random"
+  validate_population_integrity: false
+
+# Parallel Processing (not needed for cpsat - uses native parallelism)
+parallel:
+  use_multiprocessing: false
+  num_workers: 1
+
+# Repair (disabled - CP-SAT ensures feasibility)
+repair:
+  enabled: false
+
+# Hard Constraints - ALL ENABLED (CP-SAT enforces these)
+hard_constraints:
+  no_group_overlap:
+    enabled: true
+    weight: 1.0
+  no_instructor_conflict:
+    enabled: true
+    weight: 1.0
+  instructor_not_qualified:
+    enabled: true
+    weight: 1.0
+  room_type_mismatch:
+    enabled: true
+    weight: 1.0
+  availability_violations:
+    enabled: true
+    weight: 1.0
+  incomplete_or_extra_sessions:
+    enabled: false
+    weight: 0.0
+  session_block_clustering_penalty:
+    enabled: false
+    weight: 0.0
+
+# Soft Constraints - ALL DISABLED (hard constraints only mode)
+soft_constraints:
+  group_gap_penalty:
+    enabled: false
+    weight: 0.0
+  instructor_gap_penalty:
+    enabled: false
+    weight: 0.0
+  time_preference_violation:
+    enabled: false
+    weight: 0.0
+  consecutive_days_penalty:
+    enabled: false
+    weight: 0.0
+  instructor_overload_penalty:
+    enabled: false
+    weight: 0.0
+
+# Feasibility checks
+feasibility:
+  enable_checks: true
+  fail_on_infeasible: false
+  strict_mode: false
+
+# Time configuration
+time:
+  quantum_minutes: 60
+  earliest_preferred_time: "08:00"
+  latest_preferred_time: "18:00"
+  midday_break_start: "12:00"
+  midday_break_end: "13:00"
+  preferred_block_size_min: 2
+  preferred_block_size_max: 3
+  max_session_coalescence: 4
+  max_sessions_per_day: 6
+  theory_max_excused_isolated: 1
+  theory_isolated_penalty: 2
+  theory_oversized_penalty_per_quantum: 1
+  practical_fragmentation_penalty: 20
+
+# I/O paths
+io:
+  data_dir: "data"
+  output_dir: "output"
+  log_level: "INFO"
+
+# Calendar display
+calendar:
+  show_room_info: true
+  show_group_info: true
+  compact_mode: false
+
+# Color palette
+colors:
+  use_custom_colors: true
+  scheme: "vibrant"

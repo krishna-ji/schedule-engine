@@ -9,8 +9,10 @@ Coordinates:
     - Model assembly and validation
 """
 
-from typing import Dict
-from ortools.sat.python import cp_model
+from typing import Dict, Optional
+import time
+import logging
+from ortools.sat.python import cp_model  # type: ignore
 
 from src.core.types import SchedulingContext
 from src.encoder.quantum_time_system import QuantumTimeSystem
@@ -37,7 +39,9 @@ class ModelBuilder:
         self.qts = qts
         self.var_factory = VariableFactory(context)
 
-    def build_model(self) -> tuple[cp_model.CpModel, Dict, VariableFactory]:
+    def build_model(
+        self, logger: Optional[logging.Logger] = None
+    ) -> tuple[cp_model.CpModel, Dict, VariableFactory]:
         """
         Build complete CP-SAT model.
 
@@ -45,6 +49,9 @@ class ModelBuilder:
             1. Create CP-SAT model
             2. Create decision variables
             3. Add hard constraints
+
+        Args:
+            logger: Optional logger for runtime tracking
 
         Returns:
             Tuple of (model, session_vars, var_factory)
@@ -56,15 +63,31 @@ class ModelBuilder:
 
         # Create variables
         print("Creating decision variables...")
+        if logger:
+            logger.info("  Creating decision variables...")
+
+        var_start = time.time()
         session_vars = self.var_factory.create_session_variables(model)
+        var_time = time.time() - var_start
+
         print(f"  Created {len(session_vars)} session variables")
+        if logger:
+            logger.info(f"  Variables created: {len(session_vars)} in {var_time:.2f}s")
 
         # Create constraint factory
         constraint_factory = ConstraintFactory(self.context, self.var_factory, self.qts)
 
         # Add constraints
         print("Adding constraints...")
-        constraint_factory.add_all_constraints(model, session_vars)
+        if logger:
+            logger.info("  Adding constraints...")
+
+        constraint_start = time.time()
+        constraint_factory.add_all_constraints(model, session_vars, logger=logger)
+        constraint_time = time.time() - constraint_start
+
+        if logger:
+            logger.info(f"  Constraints added in {constraint_time:.2f}s")
 
         print("[Model built successfully]\n")
 

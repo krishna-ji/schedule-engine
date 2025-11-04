@@ -15,8 +15,10 @@ Additional Constraints:
     - Same-day sessions: All quanta for a session must be on same day
 """
 
-from typing import Dict, Tuple, List
-from ortools.sat.python import cp_model
+from typing import Dict, Tuple, List, Optional
+import time
+import logging
+from ortools.sat.python import cp_model  # type: ignore
 
 from src.core.types import SchedulingContext
 from src.encoder.quantum_time_system import QuantumTimeSystem
@@ -48,28 +50,69 @@ class ConstraintFactory:
         self.var_factory = var_factory
         self.qts = qts
 
-    def add_all_constraints(self, model: cp_model.CpModel, session_vars: Dict):
+    def add_all_constraints(
+        self,
+        model: cp_model.CpModel,
+        session_vars: Dict,
+        logger: Optional[logging.Logger] = None,
+    ):
         """
         Add all hard constraints to the model.
 
         Args:
             model: CP-SAT model
             session_vars: Dictionary of session variables from VariableFactory
+            logger: Optional logger for runtime tracking
         """
         print("  [1/5] Adding group overlap constraints...")
+        if logger:
+            logger.info("  [1/5] Adding group overlap constraints...")
+        start = time.time()
         self.add_no_group_overlap_constraints(model, session_vars)
+        if logger:
+            logger.info(
+                f"      ✓ Group overlap constraints added in {time.time() - start:.2f}s"
+            )
 
         print("  [2/5] Adding instructor conflict constraints...")
+        if logger:
+            logger.info("  [2/5] Adding instructor conflict constraints...")
+        start = time.time()
         self.add_no_instructor_conflict_constraints(model, session_vars)
+        if logger:
+            logger.info(
+                f"      ✓ Instructor conflict constraints added in {time.time() - start:.2f}s"
+            )
 
         print("  [3/5] Adding availability constraints...")
+        if logger:
+            logger.info("  [3/5] Adding availability constraints...")
+        start = time.time()
         self.add_availability_constraints(model, session_vars)
+        if logger:
+            logger.info(
+                f"      ✓ Availability constraints added in {time.time() - start:.2f}s"
+            )
 
         print("  [4/5] Adding room conflict constraints...")
+        if logger:
+            logger.info("  [4/5] Adding room conflict constraints...")
+        start = time.time()
         self.add_no_room_conflict_constraints(model, session_vars)
+        if logger:
+            logger.info(
+                f"      ✓ Room conflict constraints added in {time.time() - start:.2f}s"
+            )
 
         print("  [5/5] Adding valid quantum constraints...")
+        if logger:
+            logger.info("  [5/5] Adding valid quantum constraints...")
+        start = time.time()
         self.add_valid_quantum_constraints(model, session_vars)
+        if logger:
+            logger.info(
+                f"      ✓ Valid quantum constraints added in {time.time() - start:.2f}s"
+            )
 
     def add_no_group_overlap_constraints(
         self, model: cp_model.CpModel, session_vars: Dict

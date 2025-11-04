@@ -1,6 +1,49 @@
-# Enhancement Changelog
+## [2025-01-27] Added comprehensive runtime logging to CP-SAT solver
 
-This file tracks **enhancements** to the GA system (new features, performance improvements).
+**Purpose**: Track and log detailed timing information for CP-SAT operations to identify performance bottlenecks and monitor solving progress.
+
+**Modified Files**:
+- `src/ortools/cp_scheduler.py` - Added `setup_cp_logger()` function and logging throughout
+- `src/ortools/model_builder.py` - Added logger parameter and timing tracking
+- `src/ortools/constraint_factory.py` - Added logger parameter and per-constraint-type timing
+- `main.py` - Added time import and logger integration for CP-SAT mode
+
+**Key Features**:
+1. **Dedicated Log Files**: Each CP-SAT run creates `output/cpsat_runtime_<timestamp>.log`
+2. **Comprehensive Timing**: Tracks data loading, validation, model building, constraint addition (per type), solving, solution decoding
+3. **Solver Statistics**: Logs branches, conflicts, wall time, user time, solution count
+4. **Progress Tracking**: Periodic progress updates during long-running solves
+5. **Structured Format**: Timestamped entries with clear section markers
+
+**Log Structure**:
+```
+[timestamp] | INFO     | Configuration details
+[timestamp] | INFO     | DATA LOADING - Completed in X.XXs
+[timestamp] | INFO     | MODEL BUILDING - Started/Completed
+[timestamp] | INFO     |   [1/5] Group overlap constraints - X.XXs
+[timestamp] | INFO     |   [2/5] Instructor conflict constraints - X.XXs
+[timestamp] | INFO     |   [3/5] Availability constraints - X.XXs
+[timestamp] | INFO     |   [4/5] Room conflict constraints - X.XXs
+[timestamp] | INFO     |   [5/5] Valid quantum constraints - X.XXs
+[timestamp] | INFO     | SOLVING - Started/Completed
+[timestamp] | INFO     | SOLUTION X FOUND - Elapsed: X.XXs
+[timestamp] | INFO     | TOTAL RUNTIME: X.XXs
+```
+
+**Usage**:
+```bash
+# Logs automatically created when running CP-SAT mode
+uv run python main.py --config configs/cpsat_only.yaml --mode cpsat
+
+# Check logs in output/cpsat_runtime_<timestamp>.log
+```
+
+**Benefits**:
+- Identify which constraint types are slowest to add
+- Track solver progress on long-running problems
+- Debug infeasibility issues with detailed timing context
+- Performance comparison between runs
+- VM deployment monitoring
 
 ---
 

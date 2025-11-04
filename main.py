@@ -8,6 +8,7 @@ Supports multiple solving modes:
 """
 
 import argparse
+import time
 from typing import Dict, Optional
 from rich.console import Console
 from rich.panel import Panel
@@ -126,7 +127,7 @@ def run_hybrid_mode(config) -> Dict:
 
 def run_cpsat_mode(config) -> Dict:
     """Run pure CP-SAT workflow for single feasible solution."""
-    from src.ortools.cp_scheduler import CPScheduler
+    from src.ortools.cp_scheduler import CPScheduler, setup_cp_logger
     from src.workflows.standard_run import load_input_data
     from src.validation.input_validator import validate_input
 
@@ -134,13 +135,38 @@ def run_cpsat_mode(config) -> Dict:
         "\n[bold cyan]═══ CP-SAT Mode: Pure Constraint Programming ═══[/bold cyan]\n"
     )
 
+    # Setup logger
+    logger = setup_cp_logger()
+    logger.info("CP-SAT MODE - Started")
+    logger.info(f"Configuration: {config.ortools.time_limit}s time limit")
+    logger.info("-" * 80)
+
     # Load data
+    logger.info("DATA LOADING - Started")
+    data_start = time.time()
     qts, context = load_input_data(config.io.data_dir)
+    data_time = time.time() - data_start
+    logger.info(f"DATA LOADING - Completed in {data_time:.2f}s")
+    logger.info(f"  Courses: {len(context.courses)}")
+    logger.info(f"  Groups: {len(context.groups)}")
+    logger.info(f"  Instructors: {len(context.instructors)}")
+    logger.info(f"  Rooms: {len(context.rooms)}")
+    logger.info("-" * 80)
 
     # Validate
-    if not validate_input(context):
+    logger.info("INPUT VALIDATION - Started")
+    valid_start = time.time()
+    validation_result = validate_input(context)
+    valid_time = time.time() - valid_start
+    logger.info(f"INPUT VALIDATION - Completed in {valid_time:.2f}s")
+
+    if not validation_result:
         console.print("[bold red]✗ Input validation failed[/bold red]")
+        logger.error("Input validation failed")
         return None
+
+    logger.info("  ✓ Input validation passed")
+    logger.info("-" * 80)
 
     # Run CP-SAT
     scheduler = CPScheduler(
@@ -150,10 +176,14 @@ def run_cpsat_mode(config) -> Dict:
     )
 
     try:
-        best_sessions = scheduler.generate_single_solution()
+        best_sessions = scheduler.generate_single_solution(logger=logger)
+        logger.info("=" * 80)
+        logger.info("CP-SAT MODE - COMPLETED SUCCESSFULLY")
         return {"success": True, "best_sessions": best_sessions, "mode": "cpsat"}
     except ValueError as e:
         console.print(f"[bold red]✗ CP-SAT failed:[/bold red] {e}")
+        logger.error(f"CP-SAT failed: {e}")
+        logger.info("=" * 80)
         return None
 
 
