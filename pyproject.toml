@@ -9,7 +9,7 @@ authors = [
     {name = "claude kaka and copilot mama"}
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 license = {text = "MIT"}
 keywords = ["scheduling", "genetic-algorithm", "nsga-ii", "optimization", "timetabling"]
 
