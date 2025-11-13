@@ -38,10 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-schedule-engine = "main:main"
-
-[tool.uv]
-default-run = "schedule-engine"
+run = "main:main"
 
 [build-system]
 requires = ["hatchling"]
