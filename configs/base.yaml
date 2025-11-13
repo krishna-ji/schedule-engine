@@ -1,7 +1,7 @@
 # ============================================================================
-# CP-SAT SCHEDULE ENGINE - PURE CONSTRAINT PROGRAMMING
+# CP-SAT SCHEDULE ENGINE - BASE CONFIGURATION
 # ============================================================================
-# Single configuration file for Google OR-Tools CP-SAT solver
+# Base configuration for Google OR-Tools CP-SAT solver
 # No genetic algorithms, no soft constraints, no overhead
 
 # Solver Configuration
@@ -9,9 +9,8 @@ solver:
   # Time limit in seconds (0 = unlimited, runs until solution found)
   time_limit: 0
 
-  # Parallel search workers (memory-safe limit)
-  # Recommended: 4-8 workers for 16GB RAM, 2-4 for 8GB RAM
-  num_workers: 4
+  # Parallel search workers (overridden in test/prod configs)
+  num_workers: 0
 
   # Random seed for reproducibility (null = random)
   random_seed: null
@@ -60,4 +59,3 @@ logging:
 # - Solver finds ANY schedule satisfying all hard constraints
 # - No soft constraints or preference optimization
 # - Expected runtime: Hours to days depending on problem complexity
-# - Memory usage: ~4-6 GB with 4 workers

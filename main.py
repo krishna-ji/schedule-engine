@@ -9,6 +9,7 @@ import sys
 import json
 import logging
 import yaml
+import argparse
 from pathlib import Path
 from datetime import datetime
 
@@ -17,10 +18,40 @@ from src.workflows.standard_run import load_input_data
 from src.validation.input_validator import validate_input
 
 
-def load_config(config_file: str = "configs/cpsat.yaml") -> dict:
-    """Load configuration from YAML file."""
+def load_config(config_file: str = "configs/cpsat.prod.yaml") -> dict:
+    """
+    Load configuration from YAML file with base config support.
+
+    If config contains 'base' key, loads base config first and merges.
+    """
     with open(config_file, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+
+    # Check if this config extends a base config
+    if "base" in config:
+        base_file = config.pop("base")
+        base_path = Path(config_file).parent / base_file
+
+        with open(base_path, "r", encoding="utf-8") as f:
+            base_config = yaml.safe_load(f)
+
+        # Deep merge: config overrides base
+        def merge_dict(base, override):
+            result = base.copy()
+            for key, value in override.items():
+                if (
+                    key in result
+                    and isinstance(result[key], dict)
+                    and isinstance(value, dict)
+                ):
+                    result[key] = merge_dict(result[key], value)
+                else:
+                    result[key] = value
+            return result
+
+        config = merge_dict(base_config, config)
+
+    return config
 
 
 def setup_logging(output_dir: Path, config: dict) -> logging.Logger:
@@ -48,9 +79,6 @@ def setup_logging(output_dir: Path, config: dict) -> logging.Logger:
     logger.info("=" * 80)
     logger.info("CP-SAT Schedule Engine - Pure Constraint Programming")
     logger.info(f"Log file: {log_file}")
-    logger.info(
-        f"Config: {config_file if 'config_file' in locals() else 'configs/cpsat.yaml'}"
-    )
     logger.info("=" * 80)
 
     return logger
@@ -79,8 +107,17 @@ def export_schedule_json(schedule, output_file: str) -> None:
 def main():
     """Run pure CP-SAT scheduler."""
 
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="CP-SAT Schedule Engine")
+    parser.add_argument(
+        "--config",
+        default="configs/cpsat.prod.yaml",
+        help="Configuration file (default: configs/cpsat.prod.yaml)",
+    )
+    args = parser.parse_args()
+
     # Load configuration from YAML
-    config = load_config()
+    config = load_config(args.config)
 
     io_config = config.get("io", {})
     solver_config = config.get("solver", {})
@@ -93,6 +130,8 @@ def main():
 
     # Setup
     logger = setup_logging(OUTPUT_DIR, config)
+    logger.info(f"Configuration: {args.config}")
+    logger.info("-" * 80)
 
     try:
         # Step 1: Load input data

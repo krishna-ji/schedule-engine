@@ -1,0 +1,13 @@
+# ============================================================================
+# CP-SAT SCHEDULE ENGINE - TEST CONFIGURATION
+# ============================================================================
+# Inherits all settings from base.yaml
+# Overrides: Limited workers for memory-safe testing
+# Use: python main.py --config configs/cpsat.test.yaml
+
+# Extends base configuration
+base: base.yaml
+
+# Override: Limit workers for testing
+solver:
+  num_workers: 4 # Memory-safe for development/debugging

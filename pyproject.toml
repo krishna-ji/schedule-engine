@@ -38,7 +38,8 @@ dev = [
 ]
 
 [project.scripts]
-run = "main:main"
+prod = "prod:main"
+test = "test:main"
 
 [build-system]
 requires = ["hatchling"]

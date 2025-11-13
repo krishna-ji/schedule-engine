@@ -32,25 +32,20 @@ uv sync
 
 ### Running the Engine
 
-**Simplest way (using UV):**
+**Production mode (all CPU cores):**
 ```bash
-uv run run       # Runs main.py automatically
+uv run prod
 ```
 
-**Alternative methods:**
+**Test mode (4 workers, memory-safe):**
 ```bash
-# Quick launcher with interactive menu
-python x
+uv run test
+```
 
-# Direct execution
-python x test    # Fast test
-python x dev     # Development
-python x prod    # Production
-
-# Or with main.py directly
-python main.py --env test
-python main.py --env dev
-python main.py --env prod
+**Custom configuration:**
+```bash
+python main.py --config configs/cpsat.prod.yaml   # Production
+python main.py --config configs/cpsat.test.yaml   # Test
 ```
 
 ### Remote VM Deployment
@@ -68,13 +63,15 @@ cd orSolver
 python setup-uv
 
 # 4. Run scheduler
-uv run run
+uv run prod      # Production (all cores)
+# or
+uv run test      # Test mode (4 workers)
 ```
 
 **For long-running processes (detached mode):**
 ```bash
 # Run in background with nohup
-nohup uv run run > solver.log 2>&1 &
+nohup uv run prod > solver.log 2>&1 &
 
 # Monitor progress
 tail -f solver.log

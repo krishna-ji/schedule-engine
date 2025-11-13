@@ -1,0 +1,13 @@
+# ============================================================================
+# CP-SAT SCHEDULE ENGINE - PRODUCTION CONFIGURATION
+# ============================================================================
+# Inherits all settings from base.yaml
+# Overrides: Use all CPU cores for maximum performance
+# Use: python main.py --config configs/cpsat.prod.yaml
+
+# Extends base configuration
+base: base.yaml
+
+# Override: Use all available CPU cores
+solver:
+  num_workers: 0 # 0 = use all CPU cores
