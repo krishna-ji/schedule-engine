@@ -8,25 +8,36 @@ No genetic algorithms, no soft constraints, no overhead.
 import sys
 import json
 import logging
+import yaml
 from pathlib import Path
 from datetime import datetime
-from multiprocessing import cpu_count
 
 from src.ortools.cp_scheduler_clean import CPScheduler
 from src.workflows.standard_run import load_input_data
 from src.validation.input_validator import validate_input
 
 
-def setup_logging(output_dir: Path) -> logging.Logger:
+def load_config(config_file: str = "configs/cpsat.yaml") -> dict:
+    """Load configuration from YAML file."""
+    with open(config_file, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def setup_logging(output_dir: Path, config: dict) -> logging.Logger:
     """Configure clean logging."""
     output_dir.mkdir(exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = output_dir / f"cpsat_{timestamp}.log"
 
+    log_config = config.get("logging", {})
+    log_level = getattr(logging, log_config.get("level", "INFO"))
+    log_format = log_config.get("format", "%(asctime)s | %(levelname)-8s | %(message)s")
+    date_format = log_config.get("date_format", "%Y-%m-%d %H:%M:%S")
+
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        level=log_level,
+        format=log_format,
+        datefmt=date_format,
         handlers=[
             logging.FileHandler(log_file, mode="w", encoding="utf-8"),
             logging.StreamHandler(sys.stdout),
@@ -37,6 +48,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     logger.info("=" * 80)
     logger.info("CP-SAT Schedule Engine - Pure Constraint Programming")
     logger.info(f"Log file: {log_file}")
+    logger.info(
+        f"Config: {config_file if 'config_file' in locals() else 'configs/cpsat.yaml'}"
+    )
     logger.info("=" * 80)
 
     return logger
@@ -65,14 +79,20 @@ def export_schedule_json(schedule, output_file: str) -> None:
 def main():
     """Run pure CP-SAT scheduler."""
 
-    # Configuration
-    DATA_DIR = "data"
-    OUTPUT_DIR = Path("output")
-    TIME_LIMIT = 0  # unlimited (set to seconds for limit)
-    WORKERS = min(4, cpu_count())  # memory-safe limit
+    # Load configuration from YAML
+    config = load_config()
+
+    io_config = config.get("io", {})
+    solver_config = config.get("solver", {})
+
+    DATA_DIR = io_config.get("data_dir", "data")
+    OUTPUT_DIR = Path(io_config.get("output_dir", "output"))
+    TIME_LIMIT = solver_config.get("time_limit", 0)
+    WORKERS = solver_config.get("num_workers", 4)
+    RANDOM_SEED = solver_config.get("random_seed")
 
     # Setup
-    logger = setup_logging(OUTPUT_DIR)
+    logger = setup_logging(OUTPUT_DIR, config)
 
     try:
         # Step 1: Load input data
@@ -96,7 +116,7 @@ def main():
             logger.error("Input validation failed!")
             return 1
 
-        logger.info("  ✓ Input validation passed")
+        logger.info("  [OK] Input validation passed")
         logger.info("-" * 80)
 
         # Step 3: Run CP-SAT solver
@@ -108,13 +128,17 @@ def main():
         logger.info("-" * 80)
 
         scheduler = CPScheduler(
-            context=context, qts=qts, time_limit_seconds=TIME_LIMIT, num_workers=WORKERS
+            context=context,
+            qts=qts,
+            time_limit_seconds=TIME_LIMIT,
+            num_workers=WORKERS,
+            random_seed=RANDOM_SEED,
         )
 
         schedule = scheduler.generate_single_solution()
 
         logger.info("-" * 80)
-        logger.info(f"  ✓ Solution found with {len(schedule)} sessions")
+        logger.info(f"  [OK] Solution found with {len(schedule)} sessions")
         logger.info("-" * 80)
 
         # Step 4: Export results
@@ -128,7 +152,7 @@ def main():
         # Export JSON
         json_file = output_path / "schedule.json"
         export_schedule_json(schedule, str(json_file))
-        logger.info(f"  ✓ JSON: {json_file}")
+        logger.info(f"  [OK] JSON: {json_file}")
 
         logger.info("-" * 80)
         logger.info("=" * 80)

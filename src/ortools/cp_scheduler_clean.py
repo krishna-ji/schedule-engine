@@ -110,7 +110,6 @@ class CPScheduler:
         )
         solver.parameters.optimize_with_core = False  # Disable for large problems
         solver.parameters.max_presolve_iterations = 3  # Limit passes
-        solver.parameters.stop_after_first_solution = True  # Stop at first solution
         solver.parameters.log_search_progress = True  # Enable solver logging
 
         logger.info("Presolve: MINIMAL (avoid constraint explosion)")
@@ -124,9 +123,8 @@ class CPScheduler:
 
         def monitor_progress():
             """Log periodic progress updates."""
-            warning_shown = False
             while not stop_monitoring.is_set():
-                stop_monitoring.wait(30)  # Update every 30 seconds
+                stop_monitoring.wait(60)  # Update every 60 seconds
                 if not stop_monitoring.is_set():
                     elapsed = time.time() - start_time
                     hours = int(elapsed // 3600)
@@ -138,14 +136,6 @@ class CPScheduler:
                         time_str = f"{minutes}m"
 
                     logger.info(f"Still searching... {time_str} elapsed")
-
-                    # Warn after 30 minutes
-                    if elapsed > 1800 and not warning_shown:
-                        logger.warning("No solution after 30 minutes")
-                        logger.warning(
-                            "Problem may be infeasible or extremely constrained"
-                        )
-                        warning_shown = True
 
         monitor_thread = threading.Thread(target=monitor_progress, daemon=True)
         monitor_thread.start()
@@ -197,7 +187,7 @@ class CPScheduler:
         logger.info(f"Total sessions: {len(merged_sessions)}")
 
         logger.info("=" * 80)
-        logger.info("✓ SOLUTION FOUND SUCCESSFULLY")
+        logger.info("[OK] SOLUTION FOUND SUCCESSFULLY")
         logger.info("=" * 80)
 
         return merged_sessions
