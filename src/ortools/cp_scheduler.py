@@ -416,9 +416,15 @@ class CPScheduler:
 
         solver.parameters.log_search_progress = True
 
-        # Parallel search with all cores
-        num_workers = cpu_count()
+        # Parallel search - limit workers to avoid memory exhaustion on large models
+        # 16 workers × 2-3GB each = 32-48GB RAM (causes OOM on most systems)
+        num_workers = min(4, cpu_count())  # Use max 4 workers for memory safety
         solver.parameters.num_search_workers = num_workers
+
+        console.print(
+            f"  [cyan]Using {num_workers} parallel workers (memory-safe limit)[/cyan]"
+        )
+        logger.info(f"  Parallel Workers: {num_workers} (limited to avoid OOM)")
 
         # MINIMAL optimization - avoid constraint explosion
         solver.parameters.cp_model_presolve = True
@@ -428,10 +434,6 @@ class CPScheduler:
         solver.parameters.stop_after_first_solution = True  # Stop at first solution
         solver.parameters.max_presolve_iterations = 3  # Limit presolve passes
 
-        console.print(
-            f"  [cyan]Using {num_workers} parallel workers (MINIMAL presolve)[/cyan]"
-        )
-        logger.info(f"  Parallel Workers: {num_workers}")
         logger.info(f"  Presolve: MINIMAL (avoid explosion)")
         logger.info(f"  Symmetry Breaking: Disabled")
         logger.info(f"  Linearization: Disabled")

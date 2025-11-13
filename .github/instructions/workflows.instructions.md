@@ -5,20 +5,27 @@ applyTo: "src/workflows/**/*.py"
 # Workflow Orchestration Instructions
 
 ## Overview
-High-level workflow orchestration that coordinates all components. Main workflow in `src/workflows/standard_run.py`, reporting in `src/workflows/reporting.py`.
+**Simplified CP-SAT-only workflow in `main.py`**
 
-## Standard Workflow Pipeline
+Previous GA workflow (`src/workflows/standard_run.py`) is deprecated. New pipeline:
 
-### run_standard_workflow() - Main Entry Point
+## Pure CP-SAT Pipeline (main.py)
+
 ```
-1. Initialize RNG and output directory
-2. Load input data from JSON files
-3. Validate input data (optional)
-4. Run feasibility checks (optional)
-5. Setup and run GA scheduler
-6. Decode best solution
-7. Generate reports and exports
+1. Setup logging (Python standard logging module)
+2. Load input data from JSON files  
+3. Validate input data
+4. Run CP-SAT solver (unlimited time, 4 workers)
+5. Export schedule to JSON
+6. Done - no plots, no reports, just the solution
 ```
+
+### Entry Point
+```bash
+python main.py
+```
+
+No arguments, no configuration files. Settings hardcoded in main.py.
 
 ### Function Signature
 ```python

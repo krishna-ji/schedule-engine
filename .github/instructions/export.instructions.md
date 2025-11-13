@@ -5,22 +5,35 @@ applyTo: "src/exporter/**/*.py"
 # Export & Reporting Instructions
 
 ## Overview
-Generate outputs: JSON schedules, PDF calendars, evolution plots, violation reports. Orchestrated by `src/workflows/reporting.py`, individual exporters in `src/exporter/`.
+**Simplified JSON-only export**
 
-## Components
+Previous export system (PDF calendars, plots, reports) has been removed. CP-SAT engine outputs:
+- `schedule.json` - Machine-readable schedule
+- `cpsat_<timestamp>.log` - Solver progress log
 
-### Schedule Exports
-- `exporter.py` - Main export function `export_everything()`
-- JSON: Machine-readable schedule (`schedule.json`)
-- PDF: Visual calendar (`ScheduleCalendar.pdf`)
-- TXT: Violation details (`violation_report.txt`)
+That's it. No plots, no PDF, no violation reports.
 
-### Plot Modules
-- `plothard.py` - Hard constraint trend over generations
-- `plotsoft.py` - Soft constraint trend over generations
-- `plotdiversity.py` - Population diversity metrics
-- `plotpareto.py` - Pareto front visualization
-- `plot_detailed_constraints.py` - Individual constraint breakdowns
+## ⚠️ Removed Components
+- All files in `src/exporter/` (calendar PDF, plots)
+- `src/workflows/reporting.py`
+- Matplotlib/plotting dependencies
+- Violation report generation
+- Evolution metrics tracking
+
+## Current Export
+```python
+def export_schedule_json(schedule, output_file: str):
+    """Export schedule to JSON."""
+    schedule_data = []
+    for session in schedule:
+        schedule_data.append({
+            "course_id": session.course_id,
+            "course_name": session.course_name,
+            # ... other fields
+        })
+    with open(output_file, 'w') as f:
+        json.dump(schedule_data, f, indent=2)
+```
 
 ### Reporting Workflow (`src/workflows/reporting.py`)
 ```python

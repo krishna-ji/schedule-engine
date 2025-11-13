@@ -5,21 +5,18 @@ applyTo: "src/constraints/**/*.py"
 # Constraints Instructions
 
 ## Overview
-Constraint evaluation functions for hard (must-satisfy) and soft (prefer-satisfy) rules. Hard constraints in `src/constraints/hard.py`, soft in `src/constraints/soft.py`.
+**CP-SAT solver handles all hard constraints internally.** No external constraint evaluation functions needed.
 
-## Constraint Function Signature
-```python
-def constraint_name(decoded_schedule: List[CourseSession], context: SchedulingContext) -> int:
-    """
-    Evaluate constraint violations.
-    
-    Returns:
-        int: Penalty score (0 = satisfied, >0 = violated)
-    """
-    penalty = 0
-    # ... evaluation logic ...
-    return penalty
-```
+Constraints are defined in `src/ortools/cp_scheduler_clean.py` using CP-SAT's declarative API:
+- Group overlap prevention
+- Instructor conflicts
+- Room conflicts  
+- Availability enforcement
+- Room type matching
+- Qualification requirements
+
+## ⚠️ Soft Constraints Removed
+Soft constraints (gaps, preferences, clustering) have been removed. CP-SAT finds **any feasible solution** that satisfies all hard constraints.
 
 ## Rules
 

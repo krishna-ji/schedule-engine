@@ -1,28 +1,29 @@
 """
-Pure CP-SAT Schedule Engine Entry Point
-
-Hard constraint satisfaction using Google OR-Tools CP-SAT solver only.
-No genetic algorithms, no soft constraints, no overhead.
+Pure CP-SAT Scheduler - Clean Implementation
+No GA, no soft constraints, just hard constraint satisfaction
 """
 
-import sys
-import json
+import argparse
 import logging
+import sys
 from pathlib import Path
 from datetime import datetime
-from multiprocessing import cpu_count
 
-from src.ortools.cp_scheduler_clean import CPScheduler
-from src.workflows.standard_run import load_input_data
+from src.ortools.cp_scheduler import CPScheduler
+from src.encoder.input_encoder import encode_input
+from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.validation.input_validator import validate_input
+from src.exporter.json_exporter import export_schedule_json
+from src.exporter.pdf_exporter import PDFScheduleExporter
 
 
-def setup_logging(output_dir: Path) -> logging.Logger:
-    """Configure clean logging."""
-    output_dir.mkdir(exist_ok=True)
+def setup_logging(output_dir: str = "output") -> logging.Logger:
+    """Setup clean logging configuration."""
+    Path(output_dir).mkdir(exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = output_dir / f"cpsat_{timestamp}.log"
+    log_file = Path(output_dir) / f"cpsat_{timestamp}.log"
 
+    # Configure root logger
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)-8s | %(message)s",
@@ -35,51 +36,56 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
     logger = logging.getLogger(__name__)
     logger.info("=" * 80)
-    logger.info("CP-SAT Schedule Engine - Pure Constraint Programming")
+    logger.info("CP-SAT Scheduler - Pure Constraint Programming")
     logger.info(f"Log file: {log_file}")
     logger.info("=" * 80)
 
     return logger
 
 
-def export_schedule_json(schedule, output_file: str) -> None:
-    """Export schedule to JSON."""
-    schedule_data = []
-    for session in schedule:
-        schedule_data.append(
-            {
-                "course_id": session.course_id,
-                "course_name": session.course_name,
-                "group_ids": session.group_ids,
-                "instructor_name": session.instructor_name,
-                "room_name": session.room_name,
-                "quanta": session.quanta,
-                "duration_minutes": session.duration_minutes,
-            }
-        )
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(schedule_data, f, indent=2, ensure_ascii=False)
-
-
 def main():
-    """Run pure CP-SAT scheduler."""
+    """Pure CP-SAT scheduling workflow."""
+    parser = argparse.ArgumentParser(description="Pure CP-SAT Course Scheduler")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="data",
+        help="Input data directory (default: data/)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="output",
+        help="Output directory (default: output/)",
+    )
+    parser.add_argument(
+        "--time-limit",
+        type=int,
+        default=0,
+        help="Time limit in seconds (0 = unlimited, default: 0)",
+    )
+    parser.add_argument(
+        "--workers", type=int, default=4, help="Number of parallel workers (default: 4)"
+    )
+    parser.add_argument(
+        "--quantum-minutes",
+        type=int,
+        default=60,
+        help="Time quantum in minutes (default: 60)",
+    )
 
-    # Configuration
-    DATA_DIR = "data"
-    OUTPUT_DIR = Path("output")
-    TIME_LIMIT = 0  # unlimited (set to seconds for limit)
-    WORKERS = min(4, cpu_count())  # memory-safe limit
+    args = parser.parse_args()
 
-    # Setup
-    logger = setup_logging(OUTPUT_DIR)
+    # Setup logging
+    logger = setup_logging(args.output_dir)
 
     try:
         # Step 1: Load input data
         logger.info("STEP 1: Loading input data")
         logger.info("-" * 80)
 
-        qts, context = load_input_data(DATA_DIR)
+        qts = QuantumTimeSystem(quantum_minutes=args.quantum_minutes)
+        context = encode_input(args.data_dir, qts)
 
         logger.info(f"  Courses: {len(context.courses)}")
         logger.info(f"  Groups: {len(context.groups)}")
@@ -102,13 +108,16 @@ def main():
         # Step 3: Run CP-SAT solver
         logger.info("STEP 3: Running CP-SAT solver")
         logger.info(
-            f"  Time limit: {'UNLIMITED' if TIME_LIMIT == 0 else f'{TIME_LIMIT}s'}"
+            f"  Time limit: {'UNLIMITED' if args.time_limit == 0 else f'{args.time_limit}s'}"
         )
-        logger.info(f"  Parallel workers: {WORKERS}")
+        logger.info(f"  Parallel workers: {args.workers}")
         logger.info("-" * 80)
 
         scheduler = CPScheduler(
-            context=context, qts=qts, time_limit_seconds=TIME_LIMIT, num_workers=WORKERS
+            context=context,
+            qts=qts,
+            time_limit_seconds=args.time_limit,
+            num_workers=args.workers,
         )
 
         schedule = scheduler.generate_single_solution()
@@ -122,31 +131,34 @@ def main():
         logger.info("-" * 80)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = OUTPUT_DIR / f"schedule_{timestamp}"
+        output_path = Path(args.output_dir) / f"schedule_{timestamp}"
         output_path.mkdir(parents=True, exist_ok=True)
 
         # Export JSON
         json_file = output_path / "schedule.json"
         export_schedule_json(schedule, str(json_file))
-        logger.info(f"  ✓ JSON: {json_file}")
+        logger.info(f"  ✓ JSON exported: {json_file}")
+
+        # Export PDF
+        pdf_file = output_path / "schedule.pdf"
+        exporter = PDFScheduleExporter(context, qts)
+        exporter.export(schedule, str(pdf_file))
+        logger.info(f"  ✓ PDF exported: {pdf_file}")
 
         logger.info("-" * 80)
         logger.info("=" * 80)
         logger.info("CP-SAT SCHEDULER COMPLETED SUCCESSFULLY")
-        logger.info(f"Output: {output_path}")
+        logger.info(f"Output directory: {output_path}")
         logger.info("=" * 80)
 
         return 0
 
     except KeyboardInterrupt:
-        logger.warning("\n" + "=" * 80)
         logger.warning("Interrupted by user (Ctrl+C)")
-        logger.warning("=" * 80)
         return 130
 
     except Exception as e:
         logger.exception(f"Fatal error: {e}")
-        logger.error("=" * 80)
         return 1
 
 
