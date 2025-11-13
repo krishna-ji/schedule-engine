@@ -327,9 +327,6 @@ def run_standard_workflow(
     console.print(f"  [dim]constraint log:[/dim] {constraint_logger.get_log_path()}")
     console.print()
 
-    # ========================================
-    # Step 5: Run GA
-    # ========================================
     console.print("[bold cyan]genetic algorithm[/bold cyan]")
     console.print(
         f"  [dim]population:[/dim] {ga_config.pop_size} | [dim]generations:[/dim] {ga_config.generations}"
@@ -486,9 +483,6 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
     # Initialize time system (must be first, used by other loaders)
     qts = QuantumTimeSystem()
 
-    # ========================================
-    # PARALLEL LOADING SECTION
-    # ========================================
     # Load JSON files concurrently (I/O-bound operations)
     with ThreadPoolExecutor(max_workers=4) as executor:
         # Submit all loading tasks
@@ -511,9 +505,6 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
         instructors = future_instructors.result()
         rooms = future_rooms.result()
 
-    # ========================================
-    # SEQUENTIAL PROCESSING SECTION
-    # ========================================
     # (Depends on loaded data, must be sequential)
 
     # Step 2: Collect all enrolled course codes from groups

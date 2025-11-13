@@ -52,7 +52,6 @@ def setup_cp_logger(output_dir: str = "output") -> logging.Logger:
     logger.addHandler(fh)
 
     logger.info(f"CP-SAT Runtime Log - Started at {datetime.now()}")
-    logger.info("=" * 80)
 
     return logger
 
@@ -179,7 +178,6 @@ class CPScheduler:
         logger.info(f"  Target Solutions: {num_solutions}")
         logger.info(f"  Time Limit: {self.time_limit}s")
         logger.info(f"  Random Seed: {self.random_seed}")
-        logger.info("-" * 80)
 
         start_time = time.time()
 
@@ -197,7 +195,6 @@ class CPScheduler:
             f"  Variables: {len(session_vars) * 3}"
         )  # start, instructor, room per session
         logger.info(f"  Constraints: {len(model.Proto().constraints)}")
-        logger.info("-" * 80)
 
         # Configure solver with aggressive optimization
         solver = cp_model.CpSolver()
@@ -306,9 +303,7 @@ class CPScheduler:
         logger.info(f"  User Time: {solver.UserTime():.2f}s")
         logger.info(f"  Branches: {solver.NumBranches()}")
         logger.info(f"  Conflicts: {solver.NumConflicts()}")
-        logger.info("-" * 80)
         logger.info(f"TOTAL RUNTIME: {elapsed_time:.2f}s")
-        logger.info("=" * 80)
 
         if status == cp_model.INFEASIBLE:
             console.print("\n[bold red]✗ Problem is INFEASIBLE[/bold red]")
@@ -370,7 +365,6 @@ class CPScheduler:
             f"  Time Limit: {'UNLIMITED' if is_unlimited else f'{self.time_limit}s'}"
         )
         logger.info(f"  Random Seed: {self.random_seed}")
-        logger.info("-" * 80)
 
         start_time = time.time()
 
@@ -389,7 +383,6 @@ class CPScheduler:
         )  # start, instructor, room per session
         logger.info(f"  Constraints: {len(model.Proto().constraints)}")
 
-        # Warn about large models
         num_constraints = len(model.Proto().constraints)
         if num_constraints > 1_000_000:
             console.print(
@@ -401,8 +394,6 @@ class CPScheduler:
                 console.print(
                     f"  [red]Your time limit of {self.time_limit}s may be insufficient![/red]"
                 )
-
-        logger.info("-" * 80)
 
         # Configure solver - MINIMAL presolve for large problems
         solver = cp_model.CpSolver()
@@ -519,11 +510,9 @@ class CPScheduler:
         logger.info(f"  User Time: {solver.UserTime():.2f}s")
         logger.info(f"  Branches: {solver.NumBranches():,}")
         logger.info(f"  Conflicts: {solver.NumConflicts():,}")
-        logger.info("-" * 80)
         logger.info(
             f"TOTAL RUNTIME: {elapsed_time:.2f}s ({elapsed_time/3600:.2f} hours)"
         )
-        logger.info("=" * 80)
 
         if status == cp_model.INFEASIBLE:
             console.print("\n[bold red]✗ Problem is INFEASIBLE[/bold red]")
@@ -545,7 +534,6 @@ class CPScheduler:
         decode_time = time.time() - decode_start
         logger.info(f"DECODING SOLUTION - Completed in {decode_time:.2f}s")
         logger.info(f"  Total Sessions: {len(merged_sessions)}")
-        logger.info("-" * 80)
 
         console.print(
             f"\n[bold green]✓ Found feasible solution with {len(merged_sessions)} sessions[/bold green]\n"

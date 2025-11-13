@@ -76,10 +76,8 @@ def setup_logging(output_dir: Path, config: dict) -> logging.Logger:
     )
 
     logger = logging.getLogger(__name__)
-    logger.info("=" * 80)
-    logger.info("CP-SAT Schedule Engine - Pure Constraint Programming")
+    logger.info("CP-SAT Schedule Engine")
     logger.info(f"Log file: {log_file}")
-    logger.info("=" * 80)
 
     return logger
 
@@ -130,41 +128,35 @@ def main():
 
     # Setup
     logger = setup_logging(OUTPUT_DIR, config)
-    logger.info(f"Configuration: {args.config}")
-    logger.info("-" * 80)
+    logger.info(f"Config: {args.config}")
 
     try:
         # Step 1: Load input data
-        logger.info("STEP 1: Loading input data")
-        logger.info("-" * 80)
+        logger.info("Loading input data...")
 
         qts, context = load_input_data(DATA_DIR)
 
-        logger.info(f"  Courses: {len(context.courses)}")
-        logger.info(f"  Groups: {len(context.groups)}")
-        logger.info(f"  Instructors: {len(context.instructors)}")
-        logger.info(f"  Rooms: {len(context.rooms)}")
-        logger.info(f"  Time quanta: {len(qts.get_all_operating_quanta())}")
-        logger.info("-" * 80)
+        logger.info(f"Courses: {len(context.courses)}")
+        logger.info(f"Groups: {len(context.groups)}")
+        logger.info(f"Instructors: {len(context.instructors)}")
+        logger.info(f"Rooms: {len(context.rooms)}")
+        logger.info(f"Time quanta: {len(qts.get_all_operating_quanta())}")
 
         # Step 2: Validate input
-        logger.info("STEP 2: Input validation")
-        logger.info("-" * 80)
+        logger.info("Validating input...")
 
         if not validate_input(context):
-            logger.error("Input validation failed!")
+            logger.error("Input validation failed")
             return 1
 
-        logger.info("  [OK] Input validation passed")
-        logger.info("-" * 80)
+        logger.info("Input validation passed")
 
         # Step 3: Run CP-SAT solver
-        logger.info("STEP 3: Running CP-SAT solver")
+        logger.info("Starting CP-SAT solver...")
         logger.info(
-            f"  Time limit: {'UNLIMITED' if TIME_LIMIT == 0 else f'{TIME_LIMIT}s'}"
+            f"Time limit: {'unlimited' if TIME_LIMIT == 0 else f'{TIME_LIMIT}s'}"
         )
-        logger.info(f"  Parallel workers: {WORKERS}")
-        logger.info("-" * 80)
+        logger.info(f"Workers: {WORKERS if WORKERS > 0 else 'all cores'}")
 
         scheduler = CPScheduler(
             context=context,
@@ -176,13 +168,10 @@ def main():
 
         schedule = scheduler.generate_single_solution()
 
-        logger.info("-" * 80)
-        logger.info(f"  [OK] Solution found with {len(schedule)} sessions")
-        logger.info("-" * 80)
+        logger.info(f"Solution found: {len(schedule)} sessions")
 
         # Step 4: Export results
-        logger.info("STEP 4: Exporting results")
-        logger.info("-" * 80)
+        logger.info("Exporting results...")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = OUTPUT_DIR / f"schedule_{timestamp}"
@@ -191,25 +180,19 @@ def main():
         # Export JSON
         json_file = output_path / "schedule.json"
         export_schedule_json(schedule, str(json_file))
-        logger.info(f"  [OK] JSON: {json_file}")
+        logger.info(f"Schedule saved: {json_file}")
 
-        logger.info("-" * 80)
-        logger.info("=" * 80)
-        logger.info("CP-SAT SCHEDULER COMPLETED SUCCESSFULLY")
-        logger.info(f"Output: {output_path}")
-        logger.info("=" * 80)
+        logger.info("Completed successfully")
+        logger.info(f"Output directory: {output_path}")
 
         return 0
 
     except KeyboardInterrupt:
-        logger.warning("\n" + "=" * 80)
         logger.warning("Interrupted by user (Ctrl+C)")
-        logger.warning("=" * 80)
         return 130
 
     except Exception as e:
         logger.exception(f"Fatal error: {e}")
-        logger.error("=" * 80)
         return 1
 
 

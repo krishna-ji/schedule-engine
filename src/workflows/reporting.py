@@ -87,9 +87,6 @@ def generate_reports(
         generate_violation_report(decoded_schedule, course_map, qts, output_dir)
         print("      [!ok] violation_report.txt")
 
-    # ========================================
-    # PARALLEL PLOTTING SECTION
-    # ========================================
     print("  [+] Generating plots in parallel...")
     start_time = time.time()
 

@@ -375,9 +375,6 @@ def session_block_clustering_penalty(sessions: List[CourseSession]) -> int:
     return penalty
 
 
-# ---------------------------
-# Hard Constraint Registry
-# ---------------------------
 def get_all_hard_constraints():
     """
     Returns a dictionary of all available hard constraint functions.

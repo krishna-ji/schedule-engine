@@ -141,9 +141,7 @@ class CPScheduler:
         monitor_thread.start()
 
         # Solve
-        logger.info("=" * 80)
         logger.info("Starting CP-SAT search...")
-        logger.info("=" * 80)
 
         solve_start = time.time()
 
@@ -157,14 +155,12 @@ class CPScheduler:
         total_time = time.time() - start_time
 
         # Log results
-        logger.info("=" * 80)
         logger.info(f"Solver status: {solver.StatusName(status)}")
         logger.info(f"Solve time: {solve_time:.2f}s ({solve_time/3600:.2f}h)")
         logger.info(f"Total time: {total_time:.2f}s ({total_time/3600:.2f}h)")
         logger.info(f"Branches: {solver.NumBranches():,}")
         logger.info(f"Conflicts: {solver.NumConflicts():,}")
         logger.info(f"Wall time: {solver.WallTime():.2f}s")
-        logger.info("=" * 80)
 
         # Check status
         if status == cp_model.INFEASIBLE:
@@ -186,8 +182,6 @@ class CPScheduler:
         logger.info(f"Solution decoded in {decode_time:.2f}s")
         logger.info(f"Total sessions: {len(merged_sessions)}")
 
-        logger.info("=" * 80)
         logger.info("[OK] SOLUTION FOUND SUCCESSFULLY")
-        logger.info("=" * 80)
 
         return merged_sessions

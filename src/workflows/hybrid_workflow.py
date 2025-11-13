@@ -138,9 +138,6 @@ def run_hybrid_workflow(
 
     overall_start = time.time()
 
-    # ========================================
-    # PHASE 1: CP-SAT Feasibility Generation
-    # ========================================
     console.print(
         "\n[bold yellow]═══ Phase 1: CP-SAT Feasibility Generation ═══[/bold yellow]\n"
     )
@@ -167,9 +164,6 @@ def run_hybrid_workflow(
     console.print(f"[green]✓ Phase 1 Complete[/green] ({cp_time:.2f}s)")
     console.print(f"Generated {len(cp_solutions)} feasible solutions\n")
 
-    # ========================================
-    # PHASE 2: NSGA-II Optimization
-    # ========================================
     console.print(
         "[bold yellow]═══ Phase 2: NSGA-II Soft Constraint Optimization ═══[/bold yellow]\n"
     )
@@ -231,9 +225,6 @@ def run_hybrid_workflow(
     console.print(f"\n[green]✓ Phase 2 Complete[/green] ({ga_time:.2f}s)")
     console.print(f"Pareto front size: {len(pareto_front)}\n")
 
-    # ========================================
-    # RESULTS
-    # ========================================
     total_time = time.time() - overall_start
 
     console.print(

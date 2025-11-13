@@ -189,9 +189,6 @@ def group_midday_break_violation(sessions: List[CourseSession]) -> int:
     return penalty
 
 
-# ---------------------------
-# Soft Constraint Registry
-# ---------------------------
 def get_all_soft_constraints():
     """
     Returns a dictionary of all available soft constraint functions.
