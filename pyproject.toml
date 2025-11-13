@@ -40,6 +40,9 @@ dev = [
 [project.scripts]
 schedule-engine = "main:main"
 
+[tool.uv]
+default-run = "schedule-engine"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
