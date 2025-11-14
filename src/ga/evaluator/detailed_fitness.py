@@ -9,6 +9,7 @@ from src.entities.room import Room
 # Constraint Registries
 from src.constraints.hard import get_enabled_hard_constraints
 from src.constraints.soft import get_enabled_soft_constraints
+from src.constraints.metadata import constraint_needs_courses
 
 
 def evaluate_detailed(
@@ -38,11 +39,8 @@ def evaluate_detailed(
         constraint_func = constraint_info["function"]
         weight = constraint_info["weight"]
 
-        # Some hard constraints need courses parameter
-        if constraint_name in [
-            "instructor_qualifications",
-            "course_completeness",
-        ]:
+        # Some hard constraints need courses parameter (centralized in metadata.py)
+        if constraint_needs_courses(constraint_name):
             penalty = constraint_func(sessions, courses)
         else:
             penalty = constraint_func(sessions)
