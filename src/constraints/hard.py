@@ -4,11 +4,18 @@ from src.entities.decoded_session import CourseSession
 from collections import defaultdict
 from src.config import get_config
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.constraints.registry import hard_constraint
 
 # Time system singleton
 _QTS = QuantumTimeSystem()
 
 
+@hard_constraint(
+    name="student_group_exclusivity",
+    description="Ensures each student group can only be in one session at a time",
+    default_weight=3.0,
+    needs_courses=False,
+)
 def student_group_exclusivity(sessions: List[CourseSession]) -> int:
     """
     Ensures each student group can only be in one session at a time.
@@ -39,6 +46,12 @@ def student_group_exclusivity(sessions: List[CourseSession]) -> int:
     return conflict_count
 
 
+@hard_constraint(
+    name="instructor_exclusivity",
+    description="Ensures each instructor can only teach one session at a time",
+    default_weight=3.0,
+    needs_courses=False,
+)
 def instructor_exclusivity(sessions: List[CourseSession]) -> int:
     """
     Ensures each instructor can only teach one session at a time.
@@ -60,6 +73,12 @@ def instructor_exclusivity(sessions: List[CourseSession]) -> int:
     return conflicts
 
 
+@hard_constraint(
+    name="instructor_qualifications",
+    description="Ensures instructors are qualified to teach their assigned courses",
+    default_weight=3.0,
+    needs_courses=True,
+)
 def instructor_qualifications(
     sessions: List[CourseSession], course_map: Dict[tuple, Course]
 ) -> int:
@@ -117,6 +136,12 @@ def instructor_qualifications(
     return violations
 
 
+@hard_constraint(
+    name="room_suitability",
+    description="Ensures rooms are suitable for the type of course being taught",
+    default_weight=2.5,
+    needs_courses=False,
+)
 def room_suitability(sessions: List[CourseSession]) -> int:
     """
     Ensures rooms are suitable for the type of course being taught.
@@ -188,6 +213,12 @@ def _room_type_matches(required: str, room_type: str) -> bool:
     return False
 
 
+@hard_constraint(
+    name="instructor_time_availability",
+    description="Ensures instructors are only scheduled during their available time windows",
+    default_weight=3.0,
+    needs_courses=False,
+)
 def instructor_time_availability(sessions: List[CourseSession]) -> int:
     """
     Ensures instructors only teach during their available time slots.
@@ -220,6 +251,12 @@ def instructor_time_availability(sessions: List[CourseSession]) -> int:
     return violations
 
 
+@hard_constraint(
+    name="room_time_availability",
+    description="Ensures rooms are only used during their available time windows",
+    default_weight=2.5,
+    needs_courses=False,
+)
 def room_time_availability(sessions: List[CourseSession]) -> int:
     """
     Ensures rooms are only used during their available time slots.
@@ -248,6 +285,12 @@ def room_time_availability(sessions: List[CourseSession]) -> int:
     return violations
 
 
+@hard_constraint(
+    name="course_completeness",
+    description="Ensures courses have the correct number of sessions per group",
+    default_weight=2.0,
+    needs_courses=True,
+)
 def course_completeness(
     sessions: List[CourseSession], course_map: Dict[tuple, Course]
 ) -> int:
@@ -304,6 +347,12 @@ def course_completeness(
     return violations
 
 
+@hard_constraint(
+    name="room_exclusivity",
+    description="Ensures rooms are not double-booked",
+    default_weight=3.0,
+    needs_courses=False,
+)
 def room_exclusivity(sessions: List[CourseSession]) -> int:
     """
     Ensures each room can only host one session at a time.
@@ -339,48 +388,38 @@ def get_all_hard_constraints():
     """
     Returns a dictionary of all available hard constraint functions.
 
-    Hard Constraints (7 total):
-    1. student_group_exclusivity - Groups can only be in one place at a time
-    2. instructor_exclusivity - Instructors can only teach one session at a time
-    3. instructor_qualifications - Instructors must be qualified for their courses
-    4. instructor_time_availability - Instructors teach within their available hours
-    5. room_suitability - Rooms must match course requirements
-    6. room_exclusivity - Rooms can only host one session at a time
-    7. room_time_availability - Rooms used within their available hours
-    8. course_completeness - Courses have correct number of sessions per group
+    Uses decorator-based registry for single source of truth.
+    All constraints are auto-registered via @hard_constraint decorator.
 
     Returns:
         Dict[str, callable]: Mapping of constraint names to their functions.
     """
-    return {
-        "student_group_exclusivity": student_group_exclusivity,
-        "instructor_exclusivity": instructor_exclusivity,
-        "instructor_qualifications": instructor_qualifications,
-        "instructor_time_availability": instructor_time_availability,
-        "room_suitability": room_suitability,
-        "room_exclusivity": room_exclusivity,
-        "room_time_availability": room_time_availability,
-        "course_completeness": course_completeness,
-    }
+    from src.constraints.registry import get_all_hard_constraints as get_registry
+
+    registry = get_registry()
+    return {name: metadata.function for name, metadata in registry.items()}
 
 
 def get_enabled_hard_constraints():
     """
     Returns only the enabled hard constraints based on config.
 
+    Uses decorator-based registry for constraint metadata and config for enable/weight.
+
     Returns:
         Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
     """
+    from src.constraints.registry import get_all_hard_constraints as get_registry
 
-    all_constraints = get_all_hard_constraints()
+    registry = get_registry()
     enabled = {}
 
     cfg = get_config().hard_constraints
-    for name, func in all_constraints.items():
+    for name, metadata in registry.items():
         constraint_cfg = getattr(cfg, name, None)
         if constraint_cfg and constraint_cfg.enabled:
             enabled[name] = {
-                "function": func,
+                "function": metadata.function,
                 "weight": constraint_cfg.weight,
             }
 

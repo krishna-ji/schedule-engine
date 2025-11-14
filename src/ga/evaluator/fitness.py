@@ -9,7 +9,7 @@ from src.entities.room import Room
 # Constraint Registries
 from src.constraints.hard import get_enabled_hard_constraints
 from src.constraints.soft import get_enabled_soft_constraints
-from src.constraints.metadata import constraint_needs_courses
+from src.constraints.registry import constraint_needs_courses
 
 
 def evaluate(

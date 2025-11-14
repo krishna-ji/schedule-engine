@@ -16,12 +16,18 @@ from src.utils.time_helpers import (
     quantum_to_day_and_within_day,
 )
 from src.config import get_config
+from src.constraints.registry import soft_constraint
 
 # Global QuantumTimeSystem instance (initialized once)
 _QTS = QuantumTimeSystem()
 
 
-# 1. Group Compactness: penalize gaps in daily group schedule
+@soft_constraint(
+    name="student_schedule_compactness",
+    description="Minimizes gaps in student schedules",
+    default_weight=1.5,
+    needs_courses=False,
+)
 def student_schedule_compactness(sessions: List[CourseSession]) -> int:
     """
     Encourages compact student schedules by minimizing idle time gaps.
@@ -81,6 +87,12 @@ def student_schedule_compactness(sessions: List[CourseSession]) -> int:
 
 
 # 2. Instructor Compactness
+@soft_constraint(
+    name="instructor_schedule_compactness",
+    description="Minimizes gaps in instructor schedules",
+    default_weight=1.0,
+    needs_courses=False,
+)
 def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
     """
     Encourages compact instructor schedules by minimizing idle time gaps.
@@ -139,6 +151,12 @@ def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
 
 
 # 3. Group Midday Break Violation
+@soft_constraint(
+    name="student_lunch_break",
+    description="Encourages students to have midday break time",
+    default_weight=1.2,
+    needs_courses=False,
+)
 def student_lunch_break(sessions: List[CourseSession]) -> int:
     """
     Encourages students to have free time during the midday break period.
@@ -186,6 +204,12 @@ def student_lunch_break(sessions: List[CourseSession]) -> int:
     return penalty
 
 
+@soft_constraint(
+    name="session_continuity",
+    description="Encourages sessions to be in appropriate continuous blocks",
+    default_weight=2.0,
+    needs_courses=False,
+)
 def session_continuity(sessions: List[CourseSession]) -> int:
     """
     Encourages sessions to be scheduled in continuous, appropriately-sized blocks.
@@ -289,39 +313,38 @@ def get_all_soft_constraints():
     """
     Returns a dictionary of all available soft constraint functions.
 
-    Soft constraints (4 total):
-    1. student_schedule_compactness - Minimize gaps in student schedules
-    2. instructor_schedule_compactness - Minimize gaps in instructor schedules
-    3. student_lunch_break - Students should have midday break time
-    4. session_continuity - Sessions should be in appropriate continuous blocks
+    Uses decorator-based registry for single source of truth.
+    All constraints are auto-registered via @soft_constraint decorator.
 
     Returns:
         Dict[str, callable]: Mapping of constraint names to their functions.
     """
-    return {
-        "student_schedule_compactness": student_schedule_compactness,
-        "instructor_schedule_compactness": instructor_schedule_compactness,
-        "student_lunch_break": student_lunch_break,
-        "session_continuity": session_continuity,
-    }
+    from src.constraints.registry import get_all_soft_constraints as get_registry
+
+    registry = get_registry()
+    return {name: metadata.function for name, metadata in registry.items()}
 
 
 def get_enabled_soft_constraints():
     """
     Returns only the enabled soft constraints based on config.
 
+    Uses decorator-based registry for constraint metadata and config for enable/weight.
+
     Returns:
         Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
     """
-    all_constraints = get_all_soft_constraints()
+    from src.constraints.registry import get_all_soft_constraints as get_registry
+
+    registry = get_registry()
     enabled = {}
 
     cfg = get_config().soft_constraints
-    for name, func in all_constraints.items():
+    for name, metadata in registry.items():
         constraint_cfg = getattr(cfg, name, None)
         if constraint_cfg and constraint_cfg.enabled:
             enabled[name] = {
-                "function": func,
+                "function": metadata.function,
                 "weight": constraint_cfg.weight,
             }
 
