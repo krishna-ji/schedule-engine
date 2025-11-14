@@ -44,8 +44,8 @@ def evaluate(
 
         # Some hard constraints need courses parameter
         if constraint_name in [
-            "instructor_not_qualified",
-            "incomplete_or_extra_sessions",
+            "instructor_qualifications",
+            "course_completeness",
         ]:
             penalty = constraint_func(sessions, courses)
         else:

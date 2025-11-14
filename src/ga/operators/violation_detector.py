@@ -23,7 +23,7 @@ Usage:
     from src.ga.operators.violation_detector import detect_violated_genes
 
     violations = detect_violated_genes(individual, context, strategy="hybrid")
-    # Returns: {12: ["group_overlap"], 45: ["instructor_not_qualified"]}
+    # Returns: {12: ["group_overlap"], 45: ["instructor_qualifications"]}
 
     violated_indices = set(violations.keys())
     # Repair only: violated_indices instead of entire individual
@@ -54,7 +54,7 @@ def detect_violated_genes(
 
     Returns:
         Dict mapping gene index to list of violation types
-        Example: {12: ["group_overlap", "room_conflict"], 45: ["instructor_not_qualified"]}
+        Example: {12: ["group_overlap", "room_conflict"], 45: ["instructor_qualifications"]}
 
     Note:
         Empty dict means no violations detected (individual is feasible).
@@ -177,7 +177,7 @@ def _detect_full(
             continue
 
         if course_key not in instructor.qualified_courses:
-            violations[idx].append("instructor_not_qualified")
+            violations[idx].append("instructor_qualifications")
 
     # Detect room type mismatches
     for idx, gene in enumerate(individual):
@@ -192,9 +192,9 @@ def _detect_full(
 
         # Check room type compatibility (Room uses 'room_features' not 'room_type')
         if course.course_type == "practical" and room.room_features != "lab":
-            violations[idx].append("room_type_mismatch")
+            violations[idx].append("room_suitability")
         elif course.course_type == "theory" and room.room_features == "lab":
-            violations[idx].append("room_type_mismatch")
+            violations[idx].append("room_suitability")
 
     # Detect instructor availability violations
     for idx, gene in enumerate(individual):
