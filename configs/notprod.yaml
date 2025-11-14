@@ -1,0 +1,42 @@
+# ============================================================================
+# NOTPROD CONFIGURATION - Medium Settings (Practical Production)
+# ============================================================================
+# Balanced configuration for good quality with reasonable runtime.
+# Suitable for standard hardware: 4-8 cores, 8-16 GB RAM.
+# Expected runtime: 4-8 hours.
+# This config inherits all settings from base.yaml.
+
+name: "NotProd - Medium Quality (Practical)"
+environment: notprod
+description: "Medium quality production run (400 gens, 80 pop, 4-8h runtime)"
+
+# GA Settings - NOTPROD: Medium generations and population
+ga:
+  ngen: 400
+  pop_size: 80
+
+# Parallel Processing - Enabled
+parallel:
+  use_multiprocessing: true
+  num_workers: null # Auto-detect available cores
+
+# IGLS Exhaustive Search - Medium triggers
+repair:
+  exhaustive_search:
+    enabled: true
+    generations: [3, 30, 100, 200, 350]
+    population_coverage: 0.25 # Top 25% (20 individuals)
+    max_neighborhood_size: 120
+    timeout_seconds: 300
+
+  stagnation_repair:
+    patience: 10
+    min_generation: 15
+    population_coverage: 0.3 # Top 30% (24 individuals)
+    max_iterations: 15
+    timeout_seconds: 120
+    cooldown: 6
+
+  selective_repair:
+    apply_probability: 0.35
+    apply_after_crossover: true # Enabled for better quality

@@ -418,7 +418,7 @@ class Config(BaseModel):
     """Master configuration for Schedule Engine"""
 
     name: str = "default"
-    environment: Literal["test", "dev", "prod"] = "dev"
+    environment: Literal["test", "notprod", "prod"] = "notprod"
 
     ga: GAConfig = Field(default_factory=GAConfig)
     parallel: ParallelConfig = Field(default_factory=ParallelConfig)

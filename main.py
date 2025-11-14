@@ -47,23 +47,20 @@ def main():
     parser.add_argument(
         "--env",
         type=str,
-        choices=["test", "dev", "prod"],
-        help="Environment: test (fast), dev (medium), prod (full quality)",
+        choices=["test", "notprod", "prod"],
+        help="Environment: test (smoke test), notprod (medium), prod (best quality)",
     )
     args = parser.parse_args()
 
-    # Determine config strategy
-    config_path = args.config
+    # Set environment variable if --env provided
     if args.env:
-        # Set environment variable for common.yaml + env.yaml merge
         import os
 
         os.environ["ENVIRONMENT"] = args.env
-        config_path = None  # Trigger merge strategy in loader
 
     # Load configuration
     try:
-        config = init_config(config_path)
+        config = init_config(args.config)
         console.print()
         console.print(config.summary())
         console.print()
@@ -98,6 +95,30 @@ def main():
     console.print(f"  [dim]sessions:[/dim] {len(result['decoded_schedule'])}")
     console.print(f"  [dim]output:[/dim] {result['output_path']}")
     console.print()
+
+
+def main_prod():
+    """Entry point for production runs (uv run prod)"""
+    import os
+
+    os.environ["ENVIRONMENT"] = "prod"
+    main()
+
+
+def main_notprod():
+    """Entry point for notprod runs (uv run notprod)"""
+    import os
+
+    os.environ["ENVIRONMENT"] = "notprod"
+    main()
+
+
+def main_test():
+    """Entry point for test runs (uv run test)"""
+    import os
+
+    os.environ["ENVIRONMENT"] = "test"
+    main()
 
 
 if __name__ == "__main__":

@@ -38,6 +38,9 @@ dev = [
 
 [project.scripts]
 schedule-engine = "main:main"
+prod = "main:main_prod"
+notprod = "main:main_notprod"
+test = "main:main_test"
 
 [build-system]
 requires = ["hatchling"]

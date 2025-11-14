@@ -1,25 +1,42 @@
 """
-Configuration loader with environment detection.
-Loads standalone YAML configs - no inheritance/merging.
+Configuration loader with base.yaml inheritance.
+Loads configs with base.yaml + environment overrides.
 """
 
 import os
 import sys
+import yaml
 from pathlib import Path
 from src.config.models import Config
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    """
+    Deep merge two dictionaries.
+    Override values take precedence over base values.
+    """
+    result = base.copy()
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
 def load_config(config_path: str = None) -> Config:
     """
-    Load configuration from standalone YAML files.
+    Load configuration with base.yaml + environment overrides.
 
-    ALL configs are now complete/standalone (no common.yaml inheritance).
+    Config structure:
+    - base.yaml: All common settings
+    - prod.yaml/notprod.yaml/test.yaml: Only environment-specific overrides
 
     Loading priority:
-    1. Explicit config_path argument (--config flag)
-    2. SCHEDULE_CONFIG environment variable
-    3. configs/{ENVIRONMENT}.yaml (ENVIRONMENT env var)
-    4. configs/dev.yaml (default)
+    1. Explicit config_path argument (--config flag) - loads with base.yaml merge
+    2. SCHEDULE_CONFIG environment variable - loads with base.yaml merge
+    3. configs/{ENVIRONMENT}.yaml (ENVIRONMENT env var) - loads with base.yaml merge
+    4. configs/notprod.yaml (default) - loads with base.yaml merge
     5. Built-in defaults
 
     Args:
@@ -28,13 +45,24 @@ def load_config(config_path: str = None) -> Config:
     Returns:
         Config object
     """
+    base_path = Path("configs/base.yaml")
+
+    # Load base config if it exists
+    base_dict = {}
+    if base_path.exists():
+        with open(base_path) as f:
+            base_dict = yaml.safe_load(f) or {}
+
     # Priority 1: Explicit path
     if config_path:
         if not Path(config_path).exists():
             print(f"[!ERR] Config file not found: {config_path}")
             sys.exit(1)
-        print(f"Loading config: {config_path}")
-        return Config.from_yaml(config_path)
+        with open(config_path) as f:
+            override_dict = yaml.safe_load(f) or {}
+        merged = _deep_merge(base_dict, override_dict)
+        print(f"Loading config: {config_path} (merged with base.yaml)")
+        return Config(**merged)
 
     # Priority 2: Environment variable
     env_config = os.getenv("SCHEDULE_CONFIG")
@@ -42,21 +70,32 @@ def load_config(config_path: str = None) -> Config:
         if not Path(env_config).exists():
             print(f"[!ERR] Config file not found: {env_config}")
             sys.exit(1)
-        print(f"Loading config from SCHEDULE_CONFIG: {env_config}")
-        return Config.from_yaml(env_config)
+        with open(env_config) as f:
+            override_dict = yaml.safe_load(f) or {}
+        merged = _deep_merge(base_dict, override_dict)
+        print(
+            f"Loading config from SCHEDULE_CONFIG: {env_config} (merged with base.yaml)"
+        )
+        return Config(**merged)
 
     # Priority 3: Environment-specific config
-    environment = os.getenv("ENVIRONMENT", "dev")
+    environment = os.getenv("ENVIRONMENT", "notprod")
     env_path = Path(f"configs/{environment}.yaml")
     if env_path.exists():
-        print(f"Loading config: configs/{environment}.yaml")
-        return Config.from_yaml(str(env_path))
+        with open(env_path) as f:
+            override_dict = yaml.safe_load(f) or {}
+        merged = _deep_merge(base_dict, override_dict)
+        print(f"Loading config: configs/{environment}.yaml (merged with base.yaml)")
+        return Config(**merged)
 
-    # Priority 4: Default dev config
-    default_path = Path("configs/dev.yaml")
+    # Priority 4: Default notprod config
+    default_path = Path("configs/notprod.yaml")
     if default_path.exists():
-        print(f"Loading config: configs/dev.yaml (default)")
-        return Config.from_yaml(str(default_path))
+        with open(default_path) as f:
+            override_dict = yaml.safe_load(f) or {}
+        merged = _deep_merge(base_dict, override_dict)
+        print(f"Loading config: configs/notprod.yaml (default, merged with base.yaml)")
+        return Config(**merged)
 
     # Priority 5: Built-in defaults only
     print("[!WARN] No config files found, using built-in defaults")
