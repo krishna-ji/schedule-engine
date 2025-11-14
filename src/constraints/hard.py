@@ -2,7 +2,6 @@ from typing import Dict, List
 from src.entities.course import Course
 from src.entities.decoded_session import CourseSession
 from collections import defaultdict
-from src.config import get_config
 from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.constraints.registry import hard_constraint
 
@@ -379,48 +378,3 @@ def room_exclusivity(sessions: List[CourseSession]) -> int:
                 room_time_map[key] = session.course_id
 
     return conflicts
-
-
-# ---------------------------
-# Hard Constraint Registry
-# ---------------------------
-def get_all_hard_constraints():
-    """
-    Returns a dictionary of all available hard constraint functions.
-
-    Uses decorator-based registry for single source of truth.
-    All constraints are auto-registered via @hard_constraint decorator.
-
-    Returns:
-        Dict[str, callable]: Mapping of constraint names to their functions.
-    """
-    from src.constraints.registry import get_all_hard_constraints as get_registry
-
-    registry = get_registry()
-    return {name: metadata.function for name, metadata in registry.items()}
-
-
-def get_enabled_hard_constraints():
-    """
-    Returns only the enabled hard constraints based on config.
-
-    Uses decorator-based registry for constraint metadata and config for enable/weight.
-
-    Returns:
-        Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
-    """
-    from src.constraints.registry import get_all_hard_constraints as get_registry
-
-    registry = get_registry()
-    enabled = {}
-
-    cfg = get_config().hard_constraints
-    for name, metadata in registry.items():
-        constraint_cfg = getattr(cfg, name, None)
-        if constraint_cfg and constraint_cfg.enabled:
-            enabled[name] = {
-                "function": metadata.function,
-                "weight": constraint_cfg.weight,
-            }
-
-    return enabled

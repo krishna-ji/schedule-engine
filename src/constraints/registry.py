@@ -357,6 +357,56 @@ def validate_constraint_exists(name: str) -> bool:
     return name in _HARD_CONSTRAINTS or name in _SOFT_CONSTRAINTS
 
 
+def get_enabled_hard_constraints():
+    """
+    Returns only the enabled hard constraints based on config.
+
+    Uses decorator-based registry for constraint metadata and config for enable/weight.
+
+    Returns:
+        Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
+    """
+    from src.config import get_config
+
+    enabled = {}
+    cfg = get_config().hard_constraints
+
+    for name, metadata in _HARD_CONSTRAINTS.items():
+        constraint_cfg = getattr(cfg, name, None)
+        if constraint_cfg and constraint_cfg.enabled:
+            enabled[name] = {
+                "function": metadata.function,
+                "weight": constraint_cfg.weight,
+            }
+
+    return enabled
+
+
+def get_enabled_soft_constraints():
+    """
+    Returns only the enabled soft constraints based on config.
+
+    Uses decorator-based registry for constraint metadata and config for enable/weight.
+
+    Returns:
+        Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
+    """
+    from src.config import get_config
+
+    enabled = {}
+    cfg = get_config().soft_constraints
+
+    for name, metadata in _SOFT_CONSTRAINTS.items():
+        constraint_cfg = getattr(cfg, name, None)
+        if constraint_cfg and constraint_cfg.enabled:
+            enabled[name] = {
+                "function": metadata.function,
+                "weight": constraint_cfg.weight,
+            }
+
+    return enabled
+
+
 def get_registry_stats() -> Dict[str, Any]:
     """
     Get statistics about registered constraints.
