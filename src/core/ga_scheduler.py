@@ -11,9 +11,6 @@ from pathlib import Path
 from deap import base, tools
 import random
 import time
-import psutil
-import threading
-import os
 from rich.console import Console
 from rich.progress import (
     Progress,
@@ -578,36 +575,6 @@ class GAScheduler:
             refresh_per_second=10,
         )
 
-        # Get CPU count for per-core monitoring
-        cpu_count = psutil.cpu_count(logical=True)
-
-        # Get current process for process-specific monitoring
-        process = psutil.Process(os.getpid())
-
-        # Create CPU monitoring bars (one per core)
-        cpu_bars = []
-        cpu_tasks = []
-        for i in range(cpu_count):
-            cpu_bar = Progress(
-                TextColumn(f"[dim]cpu {i:2d}:[/dim]"),
-                BarColumn(bar_width=20),
-                TextColumn("[yellow]{task.fields[cpu_percent]:>5.1f}%[/yellow]"),
-                console=console,
-                refresh_per_second=10,
-            )
-            cpu_bars.append(cpu_bar)
-
-        # Create Memory monitoring bar (process-specific) - Show multiple metrics
-        memory_bar = Progress(
-            TextColumn("[dim]memory:[/dim]"),
-            BarColumn(bar_width=20),
-            TextColumn("[magenta]{task.fields[mem_rss]}[/magenta]"),
-            TextColumn("[dim cyan]({task.fields[mem_percent]})[/dim cyan]"),
-            TextColumn("[dim]Peak: {task.fields[mem_peak]}[/dim]"),
-            console=console,
-            refresh_per_second=10,
-        )
-
         # Create spacing row for better terminal display
         spacing_bar = Progress(
             TextColumn(""),
@@ -684,12 +651,7 @@ class GAScheduler:
         progress_table.add_row(spacing_bar)  # spacing above
         progress_table.add_row(time_bar)
         progress_table.add_row(progress_bar)
-        # Add Memory bar
-        progress_table.add_row(memory_bar)
-        # Add CPU bars
-        for cpu_bar in cpu_bars:
-            progress_table.add_row(cpu_bar)
-        # Add constraint legend rows below CPU
+        # Add constraint legend rows
         for legend_bar in legend_bars:
             progress_table.add_row(legend_bar)
         # Add spacing at bottom
@@ -706,99 +668,12 @@ class GAScheduler:
                 speed_display="--s/gen",
             )
 
-            # Initialize CPU monitoring tasks
-            for i, cpu_bar in enumerate(cpu_bars):
-                cpu_task = cpu_bar.add_task(
-                    "",
-                    total=100,
-                    cpu_percent=0.0,
-                )
-                cpu_tasks.append(cpu_task)
-
-            # Initialize Memory monitoring task (process-specific + children)
-            mem_info = process.memory_info()
-            system_total = psutil.virtual_memory().total
-            mem_percent_init = (mem_info.rss / system_total) * 100
-
-            memory_task = memory_bar.add_task(
-                "",
-                total=100,
-                mem_rss=f"{mem_info.rss / (1024**3):.2f}GiB",
-                mem_percent=f"{mem_percent_init:.1f}%",
-                mem_peak=f"{mem_info.rss / (1024**3):.2f}GiB",
-            )
-
             # Initialize legend bar tasks (static display)
             for legend_bar in legend_bars:
                 legend_bar.add_task("")
 
             # Initialize spacing task
             spacing_bar.add_task("")
-
-            # Tracking variables for resource monitoring
-            monitoring_active = True
-            peak_memory = mem_info.rss
-
-            def update_resource_monitors():
-                """Background thread to update CPU and Memory metrics every second"""
-                nonlocal peak_memory
-                # Initialize CPU monitoring baseline (first call must establish baseline)
-                psutil.cpu_percent(interval=0.1, percpu=True)
-
-                while monitoring_active:
-                    try:
-                        # Update Memory monitoring FIRST (process-specific + children) - non-blocking
-                        current_mem_info = process.memory_info()
-                        current_mem_rss = current_mem_info.rss
-
-                        # Include child processes (for multiprocessing workers)
-                        try:
-                            children = process.children(recursive=True)
-                            for child in children:
-                                try:
-                                    current_mem_rss += child.memory_info().rss
-                                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                                    pass  # Child process may have terminated
-                        except (psutil.NoSuchProcess, psutil.AccessDenied):
-                            pass  # Parent process issue
-
-                        if current_mem_rss > peak_memory:
-                            peak_memory = current_mem_rss
-
-                        # Calculate percentage of system memory used by this process + children
-                        system_total = psutil.virtual_memory().total
-                        mem_percent = (current_mem_rss / system_total) * 100
-
-                        memory_bar.update(
-                            memory_task,
-                            completed=mem_percent,
-                            mem_rss=f"{current_mem_rss / (1024**3):.2f}GiB",
-                            mem_percent=f"{mem_percent:.1f}%",
-                            mem_peak=f"{peak_memory / (1024**3):.2f}GiB",
-                        )
-
-                        # Update CPU monitoring (per-core, non-blocking after baseline)
-                        # interval=None uses time since last call (non-blocking)
-                        cpu_percentages = psutil.cpu_percent(interval=None, percpu=True)
-                        for i, (cpu_bar, cpu_task) in enumerate(
-                            zip(cpu_bars, cpu_tasks)
-                        ):
-                            if i < len(cpu_percentages):
-                                cpu_bar.update(
-                                    cpu_task,
-                                    completed=cpu_percentages[i],
-                                    cpu_percent=cpu_percentages[i],
-                                )
-
-                        time.sleep(0.5)  # Update twice per second for smoother display
-                    except Exception:
-                        pass  # Silently handle any errors in monitoring thread
-
-            # Start background monitoring thread
-            monitor_thread = threading.Thread(
-                target=update_resource_monitors, daemon=True
-            )
-            monitor_thread.start()
 
             for gen in range(self.config.generations):
                 gen_start = time.time()
@@ -906,10 +781,6 @@ class GAScheduler:
                             notes="Early stop - perfect solution",
                         )
                     break
-
-            # Stop monitoring thread
-            monitoring_active = False
-            monitor_thread.join(timeout=1.0)
 
         # Show constraint legend after evolution completes
         # Get constraint names for legend (use best individual from last generation)
