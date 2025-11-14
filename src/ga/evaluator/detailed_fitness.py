@@ -56,7 +56,13 @@ def evaluate_detailed(
     for constraint_name, constraint_info in enabled_soft_constraints.items():
         constraint_func = constraint_info["function"]
         weight = constraint_info["weight"]
-        penalty = constraint_func(sessions)
+
+        # Check if soft constraint needs courses parameter
+        if constraint_needs_courses(constraint_name):
+            penalty = constraint_func(sessions, courses)
+        else:
+            penalty = constraint_func(sessions)
+
         soft_details[constraint_name] = weight * penalty
 
     return hard_details, soft_details
