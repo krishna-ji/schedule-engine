@@ -4,21 +4,22 @@ from src.entities.decoded_session import CourseSession
 from collections import defaultdict
 from src.config import get_config
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.utils.time_helpers import quantum_to_day_and_within_day
 
 # Time system singleton
 _QTS = QuantumTimeSystem()
 
 
-def no_group_overlap(sessions: List[CourseSession]) -> int:
+def student_group_exclusivity(sessions: List[CourseSession]) -> int:
     """
-    Counts how many times a group is assigned to multiple sessions at the same time.
+    Ensures each student group can only be in one session at a time.
+
+    Counts violations where a group is scheduled in multiple sessions simultaneously.
 
     Args:
-        sessions (List[CourseSession]): List of all decoded sessions.
+        sessions: List of all decoded sessions.
 
     Returns:
-        int: Total number of group-time conflicts.
+        Number of group double-booking conflicts.
     """
     conflict_count = 0
     group_time_map = {}  # Maps (group_id, time_quanta) to count of sessions
@@ -38,9 +39,11 @@ def no_group_overlap(sessions: List[CourseSession]) -> int:
     return conflict_count
 
 
-def no_instructor_conflict(sessions: List[CourseSession]) -> int:
+def instructor_exclusivity(sessions: List[CourseSession]) -> int:
     """
-    Counts how many times an instructor is assigned to multiple sessions at the same time.
+    Ensures each instructor can only teach one session at a time.
+
+    Counts violations where an instructor is scheduled in multiple sessions simultaneously.
     """
     conflicts = 0
     instructor_time_map = {}
@@ -57,14 +60,14 @@ def no_instructor_conflict(sessions: List[CourseSession]) -> int:
     return conflicts
 
 
-def instructor_not_qualified(
+def instructor_qualifications(
     sessions: List[CourseSession], course_map: Dict[tuple, Course]
 ) -> int:
     """
-    Counts sessions assigned to unqualified instructors.
+    Ensures instructors are qualified to teach their assigned courses.
 
-    Treats missing course definitions and empty qualification lists as violations
-    (stricter than silently skipping).
+    Counts violations where an instructor is assigned to a course they are not qualified for.
+    Treats missing course definitions and empty qualification lists as violations.
 
     Args:
         sessions: List of decoded course sessions
@@ -114,20 +117,18 @@ def instructor_not_qualified(
     return violations
 
 
-def room_type_mismatch(sessions: List[CourseSession]) -> int:
+def room_suitability(sessions: List[CourseSession]) -> int:
     """
-    Counts how many sessions are scheduled in rooms that don't match required type.
+    Ensures rooms are suitable for the type of course being taught.
 
-    Simple string matching with flexible compatibility rules:
-    - Exact match: required == room_type
-    - Compatible: "lecture" courses can use lecture/classroom/auditorium rooms
-    - Compatible: "practical" courses can use practical/lab rooms
+    Counts violations where a course is scheduled in an incompatible room type.
+    Allows flexible compatibility (e.g., lectures can use auditoriums).
 
     Args:
         sessions: List of decoded course sessions
 
     Returns:
-        Number of room type mismatches
+        Number of room type incompatibilities
     """
     violations = 0
 
@@ -187,59 +188,85 @@ def _room_type_matches(required: str, room_type: str) -> bool:
     return False
 
 
-def availability_violations(sessions: List[CourseSession]) -> int:
+def instructor_time_availability(sessions: List[CourseSession]) -> int:
     """
-    Counts how many sessions are scheduled during unavailable time slots for
-    the group, instructor, or room.
+    Ensures instructors only teach during their available time slots.
 
-    For multi-group sessions, checks availability for all assigned groups.
+    For part-time instructors or those with scheduling restrictions,
+    sessions must fit within their specified availability windows.
+    Full-time instructors are available during all operating hours.
+
+    Args:
+        sessions: List of all decoded sessions.
+
+    Returns:
+        Number of violations where instructors are scheduled outside their availability.
     """
     violations = 0
 
     for session in sessions:
+        instructor = session.instructor
+
+        # Full-time instructors are always available during operating hours
+        if instructor.is_full_time:
+            continue
+
+        # Part-time: check if session quanta are within available_quanta
         for q in session.session_quanta:
-            # Check if quantum is unavailable for instructor or room
-            if (
-                q not in session.instructor.available_quanta
-                or q not in session.room.available_quanta
-            ):
+            if q not in instructor.available_quanta:
                 violations += 1
                 break  # Only count one violation per session
-
-        # For multi-group sessions, check all groups' availability
-        # If primary group exists, use it; otherwise skip group availability check
-        if session.group:
-            for q in session.session_quanta:
-                if q not in session.group.available_quanta:
-                    violations += 1
-                    break  # Only count one violation per session
 
     return violations
 
 
-def incomplete_or_extra_sessions(
+def room_time_availability(sessions: List[CourseSession]) -> int:
+    """
+    Ensures rooms are only used during their available time slots.
+
+    Some rooms may have restricted availability (e.g., labs under maintenance,
+    rooms reserved for other purposes). If no availability is specified,
+    the room is assumed available during all operating hours.
+
+    Args:
+        sessions: List of all decoded sessions.
+
+    Returns:
+        Number of violations where rooms are used outside their availability.
+    """
+    violations = 0
+
+    for session in sessions:
+        room = session.room
+
+        # Check if any session quantum is outside room's available quanta
+        for q in session.session_quanta:
+            if q not in room.available_quanta:
+                violations += 1
+                break  # Only count one violation per session
+
+    return violations
+
+
+def course_completeness(
     sessions: List[CourseSession], course_map: Dict[tuple, Course]
 ) -> int:
     """
-    Verifies that each course is scheduled for exactly the required number of quanta
-    PER GROUP that is enrolled in that course.
+    Ensures each course is scheduled for exactly the required number of sessions.
 
-    New Architecture:
-    - Courses are taught per group (not globally)
-    - Theory sessions may use parent groups (whole class)
-    - Practical sessions may use subgroups
-    - Must check: each (course, group) combination has correct quanta
+    Verifies that each (course, group) combination has the correct number of quanta per week.
+    Courses are taught per group - theory may use parent groups, practicals use subgroups.
 
-    IMPORTANT: course_map keys are tuples (course_code, course_type), but
-    session.course_id is just the course_code string. Must extract course_code
-    from tuple keys for proper comparison.
+    Args:
+        sessions: List of decoded course sessions
+        course_map: Mapping from (course_id, course_type) to Course entity
 
     Returns:
         Number of (course, group) combinations that are under- or over-scheduled.
 
     Example:
         If BAE2 is enrolled in ENME 151 (5 quanta/week),
-        we should have exactly 5 quanta for (ENME 151, BAE2) combination.
+        we must have exactly 5 quanta for (ENME 151, BAE2) combination.
     """
     # Count quanta per (course_code, course_type, group_id) combination
     # Use (course_code, course_type) to distinguish theory from practical
@@ -277,102 +304,32 @@ def incomplete_or_extra_sessions(
     return violations
 
 
-def session_block_clustering_penalty(sessions: List[CourseSession]) -> int:
+def room_exclusivity(sessions: List[CourseSession]) -> int:
     """
-    Penalizes course sessions that are fragmented into undesirable block sizes.
+    Ensures each room can only host one session at a time.
 
-    Theory courses:
-    - Penalty of 1 for blocks greater than 3
-    - Penalty of 2 for isolated blocks (length 1), but first isolated slot is excused
-    - Preferred block sizes: 2-3 consecutive quanta
-
-    Practical courses:
-    - All sessions must be in a single coalesced block (no splits)
-    - Heavy penalty for fragmentation
-
-    Example (Theory):
-    - 6 quanta as [3,3] → 0 penalty (ideal)
-    - 6 quanta as [2,2,2] → 0 penalty (acceptable)
-    - 6 quanta as [1,2,3] → 0 penalty (first isolated slot excused)
-    - 6 quanta as [1,1,4] → 2 + 1 = 3 penalty (second isolated slot + oversized block)
-    - 6 quanta as [6] → 3 penalty (oversized by 3)
-
-    Example (Practical):
-    - 3 quanta as [3] → 0 penalty (ideal - single block)
-    - 3 quanta as [2,1] → 20 penalty (fragmented practical)
+    Counts violations where a room is scheduled for multiple sessions simultaneously.
+    Rooms are physical resources that cannot be shared.
 
     Args:
-        sessions: List of course sessions to evaluate.
+        sessions: List of all decoded sessions.
 
     Returns:
-        Total penalty for non-preferred block sizes.
+        Number of room double-booking conflicts.
     """
-    cfg = get_config().time
-
-    penalty = 0
-
-    # Group sessions by (course_id, course_type, day) to find blocks
-    course_day_quanta = defaultdict(lambda: defaultdict(list))
-    course_type_map = {}  # Track course types
+    conflicts = 0
+    room_time_map = {}  # Maps (room_id, time_quanta) to course_id
 
     for session in sessions:
-        # Use course_id + course_type as unique identifier
-        course_key = (session.course_id, session.course_type)
-        course_type_map[course_key] = session.course_type
-
+        room_id = session.room.room_id
         for q in session.session_quanta:
-            day, within_day = quantum_to_day_and_within_day(q, _QTS)
-            course_day_quanta[course_key][day].append(within_day)
-
-    # Analyze block sizes for each course on each day
-    for course_key, course_days in course_day_quanta.items():
-        course_type = course_type_map[course_key]
-
-        for day_quanta in course_days.values():
-            # Sort quanta to identify consecutive blocks
-            sorted_quanta = sorted(day_quanta)
-
-            # Find consecutive blocks
-            blocks = []
-            if sorted_quanta:
-                current_block = [sorted_quanta[0]]
-
-                for i in range(1, len(sorted_quanta)):
-                    if sorted_quanta[i] == sorted_quanta[i - 1] + 1:
-                        # Consecutive - add to current block
-                        current_block.append(sorted_quanta[i])
-                    else:
-                        # Gap - start new block
-                        blocks.append(len(current_block))
-                        current_block = [sorted_quanta[i]]
-
-                # Don't forget the last block
-                blocks.append(len(current_block))
-
-            # Apply penalties based on course type
-            if course_type.lower() == "practical":
-                # Practical courses: must be in a single block
-                if len(blocks) > 1:
-                    # Heavy penalty for fragmentation
-                    penalty += cfg.practical_fragmentation_penalty * (len(blocks) - 1)
+            key = (room_id, q)
+            if key in room_time_map:
+                conflicts += 1
             else:
-                # Theory courses: apply refined penalty logic
-                isolated_count = 0
+                room_time_map[key] = session.course_id
 
-                for block_size in blocks:
-                    if block_size == 1:
-                        # Isolated single quantum
-                        isolated_count += 1
-                        if isolated_count > cfg.theory_max_excused_isolated:
-                            # Excused slots exceeded, penalize subsequent ones
-                            penalty += cfg.theory_isolated_penalty
-                    elif block_size > cfg.preferred_block_size_max:
-                        # Oversized block - penalty per quantum beyond max
-                        excess = block_size - cfg.preferred_block_size_max
-                        penalty += excess * cfg.theory_oversized_penalty_per_quantum
-                    # Block sizes within preferred range have no penalty
-
-    return penalty
+    return conflicts
 
 
 # ---------------------------
@@ -382,17 +339,28 @@ def get_all_hard_constraints():
     """
     Returns a dictionary of all available hard constraint functions.
 
+    Hard Constraints (7 total):
+    1. student_group_exclusivity - Groups can only be in one place at a time
+    2. instructor_exclusivity - Instructors can only teach one session at a time
+    3. instructor_qualifications - Instructors must be qualified for their courses
+    4. instructor_time_availability - Instructors teach within their available hours
+    5. room_suitability - Rooms must match course requirements
+    6. room_exclusivity - Rooms can only host one session at a time
+    7. room_time_availability - Rooms used within their available hours
+    8. course_completeness - Courses have correct number of sessions per group
+
     Returns:
         Dict[str, callable]: Mapping of constraint names to their functions.
     """
     return {
-        "no_group_overlap": no_group_overlap,
-        "no_instructor_conflict": no_instructor_conflict,
-        "instructor_not_qualified": instructor_not_qualified,
-        "room_type_mismatch": room_type_mismatch,
-        "availability_violations": availability_violations,
-        "incomplete_or_extra_sessions": incomplete_or_extra_sessions,
-        "session_block_clustering_penalty": session_block_clustering_penalty,
+        "student_group_exclusivity": student_group_exclusivity,
+        "instructor_exclusivity": instructor_exclusivity,
+        "instructor_qualifications": instructor_qualifications,
+        "instructor_time_availability": instructor_time_availability,
+        "room_suitability": room_suitability,
+        "room_exclusivity": room_exclusivity,
+        "room_time_availability": room_time_availability,
+        "course_completeness": course_completeness,
     }
 
 
@@ -403,7 +371,6 @@ def get_enabled_hard_constraints():
     Returns:
         Dict[str, dict]: Mapping of enabled constraint names to their config (function, weight).
     """
-    from src.config import get_config
 
     all_constraints = get_all_hard_constraints()
     enabled = {}

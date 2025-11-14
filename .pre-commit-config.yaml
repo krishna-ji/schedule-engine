@@ -26,7 +26,6 @@ repos:
       - id: end-of-file-fixer
         exclude: ^(output/|docs/)
       - id: check-yaml
-        args: [--safe]
       - id: check-json
       - id: check-toml
       - id: check-added-large-files

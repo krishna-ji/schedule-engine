@@ -142,23 +142,24 @@ class ConstraintConfig(BaseModel):
 class HardConstraintsConfig(BaseModel):
     """Hard constraints configuration"""
 
-    no_group_overlap: ConstraintConfig = ConstraintConfig(enabled=True, weight=2.0)
-    no_instructor_conflict: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=2.0
+    student_group_exclusivity: ConstraintConfig = ConstraintConfig(
+        enabled=True, weight=3.0
     )
-    instructor_not_qualified: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=2.0
+    instructor_exclusivity: ConstraintConfig = ConstraintConfig(
+        enabled=True, weight=3.0
     )
-    room_type_mismatch: ConstraintConfig = ConstraintConfig(enabled=True, weight=2.0)
-    availability_violations: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=2.0
+    instructor_qualifications: ConstraintConfig = ConstraintConfig(
+        enabled=True, weight=3.0
     )
-    incomplete_or_extra_sessions: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=1.0
+    instructor_time_availability: ConstraintConfig = ConstraintConfig(
+        enabled=True, weight=3.0
     )
-    session_block_clustering_penalty: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=2.0
+    room_suitability: ConstraintConfig = ConstraintConfig(enabled=True, weight=2.5)
+    room_exclusivity: ConstraintConfig = ConstraintConfig(enabled=True, weight=3.0)
+    room_time_availability: ConstraintConfig = ConstraintConfig(
+        enabled=True, weight=2.5
     )
+    course_completeness: ConstraintConfig = ConstraintConfig(enabled=True, weight=2.0)
 
 
 class SoftConstraintConfigWithPenalty(BaseModel):
@@ -181,19 +182,24 @@ class SoftConstraintConfigWithPenalty(BaseModel):
 class SoftConstraintsConfig(BaseModel):
     """Soft constraints configuration"""
 
-    group_gaps_penalty: SoftConstraintConfigWithPenalty = Field(
+    student_schedule_compactness: SoftConstraintConfigWithPenalty = Field(
+        default_factory=lambda: SoftConstraintConfigWithPenalty(
+            enabled=True, weight=1.5, gap_penalty_per_quantum=2
+        )
+    )
+    instructor_schedule_compactness: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
             enabled=True, weight=1.0, gap_penalty_per_quantum=1
         )
     )
-    instructor_gaps_penalty: SoftConstraintConfigWithPenalty = Field(
+    student_lunch_break: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
-            enabled=True, weight=1.0, gap_penalty_per_quantum=1
+            enabled=True, weight=1.2, distance_penalty_per_quantum=2
         )
     )
-    group_midday_break_violation: SoftConstraintConfigWithPenalty = Field(
+    session_continuity: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
-            enabled=True, weight=1.0, distance_penalty_per_quantum=1
+            enabled=True, weight=2.0
         )
     )
     soft_weight_factor: float = Field(default=0.01, ge=0.0, le=1.0)

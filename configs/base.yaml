@@ -69,42 +69,48 @@ feasibility:
 
 # Hard Constraints
 hard_constraints:
-  no_group_overlap:
+  student_group_exclusivity:
     enabled: true
     weight: 3.0
-  no_instructor_conflict:
+  instructor_exclusivity:
     enabled: true
     weight: 3.0
-  instructor_not_qualified:
+  instructor_qualifications:
     enabled: true
     weight: 3.0
-  room_type_mismatch:
+  instructor_time_availability:
+    enabled: true
+    weight: 3.0
+  room_suitability:
     enabled: true
     weight: 2.5
-  availability_violations:
+  room_exclusivity:
     enabled: true
     weight: 3.0
-  incomplete_or_extra_sessions:
+  room_time_availability:
     enabled: true
-    weight: 2.0
-  session_block_clustering_penalty:
+    weight: 2.5
+  course_completeness:
     enabled: true
     weight: 2.0
 
 # Soft Constraints
 soft_constraints:
-  group_gaps_penalty:
+  student_schedule_compactness:
     enabled: true
     weight: 1.5
     gap_penalty_per_quantum: 2
-  instructor_gaps_penalty:
+  instructor_schedule_compactness:
     enabled: true
     weight: 1.0
     gap_penalty_per_quantum: 1
-  group_midday_break_violation:
+  student_lunch_break:
     enabled: true
     weight: 1.2
     distance_penalty_per_quantum: 2
+  session_continuity:
+    enabled: true
+    weight: 2.0
   soft_weight_factor: 0.01
 
 # IGLS Repair System (common settings)

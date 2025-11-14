@@ -22,23 +22,23 @@ _QTS = QuantumTimeSystem()
 
 
 # 1. Group Compactness: penalize gaps in daily group schedule
-def group_gaps_penalty(sessions: List[CourseSession]) -> int:
-    """Calculate penalty for gaps in daily group schedules.
+def student_schedule_compactness(sessions: List[CourseSession]) -> int:
+    """
+    Encourages compact student schedules by minimizing idle time gaps.
 
-    Penalizes idle time slots between the first and last session of each group
-    on each day to encourage compact schedules.
-
-    IMPORTANT: Does NOT penalize gaps that occur during midday break time.
-    This allows students to have proper lunch breaks without penalty.
+    Penalizes gaps between the first and last session of each group on each day.
+    Does NOT penalize gaps during midday break time (allows proper lunch breaks).
 
     Args:
         sessions: List of course sessions to evaluate.
 
     Returns:
-        Total penalty points for group schedule gaps (excluding break time gaps).
+        Total penalty points for schedule gaps (excluding break time gaps).
     """
     cfg = get_config()
-    gap_penalty = cfg.soft_constraints.group_gaps_penalty.gap_penalty_per_quantum or 1
+    gap_penalty = (
+        cfg.soft_constraints.student_schedule_compactness.gap_penalty_per_quantum or 1
+    )
     penalty = 0
 
     # Get midday break quanta for each day
@@ -81,24 +81,23 @@ def group_gaps_penalty(sessions: List[CourseSession]) -> int:
 
 
 # 2. Instructor Compactness
-def instructor_gaps_penalty(sessions: List[CourseSession]) -> int:
-    """Calculate penalty for gaps in daily instructor schedules.
+def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
+    """
+    Encourages compact instructor schedules by minimizing idle time gaps.
 
-    Penalizes idle time slots between the first and last session of each
-    instructor on each day to encourage compact teaching schedules.
-
-    IMPORTANT: Does NOT penalize gaps that occur during midday break time.
-    This allows instructors to have proper lunch breaks without penalty.
+    Penalizes gaps between the first and last session of each instructor on each day.
+    Does NOT penalize gaps during midday break time (allows proper lunch breaks).
 
     Args:
         sessions: List of course sessions to evaluate.
 
     Returns:
-        Total penalty points for instructor schedule gaps (excluding break time gaps).
+        Total penalty points for schedule gaps (excluding break time gaps).
     """
     cfg = get_config()
     gap_penalty = (
-        cfg.soft_constraints.instructor_gaps_penalty.gap_penalty_per_quantum or 1
+        cfg.soft_constraints.instructor_schedule_compactness.gap_penalty_per_quantum
+        or 1
     )
     penalty = 0
 
@@ -140,24 +139,22 @@ def instructor_gaps_penalty(sessions: List[CourseSession]) -> int:
 
 
 # 3. Group Midday Break Violation
-def group_midday_break_violation(sessions: List[CourseSession]) -> int:
+def student_lunch_break(sessions: List[CourseSession]) -> int:
     """
-    Penalizes groups that do not have a break during the midday break period.
+    Encourages students to have free time during the midday break period.
 
-    For each group per day, if no session falls in the break window,
-    penalize by the minimum distance from any scheduled quantum to the break block,
-    multiplied by the distance penalty factor from config.
+    Penalizes groups scheduled during lunch hours, with penalty based on
+    distance from the break window if no break is available.
 
     Args:
-        sessions (List[CourseSession]): List of CourseSession objects.
+        sessions: List of CourseSession objects.
 
     Returns:
-        int: Total break violation penalty across all groups and days.
+        Total lunch break violation penalty across all groups and days.
     """
     cfg = get_config()
     distance_penalty = (
-        cfg.soft_constraints.group_midday_break_violation.distance_penalty_per_quantum
-        or 1
+        cfg.soft_constraints.student_lunch_break.distance_penalty_per_quantum or 1
     )
     penalty = 0
 
@@ -189,6 +186,102 @@ def group_midday_break_violation(sessions: List[CourseSession]) -> int:
     return penalty
 
 
+def session_continuity(sessions: List[CourseSession]) -> int:
+    """
+    Encourages sessions to be scheduled in continuous, appropriately-sized blocks.
+
+    Theory courses:
+    - Preferred block sizes: 2-3 consecutive quanta
+    - Penalizes oversized blocks (>3) and isolated single slots (except first one)
+
+    Practical courses:
+    - Must be in a single continuous block (no fragmentation)
+    - Heavy penalty for splitting practical sessions
+
+    Example (Theory - 6 quanta):
+    - [3,3] → 0 penalty (ideal)
+    - [2,2,2] → 0 penalty (acceptable)
+    - [1,2,3] → 0 penalty (first isolated slot excused)
+    - [1,1,4] → 3 penalty (second isolated slot + oversized block)
+
+    Example (Practical - 3 quanta):
+    - [3] → 0 penalty (ideal - single continuous block)
+    - [2,1] → 20 penalty (fragmented practical)
+
+    Args:
+        sessions: List of course sessions to evaluate.
+
+    Returns:
+        Total penalty for non-preferred block configurations.
+    """
+    cfg = get_config().time
+
+    penalty = 0
+
+    # Group sessions by (course_id, course_type, day) to find blocks
+    course_day_quanta = defaultdict(lambda: defaultdict(list))
+    course_type_map = {}  # Track course types
+
+    for session in sessions:
+        # Use course_id + course_type as unique identifier
+        course_key = (session.course_id, session.course_type)
+        course_type_map[course_key] = session.course_type
+
+        for q in session.session_quanta:
+            day, within_day = quantum_to_day_and_within_day(q, _QTS)
+            course_day_quanta[course_key][day].append(within_day)
+
+    # Analyze block sizes for each course on each day
+    for course_key, course_days in course_day_quanta.items():
+        course_type = course_type_map[course_key]
+
+        for day_quanta in course_days.values():
+            # Sort quanta to identify consecutive blocks
+            sorted_quanta = sorted(day_quanta)
+
+            # Find consecutive blocks
+            blocks = []
+            if sorted_quanta:
+                current_block = [sorted_quanta[0]]
+
+                for i in range(1, len(sorted_quanta)):
+                    if sorted_quanta[i] == sorted_quanta[i - 1] + 1:
+                        # Consecutive - add to current block
+                        current_block.append(sorted_quanta[i])
+                    else:
+                        # Gap - start new block
+                        blocks.append(len(current_block))
+                        current_block = [sorted_quanta[i]]
+
+                # Don't forget the last block
+                blocks.append(len(current_block))
+
+            # Apply penalties based on course type
+            if course_type.lower() == "practical":
+                # Practical courses: must be in a single block
+                if len(blocks) > 1:
+                    # Heavy penalty for fragmentation
+                    penalty += cfg.practical_fragmentation_penalty * (len(blocks) - 1)
+            else:
+                # Theory courses: apply refined penalty logic
+                isolated_count = 0
+
+                for block_size in blocks:
+                    if block_size == 1:
+                        # Isolated single quantum
+                        isolated_count += 1
+                        if isolated_count > cfg.theory_max_excused_isolated:
+                            # Excused slots exceeded, penalize subsequent ones
+                            penalty += cfg.theory_isolated_penalty
+                    elif block_size > cfg.preferred_block_size_max:
+                        # Oversized block - penalty per quantum beyond max
+                        excess = block_size - cfg.preferred_block_size_max
+                        penalty += excess * cfg.theory_oversized_penalty_per_quantum
+                    # Block sizes within preferred range have no penalty
+
+    return penalty
+
+
 # ---------------------------
 # Soft Constraint Registry
 # ---------------------------
@@ -196,18 +289,20 @@ def get_all_soft_constraints():
     """
     Returns a dictionary of all available soft constraint functions.
 
-    Soft constraints (3 total):
-    1. group_gaps_penalty - Penalize gaps in group schedules
-    2. instructor_gaps_penalty - Penalize gaps in instructor schedules
-    3. group_midday_break_violation - Penalize sessions during midday break
+    Soft constraints (4 total):
+    1. student_schedule_compactness - Minimize gaps in student schedules
+    2. instructor_schedule_compactness - Minimize gaps in instructor schedules
+    3. student_lunch_break - Students should have midday break time
+    4. session_continuity - Sessions should be in appropriate continuous blocks
 
     Returns:
         Dict[str, callable]: Mapping of constraint names to their functions.
     """
     return {
-        "group_gaps_penalty": group_gaps_penalty,
-        "instructor_gaps_penalty": instructor_gaps_penalty,
-        "group_midday_break_violation": group_midday_break_violation,
+        "student_schedule_compactness": student_schedule_compactness,
+        "instructor_schedule_compactness": instructor_schedule_compactness,
+        "student_lunch_break": student_lunch_break,
+        "session_continuity": session_continuity,
     }
 
 
