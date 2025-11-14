@@ -5,8 +5,10 @@ Runs standard GA-based course scheduling workflow.
 """
 
 import argparse
+from datetime import datetime
 from rich.console import Console
 from src.workflows import run_standard_workflow
+from src.utils.experiment import sanitize_experiment_name
 from src.config import init_config
 
 console = Console()
@@ -49,6 +51,12 @@ def main():
         choices=["test", "notprod", "prod"],
         help="Environment: test (smoke test), notprod (medium), prod (best quality)",
     )
+    parser.add_argument(
+        "--experiment",
+        type=str,
+        default=None,
+        help="Optional experiment name to tag the output folder",
+    )
     args = parser.parse_args()
 
     # Set environment variable if --env provided
@@ -56,6 +64,23 @@ def main():
         import os
 
         os.environ["ENVIRONMENT"] = args.env
+
+    # Experiment name: interactive prompt fallback
+    exp_name = args.experiment
+    if exp_name is None:
+        # Only prompt when running interactively (TTY). In CI / uv runs we'll skip prompt.
+        import sys
+
+        if sys.stdin and sys.stdin.isatty():
+            try:
+                raw = input("Experiment name (optional): ").strip()
+                exp_name = raw if raw else None
+            except Exception:
+                exp_name = None
+        else:
+            exp_name = None
+
+    exp_name = sanitize_experiment_name(exp_name)
 
     # Load configuration
     try:
@@ -75,6 +100,11 @@ def main():
         mutation_prob=config.ga.mutpb,
         validate=True,  # Enable input validation
         config=config,  # Pass config object to workflow
+        output_dir=None
+        if exp_name is None
+        else f"output/evaluation_{{}}_{exp_name}".format(
+            datetime.now().strftime("%Y%m%d_%H%M%S")
+        ),
     )
 
     # Print final summary with beautiful rich formatting

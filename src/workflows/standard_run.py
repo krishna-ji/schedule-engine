@@ -112,9 +112,31 @@ def run_standard_workflow(
     if output_dir is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = os.path.join("output", f"evaluation_{timestamp}")
+    else:
+        # Ensure directory exists and make sure it's normalized
+        output_dir = os.path.normpath(output_dir)
     os.makedirs(output_dir, exist_ok=True)
     console.print(f"[dim]output:[/dim] {output_dir}")
     console.print()
+
+    # Try to set runtime output dir into config (best-effort), so exporters and
+    # other subsystems that read config can also pick it up if they depend on
+    # config.output.output_dir field.
+    try:
+        if hasattr(config, "output"):
+            # Mutate config at runtime - many modules only read config at load time
+            # but this makes the output directory available for reporters and
+            # exporters that check config.output.output_dir
+            if hasattr(config.output, "output_dir"):
+                config.output.output_dir = output_dir
+            else:
+                # Some configs only have base_dir - create a new attribute for runtime
+                setattr(config.output, "output_dir", output_dir)
+    except Exception:
+        # Don't fail the run if mutation fails; fall back to passing output_dir
+        console.print(
+            "[dim]warning:[/] Unable to set runtime output_dir in config object"
+        )
 
     # ═══════════════════════════════════════════════════════════════
     # DATA LOADING
