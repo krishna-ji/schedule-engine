@@ -238,48 +238,56 @@ def run_standard_workflow(
 
     # Get enabled constraint names
     hard_constraints_dict = {
-        "no_group_overlap": {
-            "enabled": config.hard_constraints.no_group_overlap.enabled,
-            "weight": config.hard_constraints.no_group_overlap.weight,
+        "student_group_exclusivity": {
+            "enabled": config.hard_constraints.student_group_exclusivity.enabled,
+            "weight": config.hard_constraints.student_group_exclusivity.weight,
         },
-        "no_instructor_conflict": {
-            "enabled": config.hard_constraints.no_instructor_conflict.enabled,
-            "weight": config.hard_constraints.no_instructor_conflict.weight,
+        "instructor_exclusivity": {
+            "enabled": config.hard_constraints.instructor_exclusivity.enabled,
+            "weight": config.hard_constraints.instructor_exclusivity.weight,
         },
-        "instructor_not_qualified": {
-            "enabled": config.hard_constraints.instructor_not_qualified.enabled,
-            "weight": config.hard_constraints.instructor_not_qualified.weight,
+        "instructor_qualifications": {
+            "enabled": config.hard_constraints.instructor_qualifications.enabled,
+            "weight": config.hard_constraints.instructor_qualifications.weight,
         },
-        "room_type_mismatch": {
-            "enabled": config.hard_constraints.room_type_mismatch.enabled,
-            "weight": config.hard_constraints.room_type_mismatch.weight,
+        "instructor_time_availability": {
+            "enabled": config.hard_constraints.instructor_time_availability.enabled,
+            "weight": config.hard_constraints.instructor_time_availability.weight,
         },
-        "availability_violations": {
-            "enabled": config.hard_constraints.availability_violations.enabled,
-            "weight": config.hard_constraints.availability_violations.weight,
+        "room_suitability": {
+            "enabled": config.hard_constraints.room_suitability.enabled,
+            "weight": config.hard_constraints.room_suitability.weight,
         },
-        "incomplete_or_extra_sessions": {
-            "enabled": config.hard_constraints.incomplete_or_extra_sessions.enabled,
-            "weight": config.hard_constraints.incomplete_or_extra_sessions.weight,
+        "room_exclusivity": {
+            "enabled": config.hard_constraints.room_exclusivity.enabled,
+            "weight": config.hard_constraints.room_exclusivity.weight,
         },
-        "session_block_clustering_penalty": {
-            "enabled": config.hard_constraints.session_block_clustering_penalty.enabled,
-            "weight": config.hard_constraints.session_block_clustering_penalty.weight,
+        "room_time_availability": {
+            "enabled": config.hard_constraints.room_time_availability.enabled,
+            "weight": config.hard_constraints.room_time_availability.weight,
+        },
+        "course_completeness": {
+            "enabled": config.hard_constraints.course_completeness.enabled,
+            "weight": config.hard_constraints.course_completeness.weight,
         },
     }
 
     soft_constraints_dict = {
-        "group_gaps_penalty": {
-            "enabled": config.soft_constraints.group_gaps_penalty.enabled,
-            "weight": config.soft_constraints.group_gaps_penalty.weight,
+        "student_schedule_compactness": {
+            "enabled": config.soft_constraints.student_schedule_compactness.enabled,
+            "weight": config.soft_constraints.student_schedule_compactness.weight,
         },
-        "instructor_gaps_penalty": {
-            "enabled": config.soft_constraints.instructor_gaps_penalty.enabled,
-            "weight": config.soft_constraints.instructor_gaps_penalty.weight,
+        "instructor_schedule_compactness": {
+            "enabled": config.soft_constraints.instructor_schedule_compactness.enabled,
+            "weight": config.soft_constraints.instructor_schedule_compactness.weight,
         },
-        "group_midday_break_violation": {
-            "enabled": config.soft_constraints.group_midday_break_violation.enabled,
-            "weight": config.soft_constraints.group_midday_break_violation.weight,
+        "student_lunch_break": {
+            "enabled": config.soft_constraints.student_lunch_break.enabled,
+            "weight": config.soft_constraints.student_lunch_break.weight,
+        },
+        "session_continuity": {
+            "enabled": config.soft_constraints.session_continuity.enabled,
+            "weight": config.soft_constraints.session_continuity.weight,
         },
     }
 
