@@ -8,7 +8,9 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.config import get_config  # get_config().hard_constraints, get_config().soft_constraints
+from src.config import (
+    get_config,
+)  # get_config().hard_constraints, get_config().soft_constraints
 from src.constraints.hard import get_enabled_hard_constraints
 from src.constraints.soft import get_enabled_soft_constraints
 from src.utils.console import write_header, write_separator, write_info
@@ -44,7 +46,9 @@ def main():
 
     # Show disabled hard constraints
     hard_disabled = [
-        name for name, cfg in get_config().hard_constraints.items() if not cfg["enabled"]
+        name
+        for name, cfg in get_config().hard_constraints.items()
+        if not cfg["enabled"]
     ]
     if hard_disabled:
         write_info("DISABLED HARD CONSTRAINTS:")
@@ -86,7 +90,9 @@ def main():
 
     # Show disabled soft constraints
     soft_disabled = [
-        name for name, cfg in get_config().soft_constraints.items() if not cfg["enabled"]
+        name
+        for name, cfg in get_config().soft_constraints.items()
+        if not cfg["enabled"]
     ]
     if soft_disabled:
         write_info("DISABLED SOFT CONSTRAINTS:")

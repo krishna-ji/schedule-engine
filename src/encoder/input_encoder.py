@@ -15,7 +15,7 @@ Functions:
 """
 
 import json
-from typing import Dict, List
+from typing import Dict
 
 from src.entities.course import Course
 from src.entities.group import Group

@@ -20,7 +20,7 @@ Usage:
 """
 
 import sys
-from typing import Dict, List, Tuple, Set, Any
+from typing import Dict, List, Tuple, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
 from rich.console import Console
@@ -232,9 +232,9 @@ def _check_instructor_workload(
         recommendations.extend(
             [
                 f"Add {shortage_hours} more hours of instructor availability",
-                f"Hire additional instructors to cover the shortage",
+                "Hire additional instructors to cover the shortage",
                 f"Reduce course offerings by {shortage} quanta",
-                f"Increase availability of existing part-time instructors",
+                "Increase availability of existing part-time instructors",
             ]
         )
     elif utilization_rate > 90:
@@ -451,7 +451,7 @@ def _check_room_capacity_bottleneck(
     if passed:
         message = f"Seat-hours sufficient: {total_seat_hours:,} available, {total_student_hours:,} needed [!ok] ({utilization:.1f}%)"
     else:
-        message = f"Seat-hours insufficient ✗"
+        message = "Seat-hours insufficient ✗"
 
     recommendations = []
     if not global_passed:
@@ -475,10 +475,10 @@ def _check_room_capacity_bottleneck(
         )
         recommendations.extend(
             [
-                f"",
+                "",
                 f"⚠ Largest single session has {largest_class_size} students but biggest room only holds {largest_room_capacity}",
                 f"   Problem course: {largest_class_course.name} ({course_display})",
-                f"   Note: This is the largest group size, not sum of all groups",
+                "   Note: This is the largest group size, not sum of all groups",
                 "Solutions:",
                 "• Split the large group into smaller sections",
                 "• Add a larger room (capacity ≥ {largest_class_size})",
@@ -575,7 +575,7 @@ def _check_room_feature_bottleneck(
     passed = len(bottlenecks) == 0
 
     if passed:
-        message = f"All required room features have sufficient availability [!ok]"
+        message = "All required room features have sufficient availability [!ok]"
     else:
         message = f"{len(bottlenecks)} room feature(s) have capacity shortages ✗"
 
@@ -804,7 +804,6 @@ def generate_feasibility_report_file(report: FeasibilityReport, output_path: str
         report: FeasibilityReport to save
         output_path: Path to save the report
     """
-    import json
     from datetime import datetime
 
     with open(output_path, "w", encoding="utf-8") as f:

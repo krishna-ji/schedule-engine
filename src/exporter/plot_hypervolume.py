@@ -36,28 +36,20 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str):
 
     Args:
         hypervolume_history: List of hypervolume values per generation
-        output_dir: Directory to save plots and CSV data
+        output_dir: Directory to save plots
 
     Saves:
         - plots/hypervolume_trend.pdf: Main trend plot
-        - CSVs/hypervolume_trend.csv: Raw data
+
+    Note:
+        CSV data available in data/metrics.csv (hypervolume column)
     """
     if not hypervolume_history:
         return
 
-    # Create directories
+    # Create plot directory
     plot_dir = os.path.join(output_dir, "plots")
-    csv_dir = os.path.join(output_dir, "CSVs")
     os.makedirs(plot_dir, exist_ok=True)
-    os.makedirs(csv_dir, exist_ok=True)
-
-    # Save CSV data
-    csv_path = os.path.join(csv_dir, "hypervolume_trend.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Generation", "Hypervolume"])
-        for gen, hv in enumerate(hypervolume_history):
-            writer.writerow([gen, hv])
 
     # Create plot
     fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))

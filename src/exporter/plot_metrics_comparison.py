@@ -18,7 +18,6 @@ from scipy import stats
 from .thesis_style import (
     apply_thesis_style,
     get_color,
-    PALETTE,
     save_figure,
     create_thesis_figure,
     format_axis,
@@ -201,18 +200,18 @@ def plot_algorithm_comparison(
     x = np.arange(len(metrics))
     width = 0.35
 
-    bars1 = ax.bar(
+    ax.bar(
         x - width / 2,
         algo1_means,
         width,
         yerr=algo1_stds,
         label=algo1_name,
         color=get_color("blue"),
-        alpha=0.7,
+        alpha=0.8,
         capsize=5,
     )
 
-    bars2 = ax.bar(
+    ax.bar(
         x + width / 2,
         algo2_means,
         width,

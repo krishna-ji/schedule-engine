@@ -1,6 +1,5 @@
 from typing import List, Tuple
 import random
-import os
 from rich.console import Console
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
@@ -582,10 +581,6 @@ def assign_conflict_free_quanta(
 
     # CLUSTER-AWARE ASSIGNMENT
     from src.encoder.quantum_time_system import QuantumTimeSystem
-    from src.utils.time_helpers import (
-        get_midday_break_quanta,
-        quantum_to_day_and_within_day,
-    )
 
     qts = QuantumTimeSystem()
 
@@ -644,7 +639,6 @@ def _assign_clustered_blocks(quanta_needed: int, free_quanta: List, qts) -> List
     Returns list of assigned quanta or None if clustering fails.
     """
     from src.utils.time_helpers import (
-        get_midday_break_quanta,
         quantum_to_day_and_within_day,
     )
 
@@ -675,7 +669,8 @@ def _assign_clustered_blocks(quanta_needed: int, free_quanta: List, qts) -> List
             if day not in day_quanta_map:
                 day_quanta_map[day] = []
             day_quanta_map[day].append(q)
-        except:
+        except (ValueError, KeyError):
+            # Skip quanta that can't be mapped to valid days
             continue
 
     # Try to assign each target block to a different day

@@ -13,7 +13,7 @@ On Linux/Mac, you can also make it executable:
     chmod +x setup-uv
     ./setup-uv
 """
-import os
+
 import platform
 import shutil
 import subprocess
@@ -198,7 +198,7 @@ def show_completion_message():
     print(colored("Installed packages:", Colors.CYAN))
     try:
         subprocess.run(["uv", "pip", "list"], check=False)
-    except:
+    except (FileNotFoundError, subprocess.SubprocessError):
         pass
 
     print()

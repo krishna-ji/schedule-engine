@@ -23,7 +23,7 @@ Usage:
     # Automatically detects and repairs only violated genes
 """
 
-from typing import List, Dict, Set
+from typing import List, Set
 from collections import defaultdict
 
 from src.ga.sessiongene import SessionGene
@@ -34,8 +34,6 @@ from src.ga.operators.violation_detector import detect_violated_genes
 from src.ga.operators.repair import (
     _find_instructor_available_slot,
     _find_available_slot,
-    _find_available_slot_smart,
-    _build_occupied_quanta_map,
 )
 
 

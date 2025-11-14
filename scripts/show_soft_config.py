@@ -16,7 +16,9 @@ from src.utils.console import write_header, write_separator, write_info
 def main():
     write_header("SOFT CONSTRAINT CONFIGURATION")
 
-    enabled_count = sum(1 for cfg in get_config().soft_constraints.values() if cfg["enabled"])
+    enabled_count = sum(
+        1 for cfg in get_config().soft_constraints.values() if cfg["enabled"]
+    )
     total_count = len(get_config().soft_constraints)
 
     write_info(f"Status: {enabled_count}/{total_count} constraints enabled")
@@ -33,7 +35,9 @@ def main():
 
     # Show disabled constraints
     disabled = [
-        name for name, cfg in get_config().soft_constraints.items() if not cfg["enabled"]
+        name
+        for name, cfg in get_config().soft_constraints.items()
+        if not cfg["enabled"]
     ]
     if disabled:
         write_info("DISABLED CONSTRAINTS:")

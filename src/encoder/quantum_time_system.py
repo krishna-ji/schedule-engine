@@ -28,7 +28,7 @@ Then quantum indices are:
   (No indices for Sunday 00:00-07:59, 20:00-23:59, etc.)
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Set, Tuple, Optional, ClassVar
 from collections import defaultdict
 
@@ -187,7 +187,6 @@ class QuantumTimeSystem:
         # Get day's operating parameters
         start_minutes = self.day_start_time[day]
         quanta_offset = self.day_quanta_offset[day]
-        quanta_count = self.day_quanta_count[day]
 
         # Check if time is within operating hours
         operating_hours = self.operating_hours[day]

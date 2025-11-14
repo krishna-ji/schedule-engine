@@ -26,4 +26,7 @@ ENV/
 uv.lock
 .uv/
 
+# Ruff cache
+.ruff_cache/
+
 report/

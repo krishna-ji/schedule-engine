@@ -255,7 +255,10 @@ def _find_feasible_assignment(
 
         # Find available room
         room_id = _find_available_room(
-            candidate_quanta, context.rooms, room_usage, course_key[1]  # course_type
+            candidate_quanta,
+            context.rooms,
+            room_usage,
+            course_key[1],  # course_type
         )
         if not room_id:
             continue

@@ -1,13 +1,13 @@
 """
 Runtime Logger Module
 
-Logs generation-by-generation metrics and configuration to output/logger.txt.
+Logs generation-by-generation metrics and configuration to output/run.log.
 Provides detailed runtime analysis for each GA run.
 """
 
 import os
 from datetime import datetime
-from typing import Dict, Optional, List
+from typing import Dict, List
 
 
 class GALogger:
@@ -25,11 +25,11 @@ class GALogger:
         Initialize logger.
 
         Args:
-            output_dir: Directory to write logger.txt
+            output_dir: Directory to write run.log
             config: Configuration dictionary with GA parameters
         """
         self.output_dir = output_dir
-        self.log_path = os.path.join(output_dir, "logger.txt")
+        self.log_path = os.path.join(output_dir, "run.log")
         self.config = config
         self.generation_logs: List[Dict] = []
         self.start_time = None

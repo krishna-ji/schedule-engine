@@ -320,4 +320,4 @@ if __name__ == "__main__":
     import os
 
     os.remove(test_file)
-    console.print(f"[dim]Cleaned up test file[/dim]\n")
+    console.print("[dim]Cleaned up test file[/dim]\n")

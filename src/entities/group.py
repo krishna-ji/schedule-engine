@@ -3,7 +3,7 @@ Group entity model for the timetabling system.
 Represents a student group with enrollment information.
 """
 
-from typing import List, Set, Dict, Optional
+from typing import List, Set
 from dataclasses import dataclass
 
 

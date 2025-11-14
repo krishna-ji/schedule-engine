@@ -5,7 +5,7 @@ Encapsulates NSGA-II genetic algorithm execution for course scheduling.
 Extracted from monolithic main.py for better testability and separation of concerns.
 """
 
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from pathlib import Path
 from deap import base, tools
@@ -21,7 +21,6 @@ from rich.progress import (
     BarColumn,
     TextColumn,
     TimeElapsedColumn,
-    TimeRemainingColumn,
     ProgressColumn,
     Task,
 )
@@ -1176,7 +1175,6 @@ class GAScheduler:
                     and igls_config.selective_repair.enabled
                     and igls_config.selective_repair.apply_after_crossover
                 ):
-
                     # Probabilistic gate
                     if random.random() < igls_config.selective_repair.apply_probability:
                         from src.ga.operators.intensive_local_search import (
@@ -1220,7 +1218,6 @@ class GAScheduler:
                     and igls_config.selective_repair.enabled
                     and igls_config.selective_repair.apply_after_mutation
                 ):
-
                     # Probabilistic gate
                     if random.random() < igls_config.selective_repair.apply_probability:
                         from src.ga.operators.intensive_local_search import (
@@ -1342,7 +1339,6 @@ class GAScheduler:
             igls_config.exhaustive_search.enabled
             and gen in igls_config.exhaustive_search.generations
         ):
-
             console.print(
                 f"\n[bold red][!info] exhaustive search triggered on  gen {gen}: "
                 f"(steepest descent on top {igls_config.exhaustive_search.population_coverage*100:.0f}%)[/bold red]"
@@ -1350,7 +1346,6 @@ class GAScheduler:
 
             from src.ga.operators.intensive_local_search import apply_exhaustive_search
 
-            start_time = time.time()
             self.population, igls_metrics = apply_exhaustive_search(
                 population=self.population,
                 context=self.context,
@@ -1383,7 +1378,6 @@ class GAScheduler:
             and (gen - getattr(self, "_last_stagnation_repair_gen", -999))
             >= igls_config.stagnation_repair.cooldown
         ):
-
             console.print(
                 f"\n[bold yellow] [!info] Gen {gen}: STAGNATION REPAIR triggered "
                 f"(greedy search on top {igls_config.stagnation_repair.population_coverage*100:.0f}%, "
@@ -1392,7 +1386,6 @@ class GAScheduler:
 
             from src.ga.operators.intensive_local_search import apply_greedy_search
 
-            start_time = time.time()
             self.population, igls_metrics = apply_greedy_search(
                 population=self.population,
                 context=self.context,

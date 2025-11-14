@@ -12,7 +12,6 @@ Visualizations include:
 """
 
 import os
-import csv
 import matplotlib.pyplot as plt
 import numpy as np
 from deap import tools
@@ -38,28 +37,20 @@ def plot_spacing_trend(spacing_history: list, output_dir: str):
 
     Args:
         spacing_history: List of spacing values per generation
-        output_dir: Directory to save plots and CSV data
+        output_dir: Directory to save plots
 
     Saves:
         - plots/spacing_trend.pdf: Main trend plot
-        - CSVs/spacing_trend.csv: Raw data
+
+    Note:
+        CSV data available in data/metrics.csv (spacing column)
     """
     if not spacing_history:
         return
 
-    # Create directories
+    # Create plot directory
     plot_dir = os.path.join(output_dir, "plots")
-    csv_dir = os.path.join(output_dir, "CSVs")
     os.makedirs(plot_dir, exist_ok=True)
-    os.makedirs(csv_dir, exist_ok=True)
-
-    # Save CSV data
-    csv_path = os.path.join(csv_dir, "spacing_trend.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Generation", "Spacing"])
-        for gen, spacing in enumerate(spacing_history):
-            writer.writerow([gen, spacing])
 
     # Create plot
     fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))

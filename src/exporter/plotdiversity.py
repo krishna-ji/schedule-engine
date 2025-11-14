@@ -1,5 +1,4 @@
 import os
-import csv
 import matplotlib.pyplot as plt
 from .thesis_style import (
     apply_thesis_style,
@@ -14,18 +13,12 @@ apply_thesis_style()
 
 
 def plot_diversity_trend(diversity_trend, output_dir):
-    # Create CSVs subdirectory
-    csv_dir = os.path.join(output_dir, "CSVs")
-    os.makedirs(csv_dir, exist_ok=True)
+    """
+    Plot population diversity over generations.
 
-    # Save data to CSV
-    csv_path = os.path.join(csv_dir, "diversity_trend.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Generation", "Average_Chromosome_Distance"])
-        for gen, value in enumerate(diversity_trend):
-            writer.writerow([gen, value])
-
+    Note:
+        CSV data available in data/metrics.csv (diversity column)
+    """
     fig, ax = create_thesis_figure(1, 1, figsize=(9, 5))
     ax.plot(
         diversity_trend,

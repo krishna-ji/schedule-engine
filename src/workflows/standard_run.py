@@ -174,7 +174,7 @@ def run_standard_workflow(
     if config.feasibility.generate_report and (
         is_feasible or config.feasibility.save_report_on_success
     ):
-        feasibility_report_path = os.path.join(output_dir, "feasibility_report.txt")
+        feasibility_report_path = os.path.join(output_dir, "feasibility.log")
         generate_feasibility_report_file(feasibility_report, feasibility_report_path)
         console.print(f"  [dim]saved:[/dim] {feasibility_report_path}")
         console.print()
@@ -320,11 +320,11 @@ def run_standard_workflow(
     }
 
     logger = GALogger(output_dir, logger_config)
-    console.print(f"  [dim]logger:[/dim] {logger.get_log_path()}")
+    console.print(f"  [dim]run log:[/dim] {logger.get_log_path()}")
 
     # Initialize ConstraintLogger for detailed per-generation constraint breakdown
     constraint_logger = ConstraintLogger(output_dir, hard_names, soft_names)
-    console.print(f"  [dim]constraint log:[/dim] {constraint_logger.get_log_path()}")
+    console.print(f"  [dim]metrics csv:[/dim] {constraint_logger.get_log_path()}")
     console.print()
 
     # ========================================
@@ -355,7 +355,7 @@ def run_standard_workflow(
             f"  [dim]repair:[/dim] [green]enabled[/green] (after {modes_str}, max {config.repair.max_iterations} iter)"
         )
     else:
-        console.print(f"  [dim]repair:[/dim] [dim]disabled[/dim]")
+        console.print("  [dim]repair:[/dim] [dim]disabled[/dim]")
 
     console.print()
 
@@ -437,13 +437,12 @@ def run_standard_workflow(
     console.print("[bold cyan]complete[/bold cyan]", style="cyan")
     console.print()
     console.print(f"[bold]output:[/bold] {output_dir}")
-    console.print(f"  [dim]schedule.json[/dim] - schedule data")
-    console.print(f"  [dim]schedule.pdf[/dim] - visual calendar")
-    console.print(f"  [dim]logger.txt[/dim] - run summary")
-    console.print(
-        f"  [dim]logger_all.csv[/dim] - generation data (constraints, metrics)"
-    )
-    console.print(f"  [dim]plots/[/dim] - evolution visualizations")
+    console.print("  [dim]schedule.json[/dim] - final schedule")
+    console.print("  [dim]calendar.pdf[/dim] - visual calendar")
+    console.print("  [dim]run.log[/dim] - execution summary")
+    console.print("  [dim]violations.log[/dim] - constraint violations")
+    console.print("  [dim]data/metrics.csv[/dim] - generation metrics")
+    console.print("  [dim]plots/[/dim] - visualizations")
     console.print()
     console.print(style="cyan")
     console.print()

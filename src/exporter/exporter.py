@@ -3,12 +3,10 @@ import json
 from typing import List, Dict
 from datetime import datetime
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.cm as cm
-import matplotlib.colors as mcolors
 
 from src.entities.decoded_session import CourseSession
 from src.encoder.quantum_time_system import QuantumTimeSystem
@@ -307,7 +305,7 @@ def export_everything(
         >>> export_everything(final_schedule, "./output", qts_instance)
         [OK-KRISHNA] Schedule exported successfully!
         JSON: ./output/schedule.json
-        [...]PDF:  ./output/calendar_colored_merged.pdf
+        [...]PDF:  ./output/calendar.pdf
 
     Note:
         - Creates output directory if it doesn't exist

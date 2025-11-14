@@ -231,10 +231,6 @@ def _find_available_slot_smart(
     Returns:
         Tuple of (quanta_list, instructor_id, room_id) or (None, None, None)
     """
-    from src.utils.time_helpers import (
-        get_midday_break_quanta,
-        quantum_to_day_and_within_day,
-    )
 
     qts = QuantumTimeSystem()
 
@@ -351,7 +347,6 @@ def _score_clustering(
         Score: 100 for adjacent, 10 for same day, 0 otherwise
     """
     from src.utils.time_helpers import (
-        get_midday_break_quanta,
         quantum_to_day_and_within_day,
     )
 
@@ -1128,9 +1123,6 @@ def _try_time_shift_for_better_room(
     occupied = _build_occupied_quanta_map(individual, gene)
     required_duration = len(gene.quanta)
 
-    # Get required features
-    required_features = getattr(course, "required_room_features", "classroom")
-
     # Calculate minimum capacity
     min_capacity = 30
     for group_id in gene.group_ids:
@@ -1251,7 +1243,6 @@ def repair_session_clustering(
         Number of clustering improvements made
     """
     from src.utils.time_helpers import (
-        get_midday_break_quanta,
         quantum_to_day_and_within_day,
     )
     from src.config import get_config
@@ -1391,7 +1382,6 @@ def _rebuild_practical_single_block(
     Returns:
         True if successfully consolidated, False otherwise
     """
-    from src.utils.time_helpers import quantum_to_day_and_within_day
 
     num_quanta = len(gene.quanta)
 
@@ -1483,10 +1473,6 @@ def _rebuild_gene_clustering(
     Uses the SAME logic as cluster-aware initialization to create ideal 2-3 blocks.
     This is much more effective than incrementally moving isolated quanta!
     """
-    from src.utils.time_helpers import (
-        get_midday_break_quanta,
-        quantum_to_day_and_within_day,
-    )
 
     num_quanta = len(gene.quanta)
 
@@ -1640,7 +1626,6 @@ def _get_free_quanta_by_day(
     Returns dict: day_name -> list of free global quanta.
     """
     from src.utils.time_helpers import (
-        get_midday_break_quanta,
         quantum_to_day_and_within_day,
     )
 
@@ -2342,14 +2327,6 @@ def repair_multi_neighborhood(
         - Worst case: O(max_combinations) constraint checks
         - Typical: Finds solution in 5-15 combinations
     """
-    from src.constraints.hard import (
-        check_instructor_availability_violations,
-        check_group_overlap_violations,
-        check_room_conflict_violations,
-        check_instructor_conflict_violations,
-        check_instructor_qualification_violations,
-        check_room_type_violations,
-    )
 
     # Get course and original parameters
     course = context.courses.get(gene.course_id)

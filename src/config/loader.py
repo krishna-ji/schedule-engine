@@ -94,7 +94,7 @@ def load_config(config_path: str = None) -> Config:
         with open(default_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        print(f"Loading config: configs/notprod.yaml (default, merged with base.yaml)")
+        print("Loading config: configs/notprod.yaml (default, merged with base.yaml)")
         return Config(**merged)
 
     # Priority 5: Built-in defaults only

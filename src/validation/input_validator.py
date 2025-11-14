@@ -5,14 +5,9 @@ Validates loaded data for consistency before GA execution.
 Fails fast with clear error messages to prevent cryptic runtime failures.
 """
 
-from typing import List, Dict
+from typing import List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
-from rich.panel import Panel
-from src.entities.course import Course
-from src.entities.group import Group
-from src.entities.instructor import Instructor
-from src.entities.room import Room
 from src.core.types import SchedulingContext
 
 console = Console()
@@ -605,7 +600,7 @@ def validate_input(context: SchedulingContext, strict: bool = False) -> bool:
         ValueError: If validation fails in strict mode
     """
     validator = InputValidator(context)
-    issues = validator.validate()
+    validator.validate()
 
     validator.print_report()
 

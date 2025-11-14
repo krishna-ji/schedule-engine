@@ -14,7 +14,7 @@ Usage:
         fixes = repair_func(individual, context)
 """
 
-from typing import Dict, Callable
+from typing import Dict
 from src.config import get_config
 
 

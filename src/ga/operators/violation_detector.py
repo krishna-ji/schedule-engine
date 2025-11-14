@@ -29,7 +29,7 @@ Usage:
     # Repair only: violated_indices instead of entire individual
 """
 
-from typing import Dict, Set, List
+from typing import Dict, List
 from collections import defaultdict
 
 from src.ga.sessiongene import SessionGene

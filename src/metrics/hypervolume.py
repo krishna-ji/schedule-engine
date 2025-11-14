@@ -17,7 +17,6 @@ the WFG algorithm for efficiency.
 
 from typing import List, Tuple
 from deap import tools
-import numpy as np
 
 
 def calculate_hypervolume(
@@ -72,7 +71,7 @@ def calculate_hypervolume(
     try:
         hv = tools.hypervolume(pareto_front, list(ref_point))
         return hv
-    except Exception as e:
+    except Exception:
         # Fallback: if hypervolume fails, return 0
         # This can happen if all points dominate reference point
         return 0.0

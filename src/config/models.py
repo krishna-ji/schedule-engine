@@ -3,9 +3,8 @@ Pydantic configuration models for Schedule Engine.
 All configs loaded from YAML files with full validation.
 """
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Optional, Literal, Any, List
-from pathlib import Path
 
 
 class GAConfig(BaseModel):

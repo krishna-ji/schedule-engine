@@ -2,7 +2,7 @@
 Constraint Logger Module
 
 Logs detailed constraint breakdowns, diversity metrics, and GA events to CSV.
-Separate from logger.txt - provides granular per-generation constraint analysis.
+Separate from run.log - provides granular per-generation constraint analysis.
 
 Features:
 - Detailed hard/soft constraint breakdown per generation
@@ -14,7 +14,7 @@ Features:
 - Crash-safe: Flushes after each generation (no data loss on crash)
 - CSV format for easy analysis in Excel/Python
 
-Output: logger_all.csv in output directory
+Output: data/metrics.csv in output directory
 
 CSV Columns:
 - generation: Generation number (INIT for initial population)
@@ -40,7 +40,6 @@ CSV Columns:
 
 import os
 import csv
-from datetime import datetime
 from typing import Dict, Optional, List
 
 
@@ -70,12 +69,15 @@ class ConstraintLogger:
         Initialize constraint logger.
 
         Args:
-            output_dir: Directory to write logger_all.csv
+            output_dir: Directory to write data/metrics.csv
             hard_constraint_names: List of enabled hard constraint names
             soft_constraint_names: List of enabled soft constraint names
         """
         self.output_dir = output_dir
-        self.log_path = os.path.join(output_dir, "logger_all.csv")
+        # Create data/ subdirectory for CSV files
+        data_dir = os.path.join(output_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)
+        self.log_path = os.path.join(data_dir, "metrics.csv")
         self.hard_names = hard_constraint_names
         self.soft_names = soft_constraint_names
 
@@ -249,7 +251,6 @@ class ConstraintLogger:
         Args:
             time_seconds: Time taken for the generation
         """
-        import tempfile
         import shutil
 
         # Read all rows
@@ -282,7 +283,7 @@ class ConstraintLogger:
             # Replace original with temp file
             shutil.move(temp_path, self.log_path)
 
-        except Exception as e:
+        except Exception:
             # Silently fail - timing update is not critical
             pass
 

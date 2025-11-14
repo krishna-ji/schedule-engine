@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import os
-import csv
 from typing import Dict, List
 from .thesis_style import (
     apply_thesis_style,
@@ -21,29 +20,20 @@ def plot_individual_hard_constraints(
     hard_trends: Dict[str, List[int]], output_dir: str
 ):
     """
-    Plots each hard constraint trend separately and saves them in hard/ subdirectory.
+    Plots each hard constraint trend separately and saves them in plots/constraints/hard/ subdirectory.
 
     Args:
         hard_trends: Dictionary mapping constraint names to their trends over generations
         output_dir: Base output directory
-    """
-    hard_dir = os.path.join(output_dir, "hard")
-    os.makedirs(hard_dir, exist_ok=True)
 
-    # Create CSVs subdirectory
-    csv_dir = os.path.join(output_dir, "CSVs")
-    os.makedirs(csv_dir, exist_ok=True)
+    Note:
+        CSV data available in data/metrics.csv (hard_<constraint> columns)
+    """
+    hard_dir = os.path.join(output_dir, "plots", "constraints", "hard")
+    os.makedirs(hard_dir, exist_ok=True)
 
     # Individual plots for each hard constraint
     for constraint_name, trend in hard_trends.items():
-        # Save individual constraint data to CSV
-        csv_path = os.path.join(csv_dir, f"hard_{constraint_name}.csv")
-        with open(csv_path, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Generation", constraint_name])
-            for gen, value in enumerate(trend):
-                writer.writerow([gen, value])
-
         fig, ax = create_thesis_figure(1, 1, figsize=(10, 5.5))
 
         # Main trend line
@@ -60,13 +50,12 @@ def plot_individual_hard_constraints(
         # Add statistics
         final_value = trend[-1]
         max_value = max(trend)
-        min_value = min(trend)
         avg_value = sum(trend) / len(trend)
 
         # Add horizontal lines for statistics
         ax.axhline(
             y=final_value,
-            color=get_color("red"),
+            color=get_color("green"),
             linestyle="--",
             alpha=0.5,
             linewidth=1.5,
@@ -102,17 +91,6 @@ def plot_individual_hard_constraints(
         # Save individual plot
         filename = f"{constraint_name}_trend.pdf"
         save_figure(fig, os.path.join(hard_dir, filename))
-
-    # Save combined hard constraints data to CSV
-    csv_path = os.path.join(csv_dir, "hard_constraints_all.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        header = ["Generation"] + [name for name in hard_trends.keys()]
-        writer.writerow(header)
-        num_generations = len(next(iter(hard_trends.values())))
-        for gen in range(num_generations):
-            row = [gen] + [hard_trends[name][gen] for name in hard_trends.keys()]
-            writer.writerow(row)
 
     # Combined plot with all hard constraints
     fig, ax = create_thesis_figure(1, 1, figsize=(12, 7))
@@ -209,29 +187,20 @@ def plot_individual_soft_constraints(
     soft_trends: Dict[str, List[int]], output_dir: str
 ):
     """
-    Plots each soft constraint trend separately and saves them in soft/ subdirectory.
+    Plots each soft constraint trend separately and saves them in plots/constraints/soft/ subdirectory.
 
     Args:
         soft_trends: Dictionary mapping constraint names to their trends over generations
         output_dir: Base output directory
-    """
-    soft_dir = os.path.join(output_dir, "soft")
-    os.makedirs(soft_dir, exist_ok=True)
 
-    # Create CSVs subdirectory
-    csv_dir = os.path.join(output_dir, "CSVs")
-    os.makedirs(csv_dir, exist_ok=True)
+    Note:
+        CSV data available in data/metrics.csv (soft_<constraint> columns)
+    """
+    soft_dir = os.path.join(output_dir, "plots", "constraints", "soft")
+    os.makedirs(soft_dir, exist_ok=True)
 
     # Individual plots for each soft constraint
     for constraint_name, trend in soft_trends.items():
-        # Save individual constraint data to CSV
-        csv_path = os.path.join(csv_dir, f"soft_{constraint_name}.csv")
-        with open(csv_path, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Generation", constraint_name])
-            for gen, value in enumerate(trend):
-                writer.writerow([gen, value])
-
         fig, ax = create_thesis_figure(1, 1, figsize=(10, 5.5))
 
         # Main trend line
@@ -248,7 +217,6 @@ def plot_individual_soft_constraints(
         # Add statistics
         final_value = trend[-1]
         max_value = max(trend)
-        min_value = min(trend)
         avg_value = sum(trend) / len(trend)
 
         # Add horizontal lines for statistics
@@ -290,17 +258,6 @@ def plot_individual_soft_constraints(
         # Save individual plot
         filename = f"{constraint_name}_trend.pdf"
         save_figure(fig, os.path.join(soft_dir, filename))
-
-    # Save combined soft constraints data to CSV
-    csv_path = os.path.join(csv_dir, "soft_constraints_all.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        header = ["Generation"] + [name for name in soft_trends.keys()]
-        writer.writerow(header)
-        num_generations = len(next(iter(soft_trends.values())))
-        for gen in range(num_generations):
-            row = [gen] + [soft_trends[name][gen] for name in soft_trends.keys()]
-            writer.writerow(row)
 
     # Combined plot with all soft constraints
     fig, ax = create_thesis_figure(1, 1, figsize=(12, 7))
@@ -400,22 +357,13 @@ def plot_constraint_summary(
 ):
     """
     Creates a summary dashboard showing total trends and final constraint values.
-    """
-    # Create CSVs subdirectory
-    csv_dir = os.path.join(output_dir, "CSVs")
-    os.makedirs(csv_dir, exist_ok=True)
 
+    Note:
+        CSV data available in data/metrics.csv (hard_total, soft_total columns)
+    """
     # Calculate totals
     total_hard = [sum(values) for values in zip(*hard_trends.values())]
     total_soft = [sum(values) for values in zip(*soft_trends.values())]
-
-    # Save summary data to CSV
-    csv_path = os.path.join(csv_dir, "constraint_summary.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Generation", "Total_Hard_Violations", "Total_Soft_Penalties"])
-        for gen, (h, s) in enumerate(zip(total_hard, total_soft)):
-            writer.writerow([gen, h, s])
 
     fig, ((ax1, ax2), (ax3, ax4)) = create_thesis_figure(2, 2, figsize=(14, 10))
 

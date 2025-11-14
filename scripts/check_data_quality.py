@@ -96,7 +96,7 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
             print(
                 f"     Total courses: {issue['total_courses']} ({issue['unique_courses']} unique)"
             )
-            print(f"     Duplicates:")
+            print("     Duplicates:")
 
             for course, count in sorted(
                 issue["duplicates"].items(), key=lambda x: x[1], reverse=True
@@ -107,12 +107,12 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
         print(f"\n{'='*60}")
         print("⚠️  ACTION REQUIRED")
         print(f"{'='*60}")
-        print(f"These duplicates will cause group overlap violations!")
-        print(f"Each duplicate creates additional scheduling conflicts.")
+        print("These duplicates will cause group overlap violations!")
+        print("Each duplicate creates additional scheduling conflicts.")
         print(f"\nPlease review and fix {groups_file}:")
-        print(f"  1. Check if duplicates are intentional (e.g., theory + lab)")
-        print(f"  2. If unintentional, remove duplicate entries")
-        print(f"  3. If intentional, ensure they're separate course sections")
+        print("  1. Check if duplicates are intentional (e.g., theory + lab)")
+        print("  2. If unintentional, remove duplicate entries")
+        print("  3. If intentional, ensure they're separate course sections")
         print(f"{'='*60}\n")
 
     else:
@@ -133,10 +133,10 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
             large_groups.append((group_id, len(enrolled)))
 
     if large_groups:
-        print(f"\n⚠️  Groups with >10 courses:")
+        print("\n⚠️  Groups with >10 courses:")
         for gid, count in sorted(large_groups, key=lambda x: x[1], reverse=True)[:10]:
             print(f"   • {gid}: {count} courses")
-        print(f"   (Large course loads may be difficult to schedule)")
+        print("   (Large course loads may be difficult to schedule)")
 
     print(f"\n{'='*60}\n")
 

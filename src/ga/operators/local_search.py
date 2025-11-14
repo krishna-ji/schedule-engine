@@ -30,8 +30,7 @@ Usage:
     )
 """
 
-from typing import List, Tuple, Optional, Set
-from copy import deepcopy
+from typing import List, Tuple, Optional
 import random
 
 from src.ga.sessiongene import SessionGene

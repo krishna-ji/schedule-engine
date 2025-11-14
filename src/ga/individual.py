@@ -6,7 +6,7 @@ from src.ga.creator_registry import get_creator
 creator = get_creator()
 
 if TYPE_CHECKING:
-    from deap.creator import Individual as IndividualType
+    pass
 
 
 def create_individual(gene_list: List[SessionGene]):

@@ -10,8 +10,6 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend for file generation
 
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-from matplotlib import font_manager
 import seaborn as sns
 
 

@@ -58,8 +58,8 @@ def generate_reports(
 
     Creates:
         - schedule.json: Schedule in JSON format
-        - schedule.pdf: Visual calendar with color-coded sessions
-        - violation_report.txt: Detailed constraint violation report
+        - calendar.pdf: Visual calendar with color-coded sessions
+        - violations.log: Detailed constraint violation report
         - Evolution plots: hard/soft constraint trends, diversity
         - Pareto front visualization
         - Detailed constraint breakdown plots
@@ -79,13 +79,13 @@ def generate_reports(
     print("  [+] Exporting schedule...")
     export_everything(decoded_schedule, output_dir, qts)
     print("      [!ok] schedule.json")
-    print("      [!ok] schedule.pdf")
+    print("      [!ok] calendar.pdf")
 
     # Generate violation report - sequential (depends on export)
     if course_map:
         print("  [+] Generating violation report...")
         generate_violation_report(decoded_schedule, course_map, qts, output_dir)
-        print("      [!ok] violation_report.txt")
+        print("      [!ok] violations.log")
 
     # ========================================
     # PARALLEL PLOTTING SECTION
@@ -302,6 +302,6 @@ def _safe_plot_wrapper(plot_func, args, kwargs):
     try:
         plot_func(*args, **kwargs)
         return True
-    except Exception as e:
+    except Exception:
         # Silently fail - error will be reported by caller
         return False

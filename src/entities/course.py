@@ -3,7 +3,7 @@ Course entity model for the timetabling system.
 Represents a course with its attributes and requirements.
 """
 
-from typing import List, Set, Optional
+from typing import List, Set
 from dataclasses import dataclass
 
 

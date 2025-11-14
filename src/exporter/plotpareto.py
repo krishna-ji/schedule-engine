@@ -212,8 +212,8 @@ def plot_pareto_front(population, output_dir):
                     aspect="auto",
                 )
                 plt.colorbar(im, ax=ax3, label="Count")
-            except:
-                # Ultimate fallback: just scatter
+            except (ValueError, RuntimeError):
+                # Ultimate fallback: just scatter if heatmap fails
                 pass
 
             ax3.scatter(
@@ -235,7 +235,7 @@ def plot_pareto_front(population, output_dir):
                 linewidth=1.5,
                 zorder=5,
             )
-    except (ImportError, Exception) as e:
+    except (ImportError, Exception):
         # Fallback without scipy or on any other error
         ax3.scatter(
             hard_vals,

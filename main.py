@@ -6,7 +6,6 @@ Runs standard GA-based course scheduling workflow.
 
 import argparse
 from rich.console import Console
-from rich.panel import Panel
 from src.workflows import run_standard_workflow
 from src.config import init_config
 

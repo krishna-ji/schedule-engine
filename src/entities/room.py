@@ -3,7 +3,7 @@ Room entity model for the timetabling system.
 Represents a room with its capacity, type, and availability.
 """
 
-from typing import List, Set, Dict, Optional
+from typing import Set
 from dataclasses import dataclass
 
 

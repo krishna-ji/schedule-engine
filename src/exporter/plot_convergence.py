@@ -11,13 +11,11 @@ These plots provide holistic view of algorithm performance.
 """
 
 import os
-import csv
 import matplotlib.pyplot as plt
 import numpy as np
 from .thesis_style import (
     apply_thesis_style,
     get_color,
-    PALETTE,
     save_figure,
     create_thesis_figure,
     format_axis,
@@ -41,15 +39,15 @@ def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str):
 
     Saves:
         - plots/convergence_multi_metric.pdf: Combined metric plot
-        - CSVs/convergence_metrics.csv: All metrics data
+
+    Note:
+        CSV data available in data/metrics.csv (individual metric columns)
     """
     if not metrics_dict:
         return
 
     plot_dir = os.path.join(output_dir, "plots")
-    csv_dir = os.path.join(output_dir, "CSVs")
     os.makedirs(plot_dir, exist_ok=True)
-    os.makedirs(csv_dir, exist_ok=True)
 
     # Normalize all metrics to [0, 1] range
     normalized_metrics = {}
@@ -73,24 +71,6 @@ def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str):
 
     if not normalized_metrics:
         return
-
-    generations = list(range(max_length))
-
-    # Save CSV data
-    csv_path = os.path.join(csv_dir, "convergence_metrics.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.writer(f)
-        header = ["Generation"] + list(metrics_dict.keys())
-        writer.writerow(header)
-
-        for gen in range(max_length):
-            row = [gen]
-            for name in metrics_dict.keys():
-                if name in metrics_dict and gen < len(metrics_dict[name]):
-                    row.append(metrics_dict[name][gen])
-                else:
-                    row.append("")
-            writer.writerow(row)
 
     # Create plot
     fig, ax = create_thesis_figure(1, 1, figsize=(12, 7))

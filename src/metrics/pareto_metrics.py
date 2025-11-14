@@ -16,7 +16,7 @@ These metrics are essential for:
 - Ensuring diverse solution sets for decision makers
 """
 
-from typing import List, Tuple
+from typing import List
 from deap import tools
 import numpy as np
 

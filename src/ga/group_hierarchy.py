@@ -6,7 +6,7 @@ Identifies parent groups and their subgroups to enable proper scheduling:
 - Practical sessions for subgroups separately
 """
 
-from typing import Dict, List, Set
+from typing import Dict, List
 from src.entities.group import Group
 
 
