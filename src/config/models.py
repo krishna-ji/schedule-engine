@@ -103,6 +103,17 @@ class SelectiveRepairConfig(BaseModel):
     detection_strategy: Literal["fast", "full", "hybrid"] = "hybrid"
 
 
+class LNSConfig(BaseModel):
+    """LNS-CP Hybrid repair configuration"""
+
+    enabled: bool = False
+    trigger_interval: int = Field(default=50, ge=1, le=1000)
+    stagnation_threshold: int = Field(default=10, ge=1, le=100)
+    max_subproblem_size: int = Field(default=20, ge=1, le=100)
+    cp_time_limit: float = Field(default=10.0, ge=1.0, le=300.0)
+    apply_to_best_n: int = Field(default=1, ge=1, le=10)
+
+
 class RepairConfig(BaseModel):
     """Repair heuristics configuration (legacy + new IGLS)"""
 
@@ -428,6 +439,7 @@ class Config(BaseModel):
     ga: GAConfig = Field(default_factory=GAConfig)
     parallel: ParallelConfig = Field(default_factory=ParallelConfig)
     repair: RepairConfig = Field(default_factory=RepairConfig)
+    lns: LNSConfig = Field(default_factory=LNSConfig)
     hard_constraints: HardConstraintsConfig = Field(
         default_factory=HardConstraintsConfig
     )

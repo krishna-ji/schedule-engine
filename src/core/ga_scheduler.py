@@ -1426,6 +1426,81 @@ class GAScheduler:
         # END: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
         # ========================================================================
 
+        # ========================================================================
+        # LNS-CP HYBRID REPAIR SYSTEM
+        # ========================================================================
+        # Apply LNS-CP repair to best individuals when triggered
+        lns_config = get_config().lns
+        if lns_config.enabled:
+            from src.lns.lns_operator import should_trigger_lns_repair, lns_cp_repair
+
+            # Check if LNS should be triggered
+            should_trigger = should_trigger_lns_repair(
+                generation=gen,
+                trigger_interval=lns_config.trigger_interval,
+                stagnation_counter=self.stagnation_counter,
+                stagnation_threshold=lns_config.stagnation_threshold,
+            )
+
+            if should_trigger:
+                event_tracker.add("lns_cp_repair_triggered")
+                console.print(
+                    f"\n[bold blue][!info] LNS-CP repair triggered on gen {gen}[/bold blue]"
+                )
+
+                # Get best individuals
+                num_to_repair = min(lns_config.apply_to_best_n, len(self.population))
+                best_individuals = tools.selBest(self.population, num_to_repair)
+
+                # Apply LNS-CP repair to each
+                repaired_count = 0
+                for idx, individual in enumerate(best_individuals):
+                    console.print(
+                        f"[dim]   Repairing individual {idx+1}/{num_to_repair}...[/dim]"
+                    )
+
+                    repaired = lns_cp_repair(
+                        individual=individual,
+                        courses=self.context.courses,
+                        instructors=self.context.instructors,
+                        groups=self.context.groups,
+                        rooms=self.context.rooms,
+                        max_subproblem_size=lns_config.max_subproblem_size,
+                        cp_time_limit=lns_config.cp_time_limit,
+                    )
+
+                    # If repair was successful (returned different individual), update
+                    if repaired is not individual:
+                        # Replace in population
+                        pop_idx = self.population.index(individual)
+                        self.population[pop_idx] = repaired
+                        repaired_count += 1
+                        # Invalidate fitness
+                        del repaired.fitness.values
+
+                # Re-evaluate repaired individuals
+                if repaired_count > 0:
+                    invalid = [ind for ind in self.population if not ind.fitness.valid]
+                    fitness_values = list(
+                        self.toolbox.map(self.toolbox.evaluate, invalid)
+                    )
+                    for ind, fit in zip(invalid, fitness_values):
+                        ind.fitness.values = fit
+
+                    event_tracker.add("lns_cp_repair_applied")
+                    console.print(
+                        f"[bold green]   ✓ LNS-CP repair complete: "
+                        f"{repaired_count}/{num_to_repair} individuals repaired[/bold green]"
+                    )
+                else:
+                    console.print(
+                        "[yellow]   ⚠ LNS-CP repair: no improvements found[/yellow]"
+                    )
+
+        # ========================================================================
+        # END: LNS-CP HYBRID REPAIR SYSTEM
+        # ========================================================================
+
         # Store generation repair stats
         self.metrics.repair_stats.append(generation_repair_stats)
 

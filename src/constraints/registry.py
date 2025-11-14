@@ -426,3 +426,9 @@ def get_registry_stats() -> Dict[str, Any]:
         "hard_constraint_names": list(_HARD_CONSTRAINTS.keys()),
         "soft_constraint_names": list(_SOFT_CONSTRAINTS.keys()),
     }
+
+
+# Import constraint modules to trigger decorator registration
+# This must happen AFTER decorator definitions so decorators can execute
+# and populate _HARD_CONSTRAINTS and _SOFT_CONSTRAINTS when modules are imported
+from src.constraints import hard, soft  # noqa: E402, F401

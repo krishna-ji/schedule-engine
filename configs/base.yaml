@@ -153,6 +153,15 @@ repair:
     apply_after_crossover: true
     detection_strategy: hybrid
 
+# LNS-CP Hybrid Configuration
+lns:
+  enabled: false
+  trigger_interval: 50
+  stagnation_threshold: 10
+  max_subproblem_size: 20
+  cp_time_limit: 10.0
+  apply_to_best_n: 1
+
 # Enhancements (all disabled)
 enhancements:
   master_enabled: false
