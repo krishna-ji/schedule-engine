@@ -4,6 +4,100 @@ This file tracks **enhancements** to the GA system (new features, performance im
 
 ---
 
+## [2025-11-15] Heuristic Toolbox Implementation (Phase 1.5)
+
+**Summary**: Implemented complete heuristic toolbox with decorator-based registry and killswitch architecture for RL integration preparation.
+
+**Files Created:**
+- `src/heuristics/__init__.py` - Module exports and heuristic imports
+- `src/heuristics/registry.py` - Decorator-based registry system with category management
+- `src/heuristics/construction.py` - Greedy construction heuristics (3 variants)
+- `src/heuristics/perturbation.py` - Solution perturbation operators (5 variants)
+- `src/heuristics/improvement.py` - Local search operators (3 variants)
+- `src/heuristics/diversity.py` - Diversity maintenance operators (4 variants)
+- `src/heuristics/meta.py` - Meta-heuristic strategies (4 variants)
+
+**Files Modified:**
+- `configs/base.yaml` - Added heuristics section with killswitches for all 19 operators
+- `src/config/models.py` - Added HeuristicsConfig model
+
+**Architecture:**
+- **Decorator-Based Registry**: Following constraints/repair patterns with @construction_heuristic, @perturbation_heuristic, etc.
+- **Five Categories**: construction, perturbation, improvement, diversity, meta
+- **Killswitch Control**: Each heuristic individually controllable via config
+- **Priority Ordering**: Configurable execution priority for each operator
+- **Metadata System**: Rich metadata (description, category, requirements, modification behavior)
+
+**Heuristics Implemented:**
+
+1. **Construction (3)**:
+   - `largest_degree_first`: Schedule most conflicting courses first (graph coloring)
+   - `most_constrained_first`: Schedule sessions with fewest options first (MRV)
+   - `earliest_deadline_first`: Prioritize courses by session frequency
+
+2. **Perturbation (5)**:
+   - `random_swap`: Exchange time/room between sessions
+   - `temporal_shift`: Move sessions by delta quanta
+   - `room_shuffle`: Reassign rooms to compatible sessions
+   - `instructor_reassign`: Change to qualified alternatives
+   - `multi_perturbation`: Chain multiple perturbations
+
+3. **Improvement (3)**:
+   - `kempe_chain`: Graph coloring moves for conflict resolution
+   - `ejection_chain`: Cascading reassignments
+   - `variable_depth_search`: Multi-move lookahead optimization
+
+4. **Diversity (4)**:
+   - `distance_preserving_crossover`: Maintain phenotypic distance
+   - `crowding_mutation`: Favor less-explored regions
+   - `niching_selection`: Fitness sharing for diversity
+   - `adaptive_diversity_maintenance`: Dynamic diversity control
+
+5. **Meta (4)**:
+   - `variable_neighborhood_descent`: Systematic neighborhood exploration
+   - `iterated_local_search`: Perturbation + local search cycles
+   - `adaptive_large_neighborhood`: Dynamic destroy-repair
+   - `guided_local_search`: Penalty-based guidance
+
+**Configuration:**
+- All heuristics disabled by default except:
+  - Perturbation: random_swap, temporal_shift, room_shuffle, instructor_reassign (enabled)
+  - Improvement: kempe_chain, ejection_chain (enabled)
+- Each heuristic has configurable priority and parameters
+- Master killswitch per category in `heuristics` config section
+
+**RL Integration Readiness:**
+- Registry provides function access for RL agent action space
+- Metadata supports reward shaping (improvement count tracking)
+- Statistics template for RL training metrics
+- Can be used as expert demonstrations for imitation learning
+
+**Usage Examples:**
+```python
+# Import heuristics
+from src.heuristics import get_enabled_heuristics, get_heuristic_by_name
+
+# Get enabled heuristics by category
+perturbation_ops = get_enabled_heuristics(category="perturbation")
+
+# Apply specific heuristic
+heuristic = get_heuristic_by_name("temporal_shift")
+modifications = heuristic.function(individual, context, delta=3)
+
+# List all registered heuristics
+from src.heuristics import list_all_heuristics
+list_all_heuristics()  # Pretty table in terminal
+```
+
+**Testing**: All modules created with proper imports and type hints. Ready for integration testing.
+
+**Next Steps**: 
+- Integrate heuristics into GA scheduler for memetic algorithms
+- Create RL gym environment wrapping heuristics
+- Add heuristic selection tracking for RL training data
+
+---
+
 ## [2025-11-15] LNS Hybrid Repair System - Production Ready
 
 **Summary**: Implemented complete hybrid repair system combining heuristic and CP-SAT strategies with diagnostics, pre-feasibility checks, and conflict graph expansion.

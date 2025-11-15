@@ -200,3 +200,102 @@ enhancements:
     enabled: false
     max_combinations: 10
     fallback_to_single: true
+
+# Heuristic Toolbox (Phase 1.5)
+heuristics:
+  # Construction heuristics - build schedules greedily
+  construction:
+    largest_degree_first:
+      enabled: false # Disabled by default (use for specialized initialization)
+      priority: 1
+    most_constrained_first:
+      enabled: false
+      priority: 2
+    earliest_deadline_first:
+      enabled: false
+      priority: 3
+
+  # Perturbation heuristics - shake solutions to escape local optima
+  perturbation:
+    random_swap:
+      enabled: true
+      priority: 1
+      swap_type: time # Options: time, room, both
+      num_swaps: 1
+    temporal_shift:
+      enabled: true
+      priority: 2
+      delta: null # null = random, or specify fixed shift
+      probability: 0.3
+    room_shuffle:
+      enabled: true
+      priority: 3
+      probability: 0.2
+    instructor_reassign:
+      enabled: true
+      priority: 4
+      probability: 0.15
+      prefer_available: true
+    multi_perturbation:
+      enabled: false # Aggressive diversification (disabled by default)
+      priority: 5
+
+  # Improvement heuristics - local search for refinement
+  improvement:
+    kempe_chain:
+      enabled: true
+      priority: 1
+      max_iterations: 5
+    ejection_chain:
+      enabled: true
+      priority: 2
+      max_chain_length: 5
+      max_iterations: 3
+    variable_depth_search:
+      enabled: false # Computationally expensive (disabled by default)
+      priority: 3
+      max_depth: 3
+      max_iterations: 5
+
+  # Diversity heuristics - maintain population diversity
+  diversity:
+    distance_preserving_crossover:
+      enabled: false # Use for specialized crossover (disabled by default)
+      priority: 1
+      preserve_distance: 0.7
+    crowding_mutation:
+      enabled: false # Population-aware mutation (disabled by default)
+      priority: 2
+      intensity: 0.3
+    niching_selection:
+      enabled: false # Diversity-promoting selection (disabled by default)
+      priority: 3
+      niche_radius: 0.3
+      select_count: 10
+    adaptive_diversity_maintenance:
+      enabled: false # Advanced diversity control (disabled by default)
+      priority: 4
+      diversity_threshold: 0.2
+
+  # Meta-heuristics - high-level search strategies
+  meta:
+    variable_neighborhood_descent:
+      enabled: false # Can be used for memetic algorithms
+      priority: 1
+      max_neighborhoods: 3
+      max_iterations: 5
+    iterated_local_search:
+      enabled: false # Alternative to standard GA
+      priority: 2
+      num_iterations: 5
+      perturbation_strength: 0.3
+    adaptive_large_neighborhood:
+      enabled: false # ALNS for hybrid approach
+      priority: 3
+      num_iterations: 10
+      initial_destroy_rate: 0.3
+    guided_local_search:
+      enabled: false # Advanced penalty-based guidance
+      priority: 4
+      num_iterations: 10
+      penalty_factor: 0.1

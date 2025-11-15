@@ -483,6 +483,43 @@ class EnhancementConfig(BaseModel):
     )
 
 
+class HeuristicsConfig(BaseModel):
+    """
+    Heuristic Toolbox Configuration (Phase 1.5)
+
+    Five categories of heuristic operators:
+    - construction: Build schedules greedily from scratch
+    - perturbation: Shake solutions to escape local optima
+    - improvement: Local search moves for refinement
+    - diversity: Maintain population diversity
+    - meta: High-level search strategies
+
+    Each category contains multiple heuristics with individual killswitches.
+    Heuristics are integrated via decorator-based registry (like constraints).
+    """
+
+    construction: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Construction heuristics for greedy schedule building",
+    )
+    perturbation: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Perturbation heuristics for diversification",
+    )
+    improvement: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Improvement heuristics for local search",
+    )
+    diversity: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Diversity heuristics for population maintenance",
+    )
+    meta: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Meta-heuristics for high-level search strategies",
+    )
+
+
 class Config(BaseModel):
     """Master configuration for Schedule Engine"""
 
@@ -505,6 +542,7 @@ class Config(BaseModel):
     calendar: CalendarConfig = Field(default_factory=CalendarConfig)
     colors: ColorPaletteConfig = Field(default_factory=ColorPaletteConfig)
     enhancements: EnhancementConfig = Field(default_factory=EnhancementConfig)
+    heuristics: HeuristicsConfig = Field(default_factory=HeuristicsConfig)
 
     class Config:
         validate_assignment = True
