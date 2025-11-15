@@ -1,0 +1,119 @@
+"""
+PPO agent wrapper for Stable-Baselines3.
+
+Provides pre-configured PPO agent for heuristic selection.
+"""
+
+from typing import Optional, Dict, Any
+from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv
+import gymnasium as gym
+
+from src.config import get_config
+
+
+def create_ppo_agent(
+    env: gym.Env,
+    learning_rate: Optional[float] = None,
+    n_steps: Optional[int] = None,
+    batch_size: Optional[int] = None,
+    n_epochs: Optional[int] = None,
+    gamma: Optional[float] = None,
+    tensorboard_log: Optional[str] = None,
+    verbose: int = 1,
+    **kwargs,
+) -> PPO:
+    """
+    Create and configure PPO agent.
+
+    Args:
+        env: Gymnasium environment
+        learning_rate: Learning rate (overrides config)
+        n_steps: Steps per update (overrides config)
+        batch_size: Minibatch size (overrides config)
+        n_epochs: Optimization epochs per update (overrides config)
+        gamma: Discount factor (overrides config)
+        tensorboard_log: TensorBoard log directory
+        verbose: Verbosity level (0=none, 1=info, 2=debug)
+        **kwargs: Additional PPO arguments
+
+    Returns:
+        Configured PPO agent
+    """
+    config = get_config()
+    ppo_config = config.rl.agent.ppo
+
+    # Use config values if not provided
+    learning_rate = learning_rate or ppo_config.learning_rate
+    n_steps = n_steps or ppo_config.n_steps
+    batch_size = batch_size or ppo_config.batch_size
+    n_epochs = n_epochs or ppo_config.n_epochs
+    gamma = gamma or ppo_config.gamma
+
+    # Wrap environment in DummyVecEnv (required by SB3)
+    vec_env = DummyVecEnv([lambda: env])
+
+    # Create PPO agent
+    model = PPO(
+        policy="MlpPolicy",
+        env=vec_env,
+        learning_rate=learning_rate,
+        n_steps=n_steps,
+        batch_size=batch_size,
+        n_epochs=n_epochs,
+        gamma=gamma,
+        gae_lambda=ppo_config.gae_lambda,
+        clip_range=ppo_config.clip_range,
+        ent_coef=ppo_config.ent_coef,
+        vf_coef=ppo_config.vf_coef,
+        max_grad_norm=ppo_config.max_grad_norm,
+        tensorboard_log=tensorboard_log or config.rl.training.tensorboard_log,
+        verbose=verbose,
+        device=config.rl.agent.device,
+        **kwargs,
+    )
+
+    return model
+
+
+def load_ppo_agent(
+    model_path: str,
+    env: Optional[gym.Env] = None,
+    device: str = "auto",
+) -> PPO:
+    """
+    Load trained PPO agent from checkpoint.
+
+    Args:
+        model_path: Path to saved model (.zip)
+        env: Environment to use (optional)
+        device: Device to load model on
+
+    Returns:
+        Loaded PPO agent
+    """
+    if env is not None:
+        vec_env = DummyVecEnv([lambda: env])
+        model = PPO.load(model_path, env=vec_env, device=device)
+    else:
+        model = PPO.load(model_path, device=device)
+
+    return model
+
+
+def get_ppo_config() -> Dict[str, Any]:
+    """Get current PPO configuration from config."""
+    config = get_config()
+    return {
+        "learning_rate": config.rl.agent.ppo.learning_rate,
+        "n_steps": config.rl.agent.ppo.n_steps,
+        "batch_size": config.rl.agent.ppo.batch_size,
+        "n_epochs": config.rl.agent.ppo.n_epochs,
+        "gamma": config.rl.agent.ppo.gamma,
+        "gae_lambda": config.rl.agent.ppo.gae_lambda,
+        "clip_range": config.rl.agent.ppo.clip_range,
+        "ent_coef": config.rl.agent.ppo.ent_coef,
+        "vf_coef": config.rl.agent.ppo.vf_coef,
+        "max_grad_norm": config.rl.agent.ppo.max_grad_norm,
+        "device": config.rl.agent.device,
+    }

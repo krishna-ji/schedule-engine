@@ -299,3 +299,113 @@ heuristics:
       priority: 4
       num_iterations: 10
       penalty_factor: 0.1
+
+# RL Integration (Phase 2)
+rl:
+  # Master killswitch
+  enabled: false # Set to true to enable RL integration
+  
+  # Mode selection
+  mode: disabled # Options: disabled, training, inference, hybrid
+  
+  # Environment configuration
+  environment:
+    max_steps_per_episode: 100 # RL steps per episode
+    observation_history_size: 10 # Recent heuristic applications to track
+    render_mode: null # Options: null, "ansi", "human"
+  
+  # Reward function weights
+  reward:
+    fitness_weight: 1.0 # Weight for fitness improvement
+    diversity_weight: 0.1 # Weight for diversity bonus
+    time_weight: 0.01 # Weight for time penalty (discourage slow convergence)
+    normalize: true # Normalize rewards to [-1, 1]
+  
+  # Agent configuration
+  agent:
+    type: ppo # Options: ppo, dqn, random
+    model_path: models/rl_agents/best_model.zip # Path to trained model
+    device: auto # Options: auto, cpu, cuda
+    
+    # PPO-specific hyperparameters
+    ppo:
+      learning_rate: 0.0003
+      n_steps: 2048
+      batch_size: 64
+      n_epochs: 10
+      gamma: 0.99 # Discount factor
+      gae_lambda: 0.95
+      clip_range: 0.2
+      ent_coef: 0.01 # Entropy coefficient for exploration
+      vf_coef: 0.5 # Value function coefficient
+      max_grad_norm: 0.5
+    
+    # DQN-specific hyperparameters
+    dqn:
+      learning_rate: 0.0001
+      buffer_size: 100000
+      learning_starts: 1000
+      batch_size: 32
+      tau: 0.005
+      gamma: 0.99
+      exploration_fraction: 0.1
+      exploration_initial_eps: 1.0
+      exploration_final_eps: 0.05
+  
+  # Training configuration
+  training:
+    total_timesteps: 100000 # Total training steps
+    checkpoint_interval: 10000 # Save checkpoint every N steps
+    evaluation_interval: 5000 # Evaluate every N steps
+    tensorboard_log: logs/tensorboard # TensorBoard log directory
+    save_dir: models/rl_agents # Model checkpoint directory
+    verbose: 1 # Logging verbosity (0=none, 1=info, 2=debug)
+    
+    # Curriculum learning (optional)
+    curriculum:
+      enabled: false
+      stages:
+        - name: easy
+          num_courses: 10
+          max_generations: 50
+          total_timesteps: 30000
+        - name: medium
+          num_courses: 20
+          max_generations: 100
+          total_timesteps: 50000
+        - name: hard
+          num_courses: 40
+          max_generations: 200
+          total_timesteps: 100000
+  
+  # Inference configuration
+  inference:
+    batch_prediction: false # Batch multiple predictions
+    timeout_ms: 10 # Max inference time (milliseconds)
+    fallback_on_timeout: true
+    cache_predictions: false
+  
+  # Hybrid controller
+  hybrid:
+    mode: rl_primary # Options: rl_primary, rl_fallback, rl_assisted
+    fallback_strategy: random # Fallback when RL fails (random, greedy, round_robin)
+    rl_probability: 0.8 # Probability of using RL vs fallback (rl_assisted mode)
+    enable_action_masking: true # Mask invalid actions
+  
+  # Evaluation and metrics
+  evaluation:
+    baseline_strategies:
+      - random
+      - round_robin
+      - greedy
+      - fixed_priority
+    num_evaluation_episodes: 10
+    save_metrics: true
+    metrics_dir: output/rl_metrics
+  
+  # Logging
+  logging:
+    log_heuristic_usage: true
+    log_rewards: true
+    log_state_transitions: false # Verbose (disabled by default)
+    log_inference_time: true

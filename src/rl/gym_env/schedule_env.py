@@ -1,0 +1,305 @@
+"""
+Gymnasium environment for schedule optimization.
+
+Wraps the GA scheduler as an RL environment where the agent learns to select
+effective heuristics at each step.
+"""
+
+from typing import Any, Dict, List, Tuple, Optional
+import numpy as np
+from numpy.typing import NDArray
+import gymnasium as gym
+from gymnasium import spaces
+
+from src.core.types import Individual, SchedulingContext
+from src.rl.gym_env.state_encoder import StateEncoder
+from src.rl.gym_env.action_space import ActionMapper
+from src.rl.gym_env.reward_calculator import RewardCalculator
+
+
+class ScheduleEnv(gym.Env):
+    """
+    Gymnasium environment for schedule optimization.
+
+    Observation Space:
+        Box(25,) - normalized features [0, 1]:
+        - Fitness metrics (5): best, avg, worst, std, range
+        - Diversity metrics (3): population, genotype, fitness
+        - Progress metrics (4): generation, stagnation, convergence, improvement
+        - Violation metrics (3): hard, soft, std
+        - Heuristic history (10): recent heuristic applications
+
+    Action Space:
+        Discrete(20) - heuristic selection:
+        - 0: No-op
+        - 1-19: Heuristic operators
+
+    Reward:
+        Continuous [-1, 1] - fitness improvement + diversity - time penalty
+    """
+
+    metadata = {"render_modes": ["human", "ansi"]}
+
+    def __init__(
+        self,
+        initial_population: List[Individual],
+        context: SchedulingContext,
+        max_generations: int = 2000,
+        max_steps_per_episode: int = 100,
+        render_mode: Optional[str] = None,
+    ):
+        """
+        Initialize RL environment.
+
+        Args:
+            initial_population: Initial GA population
+            context: Scheduling context (courses, rooms, etc.)
+            max_generations: Maximum GA generations
+            max_steps_per_episode: Maximum RL steps per episode
+            render_mode: Rendering mode ("human", "ansi", None)
+        """
+        super().__init__()
+
+        self.context = context
+        self.max_generations = max_generations
+        self.max_steps_per_episode = max_steps_per_episode
+        self.render_mode = render_mode
+
+        # Initialize components
+        self.state_encoder = StateEncoder(
+            max_generations=max_generations, history_size=10
+        )
+        self.action_mapper = ActionMapper(use_config=True)
+        self.reward_calculator = RewardCalculator(
+            fitness_weight=1.0, diversity_weight=0.1, time_weight=0.01
+        )
+
+        # Define spaces
+        obs_dim = self.state_encoder.observation_dim
+        self.observation_space = spaces.Box(
+            low=0.0, high=1.0, shape=(obs_dim,), dtype=np.float32
+        )
+
+        n_actions = self.action_mapper.n_actions
+        self.action_space = spaces.Discrete(n_actions)
+
+        # Episode state
+        self.population: List[Individual] = initial_population.copy()
+        self.current_generation = 0
+        self.current_step = 0
+        self.generations_without_improvement = 0
+        self.best_fitness_ever = float("inf")
+        self.episode_heuristic_counts: Dict[int, int] = {}
+
+        # Render buffer
+        self.render_buffer: List[str] = []
+
+    def reset(
+        self,
+        seed: Optional[int] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
+        """
+        Reset environment to initial state.
+
+        Args:
+            seed: Random seed
+            options: Additional options
+
+        Returns:
+            (initial_observation, info)
+        """
+        super().reset(seed=seed)
+
+        # Reset episode counters
+        self.current_generation = 0
+        self.current_step = 0
+        self.generations_without_improvement = 0
+        self.best_fitness_ever = float("inf")
+        self.episode_heuristic_counts = {}
+        self.render_buffer = []
+
+        # Reset components
+        self.state_encoder.reset()
+        self.reward_calculator.reset()
+
+        # Re-initialize population (if provided in options)
+        if options and "initial_population" in options:
+            self.population = options["initial_population"].copy()
+
+        # Get initial observation
+        observation = self.state_encoder.encode(
+            self.population, self.current_generation, self.generations_without_improvement
+        )
+
+        info = self._get_info()
+
+        return observation, info
+
+    def step(
+        self, action: int
+    ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+        """
+        Execute one environment step.
+
+        Args:
+            action: Heuristic action to apply [0-19]
+
+        Returns:
+            (observation, reward, terminated, truncated, info)
+        """
+        # Validate action
+        if not self.action_mapper.is_valid_action(action):
+            # Invalid action - penalize and return
+            obs = self.state_encoder.encode(
+                self.population,
+                self.current_generation,
+                self.generations_without_improvement,
+            )
+            return obs, -0.1, False, False, {"error": "invalid_action"}
+
+        # Record action
+        self.episode_heuristic_counts[action] = (
+            self.episode_heuristic_counts.get(action, 0) + 1
+        )
+        self.state_encoder.record_heuristic_application(action)
+
+        # Apply action to best individual
+        best_individual = min(self.population, key=lambda ind: ind.fitness.values[0])
+        prev_individual = best_individual
+
+        modified_individual, success = self.action_mapper.apply_action(
+            action, best_individual, self.context
+        )
+
+        if success:
+            # Replace worst individual with modified
+            worst_idx = max(
+                range(len(self.population)),
+                key=lambda i: self.population[i].fitness.values[0],
+            )
+            self.population[worst_idx] = modified_individual
+
+        # Calculate population metrics
+        population_diversity = self.state_encoder._calculate_diversity(self.population)
+
+        # Calculate reward
+        reward, _ = self.reward_calculator.calculate_reward(
+            prev_individual, modified_individual, population_diversity, self.current_generation
+        )
+
+        # Update progress
+        current_best_fitness = self._get_best_fitness()
+        if current_best_fitness < self.best_fitness_ever:
+            self.best_fitness_ever = current_best_fitness
+            self.generations_without_improvement = 0
+        else:
+            self.generations_without_improvement += 1
+
+        self.current_generation += 1
+        self.current_step += 1
+
+        # Get new observation
+        observation = self.state_encoder.encode(
+            self.population,
+            self.current_generation,
+            self.generations_without_improvement,
+        )
+
+        # Check termination conditions
+        terminated = self._is_terminated()
+        truncated = self._is_truncated()
+
+        info = self._get_info()
+
+        return observation, reward, terminated, truncated, info
+
+    def _is_terminated(self) -> bool:
+        """Check if episode is terminated (goal reached)."""
+        # Terminate if perfect solution found (0 violations)
+        return self.best_fitness_ever == 0.0
+
+    def _is_truncated(self) -> bool:
+        """Check if episode is truncated (max steps reached)."""
+        return (
+            self.current_step >= self.max_steps_per_episode
+            or self.current_generation >= self.max_generations
+        )
+
+    def _get_best_fitness(self) -> float:
+        """Get best fitness in current population."""
+        if not self.population:
+            return float("inf")
+        best_ind = min(self.population, key=lambda ind: ind.fitness.values[0])
+        hard, soft = best_ind.fitness.values
+        return abs(hard) * 100 + abs(soft)
+
+    def _get_info(self) -> Dict[str, Any]:
+        """Get episode info dictionary."""
+        return {
+            "generation": self.current_generation,
+            "step": self.current_step,
+            "best_fitness": self._get_best_fitness(),
+            "generations_without_improvement": self.generations_without_improvement,
+            "heuristic_counts": self.episode_heuristic_counts.copy(),
+            "population_size": len(self.population),
+        }
+
+    def render(self) -> Optional[str]:
+        """Render environment state."""
+        if self.render_mode == "ansi":
+            return self._render_ansi()
+        elif self.render_mode == "human":
+            print(self._render_ansi())
+            return None
+        return None
+
+    def _render_ansi(self) -> str:
+        """Render state as ANSI string."""
+        lines = []
+        lines.append(f"=== Schedule Optimization Environment ===")
+        lines.append(f"Generation: {self.current_generation}/{self.max_generations}")
+        lines.append(f"Step: {self.current_step}/{self.max_steps_per_episode}")
+        lines.append(f"Best Fitness: {self._get_best_fitness():.2f}")
+        lines.append(
+            f"Stagnation: {self.generations_without_improvement} generations"
+        )
+        lines.append(f"\nHeuristic Usage:")
+        for action_id, count in sorted(self.episode_heuristic_counts.items()):
+            action_info = self.action_mapper.get_action_info(action_id)
+            if action_info:
+                lines.append(f"  [{action_id:2d}] {action_info.name:25s}: {count:3d}x")
+        return "\n".join(lines)
+
+    def close(self) -> None:
+        """Clean up environment resources."""
+        pass
+
+
+def create_schedule_env(
+    initial_population: List[Individual],
+    context: SchedulingContext,
+    max_generations: int = 2000,
+    max_steps_per_episode: int = 100,
+    render_mode: Optional[str] = None,
+) -> ScheduleEnv:
+    """
+    Factory function to create ScheduleEnv.
+
+    Args:
+        initial_population: Initial GA population
+        context: Scheduling context
+        max_generations: Maximum generations
+        max_steps_per_episode: Maximum RL steps
+        render_mode: Rendering mode
+
+    Returns:
+        Configured ScheduleEnv instance
+    """
+    return ScheduleEnv(
+        initial_population=initial_population,
+        context=context,
+        max_generations=max_generations,
+        max_steps_per_episode=max_steps_per_episode,
+        render_mode=render_mode,
+    )

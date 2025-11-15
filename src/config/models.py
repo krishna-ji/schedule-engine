@@ -520,6 +520,136 @@ class HeuristicsConfig(BaseModel):
     )
 
 
+class RLEnvironmentConfig(BaseModel):
+    """RL environment configuration"""
+
+    max_steps_per_episode: int = Field(default=100, ge=1, le=1000)
+    observation_history_size: int = Field(default=10, ge=1, le=50)
+    render_mode: Optional[Literal["ansi", "human"]] = None
+
+
+class RLRewardConfig(BaseModel):
+    """RL reward function configuration"""
+
+    fitness_weight: float = Field(default=1.0, ge=0.0)
+    diversity_weight: float = Field(default=0.1, ge=0.0)
+    time_weight: float = Field(default=0.01, ge=0.0)
+    normalize: bool = True
+
+
+class RLPPOConfig(BaseModel):
+    """PPO agent hyperparameters"""
+
+    learning_rate: float = Field(default=0.0003, gt=0.0)
+    n_steps: int = Field(default=2048, ge=1)
+    batch_size: int = Field(default=64, ge=1)
+    n_epochs: int = Field(default=10, ge=1)
+    gamma: float = Field(default=0.99, ge=0.0, le=1.0)
+    gae_lambda: float = Field(default=0.95, ge=0.0, le=1.0)
+    clip_range: float = Field(default=0.2, gt=0.0)
+    ent_coef: float = Field(default=0.01, ge=0.0)
+    vf_coef: float = Field(default=0.5, ge=0.0)
+    max_grad_norm: float = Field(default=0.5, gt=0.0)
+
+
+class RLDQNConfig(BaseModel):
+    """DQN agent hyperparameters"""
+
+    learning_rate: float = Field(default=0.0001, gt=0.0)
+    buffer_size: int = Field(default=100000, ge=1)
+    learning_starts: int = Field(default=1000, ge=1)
+    batch_size: int = Field(default=32, ge=1)
+    tau: float = Field(default=0.005, gt=0.0, le=1.0)
+    gamma: float = Field(default=0.99, ge=0.0, le=1.0)
+    exploration_fraction: float = Field(default=0.1, ge=0.0, le=1.0)
+    exploration_initial_eps: float = Field(default=1.0, ge=0.0, le=1.0)
+    exploration_final_eps: float = Field(default=0.05, ge=0.0, le=1.0)
+
+
+class RLAgentConfig(BaseModel):
+    """RL agent configuration"""
+
+    type: Literal["ppo", "dqn", "random"] = "ppo"
+    model_path: str = "models/rl_agents/best_model.zip"
+    device: Literal["auto", "cpu", "cuda"] = "auto"
+    ppo: RLPPOConfig = Field(default_factory=RLPPOConfig)
+    dqn: RLDQNConfig = Field(default_factory=RLDQNConfig)
+
+
+class RLCurriculumStage(BaseModel):
+    """Curriculum learning stage"""
+
+    name: str
+    num_courses: int = Field(ge=1)
+    max_generations: int = Field(ge=1)
+    total_timesteps: int = Field(ge=1)
+
+
+class RLTrainingConfig(BaseModel):
+    """RL training configuration"""
+
+    total_timesteps: int = Field(default=100000, ge=1)
+    checkpoint_interval: int = Field(default=10000, ge=1)
+    evaluation_interval: int = Field(default=5000, ge=1)
+    tensorboard_log: str = "logs/tensorboard"
+    save_dir: str = "models/rl_agents"
+    verbose: int = Field(default=1, ge=0, le=2)
+    curriculum: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RLInferenceConfig(BaseModel):
+    """RL inference configuration"""
+
+    batch_prediction: bool = False
+    timeout_ms: int = Field(default=10, ge=1, le=1000)
+    fallback_on_timeout: bool = True
+    cache_predictions: bool = False
+
+
+class RLHybridConfig(BaseModel):
+    """RL hybrid controller configuration"""
+
+    mode: Literal["rl_primary", "rl_fallback", "rl_assisted"] = "rl_primary"
+    fallback_strategy: Literal["random", "greedy", "round_robin"] = "random"
+    rl_probability: float = Field(default=0.8, ge=0.0, le=1.0)
+    enable_action_masking: bool = True
+
+
+class RLEvaluationConfig(BaseModel):
+    """RL evaluation configuration"""
+
+    baseline_strategies: List[str] = Field(
+        default_factory=lambda: ["random", "round_robin", "greedy", "fixed_priority"]
+    )
+    num_evaluation_episodes: int = Field(default=10, ge=1)
+    save_metrics: bool = True
+    metrics_dir: str = "output/rl_metrics"
+
+
+class RLLoggingConfig(BaseModel):
+    """RL logging configuration"""
+
+    log_heuristic_usage: bool = True
+    log_rewards: bool = True
+    log_state_transitions: bool = False
+    log_inference_time: bool = True
+
+
+class RLConfig(BaseModel):
+    """Reinforcement Learning integration configuration"""
+
+    enabled: bool = False
+    mode: Literal["disabled", "training", "inference", "hybrid"] = "disabled"
+    environment: RLEnvironmentConfig = Field(default_factory=RLEnvironmentConfig)
+    reward: RLRewardConfig = Field(default_factory=RLRewardConfig)
+    agent: RLAgentConfig = Field(default_factory=RLAgentConfig)
+    training: RLTrainingConfig = Field(default_factory=RLTrainingConfig)
+    inference: RLInferenceConfig = Field(default_factory=RLInferenceConfig)
+    hybrid: RLHybridConfig = Field(default_factory=RLHybridConfig)
+    evaluation: RLEvaluationConfig = Field(default_factory=RLEvaluationConfig)
+    logging: RLLoggingConfig = Field(default_factory=RLLoggingConfig)
+
+
 class Config(BaseModel):
     """Master configuration for Schedule Engine"""
 
@@ -543,6 +673,7 @@ class Config(BaseModel):
     colors: ColorPaletteConfig = Field(default_factory=ColorPaletteConfig)
     enhancements: EnhancementConfig = Field(default_factory=EnhancementConfig)
     heuristics: HeuristicsConfig = Field(default_factory=HeuristicsConfig)
+    rl: RLConfig = Field(default_factory=RLConfig)
 
     class Config:
         validate_assignment = True

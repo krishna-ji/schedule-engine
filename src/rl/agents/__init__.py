@@ -1,15 +1,14 @@
 """
-RL Agents for hyper-heuristic learning.
+RL agent implementations and wrappers.
 
-This module contains different agent implementations:
-- RandomAgent: Baseline (uniform random action selection)
-- QAgent: Table-based Q-Learning (discrete state space)
-- DQNAgent: Deep Q-Network (neural network, continuous state)
-
-TODO (Phase 2):
-- Implement RandomAgent (baseline)
-- Implement QAgent (optional)
-- Implement DQNAgent (Phase 3)
+Provides pre-configured Stable-Baselines3 agents:
+- PPO (Proximal Policy Optimization) - recommended
+- DQN (Deep Q-Network) - discrete actions
+- Random (baseline for comparison)
 """
 
-__all__ = []
+from src.rl.agents.ppo_agent import create_ppo_agent
+from src.rl.agents.dqn_agent import create_dqn_agent
+from src.rl.agents.random_agent import RandomAgent
+
+__all__ = ["create_ppo_agent", "create_dqn_agent", "RandomAgent"]
