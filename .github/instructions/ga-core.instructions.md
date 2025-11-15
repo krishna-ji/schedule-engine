@@ -14,6 +14,7 @@ Genetic algorithm implementation using DEAP. Core scheduling logic in `src/core/
 - Supports multiprocessing via worker pools
 - Tracks metrics (hard/soft violations, diversity per generation)
 - Methods: `setup_toolbox()`, `initialize_population()`, `evolve()`, `get_best_solution()`
+- Hosts RL integration hooks: `_init_rl()` (called once after population init) and `_apply_rl_operators()` (invoked post-selection each generation). Never bypass these when modifying the evolution loop; coordinate changes with `src/rl/` maintainers.
 
 ### Chromosome Structure
 - Individual = `list[SessionGene]`
