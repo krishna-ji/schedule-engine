@@ -592,9 +592,10 @@ class RLTrainingConfig(BaseModel):
     checkpoint_interval: int = Field(default=10000, ge=1)
     evaluation_interval: int = Field(default=5000, ge=1)
     tensorboard_log: str = "logs/tensorboard"
+    checkpoint_dir: str = "models/rl_agents/checkpoints"
     save_dir: str = "models/rl_agents"
     verbose: int = Field(default=1, ge=0, le=2)
-    curriculum: Dict[str, Any] = Field(default_factory=dict)
+    curriculum: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class RLInferenceConfig(BaseModel):

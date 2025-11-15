@@ -29,14 +29,21 @@ Usage:
     print(f"Shifted {modifications} sessions")
 """
 
-from typing import List, Dict, Tuple, Optional
+from typing import List, Optional
 import random
 from collections import defaultdict
 
 from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.heuristics.registry import perturbation_heuristic
+from src.heuristics.utils import (
+    estimate_session_student_count,
+    get_available_quanta,
+    get_course_for_gene,
+    get_course_room_requirement,
+    get_room_feature,
+    is_instructor_available,
+)
 
 
 # ============================================================================
@@ -85,28 +92,33 @@ def random_swap(
         gene1, gene2 = random.sample(individual, 2)
 
         if swap_type == "time" or swap_type == "both":
-            # Swap time slots
-            gene1.time_quantum, gene2.time_quantum = (
-                gene2.time_quantum,
-                gene1.time_quantum,
-            )
+            # Swap entire time blocks (quanta) between sessions
+            original_quanta_gene1 = gene1.quanta[:]
+            gene1.quanta = gene2.quanta[:]
+            gene2.quanta = original_quanta_gene1
             swaps_performed += 1
 
         if swap_type == "room" or swap_type == "both":
             # Only swap rooms if both courses compatible with both rooms
-            course1 = context.courses[gene1.course_id]
-            course2 = context.courses[gene2.course_id]
+            course1 = get_course_for_gene(context, gene1)
+            course2 = get_course_for_gene(context, gene2)
             room1 = context.rooms[gene1.room_id]
             room2 = context.rooms[gene2.room_id]
 
             # Check compatibility
+            required_type_1 = get_course_room_requirement(course1)
+            required_type_2 = get_course_room_requirement(course2)
+            room1_type = get_room_feature(room1)
+            room2_type = get_room_feature(room2)
+            students_course1 = estimate_session_student_count(gene1, context)
+            students_course2 = estimate_session_student_count(gene2, context)
             room1_ok_for_course2 = (
-                room1.room_type == course2.required_room_type
-                and room1.capacity >= course2.expected_students
+                room1_type == required_type_2
+                and room1.capacity >= students_course2
             )
             room2_ok_for_course1 = (
-                room2.room_type == course1.required_room_type
-                and room2.capacity >= course1.expected_students
+                room2_type == required_type_1
+                and room2.capacity >= students_course1
             )
 
             if room1_ok_for_course2 and room2_ok_for_course1:
@@ -154,7 +166,9 @@ def temporal_shift(
     Returns:
         Number of sessions shifted
     """
-    time_system = QuantumTimeSystem(context.config)
+    available_quanta = get_available_quanta(context)
+    if not available_quanta:
+        return 0
     shifts_performed = 0
 
     for gene in individual:
@@ -167,15 +181,12 @@ def temporal_shift(
         else:
             shift_delta = delta
 
-        # Calculate new time quantum
+        # Calculate new time quantum based on start of session
         new_time = gene.time_quantum + shift_delta
 
-        # Check bounds
-        course = context.courses[gene.course_id]
-        if new_time in time_system.available_quanta:
-            # Check if session fits
-            max_quantum = max(time_system.available_quanta)
-            if new_time + course.duration_quanta <= max_quantum:
+        max_quantum = available_quanta[-1]
+        if new_time in available_quanta:
+            if new_time + gene.duration_quanta <= max_quantum + 1:
                 gene.time_quantum = new_time
                 shifts_performed += 1
 
@@ -223,19 +234,21 @@ def room_shuffle(
     # Group rooms by type for efficient lookup
     rooms_by_type = defaultdict(list)
     for room_id, room in context.rooms.items():
-        rooms_by_type[room.room_type].append((room_id, room))
+        rooms_by_type[get_room_feature(room)].append((room_id, room))
 
     for gene in individual:
         if random.random() > probability:
             continue
 
-        course = context.courses[gene.course_id]
+        course = get_course_for_gene(context, gene)
 
         # Get compatible rooms
+        required_room = get_course_room_requirement(course)
+        student_count = estimate_session_student_count(gene, context)
         compatible_rooms = [
             room_id
-            for room_id, room in rooms_by_type[course.required_room_type]
-            if room.capacity >= course.expected_students
+            for room_id, room in rooms_by_type.get(required_room, [])
+            if room.capacity >= student_count
         ]
 
         if not compatible_rooms:
@@ -296,7 +309,7 @@ def instructor_reassign(
         if random.random() > probability:
             continue
 
-        course = context.courses[gene.course_id]
+        course = get_course_for_gene(context, gene)
 
         # Get qualified instructors
         qualified_instructors = list(course.qualified_instructor_ids)
@@ -308,12 +321,12 @@ def instructor_reassign(
         if prefer_available:
             available_instructors = []
             time_range = range(
-                gene.time_quantum, gene.time_quantum + course.duration_quanta
+                gene.time_quantum, gene.time_quantum + gene.duration_quanta
             )
 
             for instructor_id in qualified_instructors:
                 instructor = context.instructors.get(instructor_id)
-                if instructor and all(instructor.is_available(q) for q in time_range):
+                if instructor and is_instructor_available(instructor, time_range):
                     available_instructors.append(instructor_id)
 
             if available_instructors:

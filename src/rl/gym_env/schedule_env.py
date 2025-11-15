@@ -5,7 +5,9 @@ Wraps the GA scheduler as an RL environment where the agent learns to select
 effective heuristics at each step.
 """
 
-from typing import Any, Dict, List, Tuple, Optional
+import copy
+import logging
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 import gymnasium as gym
@@ -15,6 +17,9 @@ from src.core.types import Individual, SchedulingContext
 from src.rl.gym_env.state_encoder import StateEncoder
 from src.rl.gym_env.action_space import ActionMapper
 from src.rl.gym_env.reward_calculator import RewardCalculator
+
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleEnv(gym.Env):
@@ -93,6 +98,7 @@ class ScheduleEnv(gym.Env):
 
         # Render buffer
         self.render_buffer: List[str] = []
+        self._fitness_evaluator: Optional[Callable] = None
 
     def reset(
         self,
@@ -168,19 +174,33 @@ class ScheduleEnv(gym.Env):
 
         # Apply action to best individual
         best_individual = min(self.population, key=lambda ind: ind.fitness.values[0])
-        prev_individual = best_individual
+        prev_individual = self._clone_individual(best_individual)
+        working_individual = self._clone_individual(best_individual)
 
         modified_individual, success = self.action_mapper.apply_action(
-            action, best_individual, self.context
+            action, working_individual, self.context
+        )
+
+        candidate = (
+            modified_individual
+            if isinstance(modified_individual, list)
+            else working_individual
         )
 
         if success:
-            # Replace worst individual with modified
+            # Ensure mutated individual keeps a valid fitness tuple for downstream consumers
+            success = self._ensure_individual_fitness(candidate)
+
+        if success:
+            # Replace worst individual with modified copy
             worst_idx = max(
                 range(len(self.population)),
                 key=lambda i: self.population[i].fitness.values[0],
             )
-            self.population[worst_idx] = modified_individual
+            self.population[worst_idx] = self._clone_individual(candidate)
+            result_individual = candidate
+        else:
+            result_individual = prev_individual
 
         # Calculate population metrics
         population_diversity = self.state_encoder._calculate_diversity(self.population)
@@ -188,7 +208,7 @@ class ScheduleEnv(gym.Env):
         # Calculate reward
         reward, _ = self.reward_calculator.calculate_reward(
             prev_individual,
-            modified_individual,
+            result_individual,
             population_diversity,
             self.current_generation,
         )
@@ -277,6 +297,41 @@ class ScheduleEnv(gym.Env):
     def close(self) -> None:
         """Clean up environment resources."""
         pass
+
+    def _ensure_individual_fitness(self, individual: Individual) -> bool:
+        """Recompute fitness when heuristics invalidate it (RL requires dense rewards)."""
+
+        if not hasattr(individual, "fitness"):
+            return False
+
+        values = getattr(individual.fitness, "values", ())
+        if getattr(individual.fitness, "valid", False) and len(values) == 2:
+            return True
+
+        if self._fitness_evaluator is None:
+            from src.ga.evaluator.fitness import evaluate as evaluate_fitness
+
+            self._fitness_evaluator = evaluate_fitness
+
+        try:
+            fitness = self._fitness_evaluator(
+                individual,
+                courses=self.context.courses,
+                instructors=self.context.instructors,
+                groups=self.context.groups,
+                rooms=self.context.rooms,
+            )
+        except Exception as exc:  # pragma: no cover - defensive log path
+            logger.warning("Failed to evaluate heuristic candidate: %s", exc)
+            return False
+
+        individual.fitness.values = fitness
+        return True
+
+    def _clone_individual(self, individual: Individual) -> Individual:
+        """Return a deep copy so mutations don't alias population references."""
+
+        return copy.deepcopy(individual)
 
 
 def create_schedule_env(

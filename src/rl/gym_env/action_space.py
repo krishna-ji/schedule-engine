@@ -59,14 +59,16 @@ class ActionMapper:
 
         # Actions 1-19: Heuristics
         if self.use_config:
-            heuristics = get_enabled_heuristics()
+            heuristics = get_enabled_heuristics().values()
         else:
             from src.heuristics import get_all_heuristics
 
-            heuristics = get_all_heuristics()
+            heuristics = get_all_heuristics().values()
 
         # Sort by category then name for consistent ordering
-        heuristics_sorted = sorted(heuristics, key=lambda h: (h.category, h.name))
+        heuristics_sorted = sorted(
+            heuristics, key=lambda h: (h.category.value, h.name)
+        )
 
         for idx, h in enumerate(heuristics_sorted, start=1):
             self.actions.append(
@@ -75,7 +77,7 @@ class ActionMapper:
                     name=h.name,
                     category=h.category,
                     function=h.function,
-                    enabled=h.enabled,
+                    enabled=getattr(h, "enabled", True),
                 )
             )
 

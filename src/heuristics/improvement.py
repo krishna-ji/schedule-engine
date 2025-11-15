@@ -35,8 +35,14 @@ import copy
 
 from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.heuristics.registry import improvement_heuristic
+from src.heuristics.utils import (
+    estimate_session_student_count,
+    get_available_quanta,
+    get_course_for_gene,
+    get_course_room_requirement,
+    get_room_feature,
+)
 
 
 # ============================================================================
@@ -296,12 +302,9 @@ def _find_conflict_pairs(
 
     for i, gene1 in enumerate(individual):
         for gene2 in individual[i + 1 :]:
-            # Check if times overlap
-            course1 = context.courses[gene1.course_id]
-            course2 = context.courses[gene2.course_id]
-
-            time1_end = gene1.time_quantum + course1.duration_quanta
-            time2_end = gene2.time_quantum + course2.duration_quanta
+            # Check if times overlap based on actual session duration
+            time1_end = gene1.time_quantum + gene1.duration_quanta
+            time2_end = gene2.time_quantum + gene2.duration_quanta
 
             times_overlap = not (
                 time1_end <= gene2.time_quantum or time2_end <= gene1.time_quantum
@@ -365,19 +368,21 @@ def _build_ejection_chain(
     Returns list of (gene, new_time) tuples.
     """
     chain = []
-    time_system = QuantumTimeSystem(context.config)
+    available_quanta = get_available_quanta(context)
+    if not available_quanta:
+        return chain
 
     current_gene = start_gene
     used_times = {gene.time_quantum for gene in individual}
+    max_quantum = available_quanta[-1]
 
     for _ in range(max_length):
         # Find alternative time for current gene
-        course = context.courses[current_gene.course_id]
         available_times = [
             t
-            for t in time_system.available_quanta
+            for t in available_quanta
             if t not in used_times
-            and t + course.duration_quanta <= max(time_system.available_quanta)
+            and t + current_gene.duration_quanta <= max_quantum + 1
         ]
 
         if not available_times:
@@ -392,7 +397,6 @@ def _build_ejection_chain(
             if gene == current_gene:
                 continue
 
-            course_g = context.courses[gene.course_id]
             if gene.time_quantum == new_time:
                 # Check for conflicts
                 if (
@@ -450,24 +454,28 @@ def _generate_move_sequence(
         gene = random.choice(individual)
 
         if move_type == "time_shift":
-            time_system = QuantumTimeSystem(context.config)
-            new_time = random.choice(time_system.available_quanta)
+            available_quanta = get_available_quanta(context)
+            if not available_quanta:
+                continue
+            new_time = random.choice(available_quanta)
             sequence.append(("time_shift", {"gene": gene, "new_time": new_time}))
 
         elif move_type == "room_change":
-            course = context.courses[gene.course_id]
+            course = get_course_for_gene(context, gene)
+            required_room = get_course_room_requirement(course)
+            student_count = estimate_session_student_count(gene, context)
             compatible_rooms = [
                 r_id
                 for r_id, room in context.rooms.items()
-                if room.room_type == course.required_room_type
-                and room.capacity >= course.expected_students
+                if get_room_feature(room) == required_room
+                and room.capacity >= student_count
             ]
             if compatible_rooms:
                 new_room = random.choice(compatible_rooms)
                 sequence.append(("room_change", {"gene": gene, "new_room": new_room}))
 
         elif move_type == "instructor_change":
-            course = context.courses[gene.course_id]
+            course = get_course_for_gene(context, gene)
             if len(course.qualified_instructor_ids) > 1:
                 new_instructor = random.choice(
                     [
@@ -521,10 +529,7 @@ def _calculate_fitness(
     time_assignments = defaultdict(list)  # {entity_id: [time_ranges]}
 
     for gene in individual:
-        course = context.courses[gene.course_id]
-        time_range = range(
-            gene.time_quantum, gene.time_quantum + course.duration_quanta
-        )
+        time_range = range(gene.time_quantum, gene.time_quantum + gene.duration_quanta)
 
         # Check group conflicts
         for group_id in gene.group_ids:

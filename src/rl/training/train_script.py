@@ -1,34 +1,38 @@
-"""
-Training entry point script.
+"""Training entry point script for RL hyper-heuristic agents."""
 
-Trains RL agent to learn heuristic selection for GA scheduler.
-
-Usage:
-    python src/rl/training/train_script.py --timesteps 50000 --agent ppo
-    python src/rl/training/train_script.py --timesteps 100000 --agent dqn --save-path models/my_model
-    python src/rl/training/train_script.py --help
-"""
+from __future__ import annotations
 
 import argparse
+import random
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import numpy as np
 
 # Add project root to path
-project_root = Path(__file__).parent.parent.parent.parent
+project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
-from src.encoder import load_scheduling_data
-from src.rl.gym_env import ScheduleEnv, StateEncoder, ActionMapper, RewardCalculator
+from src.rl.gym_env import ScheduleEnv
 from src.rl.training import RLTrainer
-from src.config import get_config
+from src.rl.training.config_loader import (
+    DEFAULT_PROFILE,
+    list_training_profiles,
+    load_training_config,
+)
 from src.utils.logging_config import get_logger
+from src.workflows.standard_run import load_input_data
 
 logger = get_logger(__name__)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
+
+    profiles = sorted({*list_training_profiles(), DEFAULT_PROFILE})
+
     parser = argparse.ArgumentParser(
         description="Train RL agent for heuristic selection",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -37,7 +41,7 @@ def parse_args():
     parser.add_argument(
         "--timesteps",
         type=int,
-        default=50000,
+        default=None,
         help="Number of training timesteps",
     )
 
@@ -46,7 +50,7 @@ def parse_args():
         "--agent-type",
         dest="agent_type",
         type=str,
-        default="ppo",
+        default=None,
         choices=["ppo", "dqn"],
         help="RL agent type",
     )
@@ -68,35 +72,35 @@ def parse_args():
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data",
+        default=None,
         help="Data directory with JSON files",
     )
 
     parser.add_argument(
         "--max-generations",
         type=int,
-        default=100,
+        default=None,
         help="Max generations per episode",
     )
 
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=50,
+        default=None,
         help="Max steps per episode",
     )
 
     parser.add_argument(
         "--population-size",
         type=int,
-        default=50,
+        default=None,
         help="GA population size",
     )
 
     parser.add_argument(
         "--eval-episodes",
         type=int,
-        default=5,
+        default=None,
         help="Number of evaluation episodes after training",
     )
 
@@ -109,84 +113,182 @@ def parse_args():
     parser.add_argument(
         "--verbose",
         type=int,
-        default=1,
+        default=None,
         choices=[0, 1, 2],
         help="Verbosity level (0=none, 1=info, 2=debug)",
+    )
+
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for environment and agent",
+    )
+
+    parser.add_argument(
+        "--profile",
+        type=str,
+        default=DEFAULT_PROFILE,
+        choices=profiles,
+        help="Training profile defined in config-train/",
+    )
+
+    parser.add_argument(
+        "--config",
+        "--config-path",
+        dest="config",
+        type=str,
+        default=None,
+        help="Optional custom training config to merge (YAML)",
+    )
+
+    parser.add_argument(
+        "--list-profiles",
+        action="store_true",
+        help="List available training profiles and exit",
     )
 
     return parser.parse_args()
 
 
+def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) -> None:
+    """Fill argparse values using profile defaults when not provided."""
+
+    def pick(field: str, default: Optional[Any] = None):
+        value = getattr(args, field, None)
+        if value is not None:
+            return value
+        return profile.get(field, default)
+
+    args.agent_type = pick("agent_type", "ppo")
+    args.timesteps = pick("timesteps")
+    args.max_generations = pick("max_generations")
+    args.max_steps = pick("max_steps")
+    args.population_size = pick("population_size")
+    args.eval_episodes = pick("eval_episodes", 0)
+    args.data_dir = pick("data_dir", "data")
+    args.save_dir = pick("save_dir", profile.get("save_dir", "models/rl_agents"))
+    args.tensorboard_log = pick(
+        "tensorboard_log",
+        profile.get("tensorboard_log", "logs/tensorboard/train"),
+    )
+    args.verbose = pick("verbose", 1)
+    args.save_prefix = profile.get("save_prefix", "rl_agent")
+    args.seed = pick("seed")
+    args.no_eval = getattr(args, "no_eval", False) or not profile.get("enable_eval", True)
+    args.loaded_profile = profile.get("profile", args.profile)
+
+
 def create_environment(args, context):
-    """
-    Create RL environment for training.
+    """Create RL environment for training."""
 
-    Args:
-        args: Command-line arguments
-        context: Scheduling context
-
-    Returns:
-        ScheduleEnv instance
-    """
     logger.info("Creating RL environment...")
 
-    # Create components
-    state_encoder = StateEncoder()
-    action_mapper = ActionMapper()
-    reward_calculator = RewardCalculator()
+    from src.ga.evaluator.fitness import evaluate as evaluate_fitness
+    from src.ga.population import generate_course_group_aware_population
 
-    # Create environment
-    env = ScheduleEnv(
+    initial_population = generate_course_group_aware_population(
+        n=args.population_size,
         context=context,
-        state_encoder=state_encoder,
-        action_mapper=action_mapper,
-        reward_calculator=reward_calculator,
+        parallel=False,
+    )
+
+    for individual in initial_population:
+        fitness = evaluate_fitness(
+            individual,
+            courses=context.courses,
+            instructors=context.instructors,
+            groups=context.groups,
+            rooms=context.rooms,
+        )
+        individual.fitness.values = fitness
+
+    logger.info("Initialized population with %d individuals", len(initial_population))
+
+    env = ScheduleEnv(
+        initial_population=initial_population,
+        context=context,
         max_generations=args.max_generations,
         max_steps_per_episode=args.max_steps,
-        population_size=args.population_size,
     )
 
+    if args.seed is not None:
+        env.reset(seed=args.seed)
+
     logger.info(
-        f"Environment created: max_gen={args.max_generations}, max_steps={args.max_steps}"
+        "Environment created: max_gen=%s, max_steps=%s",
+        args.max_generations,
+        args.max_steps,
     )
-    logger.info(f"Observation space: {env.observation_space}")
-    logger.info(f"Action space: {env.action_space}")
+    logger.info("Observation space: %s", env.observation_space)
+    logger.info("Action space: %s", env.action_space)
 
     return env
 
 
-def main():
+def main() -> None:
     """Main training function."""
+
     args = parse_args()
+
+    if args.list_profiles:
+        available = sorted(list_training_profiles())
+        if available:
+            logger.info("Available training profiles:")
+            for name in available:
+                logger.info("  - %s", name)
+        else:
+            logger.warning("No training profiles found. Add YAML files to config-train/.")
+        return
+
+    try:
+        profile_config = load_training_config(
+            profile=args.profile,
+            custom_path=args.config,
+        )
+    except FileNotFoundError as exc:
+        logger.error("Training config not found: %s", exc)
+        sys.exit(2)
+
+    apply_profile_defaults(args, profile_config)
+
+    if args.seed is not None:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
 
     logger.info("=" * 60)
     logger.info("RL AGENT TRAINING")
     logger.info("=" * 60)
+    logger.info(
+        "Training profile: %s (timesteps=%s)",
+        args.loaded_profile,
+        f"{args.timesteps:,}" if args.timesteps else "n/a",
+    )
+    if args.config:
+        logger.info("Custom config overrides: %s", args.config)
     logger.info(f"Agent type: {args.agent_type.upper()}")
-    logger.info(f"Training timesteps: {args.timesteps:,}")
     logger.info(f"Data directory: {args.data_dir}")
+    if args.seed is not None:
+        logger.info("Seed: %s", args.seed)
 
     try:
-        # Load scheduling data
         logger.info("\n" + "=" * 60)
         logger.info("STEP 1: Load Scheduling Data")
         logger.info("=" * 60)
 
-        context = load_scheduling_data(args.data_dir)
+        _, context = load_input_data(args.data_dir)
 
-        logger.info(f"Loaded {len(context.courses)} courses")
-        logger.info(f"Loaded {len(context.instructors)} instructors")
-        logger.info(f"Loaded {len(context.rooms)} rooms")
-        logger.info(f"Loaded {len(context.groups)} groups")
+        logger.info("Loaded %d courses", len(context.courses))
+        logger.info("Loaded %d instructors", len(context.instructors))
+        logger.info("Loaded %d rooms", len(context.rooms))
+        logger.info("Loaded %d groups", len(context.groups))
 
-        # Create environment
         logger.info("\n" + "=" * 60)
         logger.info("STEP 2: Create RL Environment")
         logger.info("=" * 60)
 
         env = create_environment(args, context)
 
-        # Create trainer
         logger.info("\n" + "=" * 60)
         logger.info("STEP 3: Initialize Trainer")
         logger.info("=" * 60)
@@ -195,37 +297,35 @@ def main():
             env=env,
             agent_type=args.agent_type,
             save_dir=args.save_dir,
+            tensorboard_log=args.tensorboard_log,
             verbose=args.verbose,
+            seed=args.seed,
         )
 
-        # Train agent
         logger.info("\n" + "=" * 60)
         logger.info("STEP 4: Train Agent")
         logger.info("=" * 60)
 
         trainer.train(
             total_timesteps=args.timesteps,
-            progress_bar=True,
+            progress_bar=False,
         )
 
-        # Evaluate agent
         if not args.no_eval and args.eval_episodes > 0:
             logger.info("\n" + "=" * 60)
             logger.info("STEP 5: Evaluate Agent")
             logger.info("=" * 60)
 
             metrics = trainer.evaluate(n_eval_episodes=args.eval_episodes)
-
             logger.info("\nEvaluation Results:")
+            logger.info("  Mean Reward: %.2f ± %.2f", metrics["mean_reward"], metrics["std_reward"])
             logger.info(
-                f"  Mean Reward: {metrics['mean_reward']:.2f} ± {metrics['std_reward']:.2f}"
+                "  Min/Max Reward: %.2f / %.2f",
+                metrics["min_reward"],
+                metrics["max_reward"],
             )
-            logger.info(
-                f"  Min/Max Reward: {metrics['min_reward']:.2f} / {metrics['max_reward']:.2f}"
-            )
-            logger.info(f"  Mean Episode Length: {metrics['mean_length']:.1f}")
+            logger.info("  Mean Episode Length: %.1f", metrics["mean_length"])
 
-        # Save model
         logger.info("\n" + "=" * 60)
         logger.info("STEP 6: Save Model")
         logger.info("=" * 60)
@@ -234,7 +334,7 @@ def main():
             save_path = args.save_path
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            save_path = f"{args.agent_type}_scheduler_{args.timesteps}_{timestamp}"
+            save_path = f"{args.save_prefix}_{args.agent_type}_{args.timesteps}_{timestamp}"
 
         model_path = trainer.save_model(
             filename=save_path,
@@ -247,33 +347,32 @@ def main():
             },
         )
 
-        logger.info(f"\n✓ Model saved to: {model_path}")
+        logger.info("\n✓ Model saved to: %s", model_path)
 
-        # Print training statistics
         stats = trainer.get_training_statistics()
         logger.info("\n" + "=" * 60)
         logger.info("TRAINING STATISTICS")
         logger.info("=" * 60)
-        logger.info(f"Total timesteps: {stats['total_timesteps']:,}")
+        logger.info("Total timesteps: %s", f"{stats['total_timesteps']:,}")
         logger.info(
-            f"Total training time: {stats['total_training_time']:.1f}s ({stats['total_training_time']/60:.1f} min)"
+            "Total training time: %.1fs (%.1f min)",
+            stats["total_training_time"],
+            stats["total_training_time"] / 60,
         )
-        logger.info(f"Training runs: {stats['num_training_runs']}")
-
+        logger.info("Training runs: %s", stats["num_training_runs"])
         logger.info("\n" + "=" * 60)
         logger.info("TRAINING COMPLETE!")
         logger.info("=" * 60)
 
-        # View TensorBoard logs
-        logger.info(f"\nTo view training logs in TensorBoard:")
-        logger.info(f"  tensorboard --logdir {trainer.tensorboard_log}")
-        logger.info(f"  Then open: http://localhost:6006")
+        logger.info("\nTo view training logs in TensorBoard:")
+        logger.info("  tensorboard --logdir %s", trainer.tensorboard_log)
+        logger.info("  Then open: http://localhost:6006")
 
     except KeyboardInterrupt:
         logger.warning("\nTraining interrupted by user")
         sys.exit(1)
-    except Exception as e:
-        logger.error(f"\nTraining failed: {e}", exc_info=True)
+    except Exception as exc:
+        logger.error("\nTraining failed: %s", exc, exc_info=True)
         sys.exit(1)
 
 

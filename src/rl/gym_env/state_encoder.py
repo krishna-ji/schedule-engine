@@ -210,7 +210,8 @@ class StateEncoder:
         unique_assignments = set()
         for ind in population:
             for gene in ind:
-                unique_assignments.add((gene.timeslot_index, gene.room_id))
+                quanta = tuple(sorted(getattr(gene, "quanta", [])))
+                unique_assignments.add((quanta, gene.room_id))
 
         # Normalize by population size * chromosome length
         max_diversity = len(population) * len(population[0])

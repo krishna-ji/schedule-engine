@@ -1,0 +1,8 @@
+# Medium profile for iterative experimentation (≈30 minutes)
+profile: med
+timesteps: 100000
+max_generations: 120
+max_steps: 60
+population_size: 50
+eval_episodes: 5
+save_prefix: rl_agent_med

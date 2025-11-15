@@ -1,0 +1,8 @@
+# Smoke profile for quick validation (≈5 minutes)
+profile: test
+timesteps: 500
+max_generations: 40
+max_steps: 20
+population_size: 16
+eval_episodes: 1
+save_prefix: rl_agent_test

@@ -1,0 +1,18 @@
+# Base RL training profile (shared defaults)
+# Values here can be overridden by env-specific files in this directory.
+profile: base
+agent_type: ppo
+
+data_dir: data
+save_dir: models/rl_agents
+tensorboard_log: logs/tensorboard/train
+
+# Training defaults (overridden by profiles)
+timesteps: 50000
+max_generations: 120
+max_steps: 60
+population_size: 50
+eval_episodes: 5
+enable_eval: true
+save_prefix: rl_agent
+seed: 42

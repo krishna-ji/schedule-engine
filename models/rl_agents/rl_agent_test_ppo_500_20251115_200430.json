@@ -1,0 +1,17 @@
+{
+  "timesteps": 500,
+  "agent_type": "ppo",
+  "max_generations": 40,
+  "max_steps": 20,
+  "population_size": 16,
+  "total_timesteps_trained": 500,
+  "save_time": "2025-11-15T20:04:30.926812",
+  "training_history": [
+    {
+      "timesteps": 500,
+      "elapsed_seconds": 142.33029580116272,
+      "tb_log_name": "ppo_training_20251115_200208",
+      "timestamp": "2025-11-15T20:04:30.901317"
+    }
+  ]
+}

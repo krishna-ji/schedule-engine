@@ -7,6 +7,10 @@
 
 Successfully implemented comprehensive RL integration for schedule-engine hyper-heuristic system, completing Phase 2.2 (Training Infrastructure), Phase 2.3 (Deployment), and Phase 2.4 (Integration).
 
+## Recent Updates
+
+- **2025-11-15**: Hardened `ScheduleEnv` so RL actions operate on cloned individuals, recompute fitness after heuristic mutations, and gracefully skip invalid candidates instead of crashing training runs (`src/rl/gym_env/schedule_env.py`).
+
 ## Completed Tasks (12/12)
 
 ### Phase 2.2: Training Infrastructure ✅
@@ -199,6 +203,12 @@ Successfully implemented comprehensive RL integration for schedule-engine hyper-
 ### 5. GA Integration
 - ✅ Seamless integration into existing GA scheduler
 - ✅ Config-driven enable/disable
+
+### 2025-11-15 – Training CLI Profiles
+- Added dedicated `config-train/` stack with `base/test/med/prod` presets plus a deep-merge loader for profile overrides.
+- `src/rl/training/train_script.py` now accepts `--profile`, `--config`, and `--list-profiles`, applies YAML defaults automatically, and exposes `--seed` for deterministic runs.
+- Training environments seed Python/NumPy/Gym + SB3 via the new profile field; TensorBoard/logging paths moved to YAML.
+- `uv run train -- --profile <name>` is the canonical flow for RL training, matching the new docs and onboarding guidance.
 - ✅ Graceful fallback if RL unavailable
 - ✅ RL operators applied after selection, before metrics
 
@@ -208,11 +218,17 @@ Successfully implemented comprehensive RL integration for schedule-engine hyper-
 
 ### Training
 ```bash
-# Train with curriculum (recommended)
-python src/rl/training/train_script.py --timesteps 100000 --agent ppo
+# Smoke profile (≈5 min)
+uv run train --profile test
 
-# Smoke test (quick validation)
-python src/rl/training/train_script.py --timesteps 10000 --agent ppo --save-path test_model
+# Medium run (≈30 min)
+uv run train --profile med
+
+# Production curriculum (≈60+ min)
+uv run train --profile prod
+
+# Override defaults if needed
+uv run train --profile prod --timesteps 400000 --save-path models/rl_agents/custom.zip
 ```
 
 ### Validation Set Generation

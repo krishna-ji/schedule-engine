@@ -1,0 +1,8 @@
+# Production-quality profile for long curriculum runs (1h+)
+profile: prod
+timesteps: 300000
+max_generations: 200
+max_steps: 80
+population_size: 80
+eval_episodes: 10
+save_prefix: rl_agent_prod

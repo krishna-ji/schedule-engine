@@ -151,7 +151,7 @@ def run_standard_workflow(
         transient=True,
     ) as progress:
         task = progress.add_task("reading json files...", total=5)
-        qts, context = load_input_data(data_dir)
+        qts, context = load_input_data(data_dir, config=config)
         progress.update(task, completed=5)
 
     console.print(f"  [dim]courses:[/dim] {len(context.courses)}")
@@ -491,7 +491,10 @@ def run_standard_workflow(
     }
 
 
-def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext]:
+def load_input_data(
+    data_dir: str,
+    config: Optional[object] = None,
+) -> tuple[QuantumTimeSystem, SchedulingContext]:
     """
     Load and link all input entities.
 
@@ -584,6 +587,7 @@ def load_input_data(data_dir: str) -> tuple[QuantumTimeSystem, SchedulingContext
         instructors=instructors,
         rooms=rooms,
         available_quanta=qts.get_all_operating_quanta(),
+        config=config,
     )
 
     return qts, context

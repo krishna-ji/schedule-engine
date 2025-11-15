@@ -14,9 +14,9 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, asdict
 import yaml
 
-from src.utils.logging_config import setup_logger
+from src.utils.logging_config import get_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
