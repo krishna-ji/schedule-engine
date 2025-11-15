@@ -1,0 +1,51 @@
+{
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true
+    },
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": "docstring.heading.placeholder",
+                "settings": {
+                    "fontStyle": "bold underline",
+                    "foreground": "#569cd6"
+                }
+            }
+        ]
+    },
+    "python.formatting.provider": "black",
+    "python.terminal.activateEnvironment": true,
+    "terminal.integrated.defaultProfile.windows": "Windows PowerShell",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "files.exclude": {
+        "**/.ipynb_checkpoints": true,
+        "__pycache__": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/*.pyo": true,
+        "**/*.pyd": true,
+        "**/*.db": true,
+        "**/*.sqlite3": true,
+        ".pytest_cache/": true,
+        "logs/": true,
+        ".data": true,
+        // "**/*.md": true,
+        // "docs/": true,
+        // "data/bin/": true,
+    },
+    "python.analysis.extraPaths": [
+        "./src"
+    ],
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "file": ".github/copilot-instructions.md"
+        },
+        {
+            "text": "Commit messages should use hybrid academic–software format. Include experiment context, dataset version, or model scope when relevant."
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-.vscode/
+# .vscode/
 __pycache__/
 *.log
 *.logs
@@ -7,14 +7,14 @@ __pycache__/
 output/
 TEMPFILESWORKING/
 logs/
-test*.py
+# test*.py
 product-design/
 prompts/config/ga_params_optimized.py
 docs/nextphase/
 docs/backend-suggestion/prompts/prompt.txt
 prompts/thesis_generator.md
 random.txt
-test/
+# test/
 
 # Python virtual environment
 .venv/
@@ -29,6 +29,6 @@ uv.lock
 # Ruff cache
 .ruff_cache/
 
-report/
+# report/
 
 # suggest/
