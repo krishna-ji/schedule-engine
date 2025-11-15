@@ -48,8 +48,8 @@ def main():
     parser.add_argument(
         "--env",
         type=str,
-        choices=["test", "notprod", "prod"],
-        help="Environment: test (smoke test), notprod (medium), prod (best quality)",
+        choices=["test", "prod"],
+        help="Environment: test (smoke test), prod (best quality)",
     )
     parser.add_argument(
         "--experiment",
@@ -133,14 +133,6 @@ def main_prod():
     import os
 
     os.environ["ENVIRONMENT"] = "prod"
-    main()
-
-
-def main_notprod():
-    """Entry point for notprod runs (uv run notprod)"""
-    import os
-
-    os.environ["ENVIRONMENT"] = "notprod"
     main()
 
 

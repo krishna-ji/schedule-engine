@@ -8,11 +8,11 @@
 
 ## Executive Summary
 
-Your project has reached a critical juncture. The current NSGA-II implementation is mature and effective, but the **failed CP-SAT experiment** (19.7M constraints, intractable) has revealed a crucial insight: **no single algorithm can optimally solve this problem at scale**.
+Your project has reached a critical juncture. The current NSGA-II implementation is mature and effective, but the **failed CP-SAT experiment** (19.7M constraints, intractable) has revealed a crucial insight: **no single, rigid algorithm can optimally solve this problem at scale**. A more powerful, flexible heuristic approach is needed for high-intensity repair.
 
 **The Path Forward:** Evolve from a pure metaheuristic to a **Reinforcement Learning-based Hyper-Heuristic** that intelligently orchestrates multiple optimization techniques. This approach is:
 - **Academically Novel:** Perfectly aligned with your thesis title
-- **Technically Sound:** Leverages your existing GA while adding adaptive intelligence
+- **Technically Sound:** Leverages your existing GA and IGLS while adding adaptive intelligence
 - **State-of-the-Art:** Represents current best practices in combinatorial optimization
 
 ---
@@ -34,7 +34,7 @@ Your project has reached a critical juncture. The current NSGA-II implementation
 ### What's Missing (The Gap)
 🔲 **Adaptive Strategy Selection:** Currently, operators are applied with fixed probabilities
 🔲 **Problem-Aware Optimization:** The system doesn't "learn" which techniques work when
-🔲 **Hybrid Approach:** CP-SAT solver exists in isolation, not integrated with GA
+🔲 **Hybrid Approach:** The powerful IGLS solver exists in isolation, not integrated as a high-intensity repair operator.
 
 ---
 
@@ -55,7 +55,7 @@ Your project has reached a critical juncture. The current NSGA-II implementation
 │  • Low-Intensity: mutate_time, mutate_room              │
 │  • Medium-Intensity: crossover, LNS_random              │
 │  • High-Intensity: LNS_conflicted                       │
-│  • Surgical: LNS_CP_Repair (uses CP-SAT on subproblems)│
+│  • Surgical: LNS_IGLS_Repair (uses IGLS on subproblems)│
 └─────────────────────────────────────────────────────────┘
                            ↓ modifies
 ┌─────────────────────────────────────────────────────────┐
@@ -71,7 +71,7 @@ Your project has reached a critical juncture. The current NSGA-II implementation
 The RL agent doesn't solve the timetabling problem directly. Instead, it learns **which heuristic to apply when**, based on the current state of the schedule.
 
 **Example Learned Behaviors:**
-- *"When hard violations are high → use expensive LNS_CP_Repair"*
+- *"When hard violations are high → use expensive LNS_IGLS_Repair"*
 - *"When solution is good but stagnant → use LNS_random for exploration"*
 - *"When near optimal → use cheap mutations for fine-tuning"*
 
@@ -111,17 +111,17 @@ Each action is a heuristic function that modifies the current schedule.
 | 2 | `crossover_one_point()` | Medium | ~5ms | Combine good features from archive |
 | 3 | `LNS_destroy_random_10pct()` | Medium | ~50ms | Escape local optima |
 | 4 | `LNS_destroy_conflicted()` | High | ~100ms | Target hard violations |
-| 5 | `LNS_CP_Repair()` | Very High | ~500ms-10s | **The surgical tool** - CP-SAT on subproblem |
+| 5 | `LNS_IGLS_Repair()` | Very High | ~500ms-10s | **The surgical tool** - IGLS on subproblem |
 
-**Action 5 Detail: LNS_CP_Repair**
+**Action 5 Detail: LNS_IGLS_Repair**
 
-This is the most powerful operator, leveraging your CP-SAT insight:
+This is the most powerful operator, leveraging your existing IGLS implementation in a more focused way:
 
-1. **Destroy:** Extract only sessions involved in hard conflicts (e.g., 5-15 sessions)
-2. **Repair:** Use CP-SAT to optimally re-schedule this small subset
-3. **Reintegrate:** Merge the repaired sessions back into the main schedule
+1. **Destroy:** Extract only sessions involved in hard conflicts (e.g., 5-15 sessions).
+2. **Repair:** Use your existing IGLS algorithm to intensively re-optimize this small subset within the context of the larger, fixed schedule.
+3. **Reintegrate:** Merge the repaired sessions back into the main schedule.
 
-*Why this works:* 5-15 sessions → ~100-500 constraints (tractable), vs. 239 sessions → 19.7M constraints (intractable).
+*Why this works:* Instead of a rigid, external solver, you use your proven, flexible IGLS heuristic on a concentrated area, allowing for powerful, targeted improvements without the overhead and brittleness of a CP model.
 
 ### 3.3 Reward Function (What the RL Agent Optimizes)
 
@@ -144,7 +144,7 @@ def calculate_reward(old_fitness, new_fitness, action_cost, hard_fixed):
 
 **Design Rationale:**
 - **Positive reward** for improving fitness (moving toward better solutions)
-- **Small penalty** for expensive actions (prevents overuse of LNS_CP_Repair)
+- **Small penalty** for expensive actions (prevents overuse of LNS_IGLS_Repair)
 - **Large bonus** for fixing hard constraints (prioritizes feasibility)
 
 ---
@@ -227,105 +227,57 @@ def RL_HyperHeuristic_Solve(
     return best_solution
 ```
 
-### Algorithm 2: LNS with CP-SAT Repair (The "Surgical Tool")
+### Algorithm 2: LNS with IGLS Repair (The "Surgical Tool")
 
 ```python
-def LNS_CP_Repair(schedule: Individual) -> Individual:
+def LNS_IGLS_Repair(schedule: Individual) -> Individual:
     """
-    Large Neighborhood Search with CP-SAT solver for repair.
+    Large Neighborhood Search with IGLS for repair.
 
-    Key Insight: CP-SAT fails on 239 courses but succeeds on 5-15.
+    Key Insight: A powerful, focused heuristic (IGLS) is better for
+    repairing small, complex subproblems than a rigid global solver.
 
     Steps:
-        1. Identify sessions in hard conflicts
-        2. Remove them (create a "hole" in the schedule)
-        3. Use CP-SAT to optimally fill the hole
-        4. Reintegrate the repaired sessions
+        1. Identify sessions in hard conflicts.
+        2. Remove them to create a partial schedule.
+        3. Run a full IGLS optimization on just those removed sessions
+           within the context of the fixed partial schedule.
+        4. Reintegrate the repaired sessions.
     """
-    from ortools.sat.python import cp_model
-
     # === DESTROY PHASE ===
     conflicted_sessions = find_hard_conflict_sessions(schedule)
 
-    if len(conflicted_sessions) == 0:
+    if not conflicted_sessions:
         return schedule  # Nothing to fix
 
+    # Limit the scope to prevent excessive runtime
     if len(conflicted_sessions) > 20:
-        # Too many to handle efficiently, take worst 20
         conflicted_sessions = sorted(
-            conflicted_sessions,
-            key=lambda s: s.num_violations
+            conflicted_sessions, key=lambda s: s.get_conflict_severity(), reverse=True
         )[:20]
 
-    # Create partial schedule (remove conflicted sessions)
+    # Create partial schedule by removing conflicted sessions
     partial_schedule = schedule.remove(conflicted_sessions)
 
-    # === REPAIR PHASE (CP-SAT) ===
-    model = cp_model.CpModel()
+    # === REPAIR PHASE (IGLS) ===
+    # Initialize a new IGLS run focused only on the subproblem.
+    # The IGLS solver needs to be adapted to handle a fixed background schedule.
+    igls_solver = IGLSSubproblemSolver(
+        partial_schedule,
+        conflicted_sessions,
+        max_iterations=100, # Focused, intense search
+        max_stagnation=30
+    )
+    
+    repaired_schedule = igls_solver.solve()
 
-    # Variables: start_time and room for each conflicted session
-    vars_dict = {}
-    for session in conflicted_sessions:
-        # Start time variable (domain: available time quanta)
-        start = model.NewIntVar(
-            0,
-            71,  # 72 quanta in a week
-            f"start_{session.id}"
-        )
-
-        # Room variable (domain: suitable rooms for this session)
-        suitable_rooms = get_suitable_rooms(session.room_requirements)
-        room = model.NewIntVarFromDomain(
-            cp_model.Domain.FromValues(suitable_rooms),
-            f"room_{session.id}"
-        )
-
-        vars_dict[session.id] = {"start": start, "room": room}
-
-    # Constraints: No conflicts among repaired sessions
-    for s1, s2 in itertools.combinations(conflicted_sessions, 2):
-        # Instructor conflict
-        if s1.instructor == s2.instructor:
-            model.Add(
-                vars_dict[s1.id]["start"] + s1.duration <= vars_dict[s2.id]["start"]
-            ).OnlyEnforceIf([...])  # Use reification for OR logic
-
-        # Room conflict (simplified)
-        # (Full implementation requires temporal + room overlap checking)
-
-    # Constraints: No conflicts with FIXED sessions in partial_schedule
-    for session in conflicted_sessions:
-        for fixed in partial_schedule.sessions:
-            if session.instructor == fixed.instructor:
-                # Ensure no temporal overlap
-                # (requires interval variables - see full implementation)
-                pass
-
-    # Objective: Minimize soft constraint violations
-    soft_penalties = []
-    for session in conflicted_sessions:
-        # Penalty for non-preferred times, etc.
-        # (Add boolean variables and penalties)
-        pass
-    model.Minimize(sum(soft_penalties))
-
-    # === SOLVE ===
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 10.0  # Time limit
-    status = solver.Solve(model)
-
-    # === REINTEGRATE ===
-    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        # Extract solution
-        for session in conflicted_sessions:
-            session.start_quantum = solver.Value(vars_dict[session.id]["start"])
-            session.room_id = solver.Value(vars_dict[session.id]["room"])
-
-        # Merge back into partial schedule
-        return partial_schedule.merge(conflicted_sessions)
+    # === REINTEGRATION PHASE ===
+    # The IGLS solver should return the best complete schedule it found.
+    # If it failed to improve, we can just return the original.
+    if repaired_schedule.fitness < schedule.fitness:
+        return repaired_schedule
     else:
-        # CP solver failed even on subproblem
-        return schedule  # No change
+        return schedule
 ```
 
 ### Algorithm 3: DQN Agent (Neural Network Implementation)
@@ -431,18 +383,18 @@ class DQNAgent:
 
 ## 5. Phased Implementation Plan
 
-### Phase 1: LNS-CP Hybrid (4-6 weeks)
+### Phase 1: LNS-IGLS Hybrid (4-6 weeks)
 
-**Goal:** Prove that integrating CP-SAT as a targeted repair tool improves the baseline GA.
+**Goal:** Prove that integrating IGLS as a targeted repair tool improves the baseline GA.
 
 **Tasks:**
-1. ✅ Install `ortools`: `uv add ortools`
-2. ✅ Implement `find_hard_conflict_sessions()` to identify problematic sessions
-3. ✅ Implement `LNS_CP_Repair()` (Algorithm 2)
-4. ✅ Integrate into GA: Call LNS_CP_Repair every 50 generations or when stagnant
-5. ✅ Benchmark: GA Baseline vs. GA+LNS/CP
+1. ✅ Implement `find_hard_conflict_sessions()` to identify problematic sessions.
+2. ✅ Adapt IGLS to work on subproblems (`IGLSSubproblemSolver`).
+3. ✅ Implement `LNS_IGLS_Repair()` (Algorithm 2).
+4. ✅ Integrate into GA: Call `LNS_IGLS_Repair` every 50 generations or when stagnant.
+5. ✅ Benchmark: GA Baseline vs. GA+LNS/IGLS.
 
-**Success Metric:** GA+LNS/CP finds feasible solutions faster or achieves lower hard violations.
+**Success Metric:** GA+LNS/IGLS finds feasible solutions faster or achieves lower hard violations.
 
 **Deliverable:** Report showing comparative performance on your dataset.
 
@@ -496,16 +448,15 @@ class DQNAgent:
 
 ## 6. Technical Challenges & Solutions
 
-### Challenge 1: CP-SAT Modeling Complexity
+### Challenge 1: IGLS Subproblem Modeling
 
-**Problem:** Correctly modeling the subproblem constraints (especially conflicts with the fixed schedule) is non-trivial.
+**Problem:** Adapting the existing IGLS to work on a subproblem (a few movable sessions against a large fixed background) requires careful implementation.
 
 **Solution:**
-- Start simple: Implement only internal constraints (conflicts among repaired sessions)
-- Test thoroughly on small examples
-- Incrementally add constraints against fixed schedule
-- Use `NoOverlap` global constraints for temporal conflicts
-- Time-limit the solver (10 seconds max) to prevent indefinite waiting
+- Create a new `IGLSSubproblemSolver` class.
+- The solver's evaluation function must check for conflicts against both the other movable sessions *and* the fixed sessions in the partial schedule.
+- The search neighborhood should only consider moves for the small set of repairable sessions.
+- Time-limit the IGLS run (e.g., 10-15 seconds max) to ensure it acts as a fast "surgical" tool.
 
 ### Challenge 2: Reward Shaping
 
@@ -596,18 +547,18 @@ class DQNAgent:
 
 ---
 
-## 9. Immediate Next Steps (This Week)
+### Immediate Next Steps (This Week)
 
-1. **Decision Point:** Commit to the RL hyper-heuristic approach
-2. **Setup:** Install `ortools` and `pytorch`
-3. **Phase 1 Start:** Implement `find_hard_conflict_sessions()`
-4. **Prototype:** Create a minimal LNS_CP_Repair that works on 5 sessions
-5. **Test:** Verify CP-SAT can solve the 5-session subproblem quickly
+1. **Decision Point:** Commit to the RL hyper-heuristic approach with IGLS repair.
+2. **Setup:** Ensure `pytorch` is installed.
+3. **Phase 1 Start:** Implement `find_hard_conflict_sessions()`.
+4. **Prototype:** Create a minimal `LNS_IGLS_Repair` that works on 5 sessions.
+5. **Test:** Verify the subproblem IGLS can solve a small, targeted problem quickly.
 
 **First Concrete Task:**
 
 ```python
-# File: src/ga/lns_cp_repair.py
+# File: src/ga/lns_igls_repair.py
 
 def find_hard_conflict_sessions(individual: Individual) -> List[SessionGene]:
     """
@@ -643,8 +594,8 @@ def find_hard_conflict_sessions(individual: Individual) -> List[SessionGene]:
 
 You are at an exciting point in your research. Your CP-SAT failure is not a setback—it's a valuable finding that justifies the need for a more sophisticated approach. The RL-based hyper-heuristic framework will:
 
-1. **Leverage your existing work** (the GA is not wasted; it's the foundation)
-2. **Integrate the CP-SAT insight** (use it surgically on small subproblems)
+1. **Leverage your existing work** (the GA and IGLS are not wasted; they are the foundation)
+2. **Integrate the IGLS insight** (use it surgically on small subproblems)
 3. **Add adaptive intelligence** (RL learns the optimal strategy)
 4. **Create a publishable contribution** (novel, rigorous, and effective)
 

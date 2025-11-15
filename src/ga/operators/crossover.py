@@ -89,36 +89,3 @@ def crossover_course_group_aware(
             gene1.quanta, gene2.quanta = gene2.quanta, gene1.quanta
 
     return ind1, ind2
-
-
-def crossover_uniform(
-    ind1: List[SessionGene], ind2: List[SessionGene], cx_prob: float = 0.5
-):
-    """
-    [!]  DEPRECATED: Position-Dependent Uniform Crossover
-
-    This operator swaps entire genes by array index. It is ONLY SAFE if ALL
-    individuals in the population have genes in IDENTICAL POSITIONS representing
-    the SAME (course, group) pairs.
-
-    RISK: If gene positions differ between individuals (e.g., due to sorting,
-    custom seeding, or repair operators), this will create DUPLICATE and MISSING
-    (course, group) pairs, violating the incomplete_or_extra_sessions constraint.
-
-    RECOMMENDATION: Use crossover_course_group_aware() instead for robustness
-    and future-proofing.
-
-    Args:
-        ind1, ind2 (List[SessionGene]): Two individuals to perform crossover on.
-        cx_prob (float): Probability of crossover for each gene position.
-
-    Returns:
-        tuple: (ind1, ind2) with swapped genes
-    """
-    for i in range(len(ind1)):
-        if random.random() < cx_prob:
-            # Swap ENTIRE genes between the two individuals
-            # DANGER: If gene[i] in ind1 ≠ gene[i] in ind2, this creates corruption
-            ind1[i], ind2[i] = ind2[i], ind1[i]
-
-    return ind1, ind2  # Return after processing ALL genes

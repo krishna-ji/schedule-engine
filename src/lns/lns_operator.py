@@ -1,11 +1,11 @@
 """
 LNS repair operator for genetic algorithm.
 
-This module implements the Large Neighborhood Search operator with multiple
-repair strategies: CP-SAT, heuristic (greedy/local search), or hybrid.
+This module implements the Large Neighborhood Search operator with IGLS
+(Iterated Guided Local Search) as the repair strategy.
 """
 
-from typing import List, Dict, Literal
+from typing import List, Dict
 import logging
 from rich.console import Console
 
@@ -19,7 +19,6 @@ from src.lns.conflict_detection import (
     find_hard_conflict_sessions,
     select_worst_conflicts,
 )
-from src.lns.cp_repair import repair_with_cp_sat
 from src.lns.heuristic_repair import repair_with_heuristic
 from src.lns.diagnostics import (
     SubproblemDiagnostics,
@@ -46,11 +45,8 @@ class LNSRepairStats:
         self.avg_subproblem_size = 0.0
         self.total_repair_time = 0.0
         # Strategy-specific stats
-        self.heuristic_attempts = 0
-        self.heuristic_success = 0
-        self.cp_attempts = 0
-        self.cp_success = 0
-        self.pre_check_skips = 0
+        self.igls_attempts = 0
+        self.igls_success = 0
 
     def __repr__(self):
         success_rate = (
@@ -58,13 +54,10 @@ class LNSRepairStats:
             if self.total_attempts > 0
             else 0.0
         )
-        heur_rate = (
-            self.heuristic_success / self.heuristic_attempts * 100
-            if self.heuristic_attempts > 0
+        igls_rate = (
+            self.igls_success / self.igls_attempts * 100
+            if self.igls_attempts > 0
             else 0.0
-        )
-        cp_rate = (
-            self.cp_success / self.cp_attempts * 100 if self.cp_attempts > 0 else 0.0
         )
         return (
             f"LNSRepairStats("
@@ -72,9 +65,7 @@ class LNSRepairStats:
             f"success={self.successful_repairs}, "
             f"failed={self.failed_repairs}, "
             f"success_rate={success_rate:.1f}%, "
-            f"heuristic={self.heuristic_attempts}({heur_rate:.1f}%), "
-            f"cp={self.cp_attempts}({cp_rate:.1f}%), "
-            f"pre_check_skips={self.pre_check_skips}, "
+            f"igls={self.igls_attempts}({igls_rate:.1f}%), "
             f"avg_subproblem_size={self.avg_subproblem_size:.1f})"
         )
 
@@ -94,50 +85,41 @@ def reset_lns_stats():
     _lns_stats = LNSRepairStats()
 
 
-def lns_repair(
+def lns_igls_repair(
     individual: List[SessionGene],
     courses: Dict[tuple, Course],
     instructors: Dict[str, Instructor],
     groups: Dict[str, Group],
     rooms: Dict[str, Room],
-    repair_strategy: Literal["cp", "heuristic", "hybrid"] = "hybrid",
     max_subproblem_size: int = 20,
     min_subproblem_size: int = 4,
     expand_hops: int = 0,
-    cp_time_limit: float = 10.0,
-    heuristic_max_iterations: int = 500,
-    heuristic_time_limit: float = 5.0,
+    igls_max_iterations: int = 500,
+    igls_time_limit: float = 5.0,
     enable_diagnostics: bool = True,
-    pre_check_feasibility: bool = True,
 ) -> List[SessionGene]:
     """
-    Apply LNS repair to an individual with hard constraint violations.
+    Apply LNS-IGLS repair to an individual with hard constraint violations.
 
-    Supports three repair strategies:
-    - 'cp': CP-SAT only
-    - 'heuristic': Greedy/local search only
-    - 'hybrid': Try heuristic first, escalate to CP if needed
+    Uses IGLS (Iterated Guided Local Search) as the repair strategy.
 
     Algorithm:
     1. Detect hard constraint violations
     2. Extract conflicted sessions (destroy phase)
     3. Optionally expand neighborhood via conflict graph
-    4. Run diagnostics and pre-feasibility check
-    5. Apply repair strategy (heuristic/CP/hybrid)
+    4. Run diagnostics
+    5. Apply IGLS repair to the subproblem
     6. Reintegrate repaired sessions if successful
 
     Args:
         individual: GA individual to repair
         courses, instructors, groups, rooms: Entity dictionaries
-        repair_strategy: 'cp', 'heuristic', or 'hybrid'
         max_subproblem_size: Maximum sessions to repair at once
         min_subproblem_size: Minimum sessions (skip if below)
         expand_hops: Expand neighborhood N hops in conflict graph (0=disabled)
-        cp_time_limit: CP-SAT time limit
-        heuristic_max_iterations: Heuristic local search iterations
-        heuristic_time_limit: Heuristic time limit
+        igls_max_iterations: IGLS local search iterations
+        igls_time_limit: IGLS time limit
         enable_diagnostics: Log detailed diagnostics
-        pre_check_feasibility: Run pre-check before CP
 
     Returns:
         Repaired individual if successful, original otherwise
@@ -229,10 +211,10 @@ def lns_repair(
     ]
 
     logger.info(
-        f"LNS: Partial={len(partial_schedule)}, repair={len(conflicted_sessions)}, strategy={repair_strategy}"
+        f"LNS-IGLS: Partial={len(partial_schedule)}, repair={len(conflicted_sessions)}"
     )
 
-    # Step 5: Diagnostics and pre-check
+    # Step 5: Diagnostics
     diagnostics = SubproblemDiagnostics(
         conflicted_sessions, partial_schedule, courses, instructors, groups, rooms
     )
@@ -240,148 +222,38 @@ def lns_repair(
     if enable_diagnostics:
         diagnostics.log_subproblem_summary()
 
-    feasible = True
-    reason = ""
-    if pre_check_feasibility and repair_strategy in ("cp", "hybrid"):
-        feasible, reason = diagnostics.pre_check_feasibility()
-        if enable_diagnostics:
-            if feasible:
-                console.print("[green]   [LNS] Pre-check: PASSED (OK)[/green]")
-            else:
-                console.print(f"[red]   [LNS] Pre-check: FAILED (X) - {reason}[/red]")
-        if not feasible:
-            _lns_stats.pre_check_skips += 1
-            logger.warning(f"LNS: Pre-check INFEASIBLE - {reason}")
-            if repair_strategy == "cp":
-                # Skip CP entirely
-                logger.info("LNS: Skipping CP due to pre-check failure")
-                if enable_diagnostics:
-                    console.print(
-                        "[red]   [LNS] Skipping CP-SAT repair (pre-check failed)[/red]"
-                    )
-                _lns_stats.failed_repairs += 1
-                return individual
+    # Step 6: Apply IGLS repair
+    _lns_stats.igls_attempts += 1
+    if enable_diagnostics:
+        console.print(
+            f"[blue]   [LNS-IGLS] Attempting IGLS repair (max_iter={igls_max_iterations}, timeout={igls_time_limit}s)...[/blue]"
+        )
 
-    # Step 6: Apply repair strategy
-    repaired_sessions = None
+    repair_start = time.time()
+    repaired_sessions = repair_with_heuristic(
+        conflicted_sessions,
+        partial_schedule,
+        courses,
+        instructors,
+        groups,
+        rooms,
+        igls_max_iterations,
+        igls_time_limit,
+    )
+    repair_time_elapsed = time.time() - repair_start
 
-    if repair_strategy == "heuristic":
-        _lns_stats.heuristic_attempts += 1
+    if repaired_sessions:
+        _lns_stats.igls_success += 1
         if enable_diagnostics:
             console.print(
-                f"[blue]   [LNS] Attempting heuristic repair (max_iter={heuristic_max_iterations}, timeout={heuristic_time_limit}s)...[/blue]"
+                f"[green]   [LNS-IGLS] IGLS repair: SUCCESS (OK) ({repair_time_elapsed:.2f}s)[/green]"
             )
-        heur_start = time.time()
-        repaired_sessions = repair_with_heuristic(
-            conflicted_sessions,
-            partial_schedule,
-            courses,
-            instructors,
-            groups,
-            rooms,
-            heuristic_max_iterations,
-            heuristic_time_limit,
-        )
-        heur_time = time.time() - heur_start
-        if repaired_sessions:
-            _lns_stats.heuristic_success += 1
-            if enable_diagnostics:
-                console.print(
-                    f"[green]   [LNS] Heuristic repair: SUCCESS (OK) ({heur_time:.2f}s)[/green]"
-                )
 
-    elif repair_strategy == "cp":
-        if feasible:  # Only try CP if pre-check passed
-            _lns_stats.cp_attempts += 1
-            if enable_diagnostics:
-                console.print(
-                    f"[blue]   [LNS] Attempting CP-SAT repair (timeout={cp_time_limit}s)...[/blue]"
-                )
-            cp_start = time.time()
-            repaired_sessions = repair_with_cp_sat(
-                conflicted_sessions,
-                partial_schedule,
-                courses,
-                instructors,
-                groups,
-                rooms,
-                cp_time_limit,
-            )
-            cp_time = time.time() - cp_start
-            if repaired_sessions:
-                _lns_stats.cp_success += 1
-                if enable_diagnostics:
-                    console.print(
-                        f"[green]   [LNS] CP-SAT repair: SUCCESS (OK) ({cp_time:.2f}s)[/green]"
-                    )
-            else:
-                if enable_diagnostics:
-                    console.print(
-                        f"[red]   [LNS] CP-SAT repair: FAILED (X) ({cp_time:.2f}s)[/red]"
-                    )
-
-    elif repair_strategy == "hybrid":
-        # Try heuristic first
-        _lns_stats.heuristic_attempts += 1
+    else:
         if enable_diagnostics:
             console.print(
-                f"[blue]   [LNS-Hybrid] Step 1: Attempting heuristic repair (max_iter={heuristic_max_iterations}, timeout={heuristic_time_limit}s)...[/blue]"
+                f"[red]   [LNS-IGLS] IGLS repair: FAILED (X) ({repair_time_elapsed:.2f}s)[/red]"
             )
-        heur_start = time.time()
-        repaired_sessions = repair_with_heuristic(
-            conflicted_sessions,
-            partial_schedule,
-            courses,
-            instructors,
-            groups,
-            rooms,
-            heuristic_max_iterations,
-            heuristic_time_limit,
-        )
-        heur_time = time.time() - heur_start
-
-        if repaired_sessions:
-            _lns_stats.heuristic_success += 1
-            logger.info("LNS-Hybrid: Heuristic succeeded")
-            if enable_diagnostics:
-                console.print(
-                    f"[green]   [LNS-Hybrid] Heuristic repair: SUCCESS (OK) ({heur_time:.2f}s, no escalation needed)[/green]"
-                )
-        elif feasible:
-            # Escalate to CP if heuristic failed and pre-check passed
-            logger.info("LNS-Hybrid: Heuristic failed, escalating to CP-SAT")
-            if enable_diagnostics:
-                console.print(
-                    f"[yellow]   [LNS-Hybrid] Heuristic failed ({heur_time:.2f}s), escalating to CP-SAT...[/yellow]"
-                )
-            _lns_stats.cp_attempts += 1
-            cp_start = time.time()
-            repaired_sessions = repair_with_cp_sat(
-                conflicted_sessions,
-                partial_schedule,
-                courses,
-                instructors,
-                groups,
-                rooms,
-                cp_time_limit,
-            )
-            cp_time = time.time() - cp_start
-            if repaired_sessions:
-                _lns_stats.cp_success += 1
-                if enable_diagnostics:
-                    console.print(
-                        f"[green]   [LNS-Hybrid] CP-SAT repair: SUCCESS (OK) ({cp_time:.2f}s)[/green]"
-                    )
-            else:
-                if enable_diagnostics:
-                    console.print(
-                        f"[red]   [LNS-Hybrid] CP-SAT repair: FAILED (X) ({cp_time:.2f}s, all strategies exhausted)[/red]"
-                    )
-        else:
-            if enable_diagnostics:
-                console.print(
-                    f"[red]   [LNS-Hybrid] Heuristic failed ({heur_time:.2f}s), cannot escalate (pre-check failed)[/red]"
-                )
 
     # Step 7: Reintegrate or return original
     if repaired_sessions is not None:
@@ -398,13 +270,11 @@ def lns_repair(
         repair_time = time.time() - start_time
         _lns_stats.total_repair_time += repair_time
 
-        logger.info(
-            f"LNS: Repair SUCCESS (strategy={repair_strategy}, time={repair_time:.2f}s)"
-        )
+        logger.info(f"LNS-IGLS: Repair SUCCESS (time={repair_time:.2f}s)")
         if enable_diagnostics:
             console.print(
-                f"[bold green]   [LNS] (OK) Repair SUCCESSFUL: {len(conflicted_sessions)} sessions repaired "
-                f"(strategy={repair_strategy}, total_time={repair_time:.2f}s)[/bold green]"
+                f"[bold green]   [LNS-IGLS] (OK) Repair SUCCESSFUL: {len(conflicted_sessions)} sessions repaired "
+                f"(total_time={repair_time:.2f}s)[/bold green]"
             )
         return new_individual
     else:
@@ -412,38 +282,13 @@ def lns_repair(
         repair_time = time.time() - start_time
         _lns_stats.total_repair_time += repair_time
 
-        logger.warning(
-            f"LNS: Repair FAILED (strategy={repair_strategy}, time={repair_time:.2f}s)"
-        )
+        logger.warning(f"LNS-IGLS: Repair FAILED (time={repair_time:.2f}s)")
         if enable_diagnostics:
             console.print(
-                f"[bold red]   [LNS] (X) Repair FAILED: All strategies exhausted "
-                f"(strategy={repair_strategy}, total_time={repair_time:.2f}s)[/bold red]"
+                f"[bold red]   [LNS-IGLS] (X) Repair FAILED: IGLS could not repair subproblem "
+                f"(total_time={repair_time:.2f}s)[/bold red]"
             )
         return individual
-
-
-# Backward compatibility alias
-def lns_cp_repair(
-    individual: List[SessionGene],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-    max_subproblem_size: int = 20,
-    cp_time_limit: float = 10.0,
-) -> List[SessionGene]:
-    """Legacy function - calls lns_repair with 'cp' strategy."""
-    return lns_repair(
-        individual,
-        courses,
-        instructors,
-        groups,
-        rooms,
-        repair_strategy="cp",
-        max_subproblem_size=max_subproblem_size,
-        cp_time_limit=cp_time_limit,
-    )
 
 
 def apply_lns_to_population(
@@ -454,10 +299,10 @@ def apply_lns_to_population(
     rooms: Dict[str, Room],
     num_individuals: int = 1,
     max_subproblem_size: int = 20,
-    cp_time_limit: float = 10.0,
+    igls_time_limit: float = 5.0,
 ) -> List[List[SessionGene]]:
     """
-    Apply LNS-CP repair to the best individuals in a population.
+    Apply LNS-IGLS repair to the best individuals in a population.
 
     Args:
         population: GA population (list of individuals)
@@ -467,7 +312,7 @@ def apply_lns_to_population(
         rooms: Room dictionary
         num_individuals: Number of best individuals to repair
         max_subproblem_size: Maximum subproblem size
-        cp_time_limit: CP-SAT time limit
+        igls_time_limit: IGLS time limit
 
     Returns:
         Population with repaired individuals
@@ -475,22 +320,18 @@ def apply_lns_to_population(
     if not population:
         return population
 
-    # Sort population by fitness (assuming fitness is assigned)
-    # Note: In DEAP, fitness is accessed via individual.fitness.values
-    # For now, we'll repair the first num_individuals
-
     new_population = list(population)  # Copy
 
     for i in range(min(num_individuals, len(population))):
-        logger.info(f"LNS-CP: Repairing individual {i+1}/{num_individuals}")
-        new_population[i] = lns_cp_repair(
+        logger.info(f"LNS-IGLS: Repairing individual {i+1}/{num_individuals}")
+        new_population[i] = lns_igls_repair(
             individual=population[i],
             courses=courses,
             instructors=instructors,
             groups=groups,
             rooms=rooms,
             max_subproblem_size=max_subproblem_size,
-            cp_time_limit=cp_time_limit,
+            igls_time_limit=igls_time_limit,
         )
 
     return new_population
@@ -504,7 +345,7 @@ def should_trigger_lns_repair(
     force_trigger_generations: List[int] = None,
 ) -> bool:
     """
-    Determine if LNS-CP repair should be triggered.
+    Determine if LNS-IGLS repair should be triggered.
 
     Triggers on:
     - Forced generations (highest priority, for testing/validation)
@@ -519,24 +360,24 @@ def should_trigger_lns_repair(
         force_trigger_generations: List of generations to force trigger (optional)
 
     Returns:
-        True if LNS-CP should be triggered, False otherwise
+        True if LNS-IGLS should be triggered, False otherwise
     """
     # Priority 1: Force trigger on specific generations (for testing/validation)
     if force_trigger_generations and generation in force_trigger_generations:
         logger.info(
-            f"LNS: FORCED trigger on gen {generation} (validation/testing mode)"
+            f"LNS-IGLS: FORCED trigger on gen {generation} (validation/testing mode)"
         )
         return True
 
     # Priority 2: Trigger on interval
     if generation > 0 and generation % trigger_interval == 0:
-        logger.info(f"LNS: Triggered by interval (gen {generation})")
+        logger.info(f"LNS-IGLS: Triggered by interval (gen {generation})")
         return True
 
     # Priority 3: Trigger on stagnation
     if stagnation_counter >= stagnation_threshold:
         logger.info(
-            f"LNS: Triggered by stagnation "
+            f"LNS-IGLS: Triggered by stagnation "
             f"(counter={stagnation_counter}, threshold={stagnation_threshold})"
         )
         return True

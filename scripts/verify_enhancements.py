@@ -22,7 +22,6 @@ def check_files_exist():
         "src/utils/console_helpers.py",
         "src/utils/logging_config.py",
         ".editorconfig",
-        ".pre-commit-config.yaml",
         "CONTRIBUTING.md",
         "test/unit/__init__.py",
         "test/unit/conftest.py",

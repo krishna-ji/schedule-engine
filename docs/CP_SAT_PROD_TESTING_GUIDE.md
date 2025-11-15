@@ -78,7 +78,7 @@ uv run python main.py --config configs/prod_no_local_search.yaml --experiment pr
 
 **Key Settings**:
 - `lns.repair_strategy: hybrid` (heuristic → CP)
-- `lns.heuristic_time_limit: 8.0` (try heuristic first)
+- `lns.igls_time_limit: 8.0` (try IGLS first)
 - `lns.cp_time_limit: 20.0` (escalate to CP if needed)
 - **CP-SAT multiprocessing**: Enabled
 - **IGLS**: Enabled (full local search)

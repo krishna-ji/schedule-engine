@@ -17,7 +17,7 @@ University course scheduling engine using NSGA-II genetic algorithm with constra
 schedule-engine/
 ├── main.py              # CLI entry point with env-specific entry functions
 ├── src/config/          # Pydantic models & loader
-├── configs/             # base.yaml + test/notprod/prod.yaml
+├── configs/             # base.yaml + test/prod.yaml
 ├── src/
 │   ├── core/            # GA scheduler & types
 │   ├── ga/              # GA operators, population, repair
@@ -39,7 +39,6 @@ schedule-engine/
 **New simplified structure:**
 - `configs/base.yaml` - All common settings (shared)
 - `configs/test.yaml` - Smoke test overrides (30 gens, 10 pop)
-- `configs/notprod.yaml` - Medium quality overrides (400 gens, 80 pop)
 - `configs/prod.yaml` - Best quality overrides (2000 gens, 200 pop)
 
 Environment configs inherit from base.yaml via deep merge in `src/config/loader.py`.
@@ -51,19 +50,17 @@ Environment configs inherit from base.yaml via deep merge in `src/config/loader.
 ```bash
 # UV commands (recommended)
 uv run test      # Smoke test (30 gens, ~5-10 min)
-uv run notprod   # Medium quality (400 gens, ~4-8 hours)
 uv run prod      # Best quality (2000 gens, ~24-48 hours)
 
 # Or Python directly
 python main.py --env test
-python main.py --env notprod
 python main.py --env prod
 python main.py --config path/to/custom.yaml
 ```
 
 ## Architecture
 
-- **Entry Point**: `main.py` with `main()` + environment-specific entry functions (`main_prod()`, `main_notprod()`, `main_test()`)
+- **Entry Point**: `main.py` with `main()` + environment-specific entry functions (`main_prod()`, `main_test()`)
 - **Workflow**: `src/workflows/standard_run.py` orchestrates: load → validate → feasibility → GA → decode → report
 - **GA Core**: `src/core/ga_scheduler.py` - GAScheduler class with DEAP toolbox, population init, evolution
 - **Multiprocessing**: Enabled via `parallel.use_multiprocessing` in YAML

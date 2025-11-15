@@ -19,23 +19,20 @@ parallel:
   use_multiprocessing: true
   num_workers: null # Auto-detect all available cores
 
-# LNS Hybrid Repair - ENABLED for Production (CP + Heuristic)
+# LNS-IGLS Repair - ENABLED for Production
 lns:
   enabled: true
-  repair_strategy: hybrid # Try heuristic first, escalate to CP if needed
   trigger_interval: 100 # Every 100 generations
-  stagnation_threshold: 20 # After 20 gens of stagnation
+  stagnation_threshold: 10 # After 10 gens of stagnation (aggressive)
   force_trigger_generations: [6] # Early validation trigger (confirms LNS works before long run)
   trigger_before_igls: false # LNS after IGLS
   max_subproblem_size: 30 # Larger subproblems for prod
   min_subproblem_size: 6 # Min size for meaningful repair
   expand_neighborhood_hops: 1 # Expand conflict graph 1 hop for connected subproblems
-  cp_time_limit: 20.0 # 20 seconds for CP-SAT
-  heuristic_max_iterations: 1000 # 1000 iterations for heuristic
-  heuristic_time_limit: 8.0 # 8 seconds for heuristic
+  igls_max_iterations: 1000 # 1000 iterations for IGLS repair
+  igls_time_limit: 1000.0 # 1000 seconds (effectively unlimited)
   apply_to_best_n: 3 # Repair top 3 individuals
   enable_diagnostics: true # Log detailed subproblem info
-  pre_check_feasibility: true # Pre-check before invoking CP-SAT
 
 # IGLS Exhaustive Search - Production triggers
 repair:

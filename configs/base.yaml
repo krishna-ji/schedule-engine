@@ -153,10 +153,9 @@ repair:
     apply_after_crossover: true
     detection_strategy: hybrid
 
-# LNS-CP Hybrid Configuration
+# LNS-IGLS Configuration
 lns:
   enabled: false
-  repair_strategy: hybrid # cp | heuristic | hybrid
   trigger_interval: 50
   stagnation_threshold: 10
   force_trigger_generations: [] # Force trigger on specific gens (e.g., [6, 50] for testing)
@@ -164,12 +163,10 @@ lns:
   max_subproblem_size: 20
   min_subproblem_size: 4
   expand_neighborhood_hops: 0 # Expand conflict graph (0=disabled)
-  cp_time_limit: 10.0
-  heuristic_max_iterations: 500
-  heuristic_time_limit: 5.0
+  igls_max_iterations: 500
+  igls_time_limit: 5.0
   apply_to_best_n: 1
   enable_diagnostics: true # Log subproblem details
-  pre_check_feasibility: true # Pre-check before CP-SAT
 
 # Enhancements (all disabled)
 enhancements:

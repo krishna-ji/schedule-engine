@@ -78,8 +78,8 @@ def repair_individual_selective(
         >>> print(f"Repaired {stats['total_fixes']} violations")
         >>> print(f"Efficiency: {stats['efficiency']:.1f}% genes skipped")
     """
-    from src.ga.operators.repair_registry import (
-        get_enabled_repair_heuristics,
+    from src.ga.operators.repair_wrappers import (
+        get_enabled_repair_operators,
         get_repair_statistics_template,
     )
 
@@ -104,8 +104,8 @@ def repair_individual_selective(
     violated_indices = set(violated_map.keys())
     stats["genes_violated_initial"] = len(violated_indices)
 
-    # Get enabled repair heuristics
-    enabled_repairs = get_enabled_repair_heuristics()
+    # Get enabled repair operators
+    enabled_repairs = get_enabled_repair_operators()
 
     if not enabled_repairs:
         return stats
@@ -115,8 +115,8 @@ def repair_individual_selective(
         stats["iterations"] += 1
         iteration_fixes = 0
 
-        # Apply each repair heuristic to violated genes only
-        for repair_name, repair_info in enabled_repairs.items():
+        # Apply each repair operator to violated genes only
+        for repair_name, repair_meta in enabled_repairs.items():
             # Get selective version of repair function
             selective_repair_func = _get_selective_repair_function(repair_name)
 
@@ -125,11 +125,11 @@ def repair_individual_selective(
                 fixes = selective_repair_func(individual, violated_indices, context)
             else:
                 # Fallback: call original function (scans all genes)
-                repair_func = repair_info["function"]
+                repair_func = repair_meta.function
                 fixes = repair_func(individual, context)
 
             # Update statistics
-            stat_key = repair_name.replace("repair_", "") + "_fixes"
+            stat_key = f"{repair_name}_fixes"
             stats[stat_key] += fixes
             iteration_fixes += fixes
 

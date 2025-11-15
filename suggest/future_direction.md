@@ -7,9 +7,9 @@
 
 The current NSGA-II based system provides a robust and effective solution to the University Course Timetabling Problem (UCTP). However, analysis—particularly the conclusive failure of a pure Constraint Programming (CP-SAT) approach on the global problem—demonstrates that no single, monolithic algorithm is optimal. The scale and complexity of the UCTP demand a more adaptive and intelligent approach.
 
-This document outlines a strategic evolution from the current metaheuristic solver to a **Reinforcement Learning (RL) based Hyper-Heuristic framework**. This advanced architecture will leverage the existing Genetic Algorithm (GA) and integrate a CP-SAT solver as a specialized tool, all orchestrated by an RL agent that learns an optimal, problem-aware optimization strategy. This hybrid approach represents the state-of-the-art in solving complex combinatorial optimization problems.
+This document outlines a strategic evolution from the current metaheuristic solver to a **Reinforcement Learning (RL) based Hyper-Heuristic framework**. This advanced architecture will leverage the existing Genetic Algorithm (GA) and integrate a powerful Iterated Guided Local Search (IGLS) solver as a specialized repair tool, all orchestrated by an RL agent that learns an optimal, problem-aware optimization strategy. This hybrid approach represents the state-of-the-art in solving complex combinatorial optimization problems.
 
-The goal is to create a system that dynamically selects the best heuristic (e.g., a GA mutation, a crossover, or a computationally expensive CP-based repair) at each stage of the search process, maximizing solution quality while managing computational resources.
+The goal is to create a system that dynamically selects the best heuristic (e.g., a GA mutation, a crossover, or a computationally intensive IGLS-based repair) at each stage of the search process, maximizing solution quality while managing computational resources.
 
 ---
 
@@ -28,7 +28,7 @@ The proposed architecture reframes the problem. Instead of a single solver, we w
     *   **Large Neighborhood Search (LNS) Operators:**
         *   *Destroy Operators:* `destroy_conflicted_sessions`, `destroy_random_sessions`, `destroy_instructor_sessions`.
         *   *Repair Operators:* `repair_greedy`, `repair_with_ga`.
-    *   **High-Intensity Operator:** `LNS-CP_Repair` (the surgical tool).
+    *   **High-Intensity Operator:** `LNS-IGLS_Repair` (the surgical tool).
 3.  **Evaluation Engine:** The existing fitness function, which calculates hard and soft constraint violations. This provides the feedback (reward) needed for learning.
 4.  **RL-based Hyper-Heuristic (The Agent):** The core of the new system. This agent observes the state of the environment and selects the next heuristic to apply from the toolbox.
     *   **State Representation (S):** A feature vector describing the current solution, e.g., `[num_hard_violations, num_soft_violations, fitness_improvement_delta, iterations_since_improvement]`.
@@ -78,12 +78,12 @@ function RL_HyperHeuristic_Solve(initial_schedule, max_iterations):
     return best_solution
 ```
 
-### Algorithm 2: The LNS-CP Operator (The "Surgical Repair" Action)
+### Algorithm 2: The LNS-IGLS Operator (The "Surgical Repair" Action)
 
-This is the most powerful heuristic in the toolbox. It leverages the key insight from your CP-SAT failure analysis: CP is effective on small, well-defined subproblems.
+This is the most powerful heuristic in the toolbox. It leverages the key insight from your analysis: a focused, powerful local search is more effective than a globally applied, rigid solver. IGLS is perfect for this, as it can intensively optimize a small subproblem.
 
 ```pseudocode
-function LNS_CP_Repair(schedule):
+function LNS_IGLS_Repair(schedule):
     // 1. Destroy Phase
     // Identify a subset of "problematic" sessions to remove.
     // Example: all sessions involved in hard constraint violations.
@@ -92,38 +92,33 @@ function LNS_CP_Repair(schedule):
     // Create a partial schedule by removing these sessions.
     partial_schedule = schedule.remove(sessions_to_remove)
 
-    // Define the search space for the repair.
-    // This includes the time slots and rooms freed up by the removed sessions.
-    available_slots, available_rooms = get_available_resources(partial_schedule, sessions_to_remove)
+    // Define the subproblem for IGLS.
+    // The subproblem consists of the partial_schedule and the sessions_to_remove.
+    
+    // 2. Repair Phase (with IGLS)
+    // IGLS will try to re-insert the removed sessions into the partial schedule.
+    // It uses a guided local search, penalizing features of bad solutions
+    // to escape local optima and explore more effectively.
+    
+    // Initialize IGLS for the subproblem.
+    igls_solver = initialize_IGLS(
+        partial_schedule, 
+        sessions_to_remove,
+        max_iterations=100 // More iterations for a more intense search
+    )
 
-    // 2. Repair Phase (with CP-SAT)
-    // Create a new, small CP-SAT model.
-    cp_model = new CpModel()
+    // Run the IGLS optimization loop.
+    repaired_schedule = igls_solver.solve()
 
-    // Create variables ONLY for the removed sessions.
-    // Variables: start_time, room_assignment for each session in sessions_to_remove.
-    // Domains: The available_slots and available_rooms.
-    subproblem_vars = create_cp_variables(cp_model, sessions_to_remove, available_slots, available_rooms)
-
-    // Add constraints for the subproblem.
-    // These constraints must ensure the repaired sessions do not conflict with each other
-    // OR with the fixed sessions in the partial_schedule.
-    add_subproblem_constraints(cp_model, subproblem_vars, partial_schedule)
-
-    // Add soft constraints as optimization objectives for the subproblem.
-    add_subproblem_objectives(cp_model, subproblem_vars)
-
-    // 3. Solve the Subproblem
-    solver = CpSolver()
-    status = solver.Solve(cp_model)
-
-    // 4. Re-integrate Solution
-    if status is OPTIMAL or FEASIBLE:
-        repaired_schedule = reintegrate_solution(partial_schedule, solver.get_solution(subproblem_vars))
+    // 3. Return Solution
+    // If IGLS fails to re-insert all sessions, it might return a partial
+    // solution or the best one it found. The calling function should handle this.
+    // For simplicity, we assume it returns a complete, repaired schedule.
+    if repaired_schedule is better than schedule:
         return repaired_schedule
     else:
-        // If CP solver fails on the subproblem, it's truly difficult.
-        // Return the original schedule, the action had no effect.
+        // If IGLS fails to find a better solution, return the original.
+        // The action had no positive effect.
         return schedule
 ```
 
@@ -134,8 +129,8 @@ function LNS_CP_Repair(schedule):
 | Methodology | Strengths | Weaknesses | Role in Final System |
 | :--- | :--- | :--- | :--- |
 | **Pure GA (Baseline)** | Good global search; robust; effective at soft constraint optimization. | Can get stuck in local optima; performance is sensitive to operator choice and parameters. | **Foundation.** Provides the core population management and global search operators. |
-| **Pure CP-SAT** | Guarantees optimality/feasibility (on small problems); excellent for highly constrained problems. | **Intractable** on the global problem due to constraint explosion. Fails completely. | **Specialized Tool.** Used only within the LNS-CP operator to solve small, localized subproblems with mathematical precision. |
-| **GA + LNS/CP Hybrid** | **State-of-the-art.** Combines GA's global search with CP's exact local search. Powerful at escaping local optima and fixing hard constraints. | More complex to implement than a pure GA. Performance depends on the quality of the destroy/repair heuristics. | **The "Power-Play" Heuristic.** This becomes the most potent action in the RL agent's toolbox. |
+| **Pure CP-SAT** | Guarantees optimality/feasibility (on small problems); excellent for highly constrained problems. | **Intractable** on the global problem due to constraint explosion. Fails completely. | **Failed Experiment.** The failure of this approach provides the justification for a more flexible, heuristic-based high-intensity operator. |
+| **GA + LNS/IGLS Hybrid** | **State-of-the-art.** Combines GA's global search with IGLS's powerful, focused local search. Excellent at escaping local optima and fixing hard constraints. | More complex to implement than a pure GA. Performance depends on the quality of the IGLS implementation and its parameters. | **The "Power-Play" Heuristic.** This becomes the most potent action in the RL agent's toolbox. |
 | **RL Hyper-Heuristic** | **Adaptive.** Learns the best optimization strategy for the problem at hand. Can outperform any single, fixed strategy. Dynamically balances exploration and exploitation. | Highest implementation complexity. Requires careful design of state, action, and reward. Training can be time-consuming. | **The "Conductor".** The high-level intelligence that orchestrates all other heuristics to achieve the best possible result. |
 
 ---
@@ -144,13 +139,13 @@ function LNS_CP_Repair(schedule):
 
 This project should be developed and benchmarked in phases to isolate the contribution of each new component.
 
-### Phase 1: Implement and Benchmark the LNS-CP Operator
+### Phase 1: Implement and Benchmark the LNS-IGLS Operator
 
-1.  **Goal:** Prove that a hybrid GA+LNS/CP model outperforms the baseline GA.
+1.  **Goal:** Prove that a hybrid GA+LNS/IGLS model outperforms the baseline GA.
 2.  **Steps:**
-    a.  Create the `LNS_CP_Repair` function (Algorithm 2). This requires integrating `ortools`.
+    a.  Create the `LNS_IGLS_Repair` function (Algorithm 2). This requires creating a powerful, focused IGLS implementation.
     b.  Modify the main GA loop to call this operator periodically (e.g., every 10 generations, or on individuals that have stagnated).
-    c.  **Benchmark:** Run the baseline GA vs. the new GA+LNS/CP hybrid on the standard dataset.
+    c.  **Benchmark:** Run the baseline GA vs. the new GA+LNS/IGLS hybrid on the standard dataset.
     d.  **Expected Outcome:** The hybrid model should find solutions with fewer hard constraint violations and/or find them faster. This is a significant research contribution on its own.
 
 ### Phase 2: Develop the RL Environment and a Simple Agent
@@ -158,7 +153,7 @@ This project should be developed and benchmarked in phases to isolate the contri
 1.  **Goal:** Build the hyper-heuristic framework and train a basic agent.
 2.  **Steps:**
     a.  Create the `TimetablingEnvironment` class, wrapping your scheduling logic.
-    b.  Define the `state` vector, `action` space (the toolbox of heuristics, including the new LNS-CP one), and `reward` function.
+    b.  Define the `state` vector, `action` space (the toolbox of heuristics, including the new LNS-IGLS one), and `reward` function.
     c.  Implement a simple, table-based RL agent (e.g., Q-Learning). This will require discretizing the state space.
     d.  Implement the main hyper-heuristic loop (Algorithm 1).
     e.  **Benchmark:** Compare the Q-Learning agent's performance against the baseline GA and a "random choice" hyper-heuristic.

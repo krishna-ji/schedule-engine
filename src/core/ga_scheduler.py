@@ -1300,12 +1300,12 @@ class GAScheduler:
         # ========================================================================
 
         # ========================================================================
-        # LNS HYBRID REPAIR SYSTEM (CP / Heuristic / Hybrid)
+        # LNS-IGLS REPAIR SYSTEM
         # ========================================================================
-        # Apply LNS repair to best individuals when triggered
+        # Apply LNS-IGLS repair to best individuals when triggered
         lns_config = get_config().lns
         if lns_config.enabled:
-            from src.lns.lns_operator import should_trigger_lns_repair, lns_repair
+            from src.lns.lns_operator import should_trigger_lns_repair, lns_igls_repair
 
             # Check if LNS should be triggered
             should_trigger = should_trigger_lns_repair(
@@ -1319,35 +1319,32 @@ class GAScheduler:
             if should_trigger:
                 event_tracker.add("lns_repair_triggered")
                 console.print(
-                    f"\n[bold blue][!info] LNS repair triggered on gen {gen} (strategy={lns_config.repair_strategy})[/bold blue]"
+                    f"\n[bold blue][!info] LNS-IGLS repair triggered on gen {gen}[/bold blue]"
                 )
 
                 # Get best individuals
                 num_to_repair = min(lns_config.apply_to_best_n, len(self.population))
                 best_individuals = tools.selBest(self.population, num_to_repair)
 
-                # Apply LNS repair to each
+                # Apply LNS-IGLS repair to each
                 repaired_count = 0
                 for idx, individual in enumerate(best_individuals):
                     console.print(
                         f"[dim]   Repairing individual {idx+1}/{num_to_repair}...[/dim]"
                     )
 
-                    repaired = lns_repair(
+                    repaired = lns_igls_repair(
                         individual=individual,
                         courses=self.context.courses,
                         instructors=self.context.instructors,
                         groups=self.context.groups,
                         rooms=self.context.rooms,
-                        repair_strategy=lns_config.repair_strategy,
                         max_subproblem_size=lns_config.max_subproblem_size,
                         min_subproblem_size=lns_config.min_subproblem_size,
                         expand_hops=lns_config.expand_neighborhood_hops,
-                        cp_time_limit=lns_config.cp_time_limit,
-                        heuristic_max_iterations=lns_config.heuristic_max_iterations,
-                        heuristic_time_limit=lns_config.heuristic_time_limit,
+                        igls_max_iterations=lns_config.igls_max_iterations,
+                        igls_time_limit=lns_config.igls_time_limit,
                         enable_diagnostics=lns_config.enable_diagnostics,
-                        pre_check_feasibility=lns_config.pre_check_feasibility,
                     )
 
                     # If repair was successful (returned different individual), update
@@ -1368,9 +1365,9 @@ class GAScheduler:
                     for ind, fit in zip(invalid, fitness_values):
                         ind.fitness.values = fit
 
-                    event_tracker.add("lns_cp_repair_applied")
+                    event_tracker.add("lns_igls_repair_applied")
                     console.print(
-                        f"[bold green]   ✓ LNS-CP repair complete: "
+                        f"[bold green]   ✓ LNS-IGLS repair complete: "
                         f"{repaired_count}/{num_to_repair} individuals repaired[/bold green]"
                     )
 
@@ -1378,15 +1375,15 @@ class GAScheduler:
                     # This prevents immediate re-triggering on next generation
                     self.stagnation_counter = 0
                     logger.info(
-                        f"Stagnation counter reset after LNS repair (gen {gen})"
+                        f"Stagnation counter reset after LNS-IGLS repair (gen {gen})"
                     )
                 else:
                     console.print(
-                        "[yellow]   ⚠ LNS-CP repair: no improvements found[/yellow]"
+                        "[yellow]   ⚠ LNS-IGLS repair: no improvements found[/yellow]"
                     )
 
         # ========================================================================
-        # END: LNS-CP HYBRID REPAIR SYSTEM
+        # END: LNS-IGLS REPAIR SYSTEM
         # ========================================================================
 
         # Store generation repair stats

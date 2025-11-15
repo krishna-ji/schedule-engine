@@ -63,7 +63,7 @@ lns:
 **Symptom**: `[LNS] ✗ Repair FAILED: All strategies exhausted`
 
 **Diagnosis**: Check console for:
-- Heuristic timeout (increase `heuristic_time_limit: 8.0`)
+- IGLS timeout (increase `igls_time_limit: 8.0`)
 - CP-SAT INFEASIBLE (check domain sizes in diagnostics)
 - Subproblem too constrained (reduce `min_subproblem_size: 1`)
 

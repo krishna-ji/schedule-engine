@@ -75,7 +75,6 @@ schedule-engine/
 ├── configs/                # YAML configurations
 │   ├── base.yaml           # Shared settings
 │   ├── test.yaml           # Smoke test (30 gen)
-│   ├── notprod.yaml        # Medium (400 gen)
 │   └── prod.yaml           # Best quality (2000 gen)
 ├── data/                   # Input JSON files
 │   ├── Course.json
@@ -162,17 +161,16 @@ Configurations use YAML with inheritance:
 
 - `base.yaml` - Common settings (shared across all environments)
 - `test.yaml` - Overrides for quick testing
-- `notprod.yaml` - Medium-quality runs
 - `prod.yaml` - Best-quality production runs
 
 **Key Settings:**
 
-| Parameter | Test | NotProd | Prod | Description |
-|-----------|------|---------|------|-------------|
-| `ga.ngen` | 30 | 400 | 2000 | Generations |
-| `ga.pop_size` | 10 | 80 | 200 | Population size |
-| `parallel.use_multiprocessing` | false | true | true | Parallel eval |
-| `repair.exhaustive.enabled` | false | true | true | IGLS repair |
+| Parameter | Test | Prod | Description |
+|-----------|------|------|-------------|
+| `ga.ngen` | 30 | 2000 | Generations |
+| `ga.pop_size` | 10 | 200 | Population size |
+| `parallel.use_multiprocessing` | false | true | Parallel eval |
+| `repair.exhaustive.enabled` | false | true | IGLS repair |
 
 See [`docs/CONFIG_QUICKSTART.md`](docs/CONFIG_QUICKSTART.md) for details.
 

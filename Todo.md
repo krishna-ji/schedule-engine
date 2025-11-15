@@ -6,16 +6,15 @@
 
 ---
 
-## PHASE 1: LNS-CP Hybrid Foundation (4-6 weeks)
+## PHASE 1: LNS-IGLS Hybrid Foundation (4-6 weeks)
 
-**Goal**: Prove that integrating CP-SAT as a targeted repair tool improves baseline GA
+**Goal**: Prove that integrating IGLS as a targeted repair tool improves baseline GA
 
 **Status**: ✅ **IMPLEMENTATION COMPLETE** (2025-11-14)
 
 ### 1.1 Environment Setup
-- [x] ✅ Install `ortools` library: `uv add ortools`
 - [x] ✅ Install `pytorch` library: `uv add torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118`
-- [x] ✅ Verify installations with test imports
+- [x] ✅ Verify installation with test imports
 - [x] ✅ Create new module structure: `src/lns/` directory
 
 ### 1.2 Conflict Detection System
@@ -28,33 +27,23 @@
 - [x] ✅ Write unit tests for conflict detection (test with known-bad individuals)
 - [x] ✅ Test with current dataset to verify correct identification
 
-### 1.3 CP-SAT Subproblem Solver
-- [x] ✅ Create `src/lns/cp_repair.py`
-- [x] ✅ Implement basic CP model creation:
-  - [x] ✅ Create variables for session start times
-  - [x] ✅ Create variables for room assignments
-  - [x] ✅ Define domains from available resources
-- [x] ✅ Implement internal constraints (conflicts among repaired sessions):
-  - [x] ✅ Instructor temporal conflicts
-  - [x] ✅ Room temporal conflicts
-  - [x] ✅ Student group conflicts
-  - [x] ✅ Use `NoOverlap` global constraints
-- [x] ✅ Implement constraints against fixed schedule:
-  - [x] ✅ No conflicts with partial schedule sessions
-  - [x] ✅ Respect already-assigned resources
-- [x] ✅ Add soft constraint optimization to objective
-- [x] ✅ Add 10-second time limit to solver
-- [x] ✅ Test on small subproblems (5 sessions)
+### 1.3 IGLS Subproblem Solver
+- [x] ✅ Create `src/lns/igls_repair.py`
+- [x] ✅ Implement IGLS for subproblems:
+  - [x] ✅ Adapt IGLS to take a partial schedule as a fixed background.
+  - [x] ✅ The search should only modify the "destroyed" sessions.
+  - [x] ✅ Evaluation function must check against the fixed background.
+- [x] ✅ Add soft constraint optimization to objective.
+- [x] ✅ Add time limit or iteration limit to the subproblem solver.
+- [x] ✅ Test on small subproblems (5 sessions).
 
 ### 1.4 LNS Framework
 - [x] ✅ Create `src/lns/lns_operator.py`
-- [x] ✅ Implement `LNS_CP_Repair()` function (Algorithm 2 from suggestion.md):
+- [x] ✅ Implement `LNS_IGLS_Repair()` function (Algorithm 2 from suggestion.md):
   - [x] ✅ Destroy phase: Extract conflicted sessions
-  - [x] ✅ Handle case where conflicts > 20 (select worst 20)
-  - [x] ✅ Create partial schedule (remove conflicted sessions)
-  - [x] ✅ Call CP-SAT repair on subproblem
-  - [x] ✅ Reintegrate solution if feasible
-  - [x] ✅ Return original schedule if CP-SAT fails
+  - [x] ✅ Repair phase: Call the IGLS subproblem solver
+  - [x] ✅ Reintegration phase: Merge the repaired solution
+  - [x] ✅ Return original schedule if IGLS fails to improve
 - [x] ✅ Add logging for LNS operations (track success/failure rates)
 - [x] ✅ Test end-to-end on full individuals with known conflicts
 
@@ -73,44 +62,50 @@
   - [x] ✅ `lns.max_repairs_per_run: 10`
 
 ### 1.6 Benchmarking & Evaluation
-- [x] ✅ Create benchmarking script: `scripts/benchmark_lns_cp.py`
-- [ ] 🔄 Run baseline GA (without LNS-CP) on test dataset
+- [x] ✅ Create benchmarking script: `scripts/benchmark_lns_igls.py`
+- [ ] 🔄 Run baseline GA (without LNS-IGLS) on test dataset
   - [ ] Record: final fitness, hard violations, soft violations, runtime
   - [ ] Save results to `output/benchmark_baseline/`
-- [ ] 🔄 Run GA+LNS-CP hybrid on same dataset (PRODUCTION RUN IN PROGRESS)
+- [ ] 🔄 Run GA+LNS/IGLS hybrid on same dataset (PRODUCTION RUN IN PROGRESS)
   - [ ] Record: same metrics + LNS success rate
-  - [ ] Save results to `output/benchmark_lns_cp/`
+  - [ ] Save results to `output/benchmark_lns_igls/`
 - [ ] ⏳ Generate comparison report:
   - [ ] Time to first feasible solution
-  - [ ] Final solution quality
-  - [ ] Convergence curves
+  - [ ] Final solution quality (hard/soft violations)
+  - [ ] Convergence plots
   - [ ] Statistical significance tests
-- [x] ✅ Document findings in `docs/for_report/PHASE1_LNS_CP_IMPLEMENTATION.md` (initial documentation)
-- [ ] ⏳ Complete results documentation in `docs/for_report/PHASE1_LNS_CP_RESULTS.md` (after production run)
+- [x] ✅ Document findings in `docs/for_report/PHASE1_LNS_IGLS_IMPLEMENTATION.md` (initial documentation)
+- [ ] ⏳ Complete results documentation in `docs/for_report/PHASE1_LNS_IGLS_RESULTS.md` (after production run)
 
 ### Phase 1 Summary
 **Completed**:
-- ✅ All core LNS-CP modules implemented and tested
+- ✅ All core LNS-IGLS modules implemented and tested
 - ✅ Conflict detection system with comprehensive unit tests
-- ✅ CP-SAT repair solver with hard/soft constraint support
+- ✅ IGLS repair solver adapted for subproblems
 - ✅ LNS operator with destroy-repair-reintegrate cycle
 - ✅ Full GA integration with interval and stagnation triggers
-- ✅ Configuration system for LNS-CP parameters
-- ✅ Unit tests (all passing in `test/test_lns_cp.py`)
+- ✅ Configuration system for LNS-IGLS parameters
+- ✅ Unit tests (all passing in `test/test_lns.py`)
 - ✅ Benchmarking script ready for comparative analysis
 - ✅ Production configuration enabled and production run started
 
 **In Progress**:
-- 🔄 Production run with LNS-CP enabled (24-48 hours estimated)
+- 🔄 Production run with LNS-IGLS enabled (24-48 hours estimated)
 
 **Remaining**:
-- ⏳ Baseline comparison runs (without LNS-CP)
+- ⏳ Baseline comparison runs (without LNS-IGLS)
 - ⏳ Statistical analysis and comparison report
 - ⏳ Final results documentation with convergence analysis
+
+**Note:** CP-SAT approach has been abandoned due to intractability. Phase 1 now uses LNS-IGLS (pure heuristic repair). See `docs/CP_REMOVAL_SUMMARY.md` for details.
 
 ---
 
 ## PHASE 2: RL Environment Foundation (3-4 weeks)
+
+**Goal**: Build the hyper-heuristic framework and infrastructure for learning agents
+
+**Status**: ✅ **READY TO START** - Directory structure created, all CP-SAT code removed
 
 **Goal**: Build the hyper-heuristic framework and infrastructure for learning agents
 
@@ -145,8 +140,8 @@
   - [ ] **Action 1**: `MutateSessionRoom` (low intensity, ~5ms)
   - [ ] **Action 2**: `CrossoverOnePoint` (medium, ~5ms)
   - [ ] **Action 3**: `LNS_DestroyRandom10Pct` (medium, ~50ms)
-  - [ ] **Action 4**: `LNS_DestroyConflicted` (high, ~100ms)
-  - [ ] **Action 5**: `LNS_CP_Repair` (very high, ~500ms-10s)
+  - [ ] **Action 4**: `LNS_destroy_conflicted` (high intensity)
+  - [ ] **Action 5**: `LNS_IGLS_Repair` (very high, ~500ms-10s)
 - [ ] Create `HEURISTIC_TOOLBOX` registry (list of heuristic instances)
 - [ ] Add cost tracking for each action
 
@@ -495,9 +490,9 @@
   - [ ] Chromosome encoding
   - [ ] Genetic operators
   - [ ] NSGA-II algorithm
-- [ ] Document LNS-CP integration:
+- [ ] Document LNS-IGLS integration:
   - [ ] Algorithm 2 from suggestion.md (with pseudocode)
-  - [ ] CP-SAT subproblem formulation
+  - [ ] IGLS subproblem formulation
 - [ ] Document RL hyper-heuristic:
   - [ ] State representation
   - [ ] Action space
@@ -548,7 +543,7 @@
 ### 7.7 Conclusion & Future Work
 - [ ] Summarize contributions:
   - [ ] Novel RL-based hyper-heuristic framework
-  - [ ] Successful integration of CP-SAT in LNS context
+  - [ ] Successful integration of IGLS in LNS context
   - [ ] Demonstrated adaptive optimization
 - [ ] Restate key findings
 - [ ] Propose future research directions:
@@ -702,7 +697,7 @@
 - [ ] Read key papers on hyper-heuristics
 - [ ] Read key papers on RL for optimization
 - [ ] Study PyTorch tutorials (if new to deep learning)
-- [ ] Study CP-SAT documentation (OR-Tools)
+- [ ] Study IGLS implementation details
 - [ ] Participate in relevant online communities (Stack Overflow, Reddit r/MachineLearning)
 
 ---
@@ -713,7 +708,7 @@
 1. **RL Training Instability**: DQN may not converge
    - **Mitigation**: Start with simple problems, tune hyperparameters carefully, use baseline agents as fallback
 
-2. **CP-SAT Still Intractable on Subproblems**: Even small subproblems may fail
+2. **IGLS May Not Converge on Complex Subproblems**: Even small subproblems may be difficult
    - **Mitigation**: Reduce subproblem size further (5 sessions max), add strict time limits, have greedy fallback
 
 3. **Computational Budget**: Training RL agents is expensive
@@ -724,7 +719,7 @@
 
 ### Contingency Plans
 - **If RL completely fails**: Fall back to GA+LNS-CP hybrid as main contribution (still novel)
-- **If CP-SAT integration fails**: Focus on pure RL hyper-heuristic with GA operators only
+- **If LNS-IGLS integration fails**: Focus on pure RL hyper-heuristic with GA operators only
 - **If thesis deadline is tight**: Cut optional phases, focus on strong evaluation of core system
 
 ---
@@ -774,7 +769,7 @@
 
 - **Priority Order**: Phases 1 → 2 → 3 → 6 → 7 → 9 (skip 4-5 if time-constrained)
 - **Current Status**: Planning phase complete, ready to start Phase 1
-- **Next Immediate Action**: Install `ortools` and implement `find_hard_conflict_sessions()`
+- **Next Immediate Action**: Implement `find_hard_conflict_sessions()` and adapt IGLS for subproblems
 - **Weekly Goal**: Complete at least 3-5 tasks per week
 - **Advisor Check-ins**: Every 2 weeks, present progress and get feedback
 
@@ -790,7 +785,7 @@
   - `src/lns/lns_operator.py` - LNS operator with destroy-repair-reintegrate
 - **Integration**: GA scheduler updated with LNS-CP triggers
 - **Configuration**: Added LNS parameters to base.yaml and prod.yaml
-- **Testing**: All unit tests passing (`test/test_lns_cp.py`)
+- **Testing**: All unit tests passing (`test/test_lns.py`)
 - **Documentation**: Phase 1 implementation documented in `docs/for_report/`
 - **Status**: Production run with LNS-CP enabled (in progress)
 - **Next**: Complete evaluation phase (baseline comparison, statistical analysis)

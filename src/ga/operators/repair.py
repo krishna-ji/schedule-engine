@@ -20,7 +20,7 @@ Availability Model:
 - Group availability: NOT checked (default to all operating hours)
 
 Architecture:
-- Registry-based: Enable/disable repairs via config/ga_params.py
+- Decorator-based registry: Auto-register repair operators (like constraints)
 - Priority-ordered: Lower priority number executes first
 - In-place modification: Invalidate fitness after repair
 - Unified interface: repair_individual_unified() with selective optimization
@@ -47,6 +47,7 @@ from collections import defaultdict
 from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.ga.operators.repair_wrappers import repair_operator
 
 
 # ============================================================================
@@ -54,6 +55,12 @@ from src.encoder.quantum_time_system import QuantumTimeSystem
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_instructor_availability",
+    description="Fix instructor availability violations (shift sessions to instructor-available times)",
+    priority=1,
+    modifies_length=False,
+)
 def repair_instructor_availability(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -454,6 +461,12 @@ def _find_available_slot(
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_group_overlaps",
+    description="Fix group schedule overlaps (same group in multiple sessions)",
+    priority=2,
+    modifies_length=False,
+)
 def repair_group_overlaps(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -546,6 +559,12 @@ def repair_group_overlaps(
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_room_conflicts",
+    description="Fix room double-booking conflicts",
+    priority=3,
+    modifies_length=False,
+)
 def repair_room_conflicts(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -792,6 +811,12 @@ def _room_matches_requirements(room, course) -> bool:
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_instructor_conflicts",
+    description="Fix instructor double-booking conflicts",
+    priority=4,
+    modifies_length=False,
+)
 def repair_instructor_conflicts(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -881,6 +906,12 @@ def repair_instructor_conflicts(
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_instructor_qualifications",
+    description="Reassign unqualified instructors to qualified ones",
+    priority=5,
+    modifies_length=False,
+)
 def repair_instructor_qualifications(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -952,6 +983,12 @@ def repair_instructor_qualifications(
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_room_type_mismatches",
+    description="Fix room type mismatches (lab/lecture/seminar)",
+    priority=6,
+    modifies_length=False,
+)
 def repair_room_type_mismatches(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -1215,6 +1252,12 @@ def _try_time_shift_for_better_room(
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_session_clustering",
+    description="Improve session clustering (merge isolated 1-quantum sessions into 2-3 quantum blocks)",
+    priority=7,
+    modifies_length=False,
+)
 def repair_session_clustering(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -1803,6 +1846,12 @@ def _is_quantum_free_for_gene(
 # ============================================================================
 
 
+@repair_operator(
+    name="repair_incomplete_or_extra_sessions",
+    description="Add missing sessions or remove extra sessions",
+    priority=8,
+    modifies_length=True,
+)
 def repair_incomplete_or_extra_sessions(
     individual: List[SessionGene], context: SchedulingContext
 ) -> int:
@@ -2059,16 +2108,16 @@ def repair_individual(
         >>> print(f"Total fixes: {stats['total_fixes']} in {stats['iterations']} iterations")
     """
     # Import registry here to avoid circular dependency issues
-    from src.ga.operators.repair_registry import (
-        get_enabled_repair_heuristics,
+    from src.ga.operators.repair_wrappers import (
+        get_enabled_repair_operators,
         get_repair_statistics_template,
     )
 
     # Initialize statistics tracking
     stats = get_repair_statistics_template()
 
-    # Get enabled repair heuristics (sorted by priority)
-    enabled_repairs = get_enabled_repair_heuristics()
+    # Get enabled repair operators (sorted by priority)
+    enabled_repairs = get_enabled_repair_operators()
 
     if not enabled_repairs:
         # No repairs enabled - return zero stats
@@ -2086,15 +2135,29 @@ def repair_individual(
             # Other repairs get remaining weight
         }
 
-        # Assign priorities based on weights
-        for repair_name in enabled_repairs:
+        # Assign priorities based on weights (modify metadata priority)
+        modified_repairs = {}
+        for repair_name, meta in enabled_repairs.items():
             if repair_name in priority_weights:
-                enabled_repairs[repair_name]["priority"] = priority_weights[repair_name]
+                # Create new metadata with modified priority
+                from src.ga.operators.repair_wrappers import RepairOperatorMetadata
+
+                modified_meta = RepairOperatorMetadata(
+                    name=meta.name,
+                    function=meta.function,
+                    description=meta.description,
+                    priority=priority_weights[repair_name],
+                    modifies_length=meta.modifies_length,
+                    enabled_by_default=meta.enabled_by_default,
+                )
+                modified_repairs[repair_name] = modified_meta
+            else:
+                modified_repairs[repair_name] = meta
 
         # Re-sort by enhanced priority
         enabled_repairs = dict(
             sorted(
-                enabled_repairs.items(), key=lambda x: -x[1]["priority"]
+                modified_repairs.items(), key=lambda x: -x[1].priority
             )  # Negative for descending
         )
 
@@ -2103,9 +2166,9 @@ def repair_individual(
         stats["iterations"] += 1
         iteration_fixes = 0
 
-        # Apply each enabled repair in priority order
-        for repair_name, repair_info in enabled_repairs.items():
-            repair_func = repair_info["function"]
+        # Apply each enabled repair operator in priority order
+        for repair_name, repair_meta in enabled_repairs.items():
+            repair_func = repair_meta.function
 
             # Call repair function
             fixes = repair_func(individual, context)

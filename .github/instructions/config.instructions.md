@@ -14,7 +14,7 @@ YAML-based configuration with inheritance: `base.yaml` + environment overrides. 
 - `src/config/loader.py` - YAML loading with deep merge (base.yaml + env overrides)
 - `src/config/__init__.py` - Global config object + `init_config()`, `get_config()`
 - `configs/base.yaml` - Common settings (shared by all environments)
-- `configs/{test,notprod,prod}.yaml` - Environment-specific overrides only
+- `configs/{test,prod}.yaml` - Environment-specific overrides only
 
 ## Configuration Inheritance
 
@@ -50,7 +50,7 @@ ngen = config.ga.ngen
 - Include comments for non-obvious settings
 - **base.yaml**: Contains ALL common settings (used by all environments)
 - **Environment files**: Only override what differs (ngen, pop_size, parallel, repair triggers, etc.)
-- Keep test.yaml minimal (fast), notprod.yaml balanced, prod.yaml comprehensive
+- Keep test.yaml minimal (fast), prod.yaml comprehensive
 
 ### Validation Rules
 
@@ -58,7 +58,7 @@ ngen = config.ga.ngen
 - Population size must be even (NSGA-II requirement)
 - Probabilities must be 0.0-1.0
 - File paths can be relative or absolute
-- Valid environments: "test", "notprod", "prod" (not "dev")
+- Valid environments: "test", "prod"
 
 ### Never Do
 

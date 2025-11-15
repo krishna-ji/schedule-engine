@@ -34,8 +34,8 @@ lns:
   min_subproblem_size: 6          # At least 6 sessions
   expand_neighborhood_hops: 1     # 1-hop conflict graph expansion
   cp_time_limit: 20.0             # 20s CP-SAT timeout
-  heuristic_max_iterations: 1000  # 1000 heuristic iterations
-  heuristic_time_limit: 8.0       # 8s heuristic timeout
+  igls_max_iterations: 1000  # 1000 IGLS iterations
+  igls_time_limit: 8.0       # 8s IGLS timeout
   apply_to_best_n: 3              # Repair top 3 individuals
   enable_diagnostics: true        # Log subproblem details
   pre_check_feasibility: true     # Pre-check before CP-SAT
@@ -157,8 +157,8 @@ Check `output/evaluation_<timestamp>/lns_repair_stats.json`:
 - Local search stuck in local optima
 
 **Solutions:**
-1. Increase `heuristic_time_limit` to 12.0
-2. Increase `heuristic_max_iterations` to 2000
+1. Increase `igls_time_limit` to 12.0
+2. Increase `igls_max_iterations` to 2000
 3. Check if CP escalation works (fallback strategy)
 
 ### Problem: Repairs Too Slow
@@ -172,7 +172,7 @@ Check `output/evaluation_<timestamp>/lns_repair_stats.json`:
 **Solutions:**
 1. Reduce `max_subproblem_size` to 20
 2. Reduce `cp_time_limit` to 15.0
-3. Reduce `heuristic_time_limit` to 5.0
+3. Reduce `igls_time_limit` to 5.0
 4. Increase `trigger_interval` to 150 (less frequent)
 
 ---
