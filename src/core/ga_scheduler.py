@@ -397,6 +397,12 @@ class GAScheduler:
         # NEW: Hypervolume reference point (initialized during first metric tracking)
         self._hypervolume_ref_point = None
 
+        # RL INTEGRATION: Components for hyper-heuristic control
+        self.rl_enabled = False
+        self.rl_controller = None
+        self.rl_state_encoder = None
+        self.rl_action_mapper = None
+
     def setup_toolbox(self):
         """Initialize DEAP toolbox with operators."""
         self.toolbox = base.Toolbox()
@@ -459,6 +465,186 @@ class GAScheduler:
             guided=get_config().ga.use_constraint_guided_mutation,  # Enable constraint-guided mutation
         )
 
+    def _init_rl(self) -> bool:
+        """
+        Initialize RL components for hyper-heuristic control.
+
+        Returns:
+            True if RL initialized successfully, False otherwise
+        """
+        rl_config = get_config().rl
+
+        # Check if RL is enabled in configuration
+        if not rl_config.enabled:
+            return False
+
+        # Check mode (must be 'inference' or 'hybrid' for GA integration)
+        if rl_config.mode not in ["inference", "hybrid"]:
+            console.print(
+                f"[yellow]RL mode '{rl_config.mode}' not compatible with GA integration[/yellow]"
+            )
+            console.print(
+                "[dim]   Use mode 'inference' or 'hybrid' for production runs[/dim]"
+            )
+            return False
+
+        try:
+            # Import RL components (lazy import to avoid dependency issues)
+            from src.rl.gym_env.state_encoder import StateEncoder
+            from src.rl.gym_env.action_mapper import ActionMapper
+            from src.rl.hybrid.hybrid_controller import HybridController
+            from src.rl.deployment.model_loader import ModelLoader
+            from src.rl.deployment.inference import RLInference
+
+            console.print("[cyan]Initializing RL Components...[/cyan]")
+
+            # Initialize state encoder
+            self.rl_state_encoder = StateEncoder(
+                max_generations=self.config.generations,
+                history_size=rl_config.environment.observation_history_size,
+                normalize=True,
+            )
+            console.print("   [green][!ok][/green] StateEncoder initialized")
+
+            # Initialize action mapper
+            self.rl_action_mapper = ActionMapper(context=self.context)
+            console.print(
+                f"   [green][!ok][/green] ActionMapper initialized ({len(self.rl_action_mapper.valid_actions)} actions)"
+            )
+
+            # Load trained model
+            model_path = rl_config.agent.model_path
+            if not model_path or model_path == "models/rl_agents/best_model.zip":
+                # Try to find best model from manifest
+                try:
+                    from src.rl.training.checkpoints import CheckpointManager
+
+                    manifest_path = rl_config.training.checkpoint_settings.manifest_path
+                    manager = CheckpointManager(manifest_path)
+                    best_checkpoint = manager.get_best_checkpoint(metric="mean_reward")
+                    if best_checkpoint:
+                        model_path = best_checkpoint.model_path
+                        console.print(
+                            f"   [dim]Using best checkpoint: {model_path}[/dim]"
+                        )
+                except Exception as e:
+                    console.print(
+                        f"   [yellow]Could not load best checkpoint: {e}[/yellow]"
+                    )
+
+            # Initialize model loader and load model
+            loader = ModelLoader(cache_models=True)
+            model, metadata = loader.load_model(
+                model_path, agent_type=rl_config.agent.type
+            )
+            console.print(
+                f"   [green][!ok][/green] Model loaded: {rl_config.agent.type.upper()}"
+            )
+
+            # Initialize inference engine
+            inference_engine = RLInference(
+                model=model,
+                timeout_ms=rl_config.inference.timeout_ms,
+            )
+
+            # Initialize hybrid controller
+            self.rl_controller = HybridController(
+                inference_engine=inference_engine,
+                action_mapper=self.rl_action_mapper,
+                mode=rl_config.hybrid.mode,
+                fallback_strategy=rl_config.hybrid.fallback_strategy,
+                rl_probability=rl_config.hybrid.rl_probability,
+            )
+            console.print(
+                f"   [green][!ok][/green] HybridController initialized (mode: {rl_config.hybrid.mode})"
+            )
+
+            self.rl_enabled = True
+            console.print("[green]RL Integration: ENABLED[/green]")
+            return True
+
+        except ImportError as e:
+            console.print(f"[yellow]RL components not available: {e}[/yellow]")
+            console.print(
+                "[dim]   Install RL dependencies: uv add gymnasium stable-baselines3[/dim]"
+            )
+            return False
+        except FileNotFoundError as e:
+            console.print(f"[yellow]RL model not found: {e}[/yellow]")
+            console.print(
+                f"[dim]   Train model first: python src/rl/training/train_script.py[/dim]"
+            )
+            return False
+        except Exception as e:
+            console.print(f"[red]RL initialization failed: {e}[/red]")
+            logger.exception("RL initialization error")
+            return False
+
+    def _apply_rl_operators(self, gen: int) -> None:
+        """
+        Apply RL-selected heuristics to population.
+
+        Uses trained RL agent to select and apply adaptive operators
+        based on current population state.
+
+        Args:
+            gen: Current generation number
+        """
+        if not self.rl_enabled or not self.rl_controller:
+            return
+
+        # Encode current state
+        state = self.rl_state_encoder.encode(
+            population=self.population,
+            current_generation=gen,
+            generations_without_improvement=self.stagnation_counter,
+        )
+
+        # Get valid actions for current state
+        valid_actions = self.rl_action_mapper.get_valid_actions()
+
+        # Select action using RL controller (with fallback)
+        action_id = self.rl_controller.select_action(
+            state=state,
+            valid_actions=valid_actions,
+            deterministic=True,  # Use deterministic policy for production
+        )
+
+        # Record heuristic application for state tracking
+        self.rl_state_encoder.record_heuristic_application(action_id)
+
+        # Apply selected heuristic to population
+        try:
+            # Get best individual (target for improvement heuristics)
+            best_ind = tools.selBest(self.population, 1)[0]
+
+            # Apply action and get modified individual(s)
+            modified_individuals = self.rl_action_mapper.apply_action(
+                action_id=action_id,
+                population=self.population,
+                best_individual=best_ind,
+            )
+
+            # Evaluate modified individuals
+            if modified_individuals:
+                fitness_values = list(
+                    self.toolbox.map(self.toolbox.evaluate, modified_individuals)
+                )
+                for ind, fit in zip(modified_individuals, fitness_values):
+                    ind.fitness.values = fit
+
+                # Log action application (optional)
+                rl_config = get_config().rl
+                if rl_config.logging.log_heuristic_usage:
+                    action_name = self.rl_action_mapper.get_action_name(action_id)
+                    logger.debug(
+                        f"Gen {gen}: RL applied '{action_name}' "
+                        f"(modified {len(modified_individuals)} individuals)"
+                    )
+
+        except Exception as e:
+            logger.warning(f"RL action application failed at gen {gen}: {e}")
+
     def initialize_population(self):
         """Create and evaluate initial population."""
         with Progress(
@@ -504,6 +690,9 @@ class GAScheduler:
 
         # Track initial population as Generation 0
         self._track_metrics(gen=-1)  # Will be recorded as generation 0
+
+        # RL INTEGRATION: Initialize RL components after population is ready
+        self._init_rl()
 
         # Log initial population to logger
         if self.logger:
@@ -1132,6 +1321,11 @@ class GAScheduler:
             self.population + offspring + elite
         )  # Elite ensures monotonic improvement
         self.population[:] = self.toolbox.select(combined, len(self.population))
+
+        # RL INTEGRATION: Apply RL-selected heuristics
+        if self.rl_enabled:
+            self._apply_rl_operators(gen)
+            event_tracker.add("rl_operators_applied")
 
         # Memetic mode: Apply intensive local search to elite individuals
         if repair_config.get("enabled", False) and repair_config.get(

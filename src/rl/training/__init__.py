@@ -1,14 +1,13 @@
 """
-RL training infrastructure.
+RL Training Infrastructure.
 
-Handles agent training, hyperparameter tuning, curriculum learning:
-- Training loop with checkpointing and logging
-- TensorBoard integration for metrics
-- Curriculum learning (easy → medium → hard problems)
-- Hyperparameter optimization with Optuna
+Provides training utilities for RL agents:
+- RLTrainer: Main training class with TensorBoard logging
+- Callbacks: Training callbacks (periodic eval, early stopping, checkpoints)
+- CurriculumManager: Multi-stage curriculum learning
+- Checkpoints: Checkpoint metadata management
 """
 
-from src.rl.training.trainer import RLTrainer
-from src.rl.training.curriculum import CurriculumManager
+from src.rl.training.trainer import RLTrainer, create_trainer
 
-__all__ = ["RLTrainer", "CurriculumManager"]
+__all__ = ["RLTrainer", "create_trainer"]

@@ -455,6 +455,143 @@ def train_with_curriculum():
         
         # Save checkpoint
         agent.save(f"models/stage_{stage_info['name']}.zip")
+
+#### Example Configuration (configs/base.yaml)
+
+```yaml
+rl:
+    training:
+        curriculum:
+            - name: "easy"
+                enabled: true
+                num_episodes: 200
+                max_generations: 100
+                checkpoint_every: 25
+                validation_episodes: 5
+                sample_config:
+                    num_courses: 10
+            - name: "medium"
+                enabled: true
+                num_episodes: 300
+                max_generations: 200
+                checkpoint_every: 25
+                validation_episodes: 5
+                sample_config:
+                    num_courses: 20
+            - name: "hard"
+                enabled: true
+                num_episodes: 500
+                max_generations: 400
+                checkpoint_every: 50
+                validation_episodes: 10
+                sample_config:
+                    num_courses: 40
+        checkpoint_settings:
+            manifest_path: "models/rl_agents/manifest.json"
+            checkpoint_dir: "models/rl_agents/checkpoints/"
+            checkpoint_keep_last: 5
+            validation_threshold: 0.05  # relative improvement for stage advancement
+            adaptive_advance_patience: 3  # number of validated checkpoints above threshold for advancement
+```
+
+
+    ### Why Many Episodes per Stage (Justification)
+
+    One episode is a single, complete GA run (initialize population -> run GA for configured generations -> collect episode reward). Multiple episodes per stage are essential for the following reasons:
+
+    - Statistical Robustness: A neural policy needs many examples to learn reliable action-to-outcome relationships. One episode is an anecdote; hundreds show an actual pattern.
+    - Diversity of Problems: Each episode uses a different seed/initial population and problem instance (especially with curriculum sampling), exposing the agent to varied constraints and local optima.
+    - Stable Gradient Updates: Batch gradient updates from multiple collected episodes yield smoother and more stable learning than one-shot changes.
+    - Avoid Overfitting: Repeating episodes with different instances prevents memorization of a single seed or instance.
+
+    Recommended episode counts (tunable based on compute and dataset):
+    - Stage 1 (easy problems): 200 episodes (10 courses)
+    - Stage 2 (medium problems): 300 episodes (20 courses)
+    - Stage 3 (hard/production): 500 episodes (40+ courses)
+
+    Checkpoint & Validation Process:
+    - Save checkpoints every 25–50 episodes depending on speed and memory (`checkpoint_every` configurable).
+    - Maintain a validation set (hold-out seed/instances) for each stage; run 5-10 validation episodes per checkpoint and compute aggregated validation metrics.
+    - Use a composite validation metric (weighted fitness improvement + hypervolume + diversity) to select the best checkpoint per stage.
+    - Promote the best validated model to the next stage or to production if all criteria are met.
+
+    Adaptive Stage Advancement (optional):
+    - Skip to the next stage early if validation metric reaches the stage threshold (`9tau_i`) consistently for `k` checkpoints.
+    - If validation degrades, either 1) revert to a previous checkpoint or 2) increase training episodes at the current stage.
+
+    ### NSGA-II Diversity Metrics in the State Vector
+
+    For multi-objective optimization using NSGA-II, include explicit diversity metrics in the `StateEncoder` so the agent can make decisions that balance convergence and diversity.
+
+    Suggested metrics (normalized to [0,1]):
+    - Pareto front size (|Pareto| / pop_size)
+    - Hypervolume or Pareto spread (normalized by known bounds)
+    - Mean & std of crowding distances for rank-1 solutions
+    - Genotype diversity (average normalised Hamming distance in population)
+    - Phenotype diversity (avg pairwise Euclidean distance in the objective space)
+    - Unique fitness ratio (#unique fitness vectors / population size)
+
+    How to use them:
+    - Low genotype diversity → trigger stronger perturbation (higher mutation) or more exploratory crossovers
+    - Low phenotype diversity / shrinking Pareto spread → apply niching crossover or diversity-promoting operators
+    - High crowding distance variance → rebalance selection pressure (e.g., lower selection pressure or add tournament diversity)
+
+    Implementation notes:
+    - Use subsampling for pairwise diversity computations if population size is large (O(sample_limit) instead of O(N^2)).
+    - Maintain running statistics (moving averages) for improvement rates to detect stagnation quickly.
+    - Normalization of features is critical for stable learning (min-max or z-score with clamping).
+
+    #### Example diversity helper (pseudocode)
+
+    ```python
+    def genotype_diversity(population_genotypes, sample_limit=200):
+        # population_genotypes: list of lists/tuples of genes
+        # return avg normalized Hamming distance
+        from random import randrange
+        import numpy as np
+        n = len(population_genotypes)
+        L = len(population_genotypes[0])
+        pairs = []
+        if n * (n - 1) // 2 <= sample_limit:
+            for i in range(n):
+                for j in range(i+1, n):
+                    pairs.append((population_genotypes[i], population_genotypes[j]))
+        else:
+            for _ in range(sample_limit):
+                i = randrange(n)
+                j = randrange(n)
+                if i == j: j = (i+1) % n
+                pairs.append((population_genotypes[i], population_genotypes[j]))
+        distances = [sum(1 for a,b in zip(x,y) if a != b) / float(L) for x,y in pairs]
+        return float(np.mean(distances))
+
+    def phenotype_diversity(objectives, sample_limit=200):
+        # objectives: list of tuples like (hard, soft)
+        import numpy as np
+        n = len(objectives)
+        if n < 2:
+            return 0.0
+        arr = np.array(objectives, dtype=float)
+        col_std = np.std(arr, axis=0, ddof=1)
+        col_std[col_std == 0] = 1.0
+        arr = arr / col_std
+        pairs = []
+        if n * (n - 1) // 2 <= sample_limit:
+            for i in range(n):
+                for j in range(i+1, n):
+                    pairs.append((arr[i], arr[j]))
+        else:
+            for _ in range(sample_limit):
+                i = randrange(n)
+                j = randrange(n)
+                if i == j: j = (i+1) % n
+                pairs.append((arr[i], arr[j]))
+        distances = [np.linalg.norm(a - b) for a,b in pairs]
+        max_possible = np.sqrt(arr.shape[1])
+        return float(np.mean(distances) / max_possible)
+    ```
+
+
 ```
 
 ### 2.2.4: Hyperparameter Tuning
@@ -809,6 +946,41 @@ class ModelLoader:
     def list_available_models(self):
         """List all trained models."""
         return [p.stem for p in self.model_dir.glob("*.zip")]
+
+### 2.3.4: Model Promotion & Registry
+
+**What**: Promote validated models to production and maintain a small model registry with metadata.
+**Why**: Production should use only validated models; registry ensures reproducibility and safe promotion.
+
+Manifest format (`models/rl_agents/manifest.json`):
+```
+[
+    {
+        "name": "ppo_scheduler_final",
+        "path": "models/rl_agents/ppo_scheduler_final.zip",
+        "created_at": "2025-11-10T12:00:00Z",
+        "seed": 12345,
+        "config_path": "configs/rl_training/hyperparams_ppo.yaml",
+        "validation_score": -2.3,
+        "hypervolume": 0.67,
+        "status": "validated"  # validated|staging|prod
+    }
+]
+```
+
+Promotion script responsibilities:
+- Validate the checkpoint selected by the validation stage, copy to `models/rl_agents/` as `*_final.zip`, and add a manifest entry.
+- Update `configs/prod.yaml` with the chosen `rl.agent.model_path` and `rl.agent.version` atomically. Prefer writing to a tmp file then renaming.
+- Add a rollback mechanism to revert `configs/prod.yaml` to a previous version.
+
+Registry helpers (`src/rl/deployment/registry.py`):
+- `list_models()`
+- `get_model_metadata(name)`
+- `promote_model(name)`
+- `demote_model(name)`
+
+Add automated tests for registry functionality and promotion script.
+
 ```
 
 ### 2.3.2: Implement Inference Engine

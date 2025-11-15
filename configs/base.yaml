@@ -358,25 +358,52 @@ rl:
     checkpoint_interval: 10000 # Save checkpoint every N steps
     evaluation_interval: 5000 # Evaluate every N steps
     tensorboard_log: logs/tensorboard # TensorBoard log directory
+    checkpoint_dir: models/rl_agents/checkpoints # Checkpoint directory
     save_dir: models/rl_agents # Model checkpoint directory
     verbose: 1 # Logging verbosity (0=none, 1=info, 2=debug)
 
-    # Curriculum learning (optional)
+    # Curriculum learning (Phase 2.2)
     curriculum:
-      enabled: false
-      stages:
-        - name: easy
+      - name: "easy"
+        enabled: true
+        num_episodes: 200
+        max_generations: 100
+        checkpoint_every: 25
+        validation_episodes: 5
+        sample_config:
           num_courses: 10
-          max_generations: 50
-          total_timesteps: 30000
-        - name: medium
+        threshold: -5.0 # Mean reward threshold for advancement
+        advancement_patience: 3 # Consecutive checkpoints above threshold
+
+      - name: "medium"
+        enabled: true
+        num_episodes: 300
+        max_generations: 200
+        checkpoint_every: 25
+        validation_episodes: 5
+        sample_config:
           num_courses: 20
-          max_generations: 100
-          total_timesteps: 50000
-        - name: hard
+        threshold: -3.0
+        advancement_patience: 3
+
+      - name: "hard"
+        enabled: true
+        num_episodes: 500
+        max_generations: 400
+        checkpoint_every: 50
+        validation_episodes: 10
+        sample_config:
           num_courses: 40
-          max_generations: 200
-          total_timesteps: 100000
+        threshold: -2.0
+        advancement_patience: 3
+
+    # Checkpoint settings
+    checkpoint_settings:
+      manifest_path: "models/rl_agents/manifest.json"
+      validation_set_dir: "data/validation"
+      checkpoint_keep_last: 5 # Keep only last N checkpoints per stage
+      validation_threshold: 0.05 # Relative improvement for stage advancement
+      adaptive_advance_patience: 3 # Checkpoints above threshold for advancement
 
   # Inference configuration
   inference:

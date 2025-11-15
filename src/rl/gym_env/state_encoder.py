@@ -24,10 +24,12 @@ class StateFeatures:
     fitness_std: float
     fitness_range: float
 
-    # Diversity metrics (3 features)
+    # Diversity metrics (5 features)
     population_diversity: float
     genotype_diversity: float
+    phenotype_diversity: float
     fitness_diversity: float
+    unique_fitness_ratio: float
 
     # Progress metrics (4 features)
     current_generation: int
@@ -49,9 +51,16 @@ class StateEncoder:
     Encodes GA population state into normalized observation space.
 
     Observation space (Box):
-    - Shape: (19,) base features + (history_size,) heuristic history
+    - Shape: (21,) base features + (history_size,) heuristic history
     - All values normalized to [0, 1] or [-1, 1]
     - Handles missing/invalid values gracefully
+
+    Features include:
+    - Fitness metrics (5): best, avg, worst, std, range
+    - Diversity metrics (5): population, genotype, phenotype, fitness, unique_fitness_ratio
+    - Progress metrics (4): generation, stagnation, convergence, improvement
+    - Constraint metrics (3): hard, soft, violation_std
+    - Heuristic history (dynamic): recent heuristic IDs
     """
 
     def __init__(
@@ -94,7 +103,7 @@ class StateEncoder:
             generations_without_improvement: Generations since last improvement
 
         Returns:
-            Normalized observation vector of shape (19 + history_size,)
+            Normalized observation vector of shape (21 + history_size,)
         """
         features = self._extract_features(
             population, current_generation, generations_without_improvement
@@ -134,7 +143,9 @@ class StateEncoder:
         # Diversity metrics
         population_diversity = self._calculate_diversity(population)
         genotype_diversity = self._calculate_genotype_diversity(population)
+        phenotype_diversity = self._calculate_phenotype_diversity(population)
         fitness_diversity = fitness_std / (avg_fitness + 1e-6)
+        unique_fitness_ratio = self._calculate_unique_fitness_ratio(population)
 
         # Progress metrics
         convergence_rate = self._calculate_convergence_rate(fitness_std, avg_fitness)
@@ -157,7 +168,9 @@ class StateEncoder:
             fitness_range=fitness_range,
             population_diversity=population_diversity,
             genotype_diversity=genotype_diversity,
+            phenotype_diversity=phenotype_diversity,
             fitness_diversity=fitness_diversity,
+            unique_fitness_ratio=unique_fitness_ratio,
             current_generation=current_generation,
             generations_without_improvement=generations_without_improvement,
             convergence_rate=convergence_rate,
@@ -184,7 +197,12 @@ class StateEncoder:
         return float(np.mean(distances)) if distances else 0.0
 
     def _calculate_genotype_diversity(self, population: List[Individual]) -> float:
-        """Calculate genotype diversity (unique chromosome structures)."""
+        """
+        Calculate genotype diversity (unique chromosome structures).
+
+        Measures diversity at the genetic level by counting unique
+        timeslot/room assignment pairs across the population.
+        """
         if not population:
             return 0.0
 
@@ -197,6 +215,63 @@ class StateEncoder:
         # Normalize by population size * chromosome length
         max_diversity = len(population) * len(population[0])
         return len(unique_assignments) / max(max_diversity, 1)
+
+    def _calculate_phenotype_diversity(self, population: List[Individual]) -> float:
+        """
+        Calculate phenotype diversity (unique fitness outcomes).
+
+        Measures diversity at the solution level by analyzing how different
+        individuals are in terms of their evaluated fitness. Uses normalized
+        pairwise distances in fitness space.
+        """
+        if len(population) < 2:
+            return 0.0
+
+        # Extract fitness vectors (hard, soft)
+        fitness_array = np.array([ind.fitness.values for ind in population])
+
+        # Calculate pairwise Euclidean distances in fitness space
+        distances = []
+        for i in range(len(fitness_array)):
+            for j in range(i + 1, len(fitness_array)):
+                dist = np.linalg.norm(fitness_array[i] - fitness_array[j])
+                distances.append(dist)
+
+        # Average distance normalized by population size
+        if not distances:
+            return 0.0
+
+        avg_distance = np.mean(distances)
+        # Normalize by typical fitness range to get [0, 1] scale
+        # Using fitness range from current population
+        fitness_range = np.max(fitness_array) - np.min(fitness_array)
+        if fitness_range < 1e-6:
+            return 0.0
+
+        return min(avg_distance / (fitness_range + 1e-6), 1.0)
+
+    def _calculate_unique_fitness_ratio(self, population: List[Individual]) -> float:
+        """
+        Calculate ratio of unique fitness values in population.
+
+        Returns:
+            Ratio in [0, 1] where 1.0 means all individuals have unique fitness,
+            and 0.0 means all have identical fitness (full convergence).
+        """
+        if not population:
+            return 0.0
+
+        # Extract fitness tuples (hard, soft)
+        fitness_tuples = [ind.fitness.values for ind in population]
+
+        # Count unique fitness values (with small tolerance for floating point)
+        # Round to 4 decimal places to avoid floating point precision issues
+        rounded_fitness = [
+            tuple(round(f, 4) for f in fitness) for fitness in fitness_tuples
+        ]
+        unique_count = len(set(rounded_fitness))
+
+        return unique_count / len(population)
 
     def _calculate_convergence_rate(
         self, fitness_std: float, avg_fitness: float
@@ -227,7 +302,9 @@ class StateEncoder:
                 features.fitness_range,
                 features.population_diversity,
                 features.genotype_diversity,
+                features.phenotype_diversity,
                 features.fitness_diversity,
+                features.unique_fitness_ratio,
                 float(features.current_generation),
                 float(features.generations_without_improvement),
                 features.convergence_rate,
@@ -253,23 +330,23 @@ class StateEncoder:
         # Fitness metrics (indices 0-4): clip to reasonable range
         normalized[0:5] = np.clip(obs[0:5] / 1000.0, 0, 1)
 
-        # Diversity metrics (indices 5-7): already in [0, 1]
-        normalized[5:8] = np.clip(obs[5:8], 0, 1)
+        # Diversity metrics (indices 5-9): already in [0, 1]
+        normalized[5:10] = np.clip(obs[5:10], 0, 1)
 
-        # Current generation (index 8)
-        normalized[8] = obs[8] / self.max_generations
+        # Current generation (index 10)
+        normalized[10] = obs[10] / self.max_generations
 
-        # Generations without improvement (index 9): clip to max_generations
-        normalized[9] = min(obs[9] / self.max_generations, 1.0)
+        # Generations without improvement (index 11): clip to max_generations
+        normalized[11] = min(obs[11] / self.max_generations, 1.0)
 
-        # Convergence/improvement rates (indices 10-11): clip to [-1, 1]
-        normalized[10:12] = np.clip(obs[10:12], -1, 1)
+        # Convergence/improvement rates (indices 12-13): clip to [-1, 1]
+        normalized[12:14] = np.clip(obs[12:14], -1, 1)
 
-        # Violation metrics (indices 12-14): clip to reasonable range
-        normalized[12:15] = np.clip(obs[12:15] / 100.0, 0, 1)
+        # Violation metrics (indices 14-16): clip to reasonable range
+        normalized[14:17] = np.clip(obs[14:17] / 100.0, 0, 1)
 
-        # Heuristic history (indices 15+): normalize by max heuristic ID (20)
-        normalized[15:] = obs[15:] / 20.0
+        # Heuristic history (indices 17+): normalize by max heuristic ID (20)
+        normalized[17:] = obs[17:] / 20.0
 
         return normalized
 
@@ -283,7 +360,9 @@ class StateEncoder:
             fitness_range=0.0,
             population_diversity=0.0,
             genotype_diversity=0.0,
+            phenotype_diversity=0.0,
             fitness_diversity=0.0,
+            unique_fitness_ratio=0.0,
             current_generation=0,
             generations_without_improvement=0,
             convergence_rate=0.0,
@@ -310,4 +389,4 @@ class StateEncoder:
     @property
     def observation_dim(self) -> int:
         """Get observation space dimension."""
-        return 15 + self.history_size  # 15 base features + history
+        return 17 + self.history_size  # 17 base features + history

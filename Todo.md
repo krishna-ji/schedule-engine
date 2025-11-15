@@ -122,6 +122,7 @@
 - [x] ✅ Installed dependencies (gymnasium, stable-baselines3, torch, tensorboard)
 - [x] ✅ Created directory structure (`src/rl/` with 7 subdirectories)
 - [x] ✅ Implemented StateEncoder (25-dimensional observations)
+  - [ ] Add genotype & phenotype diversity features (genotype_diversity, phenotype_diversity, unique_fitness_ratio) to the state vector
 - [x] ✅ Implemented ActionMapper (20 discrete actions with registry integration)
 - [x] ✅ Implemented RewardCalculator (multi-component: fitness + diversity - time)
 - [x] ✅ Implemented ScheduleEnv (full Gym interface: reset, step, render)
@@ -137,6 +138,12 @@
 
 **Goal**: Train RL agents to learn optimal heuristic selection strategies
 
+**Training Budget Example (guideline)**:
+- Stage 1 (easy, 10 courses): 200 episodes (short: 100 generations each) ≈ 30s – 2 min overall depending on environment
+- Stage 2 (medium, 20 courses): 300 episodes (200 generations each) ≈ 1–5 min total
+- Stage 3 (hard, 40+ courses): 500 episodes (400 generations each) ≈ 5–15 min total
+- Use shorter episode lengths during early stages and expand during later stages. These timings are approximate and highly dataset dependent.
+
 #### Task 1: RLTrainer Class (Priority: HIGH, Est: 2 days)
 - [ ] Create `src/rl/training/trainer.py` with RLTrainer class
 - [ ] Implement basic training loop with progress tracking
@@ -146,6 +153,9 @@
 - **Math**: Implements PPO loss $L^{\text{CLIP}}(\theta)$ via SB3
 - **Expected output**: Trained model saved to `models/rl_agents/`
 - **Files**: `src/rl/training/trainer.py` (~150 lines)
+ - [ ] Accept curriculum schedule from config and support stage-specific episode counts (Stage1:200, Stage2:300, Stage3:500 recommended)
+ - [ ] Integrate checkpoint callback and manifest logging (save metadata with seed, config)
+ - [ ] Provide evaluation hooks for validation set per stage (`--validation-set`) and periodic evaluation
 
 #### Task 2: Training Script (Priority: HIGH, Est: 1 day)
 - [ ] Create `src/rl/training/train_script.py` as executable entry point
@@ -166,6 +176,10 @@
 - **Math**: Advance if mean reward $\geq$ threshold and variance < limit
 - **Expected improvement**: 15-25% better generalization than flat training
 - **Files**: `src/rl/training/curriculum.py` (~200 lines)
+ - [ ] Implement `checkpoint_every` and `checkpoint_freq` settings per stage (configurable via YAML)
+ - [ ] Support adaptive advancement: advance when validation score >= threshold for `k` consecutive checkpoints
+ - [ ] Implement `curriculum_validate(stage)` to evaluate current stage against a validation set and return advancement boolean
+ - [ ] Provide `restart_from_checkpoint()` to automatically revert to last validated checkpoint if validation degrades
 
 #### Task 4: Hyperparameter Tuning (Priority: MEDIUM, Est: 2 days)
 - [ ] Create `src/rl/training/tune_hyperparameters.py`
@@ -186,11 +200,25 @@
 - **Usage**: Automatically logs to TensorBoard, saves best model
 - **Files**: `src/rl/training/callbacks.py` (~180 lines)
 
+#### Task 5.1: Checkpoints & Validation (Priority: MEDIUM, Est: 2 days)
+- [ ] Create `src/rl/training/checkpoints.py` to record checkpoint metadata (seed, config, val metrics, time)
+- [ ] Create `scripts/generate_validation_set.py` to produce stage-specific validation datasets
+- [ ] Create `scripts/select_best_checkpoint.py` to pick the best model by validation metrics
+- [ ] Implement `models/rl_agents/manifest.json` tracker for produced checkpoints and final artifacts
+- [ ] Integrate callbacks to automatically write entries to manifest on each checkpoint
+- [ ] Add tests for checkpoint manifest correctness and selection logic (`test/rl/test_checkpoints.py`)
+
+#### Task 5.2: Curriculum Metrics (Priority: MEDIUM, Est: 1 day)
+- [ ] Implement `src/rl/training/curriculum_metrics.py` that provides genotype/phenotype diversity and population-level metrics
+- [ ] Hook `curriculum_metrics` into `StateEncoder` and training callbacks to log diversity metrics
+- [ ] Add unit tests for diversity computation to `test/rl/test_diversity_metrics.py`
+
 **Phase 2.2 Deliverables**:
 - ✅ Trained PPO agent (100K timesteps, ~2 hours training)
 - ✅ TensorBoard logs showing learning progress
 - ✅ Best hyperparameters documented in config
 - ✅ Curriculum-trained model with better generalization
+- ✅ Checkpoint manifest & stage validation artifacts
 
 ---
 
@@ -243,6 +271,11 @@
 - [ ] Test full GA integration (RL vs non-RL comparison)
 - **Coverage target**: >80% for deployment modules
 - **Files**: `test/rl/test_deployment.py` (~200 lines)
+
+#### Task 10.1: Model Promotion & Registry (Priority: MEDIUM, Est: 1 day)
+- [ ] Create `scripts/promote_model_to_prod.py` to promote validated model to production (update `configs/prod.yaml`) and store model metadata in `models/rl_agents/manifest.json`
+- [ ] Implement `src/rl/deployment/registry.py` to manage model versions and guarantee atomic updates to `configs/prod.yaml`
+- [ ] Add tests to validate promote script and registry (`test/rl/test_registry.py`)
 
 **Phase 2.3 Deliverables**:
 - ✅ Production-ready RL inference system
@@ -362,6 +395,12 @@
 - [ ] Test callback integration
 - **Tests**: End-to-end training pipeline validation
 - **Files**: `test/rl/test_training.py` (~180 lines)
+
+#### Task 20.1: Curriculum & Checkpoint Tests (Priority: HIGH, Est: 1 day)
+- [ ] Create `test/rl/test_curriculum.py` to test `CurriculumManager` stage transitions, adaptive advancement, and environment generation
+- [ ] Create `test/rl/test_checkpoints.py` to test manifest generation and best-checkpoint selection logic
+- [ ] Create `test/rl/test_diversity_metrics.py` to validate genotype/phenotype computations and sub-sampling logic
+
 
 #### Task 21: Integration Tests for Deployment (Priority: HIGH, Est: 1 day)
 - [ ] Create `test/rl/test_deployment.py`
