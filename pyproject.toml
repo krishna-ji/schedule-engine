@@ -73,6 +73,8 @@ exclude = [
 # Extend-ignore allows us to selectively disable rules that are kept at the
 # organization level but create false positives in localized contexts (e.g.,
 # console initialization ordering). Keep this minimal and document any changes.
+
+[tool.ruff.lint]
 extend-ignore = ["E402"]
 
 [tool.black]

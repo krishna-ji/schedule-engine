@@ -3,7 +3,7 @@ Pydantic configuration models for Schedule Engine.
 All configs loaded from YAML files with full validation.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Dict, Optional, Literal, Any, List
 
 
@@ -132,16 +132,31 @@ class LNSConfig(BaseModel):
     cp_time_limit: float = Field(default=10.0, ge=1.0, le=300.0)
     heuristic_max_iterations: int = Field(
         default=500,
-        ge=10,
+        ge=0,
         le=10000,
-        description="Max iterations for heuristic local search repair",
+        description="Max iterations for heuristic local search repair (set 0 to disable when using `cp` strategy)",
     )
     heuristic_time_limit: float = Field(
         default=5.0,
-        ge=0.5,
+        ge=0.0,
         le=60.0,
-        description="Time limit for heuristic repair in seconds",
+        description="Time limit for heuristic repair in seconds (set 0.0 to disable when using `cp` strategy)",
     )
+
+    @model_validator(mode="after")
+    def _validate_heuristic_thresholds(cls, m):
+        """Allow zero values for heuristics when repair_strategy is 'cp', otherwise apply minimums."""
+        if m.repair_strategy != "cp":
+            if m.heuristic_max_iterations < 10:
+                raise ValueError(
+                    "lns.heuristic_max_iterations must be >= 10 when using 'hybrid' or 'heuristic' strategies"
+                )
+            if m.heuristic_time_limit < 0.5:
+                raise ValueError(
+                    "lns.heuristic_time_limit must be >= 0.5 when using 'hybrid' or 'heuristic' strategies"
+                )
+        return m
+
     apply_to_best_n: int = Field(default=1, ge=1, le=10)
     enable_diagnostics: bool = Field(
         default=True,

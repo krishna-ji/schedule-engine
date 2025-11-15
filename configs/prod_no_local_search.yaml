@@ -32,8 +32,8 @@ lns:
   min_subproblem_size: 5 # Min size
   expand_neighborhood_hops: 2 # 2-hop expansion for connected subproblems
   cp_time_limit: 25.0 # 25 seconds for CP-SAT
-  heuristic_max_iterations: 0 # Disabled
-  heuristic_time_limit: 0.0 # Disabled
+  heuristic_max_iterations: 0 # Disabled (acceptable when repair_strategy is 'cp')
+  heuristic_time_limit: 0.0 # Disabled (acceptable when repair_strategy is 'cp')
   apply_to_best_n: 5 # Repair top 5 individuals (more aggressive without IGLS)
   enable_diagnostics: true # FULL diagnostics
   pre_check_feasibility: true # Pre-check enabled
