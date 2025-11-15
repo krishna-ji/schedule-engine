@@ -4,6 +4,36 @@ This file tracks **enhancements** to the GA system (new features, performance im
 
 ---
 
+## [2025-11-15] LNS Hybrid Repair System - Production Ready
+
+**Summary**: Implemented complete hybrid repair system combining heuristic and CP-SAT strategies with diagnostics, pre-feasibility checks, and conflict graph expansion.
+
+**Files Modified:**
+- `src/config/models.py` - Extended LNSConfig with 10+ new fields
+- `configs/base.yaml` - Added new LNS configuration options
+- `configs/prod.yaml` - Optimized LNS settings for production
+- `src/lns/lns_operator.py` - Enhanced with strategy-aware repair
+- `src/core/ga_scheduler.py` - Integrated new lns_repair() with full config
+- `src/workflows/reporting.py` - Added LNS stats export to JSON + console
+
+**Files Created:**
+- `src/lns/diagnostics.py` - SubproblemDiagnostics class with pre-checks and conflict graph
+- `src/lns/heuristic_repair.py` - Greedy assignment + local search with simulated annealing
+- `docs/LNS_PROD_RUN_GUIDE.md` - Complete production run guide
+
+**Key Features:**
+1. **Multiple Strategies**: cp, heuristic, or hybrid
+2. **Diagnostics**: Pre-feasibility checks, domain size analysis
+3. **Conflict Graph**: BFS expansion for connected subproblems
+4. **Stats Tracking**: Strategy-specific success rates exported to JSON
+5. **Production Optimized**: 1-hop expansion, 20s CP timeout, 8s heuristic timeout
+
+**Testing**: Validated on smoke test (30 gens), ready for production (2000 gens)
+
+**Documentation**: Comprehensive prod run guide with troubleshooting, monitoring, and post-run analysis
+
+---
+
 ## [2025-10-28] Suppressed Duplicate Course Warnings During Population Generation
 
 ### Files Modified

@@ -40,6 +40,7 @@ from src.exporter.plot_convergence import (
     plot_convergence_rate,
     plot_constraint_satisfaction_evolution,
 )
+from src.lns.lns_operator import get_lns_stats
 
 
 def generate_reports(
@@ -80,6 +81,48 @@ def generate_reports(
     export_everything(decoded_schedule, output_dir, qts)
     print("      [!ok] schedule.json")
     print("      [!ok] calendar.pdf")
+
+    # Export LNS repair statistics if available
+    lns_stats = get_lns_stats()
+    if lns_stats.total_attempts > 0:
+        import json
+        import os
+
+        stats_path = os.path.join(output_dir, "lns_repair_stats.json")
+        with open(stats_path, "w") as f:
+            json.dump(
+                {
+                    "total_attempts": lns_stats.total_attempts,
+                    "successful_repairs": lns_stats.successful_repairs,
+                    "failed_repairs": lns_stats.failed_repairs,
+                    "success_rate_percent": (
+                        lns_stats.successful_repairs / lns_stats.total_attempts * 100
+                        if lns_stats.total_attempts > 0
+                        else 0.0
+                    ),
+                    "heuristic_attempts": lns_stats.heuristic_attempts,
+                    "heuristic_success": lns_stats.heuristic_success,
+                    "heuristic_success_rate_percent": (
+                        lns_stats.heuristic_success / lns_stats.heuristic_attempts * 100
+                        if lns_stats.heuristic_attempts > 0
+                        else 0.0
+                    ),
+                    "cp_attempts": lns_stats.cp_attempts,
+                    "cp_success": lns_stats.cp_success,
+                    "cp_success_rate_percent": (
+                        lns_stats.cp_success / lns_stats.cp_attempts * 100
+                        if lns_stats.cp_attempts > 0
+                        else 0.0
+                    ),
+                    "pre_check_skips": lns_stats.pre_check_skips,
+                    "avg_subproblem_size": lns_stats.avg_subproblem_size,
+                    "total_repair_time_seconds": lns_stats.total_repair_time,
+                },
+                f,
+                indent=2,
+            )
+        print("      [!ok] lns_repair_stats.json")
+        print(f"      [!info] LNS Stats: {lns_stats}")
 
     # Generate violation report - sequential (depends on export)
     if course_map:

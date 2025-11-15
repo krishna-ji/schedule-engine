@@ -1,0 +1,48 @@
+# ============================================================================
+# TEST LNS FORCE CONFIG - Guaranteed LNS Trigger on Gen 6
+# ============================================================================
+# Short validation run to force LNS repair with full diagnostics.
+# Use this to verify LNS works before production runs.
+
+name: "Test - LNS Force Trigger (Gen 6)"
+environment: test
+description: "Short test with forced LNS trigger on gen 6 for validation"
+
+# GA Settings - SHORT RUN
+ga:
+  ngen: 20
+  pop_size: 30
+
+# Parallel Processing - Disabled for easier log inspection
+parallel:
+  use_multiprocessing: false
+  num_workers: 1
+
+# LNS Hybrid Repair - FORCE TRIGGER ON GEN 6
+lns:
+  enabled: true
+  repair_strategy: hybrid # Try heuristic first, escalate to CP
+  trigger_interval: 999 # High interval (won't trigger naturally)
+  stagnation_threshold: 100 # Max allowed (won't trigger naturally in 20 gens)
+  force_trigger_generations: [6] # FORCE trigger on gen 6 for validation
+  trigger_before_igls: true # Run before IGLS to ensure conflicts exist
+  max_subproblem_size: 15 # Moderate size
+  min_subproblem_size: 2 # Low minimum to ensure subproblem forms
+  expand_neighborhood_hops: 1 # Expand 1 hop
+  cp_time_limit: 10.0 # 10 seconds
+  heuristic_max_iterations: 500 # 500 iterations
+  heuristic_time_limit: 5.0 # 5 seconds
+  apply_to_best_n: 1 # Repair top 1 individual
+  enable_diagnostics: true # FULL diagnostics logging
+  pre_check_feasibility: true # Pre-check enabled
+
+# IGLS - DISABLED (focus on LNS validation only)
+repair:
+  exhaustive_search:
+    enabled: false # Disabled for clean LNS-only test
+
+  stagnation_repair:
+    enabled: false # Disabled for clean test
+
+  selective_repair:
+    enabled: false # Disabled for clean test

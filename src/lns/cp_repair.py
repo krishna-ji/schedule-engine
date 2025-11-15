@@ -141,6 +141,11 @@ class CPRepairSolver:
         solver.parameters.max_time_in_seconds = self.time_limit_seconds
         solver.parameters.log_search_progress = False
 
+        # Enable multiprocessing for CP-SAT (parallel search)
+        # CP-SAT will use multiple cores for parallel search strategies
+        # Set to 0 to auto-detect number of available cores
+        solver.parameters.num_search_workers = 0  # Auto-detect cores
+
         status = solver.Solve(model)
 
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):

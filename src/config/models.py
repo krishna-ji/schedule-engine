@@ -107,11 +107,49 @@ class LNSConfig(BaseModel):
     """LNS-CP Hybrid repair configuration"""
 
     enabled: bool = False
+    repair_strategy: Literal["cp", "heuristic", "hybrid"] = Field(
+        default="hybrid",
+        description="Repair strategy: 'cp' (CP-SAT only), 'heuristic' (greedy/local search), 'hybrid' (heuristic first, escalate to CP)",
+    )
     trigger_interval: int = Field(default=50, ge=1, le=1000)
     stagnation_threshold: int = Field(default=10, ge=1, le=100)
+    force_trigger_generations: List[int] = Field(
+        default_factory=list,
+        description="Force LNS trigger on these specific generations (e.g., [6, 50] for testing/validation)",
+    )
+    trigger_before_igls: bool = Field(
+        default=False,
+        description="If true, trigger LNS before exhaustive search (IGLS) to avoid locked schedules",
+    )
     max_subproblem_size: int = Field(default=20, ge=1, le=100)
+    min_subproblem_size: int = Field(default=4, ge=1, le=50)
+    expand_neighborhood_hops: int = Field(
+        default=0,
+        ge=0,
+        le=5,
+        description="Expand conflicted sessions by N hops in conflict graph (0=disabled)",
+    )
     cp_time_limit: float = Field(default=10.0, ge=1.0, le=300.0)
+    heuristic_max_iterations: int = Field(
+        default=500,
+        ge=10,
+        le=10000,
+        description="Max iterations for heuristic local search repair",
+    )
+    heuristic_time_limit: float = Field(
+        default=5.0,
+        ge=0.5,
+        le=60.0,
+        description="Time limit for heuristic repair in seconds",
+    )
     apply_to_best_n: int = Field(default=1, ge=1, le=10)
+    enable_diagnostics: bool = Field(
+        default=True,
+        description="Log detailed subproblem diagnostics and infeasibility reasons",
+    )
+    pre_check_feasibility: bool = Field(
+        default=True, description="Run pre-feasibility check before invoking CP-SAT"
+    )
 
 
 class RepairConfig(BaseModel):

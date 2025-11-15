@@ -6,6 +6,7 @@ Extracted from monolithic main.py for better testability and separation of conce
 """
 
 from typing import List, Dict, Optional
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from deap import base, tools
@@ -35,6 +36,7 @@ from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -1298,12 +1300,12 @@ class GAScheduler:
         # ========================================================================
 
         # ========================================================================
-        # LNS-CP HYBRID REPAIR SYSTEM
+        # LNS HYBRID REPAIR SYSTEM (CP / Heuristic / Hybrid)
         # ========================================================================
-        # Apply LNS-CP repair to best individuals when triggered
+        # Apply LNS repair to best individuals when triggered
         lns_config = get_config().lns
         if lns_config.enabled:
-            from src.lns.lns_operator import should_trigger_lns_repair, lns_cp_repair
+            from src.lns.lns_operator import should_trigger_lns_repair, lns_repair
 
             # Check if LNS should be triggered
             should_trigger = should_trigger_lns_repair(
@@ -1311,33 +1313,41 @@ class GAScheduler:
                 trigger_interval=lns_config.trigger_interval,
                 stagnation_counter=self.stagnation_counter,
                 stagnation_threshold=lns_config.stagnation_threshold,
+                force_trigger_generations=lns_config.force_trigger_generations,
             )
 
             if should_trigger:
-                event_tracker.add("lns_cp_repair_triggered")
+                event_tracker.add("lns_repair_triggered")
                 console.print(
-                    f"\n[bold blue][!info] LNS-CP repair triggered on gen {gen}[/bold blue]"
+                    f"\n[bold blue][!info] LNS repair triggered on gen {gen} (strategy={lns_config.repair_strategy})[/bold blue]"
                 )
 
                 # Get best individuals
                 num_to_repair = min(lns_config.apply_to_best_n, len(self.population))
                 best_individuals = tools.selBest(self.population, num_to_repair)
 
-                # Apply LNS-CP repair to each
+                # Apply LNS repair to each
                 repaired_count = 0
                 for idx, individual in enumerate(best_individuals):
                     console.print(
                         f"[dim]   Repairing individual {idx+1}/{num_to_repair}...[/dim]"
                     )
 
-                    repaired = lns_cp_repair(
+                    repaired = lns_repair(
                         individual=individual,
                         courses=self.context.courses,
                         instructors=self.context.instructors,
                         groups=self.context.groups,
                         rooms=self.context.rooms,
+                        repair_strategy=lns_config.repair_strategy,
                         max_subproblem_size=lns_config.max_subproblem_size,
+                        min_subproblem_size=lns_config.min_subproblem_size,
+                        expand_hops=lns_config.expand_neighborhood_hops,
                         cp_time_limit=lns_config.cp_time_limit,
+                        heuristic_max_iterations=lns_config.heuristic_max_iterations,
+                        heuristic_time_limit=lns_config.heuristic_time_limit,
+                        enable_diagnostics=lns_config.enable_diagnostics,
+                        pre_check_feasibility=lns_config.pre_check_feasibility,
                     )
 
                     # If repair was successful (returned different individual), update
@@ -1362,6 +1372,13 @@ class GAScheduler:
                     console.print(
                         f"[bold green]   ✓ LNS-CP repair complete: "
                         f"{repaired_count}/{num_to_repair} individuals repaired[/bold green]"
+                    )
+
+                    # Reset stagnation counter after successful repair
+                    # This prevents immediate re-triggering on next generation
+                    self.stagnation_counter = 0
+                    logger.info(
+                        f"Stagnation counter reset after LNS repair (gen {gen})"
                     )
                 else:
                     console.print(

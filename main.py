@@ -100,10 +100,12 @@ def main():
         mutation_prob=config.ga.mutpb,
         validate=True,  # Enable input validation
         config=config,  # Pass config object to workflow
-        output_dir=None
-        if exp_name is None
-        else f"output/evaluation_{{}}_{exp_name}".format(
-            datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir=(
+            None
+            if exp_name is None
+            else f"output/evaluation_{{}}_{exp_name}".format(
+                datetime.now().strftime("%Y%m%d_%H%M%S")
+            )
         ),
     )
 
