@@ -34,12 +34,12 @@ lns:
   apply_to_best_n: 3 # Repair top 3 individuals
   enable_diagnostics: true # Log detailed subproblem info
 
-# IGLS Exhaustive Search - Production triggers
+# IGLS Exhaustive Search - Production triggers (NO overlap with LNS intervals)
 repair:
   exhaustive_search:
     enabled: true
-    generations: [3, 30, 100, 200, 350, 500, 800, 1200, 1600, 1900]
-    population_coverage: 0.15 # Top 15% (30 individuals)
+    generations: [3, 30, 150, 250, 350, 450, 550, 650, 750, 850, 950]
+    population_coverage: 0.15 # Top 15% (15 individuals)
     max_neighborhood_size: 120
     timeout_seconds: 1000
 

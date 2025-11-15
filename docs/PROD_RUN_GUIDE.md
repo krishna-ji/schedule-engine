@@ -1,4 +1,20 @@
-# Production Run Guide - IGLS System
+# Production Run Guide - IGLS & LNS-IGLS Systems
+
+## System Architecture
+
+**Two complementary local search systems:**
+
+1. **IGLS Exhaustive Search**: Full chromosome intensive search at strategic generations
+   - Triggers: [3, 30, 150, 250, 350, 450, 550, 650, 750, 850, 950]
+   - Scope: Entire schedule (all 300+ sessions)
+   - Purpose: Deep optimization at key milestones
+
+2. **LNS-IGLS Repair**: Targeted subproblem repair on violated constraints
+   - Triggers: [6, 100, 200, 300, ...] + every 10 gens stagnation
+   - Scope: Small subproblems (6-30 violated sessions only)
+   - Purpose: Fast constraint violation repair
+
+**Key Design**: Generations are **separated** to avoid overlap (no dual repair on same gen)
 
 ## Quick Decision Matrix
 
@@ -43,11 +59,12 @@ runtime: ~30-60 min
 
 ### prod.yaml (🚀 Full Production)
 ```
-ngen: 500
+ngen: 1000
 pop_size: 100
 multiprocessing: ON
-exhaustive: [3, 30, 100, 200, 350, 480] (6 triggers)
-runtime: ~12-24 hours
+IGLS exhaustive: [3, 30, 150, 250, 350, 450, 550, 650, 750, 850, 950] (11 triggers)
+LNS-IGLS: [6, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] + stagnation (11+ triggers)
+runtime: ~24-48 hours
 ```
 **Use for**: Final production runs on powerful hardware
 

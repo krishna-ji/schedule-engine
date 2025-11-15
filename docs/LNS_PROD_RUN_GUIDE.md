@@ -27,23 +27,27 @@ The production config now uses **hybrid repair strategy** combining fast heurist
 ```yaml
 lns:
   enabled: true
-  repair_strategy: hybrid         # Try heuristic → escalate to CP
-  trigger_interval: 100           # Every 100 gens
-  stagnation_threshold: 20        # After 20 gens stagnation
+  trigger_interval: 100           # Every 100 gens (offset from IGLS exhaustive)
+  stagnation_threshold: 10        # After 10 gens stagnation (aggressive)
   max_subproblem_size: 30         # Repair up to 30 sessions
   min_subproblem_size: 6          # At least 6 sessions
   expand_neighborhood_hops: 1     # 1-hop conflict graph expansion
-  cp_time_limit: 20.0             # 20s CP-SAT timeout
-  igls_max_iterations: 1000  # 1000 IGLS iterations
-  igls_time_limit: 8.0       # 8s IGLS timeout
+  igls_max_iterations: 1000       # 1000 IGLS iterations (no timeout)
+  igls_time_limit: 1000.0         # 1000s timeout (effectively unlimited)
   apply_to_best_n: 3              # Repair top 3 individuals
   enable_diagnostics: true        # Log subproblem details
   pre_check_feasibility: true     # Pre-check before CP-SAT
 ```
 
-**Key Changes from Old System:**
-- **Old**: CP-SAT only, often INFEASIBLE, wasted time
-- **New**: Heuristic first (fast), CP escalation (best-effort), pre-checks (skip impossible)
+**LNS-IGLS vs IGLS Exhaustive:**
+- **LNS-IGLS**: Targeted repair of 6-30 violated sessions (fast, frequent)
+- **IGLS Exhaustive**: Full chromosome search of all 300+ sessions (slow, strategic)
+- **Timing**: Separated schedules to avoid overlap (LNS at 100/200/300, IGLS at 150/250/350)
+
+**Key Design:**
+- IGLS uses steepest-descent local search on small subproblems
+- No CP-SAT involved (removed in Phase 1)
+- Pure heuristic-based neighborhood exploration
 
 ---
 
