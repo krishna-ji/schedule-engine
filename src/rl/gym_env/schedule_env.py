@@ -129,7 +129,9 @@ class ScheduleEnv(gym.Env):
 
         # Get initial observation
         observation = self.state_encoder.encode(
-            self.population, self.current_generation, self.generations_without_improvement
+            self.population,
+            self.current_generation,
+            self.generations_without_improvement,
         )
 
         info = self._get_info()
@@ -185,7 +187,10 @@ class ScheduleEnv(gym.Env):
 
         # Calculate reward
         reward, _ = self.reward_calculator.calculate_reward(
-            prev_individual, modified_individual, population_diversity, self.current_generation
+            prev_individual,
+            modified_individual,
+            population_diversity,
+            self.current_generation,
         )
 
         # Update progress
@@ -261,9 +266,7 @@ class ScheduleEnv(gym.Env):
         lines.append(f"Generation: {self.current_generation}/{self.max_generations}")
         lines.append(f"Step: {self.current_step}/{self.max_steps_per_episode}")
         lines.append(f"Best Fitness: {self._get_best_fitness():.2f}")
-        lines.append(
-            f"Stagnation: {self.generations_without_improvement} generations"
-        )
+        lines.append(f"Stagnation: {self.generations_without_improvement} generations")
         lines.append(f"\nHeuristic Usage:")
         for action_id, count in sorted(self.episode_heuristic_counts.items()):
             action_info = self.action_mapper.get_action_info(action_id)

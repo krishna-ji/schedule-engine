@@ -83,9 +83,7 @@ class RewardCalculator:
             (total_reward, reward_components)
         """
         # 1. Fitness improvement reward
-        fitness_reward = self._calculate_fitness_reward(
-            prev_individual, new_individual
-        )
+        fitness_reward = self._calculate_fitness_reward(prev_individual, new_individual)
 
         # 2. Diversity bonus
         diversity_bonus = self._calculate_diversity_bonus(population_diversity)

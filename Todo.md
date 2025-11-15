@@ -101,108 +101,414 @@
 
 ---
 
-## PHASE 2: RL Environment Foundation (3-4 weeks)
+## PHASE 2: RL Integration (8-10 weeks)
 
-**Goal**: Build the hyper-heuristic framework and infrastructure for learning agents
+**Goal**: Implement production-ready RL system for hyper-heuristic selection
 
-**Status**: ✅ **READY TO START** - Directory structure created, all CP-SAT code removed
+**Status**: ✅ **Phase 2.1 Complete** - Gymnasium environment implemented | 🚧 **Phase 2.2-2.4 Ready**
 
-**Goal**: Build the hyper-heuristic framework and infrastructure for learning agents
+**Guide**: Comprehensive implementation guide available in `suggest/rlphase2.2-2.4_guide_manual.md`
+- Mathematical foundations (MDP, PPO, DQN, reward functions)
+- Detailed algorithms with pseudocode
+- Complete code examples for all components
+- Performance benchmarks and success criteria
 
-### 2.1 Environment Architecture
-- [ ] Create `src/rl/` directory structure:
-  - [ ] `src/rl/__init__.py`
-  - [ ] `src/rl/environment.py`
-  - [ ] `src/rl/state.py`
-  - [ ] `src/rl/reward.py`
-  - [ ] `src/rl/actions.py`
+---
 
-### 2.2 State Representation
-- [ ] Create `src/rl/state.py`
-- [ ] Implement `StateCalculator` class:
-  - [ ] `norm_hard_violations`: Calculate and normalize
-  - [ ] `norm_soft_violations`: Calculate and normalize
-  - [ ] `fitness_delta`: Track improvement from previous iteration
-  - [ ] `norm_stagnation`: Iterations since improvement / 100
-  - [ ] `progress`: Current iteration / max iterations
-- [ ] Implement `get_state_vector()` → returns 5D numpy array
-- [ ] Add normalization utilities for robust scaling
-- [ ] Write tests for state calculation edge cases
+### Phase 2.1: Gymnasium Environment ✅ **COMPLETE**
 
-### 2.3 Heuristic Toolbox
-- [ ] Create `src/rl/actions.py`
-- [ ] Define `Heuristic` base class with interface:
-  - [ ] `apply(individual, **kwargs) → Individual`
-  - [ ] `cost: float` (computational cost estimate)
-  - [ ] `needs_partner: bool` (for crossover)
-- [ ] Implement 6 core heuristics:
-  - [ ] **Action 0**: `MutateSessionTime` (low intensity, ~1ms)
-  - [ ] **Action 1**: `MutateSessionRoom` (low intensity, ~5ms)
-  - [ ] **Action 2**: `CrossoverOnePoint` (medium, ~5ms)
-  - [ ] **Action 3**: `LNS_DestroyRandom10Pct` (medium, ~50ms)
-  - [ ] **Action 4**: `LNS_destroy_conflicted` (high intensity)
-  - [ ] **Action 5**: `LNS_IGLS_Repair` (very high, ~500ms-10s)
-- [ ] Create `HEURISTIC_TOOLBOX` registry (list of heuristic instances)
-- [ ] Add cost tracking for each action
+**Status**: ✅ Implemented (2025-11-15) - 21 files, ~1500 lines production code
 
-### 2.4 Reward Function
-- [ ] Create `src/rl/reward.py`
-- [ ] Implement `calculate_reward()` function:
-  - [ ] Fitness improvement component (primary)
-  - [ ] Action cost penalty (efficiency incentive)
-  - [ ] Hard constraint bonus (strategic priority)
-- [ ] Add reward logging for analysis
-- [ ] Create reward visualization utilities
-- [ ] Write tests for reward edge cases (no change, degradation, etc.)
+- [x] ✅ Installed dependencies (gymnasium, stable-baselines3, torch, tensorboard)
+- [x] ✅ Created directory structure (`src/rl/` with 7 subdirectories)
+- [x] ✅ Implemented StateEncoder (25-dimensional observations)
+- [x] ✅ Implemented ActionMapper (20 discrete actions with registry integration)
+- [x] ✅ Implemented RewardCalculator (multi-component: fitness + diversity - time)
+- [x] ✅ Implemented ScheduleEnv (full Gym interface: reset, step, render)
+- [x] ✅ Created agent wrappers (PPO, DQN, Random)
+- [x] ✅ Added RL configuration to `configs/base.yaml` (99 lines)
+- [x] ✅ Created Pydantic models for RL config (11 models, 140 lines)
+- [x] ✅ Git commit 80b0b10 (Phase 2.1 complete)
+- [x] ✅ Created comprehensive implementation guide (`suggest/rlphase2.2-2.4_guide_manual.md`)
 
-### 2.5 Timetabling Environment Class
-- [ ] Create `src/rl/environment.py`
-- [ ] Implement `TimetablingEnvironment` class:
-  - [ ] `__init__(initial_schedule)`: Initialize with starting individual
-  - [ ] `get_state_vector(iteration, max_iter)`: Return current state
-  - [ ] `apply_heuristic(action_id, **kwargs)`: Execute action, update state
-  - [ ] `get_fitness()`: Return current fitness tuple
-  - [ ] `evaluate()`: Run full constraint evaluation
-  - [ ] `reset()`: Reset to initial state
-- [ ] Add archive management for crossover partners
-- [ ] Implement observation history tracking
-- [ ] Add logging for environment transitions
+---
 
-### 2.6 Random Baseline Agent
-- [ ] Create `src/rl/agents/random_agent.py`
-- [ ] Implement `RandomAgent` class:
-  - [ ] `choose_action(state)`: Uniform random selection
-  - [ ] Track action distribution for analysis
-- [ ] Integrate with environment for testing
-- [ ] Run random agent baseline on test dataset
-- [ ] Document random baseline performance
+### Phase 2.2: Training Infrastructure (Weeks 1-2) 🚧
 
-### 2.7 RL Loop Infrastructure
-- [ ] Create `src/rl/hyper_heuristic_loop.py`
-- [ ] Implement main loop skeleton (Algorithm 1):
-  - [ ] Initialize environment and agent
-  - [ ] Initialize solution archive
-  - [ ] Main iteration loop structure
-  - [ ] State observation
-  - [ ] Action selection
-  - [ ] Heuristic application
-  - [ ] Reward calculation
-  - [ ] Best solution tracking
-- [ ] Add comprehensive logging (state, action, reward per iteration)
-- [ ] Add checkpoint saving (save best solutions periodically)
-- [ ] Test loop with random agent
+**Goal**: Train RL agents to learn optimal heuristic selection strategies
 
-### 2.8 Configuration Integration
-- [ ] Add RL parameters to `configs/base.yaml`:
-  - [ ] `rl.enabled: false` (default off)
-  - [ ] `rl.state_size: 5`
-  - [ ] `rl.action_size: 6`
-  - [ ] `rl.archive_size: 10`
-  - [ ] `rl.learning_rate: 0.0001`
-  - [ ] `rl.epsilon_start: 1.0`
-  - [ ] `rl.epsilon_decay: 0.995`
-  - [ ] `rl.epsilon_min: 0.05`
-- [ ] Update config models in `src/config/`
+#### Task 1: RLTrainer Class (Priority: HIGH, Est: 2 days)
+- [ ] Create `src/rl/training/trainer.py` with RLTrainer class
+- [ ] Implement basic training loop with progress tracking
+- [ ] Add model creation, saving, and loading functionality
+- [ ] Integrate TensorBoard logging for real-time monitoring
+- [ ] Test with 10K timesteps smoke test to verify pipeline
+- **Math**: Implements PPO loss $L^{\text{CLIP}}(\theta)$ via SB3
+- **Expected output**: Trained model saved to `models/rl_agents/`
+- **Files**: `src/rl/training/trainer.py` (~150 lines)
+
+#### Task 2: Training Script (Priority: HIGH, Est: 1 day)
+- [ ] Create `src/rl/training/train_script.py` as executable entry point
+- [ ] Load scheduling data and create initial population
+- [ ] Initialize environment and trainer with configuration
+- [ ] Add command-line arguments (--timesteps, --agent-type, --save-path)
+- [ ] Test end-to-end training pipeline (50K timesteps)
+- **Usage**: `python src/rl/training/train_script.py --timesteps 50000 --agent ppo`
+- **Expected runtime**: ~30 minutes for 50K timesteps
+- **Files**: `src/rl/training/train_script.py` (~120 lines)
+
+#### Task 3: CurriculumManager (Priority: MEDIUM, Est: 2 days)
+- [ ] Create `src/rl/training/curriculum.py` with CurriculumManager class
+- [ ] Implement 3-stage curriculum (easy: 10 courses → medium: 20 → hard: 40)
+- [ ] Add stage transition logic with performance thresholds ($\bar{R} \geq \tau_i$)
+- [ ] Implement problem filtering by difficulty (course count)
+- [ ] Test curriculum progression (20K + 30K + 50K timesteps per stage)
+- **Math**: Advance if mean reward $\geq$ threshold and variance < limit
+- **Expected improvement**: 15-25% better generalization than flat training
+- **Files**: `src/rl/training/curriculum.py` (~200 lines)
+
+#### Task 4: Hyperparameter Tuning (Priority: MEDIUM, Est: 2 days)
+- [ ] Create `src/rl/training/tune_hyperparameters.py`
+- [ ] Implement Optuna integration for Bayesian optimization
+- [ ] Add grid search alternative for quick tuning (3x3x3 = 27 configs)
+- [ ] Test configurations: learning_rate, n_steps, batch_size, gamma
+- [ ] Save best configuration to `configs/rl_best_hyperparams.yaml`
+- **Search space**: lr ∈ [1e-5, 1e-2], n_steps ∈ {1024, 2048, 4096}, batch ∈ {32, 64, 128}
+- **Budget**: 50 Optuna trials or 1 hour wall time
+- **Files**: `src/rl/training/tune_hyperparameters.py` (~250 lines)
+
+#### Task 5: Training Callbacks (Priority: LOW, Est: 1 day)
+- [ ] Create `src/rl/training/callbacks.py` with custom SB3 callbacks
+- [ ] Implement PeriodicEvaluationCallback (evaluate every 5K timesteps)
+- [ ] Implement EarlyStoppingCallback (patience=5, min_delta=0.01)
+- [ ] Implement CheckpointCallback (save best model + periodic checkpoints)
+- [ ] Test callback integration with trainer
+- **Usage**: Automatically logs to TensorBoard, saves best model
+- **Files**: `src/rl/training/callbacks.py` (~180 lines)
+
+**Phase 2.2 Deliverables**:
+- ✅ Trained PPO agent (100K timesteps, ~2 hours training)
+- ✅ TensorBoard logs showing learning progress
+- ✅ Best hyperparameters documented in config
+- ✅ Curriculum-trained model with better generalization
+
+---
+
+### Phase 2.3: Deployment & Integration (Weeks 3-4) 🚧
+
+**Goal**: Deploy trained RL agent in production GA scheduler
+
+#### Task 6: ModelLoader (Priority: HIGH, Est: 1 day)
+- [ ] Create `src/rl/deployment/model_loader.py` with caching
+- [ ] Implement fast model loading (<100ms target)
+- [ ] Add model version management and validation
+- [ ] Implement model caching for repeated loads
+- [ ] Benchmark loading time across different models
+- **Target**: <100ms model load time (measured via timeit)
+- **Files**: `src/rl/deployment/model_loader.py` (~120 lines)
+
+#### Task 7: RLInference Engine (Priority: HIGH, Est: 1 day)
+- [ ] Create `src/rl/deployment/inference.py` for fast predictions
+- [ ] Implement timeout protection (10ms per prediction)
+- [ ] Add performance monitoring (track inference times)
+- [ ] Add batch prediction support for efficiency
+- [ ] Benchmark inference latency (<10ms deterministic prediction)
+- **Target**: <10ms per action prediction (median over 1000 predictions)
+- **Files**: `src/rl/deployment/inference.py` (~150 lines)
+
+#### Task 8: HybridController (Priority: HIGH, Est: 2 days)
+- [ ] Create `src/rl/hybrid/hybrid_controller.py`
+- [ ] Implement 3 modes: RL-primary, RL-fallback, RL-assisted
+- [ ] Add fallback strategies: random, greedy, round-robin
+- [ ] Implement usage statistics tracking (RL % vs fallback %)
+- [ ] Test mode switching and failure recovery
+- **Modes**: Primary (trust RL), Fallback (timeout protection), Assisted (80% RL, 20% explore)
+- **Files**: `src/rl/hybrid/hybrid_controller.py` (~220 lines)
+
+#### Task 9: GA Integration (Priority: HIGH, Est: 2 days)
+- [ ] Modify `src/core/ga_scheduler.py` to support RL mode
+- [ ] Add `_init_rl()` method for component initialization
+- [ ] Implement `_apply_rl_operators()` method for heuristic selection
+- [ ] Add RL enable/disable configuration in YAML
+- [ ] Test full GA run with RL enabled (compare vs baseline)
+- **Integration points**: After fitness evaluation, before selection
+- **Config**: `rl.enabled: true` in `configs/prod.yaml`
+- **Files**: Modify `src/core/ga_scheduler.py` (+150 lines)
+
+#### Task 10: Deployment Tests (Priority: MEDIUM, Est: 1 day)
+- [ ] Create `test/rl/test_deployment.py`
+- [ ] Test model loading speed (<100ms assertion)
+- [ ] Test inference latency (<10ms assertion)
+- [ ] Test hybrid controller mode switching
+- [ ] Test full GA integration (RL vs non-RL comparison)
+- **Coverage target**: >80% for deployment modules
+- **Files**: `test/rl/test_deployment.py` (~200 lines)
+
+**Phase 2.3 Deliverables**:
+- ✅ Production-ready RL inference system
+- ✅ GA scheduler with RL integration
+- ✅ Hybrid controller with 3 modes
+- ✅ Performance benchmarks (<100ms load, <10ms inference)
+
+---
+
+### Phase 2.4: Evaluation & Comparison (Weeks 5-6) 🚧
+
+**Goal**: Rigorous evaluation proving RL superiority over baselines
+
+#### Task 11: BaselineStrategies (Priority: HIGH, Est: 1 day)
+- [ ] Create `src/rl/evaluation/baselines.py`
+- [ ] Implement 5 baseline strategies: Random, Round-robin, Fixed-priority, Greedy, Expert-rules
+- [ ] Test each baseline independently with GA scheduler
+- [ ] Document baseline characteristics and expected performance
+- **Baselines**: Random (naive), Round-robin (cyclic), Greedy (recent rewards), Expert (hand-crafted rules)
+- **Files**: `src/rl/evaluation/baselines.py` (~150 lines)
+
+#### Task 12: RLEvaluator (Priority: HIGH, Est: 2 days)
+- [ ] Create `src/rl/evaluation/evaluator.py` with RLEvaluator class
+- [ ] Implement multi-strategy evaluation (10 runs per strategy)
+- [ ] Add results aggregation and comparison (mean, std, min, max)
+- [ ] Add progress tracking and comprehensive logging
+- [ ] Test with all strategies (RL + 4 baselines)
+- **Output**: EvaluationResult dataclass with fitness, convergence, time, heuristic usage
+- **Expected runtime**: ~5-10 hours for full evaluation (50 runs total)
+- **Files**: `src/rl/evaluation/evaluator.py` (~280 lines)
+
+#### Task 13: MetricsCollector (Priority: MEDIUM, Est: 1 day)
+- [ ] Create `src/rl/evaluation/metrics.py`
+- [ ] Implement comprehensive metrics tracking (fitness, convergence, diversity, heuristics)
+- [ ] Add JSON export functionality for post-analysis
+- [ ] Create metrics aggregation and summary statistics
+- [ ] Test metrics collection across multiple runs
+- **Metrics**: 15+ metrics including fitness trajectories, convergence speed, diversity maintenance
+- **Files**: `src/rl/evaluation/metrics.py` (~200 lines)
+
+#### Task 14: Statistical Analysis (Priority: HIGH, Est: 2 days)
+- [ ] Create `src/rl/evaluation/statistical_tests.py`
+- [ ] Implement t-tests and Mann-Whitney U tests for pairwise comparison
+- [ ] Add Cohen's d effect size calculations
+- [ ] Implement ANOVA and Tukey HSD post-hoc tests
+- [ ] Generate comparison report with significance tests
+- **Tests**: t-test, Mann-Whitney U, ANOVA, effect sizes, confidence intervals
+- **Significance level**: α = 0.05, power = 0.80
+- **Files**: `src/rl/evaluation/statistical_tests.py` (~300 lines)
+
+#### Task 15: TrainingVisualizer (Priority: MEDIUM, Est: 1 day)
+- [ ] Create `src/rl/visualization/training_plots.py`
+- [ ] Implement reward curves over training episodes
+- [ ] Add policy/value loss plots from TensorBoard logs
+- [ ] Add entropy plots for exploration tracking
+- [ ] Test plot generation with training logs
+- **Plots**: Reward vs timesteps, loss curves, entropy decay, action distribution
+- **Format**: High-quality PNG/PDF for thesis
+- **Files**: `src/rl/visualization/training_plots.py` (~180 lines)
+
+#### Task 16: PerformanceVisualizer (Priority: HIGH, Est: 1 day)
+- [ ] Create `src/rl/visualization/performance_plots.py`
+- [ ] Implement box plots for fitness comparison across strategies
+- [ ] Add bar charts for convergence speed comparison
+- [ ] Add scatter plots for time vs quality trade-off
+- [ ] Generate publication-quality comparison figures
+- **Plots**: Box plots, bar charts, scatter plots, convergence curves
+- **Style**: Consistent colors, legends, axis labels for thesis
+- **Files**: `src/rl/visualization/performance_plots.py` (~250 lines)
+
+#### Task 17: HeuristicAnalyzer (Priority: MEDIUM, Est: 1 day)
+- [ ] Create `src/rl/visualization/heuristic_plots.py`
+- [ ] Implement usage frequency histograms per strategy
+- [ ] Add effectiveness heatmaps (heuristic x state features)
+- [ ] Add state-action correlation plots
+- [ ] Test visualization with evaluation results
+- **Plots**: Histograms, heatmaps, correlation matrices
+- **Insight**: Which heuristics RL prefers vs baselines
+- **Files**: `src/rl/visualization/heuristic_plots.py` (~200 lines)
+
+#### Task 18: Evaluation Runner (Priority: HIGH, Est: 1 day)
+- [ ] Create `src/rl/evaluation/run_evaluation.py` orchestration script
+- [ ] Integrate all evaluation components into single pipeline
+- [ ] Generate all reports and plots automatically
+- [ ] Add command-line interface with configuration options
+- [ ] Test end-to-end evaluation (full pipeline)
+- **Usage**: `python src/rl/evaluation/run_evaluation.py --strategies all --runs 10`
+- **Output**: Reports in `output/rl_metrics/`, plots in `output/rl_plots/`
+- **Files**: `src/rl/evaluation/run_evaluation.py` (~180 lines)
+
+**Phase 2.4 Deliverables**:
+- ✅ Comprehensive evaluation report with 5 strategies
+- ✅ Statistical significance confirmation (p < 0.05)
+- ✅ 12+ publication-quality plots for thesis
+- ✅ RL outperforms baselines by >20%
+
+---
+
+### Testing Suite (Week 7) 🚧
+
+**Goal**: Comprehensive testing for code quality and reliability
+
+#### Task 19: Unit Tests for Gym Environment (Priority: HIGH, Est: 1 day)
+- [ ] Create `test/rl/test_gym_env.py`
+- [ ] Test StateEncoder (dimensions, normalization, consistency)
+- [ ] Test ActionMapper (space size, validity, heuristic application)
+- [ ] Test RewardCalculator (range checking, improvement detection)
+- [ ] Test ScheduleEnv (reset, step, termination conditions)
+- **Coverage target**: >85% for gym_env modules
+- **Files**: `test/rl/test_gym_env.py` (~250 lines)
+
+#### Task 20: Integration Tests for Training (Priority: MEDIUM, Est: 1 day)
+- [ ] Create `test/rl/test_training.py`
+- [ ] Test trainer initialization and configuration
+- [ ] Test training loop execution (1K timesteps smoke test)
+- [ ] Test model checkpointing and loading
+- [ ] Test callback integration
+- **Tests**: End-to-end training pipeline validation
+- **Files**: `test/rl/test_training.py` (~180 lines)
+
+#### Task 21: Integration Tests for Deployment (Priority: HIGH, Est: 1 day)
+- [ ] Create `test/rl/test_deployment.py`
+- [ ] Test model loader speed and caching
+- [ ] Test inference engine latency
+- [ ] Test hybrid controller switching logic
+- [ ] Test GA integration end-to-end
+- **Assertions**: <100ms load, <10ms inference, correct mode switching
+- **Files**: `test/rl/test_deployment.py` (~200 lines)
+
+#### Task 22: Performance Benchmarks (Priority: MEDIUM, Est: 1 day)
+- [ ] Create `test/rl/test_performance.py`
+- [ ] Benchmark inference latency (target: <10ms median)
+- [ ] Benchmark model loading (target: <100ms)
+- [ ] Benchmark memory usage (target: <500MB)
+- [ ] Generate performance report with timing statistics
+- **Tools**: timeit, memory_profiler, line_profiler
+- **Files**: `test/rl/test_performance.py` (~150 lines)
+
+**Testing Deliverables**:
+- ✅ >80% code coverage for RL modules
+- ✅ All tests passing in CI/CD
+- ✅ Performance benchmarks documented
+- ✅ Regression test suite for future changes
+
+---
+
+### Documentation (Week 8) 🚧
+
+**Goal**: Complete documentation for thesis and maintenance
+
+#### Task 23: RL Architecture Guide (Priority: HIGH, Est: 1 day)
+- [ ] Create `docs/RL_ARCHITECTURE.md`
+- [ ] Document system overview with component diagram
+- [ ] Explain component interactions and data flow
+- [ ] Add state machine diagrams for environment
+- [ ] Document design decisions and trade-offs
+- **Sections**: Overview, Components, Data Flow, Design Rationale, Extension Points
+- **Files**: `docs/RL_ARCHITECTURE.md` (~800 lines)
+
+#### Task 24: RL Training Guide (Priority: HIGH, Est: 1 day)
+- [ ] Create `docs/RL_TRAINING_GUIDE.md`
+- [ ] Write setup instructions (dependencies, environment)
+- [ ] Document training procedures (standard, curriculum, tuning)
+- [ ] Add hyperparameter tuning guide with recommendations
+- [ ] Include troubleshooting section
+- **Audience**: Future developers and thesis readers
+- **Files**: `docs/RL_TRAINING_GUIDE.md` (~600 lines)
+
+#### Task 25: RL Integration Guide (Priority: HIGH, Est: 1 day)
+- [ ] Create `docs/RL_INTEGRATION_GUIDE.md`
+- [ ] Explain how to use RL in GA scheduler
+- [ ] Document all configuration options
+- [ ] Explain 3 hybrid modes with use cases
+- [ ] Add troubleshooting and FAQ section
+- **Examples**: Code snippets for common use cases
+- **Files**: `docs/RL_INTEGRATION_GUIDE.md` (~500 lines)
+
+#### Task 26: RL Quick Start (Priority: MEDIUM, Est: 0.5 days)
+- [ ] Create `docs/RL_QUICKSTART.md`
+- [ ] Write 5-minute getting started guide
+- [ ] Add 3 simple usage examples
+- [ ] Document common use cases
+- [ ] Include FAQ for quick reference
+- **Goal**: Get new users running RL in <10 minutes
+- **Files**: `docs/RL_QUICKSTART.md` (~300 lines)
+
+**Documentation Deliverables**:
+- ✅ 4 comprehensive guides totaling ~2200 lines
+- ✅ Architecture documentation for thesis methodology
+- ✅ User guides for reproducibility
+- ✅ Quick start for demos and presentations
+
+---
+
+### Phase 3: Advanced RL Features (Weeks 9-12, Optional) 🔮
+
+**Goal**: Cutting-edge RL techniques for thesis contributions
+
+#### Task 27: Multi-Agent RL (Priority: LOW, Est: 1 week)
+- [ ] Research hierarchical multi-agent architectures
+- [ ] Train 3 specialist agents (construction, perturbation, improvement)
+- [ ] Implement meta-controller for agent selection
+- [ ] Evaluate multi-agent vs single-agent baseline
+- [ ] Document findings in thesis appendix
+- **Architecture**: Meta-controller + 3 specialists with separate policies
+- **Expected gain**: 10-15% improvement over single-agent
+- **Files**: `src/rl/multi_agent/` (4 files, ~600 lines)
+
+#### Task 28: Transfer Learning (Priority: LOW, Est: 1 week)
+- [ ] Generate 1000 synthetic scheduling problems
+- [ ] Pre-train agent on synthetic data (500K timesteps)
+- [ ] Fine-tune on real problems (100K timesteps)
+- [ ] Measure transfer effectiveness vs training from scratch
+- [ ] Compare convergence speed and final quality
+- **Hypothesis**: Pre-training reduces fine-tuning time by 50%
+- **Files**: `src/rl/transfer/` (3 files, ~400 lines)
+
+#### Task 29: Online Learning (Priority: LOW, Est: 1 week)
+- [ ] Implement experience replay from production runs
+- [ ] Add online policy update mechanism (safe updates)
+- [ ] Deploy in simulated production environment
+- [ ] Monitor adaptation over time (drift detection)
+- [ ] Evaluate long-term performance stability
+- **Safety**: Conservative updates, performance monitoring, rollback mechanism
+- **Files**: `src/rl/online/` (3 files, ~350 lines)
+
+#### Task 30: Meta-RL (Priority: LOW, Est: 1 week)
+- [ ] Research MAML (Model-Agnostic Meta-Learning) for scheduling
+- [ ] Implement meta-training loop with task distribution
+- [ ] Test few-shot adaptation (5 steps to new problem)
+- [ ] Compare with standard RL on unseen problems
+- [ ] Document meta-learning benefits and limitations
+- **Goal**: Learn initial policy that adapts quickly to new instances
+- **Files**: `src/rl/meta/` (2 files, ~450 lines)
+
+**Phase 3 Deliverables** (Optional):
+- ✅ 4 advanced RL techniques implemented
+- ✅ Novel research contributions for thesis
+- ✅ Potential for follow-up journal publication
+- ✅ Demonstrates mastery of advanced RL concepts
+
+---
+
+## Summary: Phase 2 Implementation Plan
+
+**Total Tasks**: 30 tasks across 4 sub-phases
+**Estimated Time**: 8-12 weeks (excluding Phase 3 advanced features)
+**Minimum Viable**: Phase 2.1-2.4 (Tasks 1-18) = 6 weeks
+**With Testing & Docs**: +2 weeks = 8 weeks total
+**With Advanced Features**: +4 weeks = 12 weeks total
+
+**Priority Levels**:
+- **HIGH**: Critical path tasks (Tasks 1-2, 6-9, 11-12, 14, 16, 18, 19, 21, 23-25)
+- **MEDIUM**: Important but not blocking (Tasks 3-5, 13, 15, 17, 20, 22, 26)
+- **LOW**: Optional advanced features (Tasks 27-30)
+
+**Success Metrics**:
+1. ✅ Model loads <100ms, inference <10ms (production-ready)
+2. ✅ RL beats random baseline by >20% (statistical significance p<0.05)
+3. ✅ >80% test coverage for RL modules
+4. ✅ Complete documentation for thesis and reproducibility
+5. ✅ Publication-quality evaluation with 10+ plots
+
+**Next Immediate Action**: Start Task 1 (RLTrainer class) using guide in `suggest/rlphase2.2-2.4_guide_manual.md`
+
+---
 
 ---
 
