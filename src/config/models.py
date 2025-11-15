@@ -139,8 +139,8 @@ class LNSConfig(BaseModel):
     igls_time_limit: float = Field(
         default=5.0,
         ge=0.0,
-        le=60.0,
-        description="Time limit for IGLS repair in seconds (set 0.0 to disable when using `cp` strategy)",
+        le=3600.0,
+        description="Time limit for IGLS repair in seconds (0.0 to disable, max 3600s = 1 hour)",
     )
 
     @model_validator(mode="after")
