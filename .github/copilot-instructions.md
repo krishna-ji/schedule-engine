@@ -4,6 +4,13 @@
 
 University course scheduling engine using NSGA-II genetic algorithm with constraint-based optimization. Written in Python with DEAP, rich terminal UI, and YAML configuration.
 
+## Phase Roadmap & Status
+
+- **Phase 1.5 – Heuristic Toolbox**: ✅ Complete (19 operators + registry, documented in `docs/PHASE_1.5_SUMMARY.md`).
+- **Phase 2.1 – Gymnasium Environment**: ✅ Complete (env, reward, action mapper). See `docs/PHASE_2.1_SUMMARY.md`.
+- **Phase 2.2-2.4 – RL Training/Deployment/Integration**: ✅ Code complete (`docs/code/PHASE_2_RL_COMPLETE.md`). Pending execution tasks: curriculum training runs, checkpoint selection, promotion, RL-enabled GA benchmarking, and documentation updates.
+- **Phase 3 – Advanced RL / Evaluation**: 🚧 Planned (multi-agent, transfer learning, evaluation suite) per `Todo.md` and `suggest/rlphase2.2-2.4_guide_manual.md`.
+
 ## Tech Stack
 
 - **Language**: Python 3.11+
@@ -65,6 +72,16 @@ python main.py --config path/to/custom.yaml
 - **GA Core**: `src/core/ga_scheduler.py` - GAScheduler class with DEAP toolbox, population init, evolution
 - **Multiprocessing**: Enabled via `parallel.use_multiprocessing` in YAML
 
+## Active Workstream (November 2025)
+
+1. **Run PPO curriculum training (100K–300K steps)** and capture TensorBoard logs.
+2. **Generate/refresh validation sets** (`scripts/generate_validation_set.py`).
+3. **Select & promote best checkpoint** using `scripts/select_best_checkpoint.py` + `scripts/promote_model_to_prod.py`.
+4. **Enable RL in configs/prod.yaml**, run `uv run prod`, and compare RL vs non-RL GA baselines.
+5. **Update docs** (especially `docs/code/PHASE_2_RL_COMPLETE.md`) with empirical results once runs finish.
+
+Always log notable runs in `output/` and reference them inside documentation or onboarding guides.
+
 ## Key Components
 
 - **Chromosomes**: `list[SessionGene]`, fitness `(-hard, -soft)` with weights `(-1.0, -0.01)`
@@ -75,6 +92,14 @@ python main.py --config path/to/custom.yaml
 - **Time System**: `QuantumTimeSystem` converts wall-clock ↔ discrete quanta (default 60 min)
 - **Validation**: Input validation + feasibility checking before GA
 - **Exports**: JSON, PDF calendar, plots to `output/evaluation_<timestamp>/`
+
+## Key References for Agents
+
+- `docs/code/PHASE_2_RL_COMPLETE.md` – authoritative summary of RL implementation (files, tasks, next steps).
+- `docs/PHASE_1.5_SUMMARY.md` & `docs/PHASE_2.1_SUMMARY.md` – prior phase retrospectives.
+- `Todo.md` – master backlog (Phase 2+ and optional Phase 3).
+- `new-agent-onboarding-guide.md` – living document for onboarding / workspace hand-offs.
+- `.github/instructions/*.instructions.md` – path-specific rules (see new `rl.instructions.md`).
 
 ## General Coding Standards
 
@@ -125,3 +150,4 @@ Detailed module-specific instructions in `.github/instructions/`:
 - `export.instructions.md` - Report generation & plotting
 - `workflows.instructions.md` - Orchestration logic
 - `tests.instructions.md` - Testing guidelines
+- `rl.instructions.md` - RL environment, training, deployment, and promotion workflow
