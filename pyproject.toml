@@ -47,7 +47,7 @@ schedule-engine = "main:main"
 prod = "main:main_prod"
 test = "main:main_test"
 train = "src.rl.training.train_script:main"
-train-prod = "src.rl.training.train_script:main_prod"
+train-prod = "src.cli.train_prod:main"
 
 [build-system]
 requires = ["hatchling"]

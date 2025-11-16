@@ -158,6 +158,17 @@ def parse_args() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
+    # Environment variable fallback: RL_DEFAULT_PROFILE to set default profile
+    env_profile = None
+    try:
+        import os
+
+        env_profile = os.environ.get("RL_DEFAULT_PROFILE")
+    except Exception:
+        env_profile = None
+    if env_profile and not getattr(args, "profile_positional", None):
+        # Use env var only if user did not provide positional override
+        args.profile = env_profile
     # If user provided a positional profile, prefer it over --profile default
     if getattr(args, "profile_positional", None):
         args.profile = args.profile_positional
