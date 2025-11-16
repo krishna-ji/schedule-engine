@@ -513,3 +513,20 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def main_prod() -> None:
+    """Convenience wrapper to run `main` with production profile by default.
+
+    Allows using `uv run train-prod -- --timesteps 300000` or just `uv run train-prod`.
+    """
+    # Preserve original argv & inject profile prod if not set
+    argv_back = sys.argv
+    try:
+        # `uv run train-prod` may pass args after `--`. They will appear in argv[1:]
+        user_args = sys.argv[1:]
+        base = [sys.argv[0], "--profile", "prod"]
+        sys.argv = base + user_args
+        main()
+    finally:
+        sys.argv = argv_back

@@ -66,6 +66,8 @@ uv run prod
 uv run train --profile prod
 # or shorthand:
 uv run train prod
+# Or using the dedicated convenience script
+uv run train-prod
 
 # Custom configuration
 python main.py --config path/to/custom.yaml
