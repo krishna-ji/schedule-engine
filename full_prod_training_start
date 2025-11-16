@@ -28,15 +28,43 @@ DEFAULT_PROFILE = "prod"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Start a full production RL training run")
+    parser = argparse.ArgumentParser(
+        description="Start a full production RL training run"
+    )
 
-    parser.add_argument("--timesteps", type=int, default=None, help="Total timesteps for training (override profile)")
+    parser.add_argument(
+        "--timesteps",
+        type=int,
+        default=None,
+        help="Total timesteps for training (override profile)",
+    )
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
-    parser.add_argument("--save-dir", type=str, default=None, help="Model save directory override")
-    parser.add_argument("--verbose", type=int, choices=[0, 1, 2], default=None, help="Verbosity override")
-    parser.add_argument("--tensorboard-port", type=int, default=6006, help="TensorBoard port (used only if starting tensorboard from the script)")
-    parser.add_argument("--start-tensorboard", action="store_true", help="Start TensorBoard automatically before training")
-    parser.add_argument("remainder", nargs=argparse.REMAINDER, help="Additional flags passed to the training script")
+    parser.add_argument(
+        "--save-dir", type=str, default=None, help="Model save directory override"
+    )
+    parser.add_argument(
+        "--verbose",
+        type=int,
+        choices=[0, 1, 2],
+        default=None,
+        help="Verbosity override",
+    )
+    parser.add_argument(
+        "--tensorboard-port",
+        type=int,
+        default=6006,
+        help="TensorBoard port (used only if starting tensorboard from the script)",
+    )
+    parser.add_argument(
+        "--start-tensorboard",
+        action="store_true",
+        help="Start TensorBoard automatically before training",
+    )
+    parser.add_argument(
+        "remainder",
+        nargs=argparse.REMAINDER,
+        help="Additional flags passed to the training script",
+    )
 
     return parser.parse_args()
 
@@ -80,11 +108,29 @@ def _start_tensorboard_if_requested(port: int) -> None:
         # Use `uv run` if available, fall back to python module invocation
         uv_exe = shutil.which("uv")
         if uv_exe:
-            cmd = [uv_exe, "run", "tensorboard", "--logdir", "logs/tensorboard/train", "--port", str(port), "--bind_all"]
+            cmd = [
+                uv_exe,
+                "run",
+                "tensorboard",
+                "--logdir",
+                "logs/tensorboard/train",
+                "--port",
+                str(port),
+                "--bind_all",
+            ]
             subprocess.Popen(cmd)
         else:
             # Run python -m tensorboard.main
-            cmd = [sys.executable, "-m", "tensorboard.main", "--logdir", "logs/tensorboard/train", "--port", str(port), "--bind_all"]
+            cmd = [
+                sys.executable,
+                "-m",
+                "tensorboard.main",
+                "--logdir",
+                "logs/tensorboard/train",
+                "--port",
+                str(port),
+                "--bind_all",
+            ]
             subprocess.Popen(cmd)
 
     except Exception as e:
@@ -97,6 +143,7 @@ def main():
     # Optionally start tensorboard
     if args.start_tensorboard:
         import shutil
+
         _start_tensorboard_if_requested(args.tensorboard_port)
 
     argv = _compose_argv(args)
@@ -109,12 +156,16 @@ def main():
         try:
             runpy.run_module("src.rl.training.train_script", run_name="__main__")
         except ModuleNotFoundError as e:
-            print("\nERROR: Missing dependency while trying to run the training script:")
+            print(
+                "\nERROR: Missing dependency while trying to run the training script:"
+            )
             print(f"  {e}\n")
-            print("Please install the project's dependencies (or use `uv run` to create the proper env):")
+            print(
+                "Please install the project's dependencies (or use `uv run` to create the proper env):"
+            )
             print("  uv run python -m src.rl.training.train_script --profile prod")
             print("Or, install the dependencies manually:")
-            print("  uv pip install -r requirements.txt  # or use pyproject " )
+            print("  uv pip install -r requirements.txt  # or use pyproject ")
             raise
     finally:
         sys.argv = sys_argv_backup
