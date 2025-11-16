@@ -149,7 +149,19 @@ def parse_args() -> argparse.Namespace:
         help="List available training profiles and exit",
     )
 
-    return parser.parse_args()
+    # Optional positional profile to allow shorthand invocation: `uv run train prod`
+    parser.add_argument(
+        "profile_positional",
+        nargs="?",
+        choices=profiles,
+        help="Optional positional profile (same values as --profile).",
+    )
+
+    args = parser.parse_args()
+    # If user provided a positional profile, prefer it over --profile default
+    if getattr(args, "profile_positional", None):
+        args.profile = args.profile_positional
+    return args
 
 
 def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) -> None:

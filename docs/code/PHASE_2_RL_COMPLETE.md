@@ -211,6 +211,8 @@ Successfully implemented comprehensive RL integration for schedule-engine hyper-
 - `src/rl/training/train_script.py` now accepts `--profile`, `--config`, and `--list-profiles`, applies YAML defaults automatically, and exposes `--seed` for deterministic runs.
 - Training environments seed Python/NumPy/Gym + SB3 via the new profile field; TensorBoard/logging paths moved to YAML.
 - `uv run train -- --profile <name>` is the canonical flow for RL training, matching the new docs and onboarding guidance.
+ - `uv run train -- --profile <name>` is the canonical flow for RL training, matching the new docs and onboarding guidance.
+ - Tip: You can also use a shorthand positional profile: `uv run train prod` (equivalent to `uv run train --profile prod`).
 - ✅ Graceful fallback if RL unavailable
 - ✅ RL operators applied after selection, before metrics
 

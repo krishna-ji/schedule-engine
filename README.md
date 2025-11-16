@@ -61,6 +61,12 @@ uv run notprod
 # Best quality (2000 generations, ~24-48 hours)
 uv run prod
 
+# RL training (convenience):
+# Start RL training using built-in train script with a profile; both flags and the shorthand positional profile work:
+uv run train --profile prod
+# or shorthand:
+uv run train prod
+
 # Custom configuration
 python main.py --config path/to/custom.yaml
 ```
