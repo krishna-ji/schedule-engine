@@ -21,6 +21,7 @@ import os
 import sys
 import argparse
 import runpy
+import shutil
 
 # Default profile to use
 DEFAULT_PROFILE = "prod"
@@ -105,7 +106,16 @@ def main():
     sys_argv_backup = sys.argv
     try:
         sys.argv = argv
-        runpy.run_module("src.rl.training.train_script", run_name="__main__")
+        try:
+            runpy.run_module("src.rl.training.train_script", run_name="__main__")
+        except ModuleNotFoundError as e:
+            print("\nERROR: Missing dependency while trying to run the training script:")
+            print(f"  {e}\n")
+            print("Please install the project's dependencies (or use `uv run` to create the proper env):")
+            print("  uv run python -m src.rl.training.train_script --profile prod")
+            print("Or, install the dependencies manually:")
+            print("  uv pip install -r requirements.txt  # or use pyproject " )
+            raise
     finally:
         sys.argv = sys_argv_backup
 
