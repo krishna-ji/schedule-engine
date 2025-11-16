@@ -67,7 +67,9 @@ uv run train --profile prod
 # or shorthand:
 uv run train prod
 # Or using the dedicated convenience script
-uv run train-prod
+uv run train-prod  # Runs production profile using defaults from config-train/prod.yaml
+# Note: If you need to pass extra flags over the profile defaults (e.g. --timesteps), use:
+uv run train --profile prod -- --timesteps 300000
 
 # Custom configuration
 python main.py --config path/to/custom.yaml
