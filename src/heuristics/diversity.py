@@ -88,6 +88,26 @@ def distance_preserving_crossover(
     offspring1 = [copy.copy(gene) for gene in offspring1]
     offspring2 = [copy.copy(gene) for gene in offspring2]
 
+    # Fix any invalid quanta that exceed valid range after crossover
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+
+    time_system = QuantumTimeSystem()
+    max_valid_quantum = time_system.total_quanta
+
+    for gene in offspring1:
+        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
+            # Session extends beyond valid range - shift it back
+            max_start = max_valid_quantum - gene.duration_quanta
+            if max_start >= 0:
+                gene.time_quantum = min(gene.time_quantum, max_start)
+
+    for gene in offspring2:
+        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
+            # Session extends beyond valid range - shift it back
+            max_start = max_valid_quantum - gene.duration_quanta
+            if max_start >= 0:
+                gene.time_quantum = min(gene.time_quantum, max_start)
+
     # Calculate distances
     dist_off1_p1 = _calculate_individual_distance(offspring1, parent1)
     dist_off1_p2 = _calculate_individual_distance(offspring1, parent2)
@@ -100,6 +120,10 @@ def distance_preserving_crossover(
 
     if min(dist_off2_p1, dist_off2_p2) < preserve_distance:
         _inject_diversity(offspring2, context, intensity=0.2)
+
+    # Invalidate fitness on offspring to force re-evaluation
+    # Note: Fitness is attached by DEAP/RL environment after heuristic returns
+    # Just ensure offspring are clean copies
 
     return offspring1, offspring2
 
@@ -171,22 +195,22 @@ def crowding_mutation(
 
         # Mutate if in crowded region
         if time_usage[gene.time_quantum] > avg_time_usage * 1.5:
-            # Find less-used time slot
+            # Move to less-used time
             from src.encoder.quantum_time_system import QuantumTimeSystem
 
-            time_system = QuantumTimeSystem(context.config)
-            under_used_times = [
-                t
-                for t in time_system.available_quanta
-                if time_usage[t] < avg_time_usage
-            ]
+            time_system = QuantumTimeSystem()
+            all_quanta = time_system.get_all_operating_quanta()
+            under_used_times = [t for t in all_quanta if time_usage[t] < avg_time_usage]
 
             if under_used_times:
-                course = context.courses[gene.course_id]
+                course = context.courses.get((gene.course_id, gene.course_type))
+                if not course:
+                    continue
+                # Use gene.duration_quanta (actual session length)
                 valid_times = [
                     t
                     for t in under_used_times
-                    if t + course.duration_quanta <= max(time_system.available_quanta)
+                    if t + gene.duration_quanta <= time_system.total_quanta
                 ]
 
                 if valid_times:
@@ -195,12 +219,13 @@ def crowding_mutation(
 
         if room_usage[gene.room_id] > avg_room_usage * 1.5:
             # Find less-used room
-            course = context.courses[gene.course_id]
+            course = context.courses.get((gene.course_id, gene.course_type))
+            if not course:
+                continue
             compatible_rooms = [
                 r_id
                 for r_id, room in context.rooms.items()
-                if room.room_type == course.required_room_type
-                and room.capacity >= course.expected_students
+                if room.is_suitable_for_course_type(course.required_room_features)
                 and room_usage[r_id] < avg_room_usage
             ]
 
@@ -210,7 +235,9 @@ def crowding_mutation(
 
         if instructor_usage[gene.instructor_id] > avg_instructor_usage * 1.5:
             # Find less-used instructor
-            course = context.courses[gene.course_id]
+            course = context.courses.get((gene.course_id, gene.course_type))
+            if not course:
+                continue
             under_used_instructors = [
                 i_id
                 for i_id in course.qualified_instructor_ids
@@ -242,33 +269,41 @@ def crowding_mutation(
     modifies_individual=False,
 )
 def niching_selection(
+    individual: List[SessionGene],
     population: List[List[SessionGene]],
     context: SchedulingContext,
     niche_radius: float = 0.3,
-    select_count: int = 10,
-) -> List[List[SessionGene]]:
+) -> List[SessionGene]:
     """
     Selection that promotes diverse individuals through fitness sharing.
 
-    Implements fitness sharing: individuals in crowded regions have their
-    fitness penalized, promoting selection of diverse individuals.
+    For RL compatibility, this operates on a single individual:
+    - If individual is in a crowded region, replace with more diverse alternative
+    - Otherwise return original
 
     Algorithm:
-    1. Calculate pairwise distances between all individuals
-    2. Apply fitness sharing (penalize crowded individuals)
-    3. Select based on shared fitness
+    1. Calculate how crowded the current individual's region is
+    2. If too crowded, select a more isolated individual from population
+    3. Otherwise keep original
 
     Args:
+        individual: Individual to potentially replace
         population: Current population
         context: Scheduling context
         niche_radius: Radius for niche definition
-        select_count: Number of individuals to select
 
     Returns:
-        List of selected individuals (diverse subset)
+        Either original individual or more diverse alternative
     """
-    if len(population) <= select_count:
-        return population
+    if len(population) <= 1:
+        return individual
+
+    # Find individual's index in population
+    try:
+        ind_idx = next(i for i, ind in enumerate(population) if ind is individual)
+    except StopIteration:
+        # Individual not in population - return as-is
+        return individual
 
     # Calculate pairwise distances
     distances = {}
@@ -280,9 +315,9 @@ def niching_selection(
     # Calculate niche counts (how crowded each individual is)
     niche_counts = defaultdict(float)
 
-    for i, ind1 in enumerate(population):
+    for i in range(len(population)):
         count = 0.0
-        for j, ind2 in enumerate(population):
+        for j in range(len(population)):
             if i == j:
                 continue
 
@@ -296,13 +331,18 @@ def niching_selection(
 
         niche_counts[i] = max(count, 1.0)  # Avoid division by zero
 
-    # Select individuals with lowest niche counts (most isolated/diverse)
-    # This promotes diversity
-    sorted_indices = sorted(range(len(population)), key=lambda i: niche_counts[i])
+    # Check if current individual is in a crowded region
+    current_crowding = niche_counts[ind_idx]
+    avg_crowding = sum(niche_counts.values()) / len(niche_counts)
 
-    selected = [population[i] for i in sorted_indices[:select_count]]
+    # If significantly more crowded than average, select a more isolated individual
+    if current_crowding > avg_crowding * 1.3:
+        # Find least crowded individual
+        least_crowded_idx = min(range(len(population)), key=lambda i: niche_counts[i])
+        return population[least_crowded_idx]
 
-    return selected
+    # Otherwise keep original
+    return individual
 
 
 # ============================================================================
@@ -319,51 +359,41 @@ def niching_selection(
     modifies_individual=True,
 )
 def adaptive_diversity_maintenance(
+    individual: List[SessionGene],
     population: List[List[SessionGene]],
     context: SchedulingContext,
     generation: int,
     diversity_threshold: float = 0.2,
-) -> int:
+) -> List[SessionGene]:
     """
     Adaptively maintain diversity based on population convergence.
 
-    Monitors population diversity and injects diversity when needed:
-    - Low diversity → increase mutation/perturbation
-    - High diversity → focus on exploitation
+    For RL compatibility, operates on single individual:
+    - Measures population diversity
+    - If too low, injects diversity into given individual
+    - Otherwise returns individual unchanged
 
     Args:
+        individual: Individual to potentially diversify
         population: Current population
         context: Scheduling context
         generation: Current generation number
         diversity_threshold: Minimum diversity to maintain
 
     Returns:
-        Number of individuals modified
+        Modified or original individual
     """
     # Calculate population diversity
     diversity = _calculate_population_diversity(population)
 
-    modifications = 0
-
-    # If diversity too low, inject diversity
+    # If diversity too low, inject diversity into this individual
     if diversity < diversity_threshold:
-        # Select individuals to perturb (worst performers)
-        individuals_to_modify = int(len(population) * 0.3)
+        modified = [copy.copy(gene) for gene in individual]
+        _inject_diversity(modified, context, intensity=0.4)
+        return modified
 
-        # Sort by fitness (if available)
-        sortable_pop = [(ind, getattr(ind, "fitness", None)) for ind in population]
-        sortable_pop = [(ind, fit) for ind, fit in sortable_pop if fit is not None]
-
-        if sortable_pop:
-            # Modify worst individuals
-            sortable_pop.sort(key=lambda x: x[1].values, reverse=True)
-            individuals_to_modify = min(individuals_to_modify, len(sortable_pop))
-
-            for ind, _ in sortable_pop[:individuals_to_modify]:
-                _inject_diversity(ind, context, intensity=0.4)
-                modifications += 1
-
-    return modifications
+    # Otherwise return unchanged
+    return individual
 
 
 # ============================================================================
@@ -433,10 +463,6 @@ def _inject_diversity(
         context: Scheduling context
         intensity: Mutation intensity (0-1)
     """
-    from src.encoder.quantum_time_system import QuantumTimeSystem
-
-    time_system = QuantumTimeSystem(context.config)
-
     for gene in individual:
         if random.random() > intensity:
             continue
@@ -444,28 +470,37 @@ def _inject_diversity(
         mutation_type = random.choice(["time", "room", "instructor"])
 
         if mutation_type == "time":
-            course = context.courses[gene.course_id]
+            course = context.courses.get((gene.course_id, gene.course_type))
+            if not course:
+                continue
+            from src.encoder.quantum_time_system import QuantumTimeSystem
+
+            time_system = QuantumTimeSystem()
+            all_quanta = time_system.get_all_operating_quanta()
             valid_times = [
                 t
-                for t in time_system.available_quanta
-                if t + course.duration_quanta <= max(time_system.available_quanta)
+                for t in all_quanta
+                if t + gene.duration_quanta <= time_system.total_quanta
             ]
             if valid_times:
                 gene.time_quantum = random.choice(valid_times)
 
         elif mutation_type == "room":
-            course = context.courses[gene.course_id]
+            course = context.courses.get((gene.course_id, gene.course_type))
+            if not course:
+                continue
             compatible_rooms = [
                 r_id
                 for r_id, room in context.rooms.items()
-                if room.room_type == course.required_room_type
-                and room.capacity >= course.expected_students
+                if room.is_suitable_for_course_type(course.required_room_features)
             ]
             if compatible_rooms:
                 gene.room_id = random.choice(compatible_rooms)
 
         elif mutation_type == "instructor":
-            course = context.courses[gene.course_id]
+            course = context.courses.get((gene.course_id, gene.course_type))
+            if not course:
+                continue
             if len(course.qualified_instructor_ids) > 1:
                 alternatives = [
                     i

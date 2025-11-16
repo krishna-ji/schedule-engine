@@ -206,13 +206,13 @@ heuristics:
   # Construction heuristics - build schedules greedily
   construction:
     largest_degree_first:
-      enabled: false # Disabled by default (use for specialized initialization)
+      enabled: true # Graph coloring heuristic - schedule most conflicting courses first
       priority: 1
     most_constrained_first:
-      enabled: false
+      enabled: true # MRV heuristic - schedule sessions with fewest options first
       priority: 2
     earliest_deadline_first:
-      enabled: false
+      enabled: true # Priority scheduling - courses with more sessions/week first
       priority: 3
 
   # Perturbation heuristics - shake solutions to escape local optima
@@ -237,7 +237,7 @@ heuristics:
       probability: 0.15
       prefer_available: true
     multi_perturbation:
-      enabled: false # Aggressive diversification (disabled by default)
+      enabled: true # Enable for aggressive diversification in RL
       priority: 5
 
   # Improvement heuristics - local search for refinement
@@ -252,7 +252,7 @@ heuristics:
       max_chain_length: 5
       max_iterations: 3
     variable_depth_search:
-      enabled: false # Computationally expensive (disabled by default)
+      enabled: true # Enable for production RL training
       priority: 3
       max_depth: 3
       max_iterations: 5
@@ -260,42 +260,42 @@ heuristics:
   # Diversity heuristics - maintain population diversity
   diversity:
     distance_preserving_crossover:
-      enabled: false # Use for specialized crossover (disabled by default)
+      enabled: true # Fixed: QuantumTimeSystem API updated
       priority: 1
       preserve_distance: 0.7
     crowding_mutation:
-      enabled: false # Population-aware mutation (disabled by default)
+      enabled: true # Fixed: QuantumTimeSystem API + safe course lookups with .get()
       priority: 2
       intensity: 0.3
     niching_selection:
-      enabled: false # Diversity-promoting selection (disabled by default)
+      enabled: true # Fixed: Individual-level operation for RL compatibility
       priority: 3
       niche_radius: 0.3
       select_count: 10
     adaptive_diversity_maintenance:
-      enabled: false # Advanced diversity control (disabled by default)
+      enabled: true # Fixed: QuantumTimeSystem API + individual-level operation
       priority: 4
       diversity_threshold: 0.2
 
   # Meta-heuristics - high-level search strategies
   meta:
     variable_neighborhood_descent:
-      enabled: false # Can be used for memetic algorithms
+      enabled: true # Systematic neighborhood exploration for local optimization
       priority: 1
       max_neighborhoods: 3
       max_iterations: 5
     iterated_local_search:
-      enabled: false # Alternative to standard GA
+      enabled: true # Perturbation + local search cycles for global search
       priority: 2
       num_iterations: 5
       perturbation_strength: 0.3
     adaptive_large_neighborhood:
-      enabled: false # ALNS for hybrid approach
+      enabled: true # Dynamic destroy-repair patterns for diversification
       priority: 3
       num_iterations: 10
       initial_destroy_rate: 0.3
     guided_local_search:
-      enabled: false # Advanced penalty-based guidance
+      enabled: true # Penalty-based guidance to escape local optima
       priority: 4
       num_iterations: 10
       penalty_factor: 0.1

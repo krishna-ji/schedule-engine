@@ -43,6 +43,7 @@ from src.heuristics.utils import (
     get_course_room_requirement,
     get_room_feature,
     is_instructor_available,
+    move_gene_to_time_if_valid,
 )
 
 
@@ -113,12 +114,10 @@ def random_swap(
             students_course1 = estimate_session_student_count(gene1, context)
             students_course2 = estimate_session_student_count(gene2, context)
             room1_ok_for_course2 = (
-                room1_type == required_type_2
-                and room1.capacity >= students_course2
+                room1_type == required_type_2 and room1.capacity >= students_course2
             )
             room2_ok_for_course1 = (
-                room2_type == required_type_1
-                and room2.capacity >= students_course1
+                room2_type == required_type_1 and room2.capacity >= students_course1
             )
 
             if room1_ok_for_course2 and room2_ok_for_course1:
@@ -169,6 +168,8 @@ def temporal_shift(
     available_quanta = get_available_quanta(context)
     if not available_quanta:
         return 0
+
+    valid_quanta = set(available_quanta)
     shifts_performed = 0
 
     for gene in individual:
@@ -182,13 +183,13 @@ def temporal_shift(
             shift_delta = delta
 
         # Calculate new time quantum based on start of session
-        new_time = gene.time_quantum + shift_delta
+        candidate_start = gene.time_quantum + shift_delta
 
-        max_quantum = available_quanta[-1]
-        if new_time in available_quanta:
-            if new_time + gene.duration_quanta <= max_quantum + 1:
-                gene.time_quantum = new_time
-                shifts_performed += 1
+        if candidate_start == gene.time_quantum:
+            continue
+
+        if move_gene_to_time_if_valid(gene, candidate_start, valid_quanta):
+            shifts_performed += 1
 
     # Invalidate fitness
     if hasattr(individual, "fitness") and shifts_performed > 0:

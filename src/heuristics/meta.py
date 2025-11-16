@@ -397,9 +397,9 @@ def _simple_fitness(individual: List[SessionGene], context: SchedulingContext) -
     # Count time conflicts
     time_usage = {}
     for gene in individual:
-        course = context.courses[gene.course_id]
+        course = context.courses[(gene.course_id, gene.course_type)]
         time_range = tuple(
-            range(gene.time_quantum, gene.time_quantum + course.duration_quanta)
+            range(gene.time_quantum, gene.time_quantum + gene.duration_quanta)
         )
 
         for group_id in gene.group_ids:
@@ -483,12 +483,21 @@ def _destroy_solution(
         gene = individual[idx]
 
         if destroy_operator == "temporal_destroy":
-            # Randomize time
-            time_system = QuantumTimeSystem(
-                gene._config if hasattr(gene, "_config") else None
-            )
-            # Simplified - would need proper time system access
-            gene.time_quantum = random.randint(0, 50)
+            # Randomize time (ensure session fits within valid range)
+            time_system = QuantumTimeSystem()
+            all_quanta = time_system.get_all_operating_quanta()
+            session_duration = gene.duration_quanta
+            # Only select quanta where the full session fits
+            valid_start_quanta = [
+                q
+                for q in all_quanta
+                if q + session_duration <= time_system.total_quanta
+            ]
+            if valid_start_quanta:
+                gene.time_quantum = random.choice(valid_start_quanta)
+            elif all_quanta:
+                # Fallback: use earliest quantum if no perfect fit
+                gene.time_quantum = min(all_quanta)
 
         elif destroy_operator == "room_destroy":
             # Keep time, randomize room (simplified)
@@ -514,32 +523,38 @@ def _repair_solution(
     # Simple repair: for each destroyed gene, find valid assignment
     from src.encoder.quantum_time_system import QuantumTimeSystem
 
-    time_system = QuantumTimeSystem(context.config)
+    time_system = QuantumTimeSystem()
+    all_quanta = time_system.get_all_operating_quanta()
 
     for idx in destroyed_indices:
         gene = individual[idx]
-        course = context.courses[gene.course_id]
+        course = context.courses[(gene.course_id, gene.course_type)]
 
-        # Find valid time
+        # Find valid time (ensure session fits within operating hours)
+        # Use gene.duration_quanta to respect the actual session length
+        session_duration = gene.duration_quanta
         valid_times = [
-            t
-            for t in time_system.available_quanta
-            if t + course.duration_quanta <= max(time_system.available_quanta)
+            t for t in all_quanta if t + session_duration <= time_system.total_quanta
         ]
 
         if valid_times:
             gene.time_quantum = random.choice(valid_times)
+        elif all_quanta:
+            # Fallback: use first available quantum if no perfect fit
+            gene.time_quantum = min(all_quanta)
 
-        # Ensure valid room
+        # Ensure valid room (simplified - just pick any room with matching features)
         compatible_rooms = [
             r_id
             for r_id, room in context.rooms.items()
-            if room.room_type == course.required_room_type
-            and room.capacity >= course.expected_students
+            if room.is_suitable_for_course_type(course.required_room_features)
         ]
 
         if compatible_rooms:
             gene.room_id = random.choice(compatible_rooms)
+        elif context.rooms:
+            # Fallback: pick any available room if no perfect match
+            gene.room_id = random.choice(list(context.rooms.keys()))
 
         # Ensure qualified instructor
         if course.qualified_instructor_ids:

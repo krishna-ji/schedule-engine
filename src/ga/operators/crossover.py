@@ -88,4 +88,26 @@ def crossover_course_group_aware(
             gene1.room_id, gene2.room_id = gene2.room_id, gene1.room_id
             gene1.quanta, gene2.quanta = gene2.quanta, gene1.quanta
 
+    # Validate quanta don't exceed valid range after swap
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+
+    time_system = QuantumTimeSystem()
+    max_valid_quantum = time_system.total_quanta
+
+    for gene in ind1:
+        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
+            # Quanta exceed valid range - clip to valid range
+            gene.quanta = [q for q in gene.quanta if q < max_valid_quantum]
+            if not gene.quanta:
+                # All quanta were invalid - assign first valid quantum
+                gene.quanta = [0]
+
+    for gene in ind2:
+        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
+            # Quanta exceed valid range - clip to valid range
+            gene.quanta = [q for q in gene.quanta if q < max_valid_quantum]
+            if not gene.quanta:
+                # All quanta were invalid - assign first valid quantum
+                gene.quanta = [0]
+
     return ind1, ind2

@@ -77,13 +77,27 @@ def encode_availability(availability_dict: Dict, qts: QuantumTimeSystem) -> set:
             clipped_start = (
                 f"{clipped_start_minutes // 60:02d}:{clipped_start_minutes % 60:02d}"
             )
-            clipped_end = (
-                f"{clipped_end_minutes // 60:02d}:{clipped_end_minutes % 60:02d}"
-            )
 
-            # Encode the clipped period
-            start_q = qts.time_to_quanta(day_cap, clipped_start)
-            end_q = qts.time_to_quanta(day_cap, clipped_end)
+            # For end time, if it equals operating hours end, use the last quantum
+            # instead of trying to convert the boundary time
+            op_end_hour, op_end_minute = map(
+                int, qts.operating_hours[day_cap][1].split(":")
+            )
+            op_end_minutes_check = op_end_hour * 60 + op_end_minute
+
+            if clipped_end_minutes >= op_end_minutes_check:
+                # Available until end of operating hours - use total day quanta
+                day_offset = qts.day_quanta_offset[day_cap]
+                day_count = qts.day_quanta_count[day_cap]
+                start_q = qts.time_to_quanta(day_cap, clipped_start)
+                end_q = day_offset + day_count  # Exclusive end
+            else:
+                clipped_end = (
+                    f"{clipped_end_minutes // 60:02d}:{clipped_end_minutes % 60:02d}"
+                )
+                start_q = qts.time_to_quanta(day_cap, clipped_start)
+                end_q = qts.time_to_quanta(day_cap, clipped_end)
+
             quanta.update(range(start_q, end_q))
 
     return quanta

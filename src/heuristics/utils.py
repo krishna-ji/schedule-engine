@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Set
 
 from src.core.types import SchedulingContext
 from src.ga.sessiongene import SessionGene
@@ -89,3 +89,26 @@ def is_instructor_available(
 
     available = getattr(instructor, "available_quanta", set())
     return all(q in available for q in time_range)
+
+
+def move_gene_to_time_if_valid(
+    gene: SessionGene,
+    new_start: int,
+    valid_quanta: Set[int],
+) -> bool:
+    """Shift a gene to a new start time only if all quanta remain valid."""
+
+    if not gene.quanta:
+        if new_start not in valid_quanta:
+            return False
+        gene.quanta = [new_start]
+        return True
+
+    shift_delta = new_start - gene.quanta[0]
+    shifted_quanta = [q + shift_delta for q in gene.quanta]
+
+    if any(q not in valid_quanta for q in shifted_quanta):
+        return False
+
+    gene.quanta = shifted_quanta
+    return True

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
+from rich.logging import RichHandler
 
 # Add project root to path
 project_root = Path(__file__).resolve().parents[3]
@@ -175,7 +176,9 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
     args.verbose = pick("verbose", 1)
     args.save_prefix = profile.get("save_prefix", "rl_agent")
     args.seed = pick("seed")
-    args.no_eval = getattr(args, "no_eval", False) or not profile.get("enable_eval", True)
+    args.no_eval = getattr(args, "no_eval", False) or not profile.get(
+        "enable_eval", True
+    )
     args.loaded_profile = profile.get("profile", args.profile)
 
 
@@ -231,6 +234,45 @@ def main() -> None:
 
     args = parse_args()
 
+    # Setup detailed logging to file
+    import logging
+    from pathlib import Path
+
+    log_dir = Path("logs/training")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = log_dir / f"train_{timestamp}.log"
+
+    # Get root logger and clear any existing handlers to prevent duplicates
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(logging.DEBUG)
+
+    # Configure file handler for detailed logging
+    file_handler = logging.FileHandler(log_file, mode="w")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+
+    # Configure Rich console handler for INFO+ only (coordinates with tqdm)
+    console_handler = RichHandler(
+        level=logging.INFO,
+        show_time=False,
+        show_path=False,
+        markup=False,
+        rich_tracebacks=True,
+    )
+
+    # Add handlers to root logger
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+
+    logger.info(f"Logging to: {log_file}")
+
     if args.list_profiles:
         available = sorted(list_training_profiles())
         if available:
@@ -238,7 +280,9 @@ def main() -> None:
             for name in available:
                 logger.info("  - %s", name)
         else:
-            logger.warning("No training profiles found. Add YAML files to config-train/.")
+            logger.warning(
+                "No training profiles found. Add YAML files to config-train/."
+            )
         return
 
     try:
@@ -271,6 +315,10 @@ def main() -> None:
     if args.seed is not None:
         logger.info("Seed: %s", args.seed)
 
+    # Initialize variables for cleanup
+    tensorboard_process = None
+    tensorboard_port = 6006
+
     try:
         logger.info("\n" + "=" * 60)
         logger.info("STEP 1: Load Scheduling Data")
@@ -298,9 +346,57 @@ def main() -> None:
             agent_type=args.agent_type,
             save_dir=args.save_dir,
             tensorboard_log=args.tensorboard_log,
-            verbose=args.verbose,
+            verbose=0,  # Silence SB3's output to prevent duplicate logging
             seed=args.seed,
         )
+
+        # Start TensorBoard in background
+        logger.info("\n" + "=" * 60)
+        logger.info("STEP 3.5: Start TensorBoard")
+        logger.info("=" * 60)
+
+        import subprocess
+        import socket
+
+        # Check if TensorBoard is already running
+        def is_port_in_use(port):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                return s.connect_ex(("localhost", port)) == 0
+
+        if is_port_in_use(tensorboard_port):
+            logger.info(
+                f"TensorBoard already running at http://localhost:{tensorboard_port}"
+            )
+        else:
+            try:
+                # Start TensorBoard in background
+                tensorboard_process = subprocess.Popen(
+                    [
+                        sys.executable,
+                        "-m",
+                        "tensorboard.main",
+                        "--logdir",
+                        args.tensorboard_log,
+                        "--port",
+                        str(tensorboard_port),
+                        "--bind_all",
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    creationflags=(
+                        subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                    ),
+                )
+                logger.info(
+                    f"Started TensorBoard at http://localhost:{tensorboard_port}"
+                )
+                logger.info("Open in browser to monitor training in real-time!")
+            except Exception as e:
+                logger.warning(f"Could not start TensorBoard: {e}")
+                logger.info(
+                    "You can start it manually: uv run tensorboard --logdir %s",
+                    args.tensorboard_log,
+                )
 
         logger.info("\n" + "=" * 60)
         logger.info("STEP 4: Train Agent")
@@ -308,7 +404,7 @@ def main() -> None:
 
         trainer.train(
             total_timesteps=args.timesteps,
-            progress_bar=False,
+            progress_bar=True,
         )
 
         if not args.no_eval and args.eval_episodes > 0:
@@ -318,7 +414,11 @@ def main() -> None:
 
             metrics = trainer.evaluate(n_eval_episodes=args.eval_episodes)
             logger.info("\nEvaluation Results:")
-            logger.info("  Mean Reward: %.2f ± %.2f", metrics["mean_reward"], metrics["std_reward"])
+            logger.info(
+                "  Mean Reward: %.2f ± %.2f",
+                metrics["mean_reward"],
+                metrics["std_reward"],
+            )
             logger.info(
                 "  Min/Max Reward: %.2f / %.2f",
                 metrics["min_reward"],
@@ -334,7 +434,9 @@ def main() -> None:
             save_path = args.save_path
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            save_path = f"{args.save_prefix}_{args.agent_type}_{args.timesteps}_{timestamp}"
+            save_path = (
+                f"{args.save_prefix}_{args.agent_type}_{args.timesteps}_{timestamp}"
+            )
 
         model_path = trainer.save_model(
             filename=save_path,
@@ -364,16 +466,37 @@ def main() -> None:
         logger.info("TRAINING COMPLETE!")
         logger.info("=" * 60)
 
-        logger.info("\nTo view training logs in TensorBoard:")
-        logger.info("  tensorboard --logdir %s", trainer.tensorboard_log)
-        logger.info("  Then open: http://localhost:6006")
+        logger.info("\n" + "=" * 60)
+        logger.info("VIEW TRAINING IN TENSORBOARD")
+        logger.info("=" * 60)
+        logger.info("TensorBoard: http://localhost:%d", tensorboard_port)
+        if tensorboard_process:
+            logger.info(
+                "(TensorBoard will keep running - press Ctrl+C in terminal to stop)"
+            )
+        else:
+            logger.info("\nOr start manually: .\\start_tensorboard.ps1")
 
     except KeyboardInterrupt:
         logger.warning("\nTraining interrupted by user")
+        if tensorboard_process:
+            logger.info("Stopping TensorBoard...")
+            tensorboard_process.terminate()
         sys.exit(1)
     except Exception as exc:
         logger.error("\nTraining failed: %s", exc, exc_info=True)
+        if tensorboard_process:
+            logger.info("Stopping TensorBoard...")
+            tensorboard_process.terminate()
         sys.exit(1)
+    finally:
+        # Keep TensorBoard running if training completed successfully
+        if tensorboard_process and tensorboard_process.poll() is None:
+            logger.info(
+                "\nTensorBoard is still running at http://localhost:%d",
+                tensorboard_port,
+            )
+            logger.info("Press Ctrl+C to stop it when done viewing.")
 
 
 if __name__ == "__main__":

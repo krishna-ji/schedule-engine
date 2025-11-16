@@ -49,7 +49,34 @@ def decode_individual(
     """
     decoded_sessions = []
 
+    # Get actual valid quantum range from QuantumTimeSystem
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+
+    MAX_VALID_QUANTUM = QuantumTimeSystem().total_quanta
+
     for gene in individual:
+        # Validate and clip quanta before decoding to prevent ValueError in constraints
+        # This handles cases where crossover/mutation bypassed SessionGene validation
+        valid_quanta = [q for q in gene.quanta if 0 <= q < MAX_VALID_QUANTUM]
+        if not valid_quanta:
+            # All quanta invalid - skip this gene entirely
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                f"Skipping gene {gene.course_id} - all quanta invalid: {gene.quanta}"
+            )
+            continue
+
+        # Update gene with valid quanta (modify in-place to fix the chromosome)
+        if len(valid_quanta) != len(gene.quanta):
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                f"Clipped gene {gene.course_id} quanta from {gene.quanta} to {valid_quanta}"
+            )
+            gene.quanta = valid_quanta
         # Look up course using tuple key (course_id, course_type)
         course_key = (gene.course_id, gene.course_type)
         course = courses[course_key]

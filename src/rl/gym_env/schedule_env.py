@@ -156,6 +156,10 @@ class ScheduleEnv(gym.Env):
         Returns:
             (observation, reward, terminated, truncated, info)
         """
+        # Convert numpy array to int (SB3 returns actions as arrays)
+        if isinstance(action, np.ndarray):
+            action = int(action.item())
+
         # Validate action
         if not self.action_mapper.is_valid_action(action):
             # Invalid action - penalize and return
@@ -171,15 +175,29 @@ class ScheduleEnv(gym.Env):
             self.episode_heuristic_counts.get(action, 0) + 1
         )
         self.state_encoder.record_heuristic_application(action)
+        action_info = self.action_mapper.get_action_info(action)
+        action_label = action_info.name if action_info else f"action_{action}"
 
         # Apply action to best individual
         best_individual = min(self.population, key=lambda ind: ind.fitness.values[0])
+        prev_fitness = best_individual.fitness.values
         prev_individual = self._clone_individual(best_individual)
         working_individual = self._clone_individual(best_individual)
 
-        modified_individual, success = self.action_mapper.apply_action(
-            action, working_individual, self.context
+        logger.debug(
+            f"Step {self.current_step}: Action={action_label} ({action}), "
+            f"Gen={self.current_generation}, Prev_Fitness={prev_fitness}"
         )
+
+        modified_individual, success = self.action_mapper.apply_action(
+            action,
+            working_individual,
+            self.context,
+            population=self.population,
+            generation=self.current_generation,
+        )
+
+        logger.debug(f"Action {action_label} success={success}")
 
         candidate = (
             modified_individual
@@ -187,18 +205,23 @@ class ScheduleEnv(gym.Env):
             else working_individual
         )
 
-        if success:
-            # Ensure mutated individual keeps a valid fitness tuple for downstream consumers
-            success = self._ensure_individual_fitness(candidate)
+        evaluated_candidate: Optional[Individual] = None
 
         if success:
+            # Convert plain list to DEAP Individual if needed (for diversity operators)
+            candidate = self._ensure_deap_individual(candidate)
+            # Ensure mutated individual keeps a valid fitness tuple for downstream consumers
+            success = self._ensure_individual_fitness(candidate, action_label)
+
+        if success:
+            evaluated_candidate = self._clone_individual(candidate)
             # Replace worst individual with modified copy
             worst_idx = max(
                 range(len(self.population)),
                 key=lambda i: self.population[i].fitness.values[0],
             )
-            self.population[worst_idx] = self._clone_individual(candidate)
-            result_individual = candidate
+            self.population[worst_idx] = self._clone_individual(evaluated_candidate)
+            result_individual = self._clone_individual(evaluated_candidate)
         else:
             result_individual = prev_individual
 
@@ -215,11 +238,20 @@ class ScheduleEnv(gym.Env):
 
         # Update progress
         current_best_fitness = self._get_best_fitness()
+        improvement = ""
         if current_best_fitness < self.best_fitness_ever:
+            improvement = (
+                f"IMPROVED by {self.best_fitness_ever - current_best_fitness:.2f}"
+            )
             self.best_fitness_ever = current_best_fitness
             self.generations_without_improvement = 0
         else:
             self.generations_without_improvement += 1
+
+        logger.debug(
+            f"Result: Reward={reward:.4f}, BestFit={current_best_fitness:.2f}, "
+            f"Diversity={population_diversity:.4f}, Stagnation={self.generations_without_improvement} {improvement}"
+        )
 
         self.current_generation += 1
         self.current_step += 1
@@ -298,14 +330,37 @@ class ScheduleEnv(gym.Env):
         """Clean up environment resources."""
         pass
 
-    def _ensure_individual_fitness(self, individual: Individual) -> bool:
+    def _ensure_deap_individual(self, individual: Individual) -> Individual:
+        """Convert plain list to DEAP Individual if needed."""
+        if hasattr(individual, "fitness"):
+            return individual
+
+        # Import DEAP creator (already initialized by GAScheduler)
+        from deap import creator
+
+        # Create new DEAP Individual from plain list
+        deap_individual = creator.Individual(individual)
+        return deap_individual
+
+    def _ensure_individual_fitness(
+        self, individual: Individual, action_label: str
+    ) -> bool:
         """Recompute fitness when heuristics invalidate it (RL requires dense rewards)."""
 
         if not hasattr(individual, "fitness"):
+            logger.warning(
+                "Heuristic candidate (%s) is missing fitness metadata after conversion; skipping.",
+                action_label,
+            )
             return False
 
         values = getattr(individual.fitness, "values", ())
-        if getattr(individual.fitness, "valid", False) and len(values) == 2:
+        values_valid = (
+            getattr(individual.fitness, "valid", False)
+            and len(values) == 2
+            and all(isinstance(value, (int, float)) for value in values)
+        )
+        if values_valid:
             return True
 
         if self._fitness_evaluator is None:
@@ -322,7 +377,11 @@ class ScheduleEnv(gym.Env):
                 rooms=self.context.rooms,
             )
         except Exception as exc:  # pragma: no cover - defensive log path
-            logger.warning("Failed to evaluate heuristic candidate: %s", exc)
+            logger.warning(
+                "Failed to evaluate heuristic candidate (%s): %s",
+                action_label,
+                exc,
+            )
             return False
 
         individual.fitness.values = fitness

@@ -81,12 +81,12 @@ class QuantumTimeSystem:
     ]
 
     DEFAULT_OPERATING_HOURS: ClassVar[Dict[str, Optional[Tuple[str, str]]]] = {
-        "Sunday": ("08:00", "20:00"),  # Closed by default
-        "Monday": ("08:00", "20:00"),
-        "Tuesday": ("08:00", "20:00"),
-        "Wednesday": ("08:00", "20:00"),
-        "Thursday": ("08:00", "20:00"),
-        "Friday": ("08:00", "20:00"),
+        "Sunday": ("10:00", "17:00"),  # Closed by default
+        "Monday": ("10:00", "17:00"),
+        "Tuesday": ("10:00", "17:00"),
+        "Wednesday": ("10:00", "17:00"),
+        "Thursday": ("10:00", "17:00"),
+        "Friday": ("10:00", "17:00"),
         "Saturday": None,  # Shorter Saturday (or fully Closed)
     }
 
@@ -114,8 +114,8 @@ class QuantumTimeSystem:
         Example:
             If Sun 08:00-20:00 (12 quanta) and Mon 08:00-20:00 (12 quanta):
             day_quanta_offset = {'Sunday': 0, 'Monday': 12, ...}
-            day_start_time = {'Sunday': 480, 'Monday': 480, ...}  # 8*60 = 480
-            day_quanta_count = {'Sunday': 12, 'Monday': 12, ...}
+            day_start_time = {'Sunday': 600, 'Monday': 600, ...}  # 10*60 = 600
+            day_quanta_count = {'Sunday': 7, 'Monday': 7, ...}
         """
         self.day_quanta_offset = {}
         self.day_start_time = {}
@@ -270,7 +270,7 @@ class QuantumTimeSystem:
             end_time: End time string (HH:MM) format
 
         Example:
-            qts.set_operating_hours("Monday", "08:00", "20:00")
+            qts.set_operating_hours("Monday", "10:00", "17:00")
 
         """
         day = day.capitalize()

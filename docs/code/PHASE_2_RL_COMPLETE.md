@@ -9,6 +9,8 @@ Successfully implemented comprehensive RL integration for schedule-engine hyper-
 
 ## Recent Updates
 
+- **2025-11-16**: Stabilized RL training by cloning the pre-action individual, lazily re-evaluating heuristic outputs via the GA fitness evaluator, logging invalid schedule attempts, and comparing rewards against the evaluated copy before injecting it back into the GA population (`src/rl/gym_env/schedule_env.py`).
+- **2025-11-16**: Guarded RL heuristics so `temporal_shift` and ejection/variable-depth moves only commit when every shifted quantum exists in the operating grid, and eliminated `kempe_chain` hash errors by tracking conflict indices instead of raw `SessionGene` objects (`src/heuristics/{perturbation,improvement,utils}.py`).
 - **2025-11-15**: Hardened `ScheduleEnv` so RL actions operate on cloned individuals, recompute fitness after heuristic mutations, and gracefully skip invalid candidates instead of crashing training runs (`src/rl/gym_env/schedule_env.py`).
 
 ## Completed Tasks (12/12)

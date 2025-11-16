@@ -42,6 +42,7 @@ from src.heuristics.utils import (
     get_course_for_gene,
     get_course_room_requirement,
     get_room_feature,
+    move_gene_to_time_if_valid,
 )
 
 
@@ -95,7 +96,9 @@ def kempe_chain(
             break  # No conflicts
 
         # Select random conflict pair
-        gene1, gene2 = random.choice(list(conflict_pairs))
+        idx1, idx2 = random.choice(conflict_pairs)
+        gene1 = individual[idx1]
+        gene2 = individual[idx2]
 
         # Build Kempe chain
         chain = _build_kempe_chain(individual, gene1, gene2, context)
@@ -106,8 +109,12 @@ def kempe_chain(
         # Save current state
         old_fitness = _calculate_fitness(individual, context)
 
-        # Swap times along chain
-        _apply_kempe_swap(chain)
+        # Swap times along chain (with validation)
+        swap_applied = _apply_kempe_swap(chain)
+
+        if not swap_applied:
+            # Swap would create invalid quanta - skip this iteration
+            continue
 
         # Evaluate new fitness
         new_fitness = _calculate_fitness(individual, context)
@@ -120,7 +127,9 @@ def kempe_chain(
                 del individual.fitness.values
         else:
             # Revert swap
-            _apply_kempe_swap(chain)  # Swap back
+            _apply_kempe_swap(
+                chain
+            )  # Swap back (will succeed since original was valid)
 
     return improvements
 
@@ -163,6 +172,11 @@ def ejection_chain(
     Returns:
         Number of improving chains applied
     """
+    available_quanta = get_available_quanta(context)
+    if not available_quanta:
+        return 0
+
+    valid_quanta = set(available_quanta)
     improvements = 0
 
     for _ in range(max_iterations):
@@ -170,7 +184,13 @@ def ejection_chain(
         start_gene = random.choice(individual)
 
         # Build ejection chain
-        chain = _build_ejection_chain(individual, start_gene, context, max_chain_length)
+        chain = _build_ejection_chain(
+            individual,
+            start_gene,
+            context,
+            max_chain_length,
+            available_quanta,
+        )
 
         if not chain or len(chain) < 2:
             continue
@@ -179,7 +199,9 @@ def ejection_chain(
         old_fitness = _calculate_fitness(individual, context)
 
         # Apply chain moves
-        _apply_ejection_chain(chain, context)
+        applied = _apply_ejection_chain(chain, valid_quanta)
+        if not applied:
+            continue
 
         # Evaluate new fitness
         new_fitness = _calculate_fitness(individual, context)
@@ -239,6 +261,8 @@ def variable_depth_search(
         Number of improving sequences applied
     """
     improvements = 0
+    available_quanta = get_available_quanta(context)
+    valid_quanta = set(available_quanta) if available_quanta else set()
 
     for _ in range(max_iterations):
         # Current fitness
@@ -255,11 +279,18 @@ def variable_depth_search(
             saved_state = [copy.copy(gene) for gene in individual]
 
             # Apply sequence
+            sequence_valid = True
             for move_type, move_params in move_sequence:
-                _apply_move(individual, move_type, move_params, context)
+                if not _apply_move(
+                    individual, move_type, move_params, context, valid_quanta
+                ):
+                    sequence_valid = False
+                    break
 
-            # Evaluate
-            new_fitness = _calculate_fitness(individual, context)
+            if sequence_valid:
+                new_fitness = _calculate_fitness(individual, context)
+            else:
+                new_fitness = current_fitness
 
             # Track best
             if new_fitness[0] < best_fitness[0] or (
@@ -277,8 +308,20 @@ def variable_depth_search(
             best_fitness[0] == current_fitness[0]
             and best_fitness[1] < current_fitness[1]
         ):
+            pre_apply_state = [copy.copy(gene) for gene in individual]
+            applied_successfully = True
+
             for move_type, move_params in best_sequence:
-                _apply_move(individual, move_type, move_params, context)
+                if not _apply_move(
+                    individual, move_type, move_params, context, valid_quanta
+                ):
+                    applied_successfully = False
+                    break
+
+            if not applied_successfully:
+                for i, gene in enumerate(pre_apply_state):
+                    individual[i] = copy.copy(gene)
+                continue
 
             improvements += 1
 
@@ -296,12 +339,12 @@ def variable_depth_search(
 
 def _find_conflict_pairs(
     individual: List[SessionGene], context: SchedulingContext
-) -> Set[Tuple[SessionGene, SessionGene]]:
-    """Find pairs of sessions with conflicts (overlapping time + shared resources)."""
-    conflicts = set()
+) -> List[Tuple[int, int]]:
+    """Find conflicting session index pairs (overlapping time + shared resources)."""
+    conflicts: Set[Tuple[int, int]] = set()
 
     for i, gene1 in enumerate(individual):
-        for gene2 in individual[i + 1 :]:
+        for j, gene2 in enumerate(individual[i + 1 :], start=i + 1):
             # Check if times overlap based on actual session duration
             time1_end = gene1.time_quantum + gene1.duration_quanta
             time2_end = gene2.time_quantum + gene2.duration_quanta
@@ -319,9 +362,9 @@ def _find_conflict_pairs(
             same_room = gene1.room_id == gene2.room_id
 
             if shared_groups or same_instructor or same_room:
-                conflicts.add((gene1, gene2))
+                conflicts.add((i, j))
 
-    return conflicts
+    return list(conflicts)
 
 
 def _build_kempe_chain(
@@ -344,16 +387,54 @@ def _build_kempe_chain(
     return chain
 
 
-def _apply_kempe_swap(chain: List[SessionGene]) -> None:
-    """Swap times along Kempe chain."""
-    if len(chain) < 2:
-        return
+def _apply_kempe_swap(chain: List[SessionGene]) -> bool:
+    """
+    Swap times along Kempe chain with validation.
 
-    # Simple pairwise swap
-    chain[0].time_quantum, chain[1].time_quantum = (
-        chain[1].time_quantum,
-        chain[0].time_quantum,
-    )
+    Returns:
+        True if swap was applied successfully, False if it would create invalid quanta
+    """
+    if len(chain) < 2:
+        return False
+
+    gene1, gene2 = chain[0], chain[1]
+    time1, time2 = gene1.time_quantum, gene2.time_quantum
+
+    # Get quantum time system to check bounds
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+
+    qts = QuantumTimeSystem()
+
+    # Calculate what the new quanta would be after swap
+    # gene1 will start at time2, gene2 will start at time1
+    gene1_duration = len(gene1.quanta)
+    gene2_duration = len(gene2.quanta)
+
+    gene1_new_end = time2 + gene1_duration - 1
+    gene2_new_end = time1 + gene2_duration - 1
+
+    # Check if new quantum assignments would be valid (within total_quanta)
+    if gene1_new_end >= qts.total_quanta or gene2_new_end >= qts.total_quanta:
+        return False
+
+    # Also check if start times are negative
+    if time1 < 0 or time2 < 0:
+        return False
+
+    # Swap is valid - apply it
+    gene1.time_quantum = time2
+    gene2.time_quantum = time1
+
+    # Double-check after assignment that no quanta exceed bounds
+    # (time_quantum setter shifts all quanta)
+    for gene in chain:
+        if gene.quanta and max(gene.quanta) >= qts.total_quanta:
+            # Revert the swap
+            gene1.time_quantum = time1
+            gene2.time_quantum = time2
+            return False
+
+    return True
 
 
 def _build_ejection_chain(
@@ -361,6 +442,7 @@ def _build_ejection_chain(
     start_gene: SessionGene,
     context: SchedulingContext,
     max_length: int,
+    available_quanta: List[int],
 ) -> List[Tuple[SessionGene, int]]:
     """
     Build ejection chain starting from start_gene.
@@ -368,7 +450,6 @@ def _build_ejection_chain(
     Returns list of (gene, new_time) tuples.
     """
     chain = []
-    available_quanta = get_available_quanta(context)
     if not available_quanta:
         return chain
 
@@ -416,18 +497,24 @@ def _build_ejection_chain(
 
 
 def _apply_ejection_chain(
-    chain: List[Tuple[SessionGene, int]], context: SchedulingContext
-) -> None:
-    """Apply ejection chain moves."""
-    # Store old times
+    chain: List[Tuple[SessionGene, int]],
+    valid_quanta: Set[int],
+) -> bool:
+    """Apply ejection chain moves if all target quanta remain valid."""
+    if not chain:
+        return False
+
     old_times = [(gene, gene.time_quantum) for gene, _ in chain]
 
-    # Apply new times
     for gene, new_time in chain:
-        gene.time_quantum = new_time
+        if not move_gene_to_time_if_valid(gene, new_time, valid_quanta):
+            for rollback_gene, rollback_time in old_times:
+                rollback_gene.time_quantum = rollback_time
+            return False
 
-    # Store for potential revert
-    gene._ejection_old_times = old_times
+    first_gene = chain[0][0]
+    first_gene._ejection_old_times = old_times
+    return True
 
 
 def _revert_ejection_chain(chain: List[Tuple[SessionGene, int]]) -> None:
@@ -499,14 +586,25 @@ def _apply_move(
     move_type: str,
     move_params: Dict,
     context: SchedulingContext,
-) -> None:
-    """Apply a single move."""
+    valid_quanta: Optional[Set[int]] = None,
+) -> bool:
+    """Apply a single move, returning False if it results in an invalid assignment."""
+
     if move_type == "time_shift":
-        move_params["gene"].time_quantum = move_params["new_time"]
-    elif move_type == "room_change":
+        quanta_lookup = valid_quanta or set(get_available_quanta(context))
+        return move_gene_to_time_if_valid(
+            move_params["gene"], move_params["new_time"], quanta_lookup
+        )
+
+    if move_type == "room_change":
         move_params["gene"].room_id = move_params["new_room"]
-    elif move_type == "instructor_change":
+        return True
+
+    if move_type == "instructor_change":
         move_params["gene"].instructor_id = move_params["new_instructor"]
+        return True
+
+    return False
 
 
 def _calculate_fitness(

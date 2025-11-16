@@ -66,9 +66,7 @@ class ActionMapper:
             heuristics = get_all_heuristics().values()
 
         # Sort by category then name for consistent ordering
-        heuristics_sorted = sorted(
-            heuristics, key=lambda h: (h.category.value, h.name)
-        )
+        heuristics_sorted = sorted(heuristics, key=lambda h: (h.category.value, h.name))
 
         for idx, h in enumerate(heuristics_sorted, start=1):
             self.actions.append(
@@ -86,6 +84,8 @@ class ActionMapper:
         action: int,
         individual: Individual,
         context: SchedulingContext,
+        population: Optional[List[Individual]] = None,
+        generation: Optional[int] = None,
     ) -> Tuple[Individual, bool]:
         """
         Apply selected action to individual.
@@ -94,6 +94,8 @@ class ActionMapper:
             action: Discrete action index [0-19]
             individual: Individual to modify
             context: Scheduling context
+            population: Full population (needed for diversity heuristics)
+            generation: Current generation (needed for adaptive heuristics)
 
         Returns:
             (modified_individual, success)
@@ -108,13 +110,64 @@ class ActionMapper:
         if action_info.function is None:
             return individual, True
 
-        # Apply heuristic
+        # Apply heuristic with appropriate parameters
         try:
-            modified = action_info.function(individual, context)
+            import inspect
+
+            sig = inspect.signature(action_info.function)
+            params = list(sig.parameters.keys())
+
+            # Handle crossover operators that need two parents (parent1, parent2, context)
+            if len(params) >= 2 and "parent2" in params:
+                # Crossover needs 2 parents - select random second parent from population
+                if population is None:
+                    raise ValueError(
+                        f"Crossover operator {action_info.name} requires population parameter"
+                    )
+                import random
+
+                valid_parents = [ind for ind in population if ind is not individual]
+                if not valid_parents:
+                    # Only one individual - can't crossover
+                    return individual, False
+                parent2 = random.choice(valid_parents)
+                result = action_info.function(individual, parent2, context)
+                # Crossover returns tuple of offspring - take first
+                if isinstance(result, tuple):
+                    modified = result[0]
+                else:
+                    modified = result
+
+            # Handle diversity heuristics with population parameter (individual, population, context, ...)
+            elif "population" in params:
+                if population is None:
+                    raise ValueError(
+                        f"Heuristic {action_info.name} requires population parameter"
+                    )
+
+                # Check if generation parameter also needed
+                if "generation" in params:
+                    if generation is None:
+                        raise ValueError(
+                            f"Heuristic {action_info.name} requires generation parameter"
+                        )
+                    modified = action_info.function(
+                        individual, population, context, generation
+                    )
+                else:
+                    modified = action_info.function(individual, population, context)
+
+            # Standard single-individual heuristics (individual, context)
+            else:
+                modified = action_info.function(individual, context)
+
             return modified, True
         except Exception as e:
             # Heuristic failed - return original
-            print(f"Warning: Action {action_info.name} failed: {e}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Action {action_info.name} failed: {e}")
             return individual, False
 
     def is_valid_action(self, action: int) -> bool:
