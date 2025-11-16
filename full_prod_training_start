@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""
+Convenience script to start a full production RL training run.
+
+Usage:
+  # Basic: use profile defined in config-train/prod.yaml
+  python ./full_prod_training_start
+
+  # With overrides (example):
+  python ./full_prod_training_start --timesteps 500000 --seed 42 --save-dir models/rl_agents/prod_run_1
+
+Notes:
+- This script runs the training entrypoint in-process (calls the training module as a script)
+- It ensures the `--profile prod` is passed by default and allows passing additional args
+- For Windows PowerShell, ensure you call: python ./full_prod_training_start or run with uv run train if you prefer
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import argparse
+import runpy
+
+# Default profile to use
+DEFAULT_PROFILE = "prod"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Start a full production RL training run")
+
+    parser.add_argument("--timesteps", type=int, default=None, help="Total timesteps for training (override profile)")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed")
+    parser.add_argument("--save-dir", type=str, default=None, help="Model save directory override")
+    parser.add_argument("--verbose", type=int, choices=[0, 1, 2], default=None, help="Verbosity override")
+    parser.add_argument("--tensorboard-port", type=int, default=6006, help="TensorBoard port (used only if starting tensorboard from the script)")
+    parser.add_argument("--start-tensorboard", action="store_true", help="Start TensorBoard automatically before training")
+    parser.add_argument("remainder", nargs=argparse.REMAINDER, help="Additional flags passed to the training script")
+
+    return parser.parse_args()
+
+
+def _compose_argv(args: argparse.Namespace) -> list[str]:
+    # Build argv for the training module
+    argv = ["src.rl.training.train_script"]
+
+    # Default profile
+    argv.extend(["--profile", DEFAULT_PROFILE])
+
+    if args.timesteps is not None:
+        argv.extend(["--timesteps", str(args.timesteps)])
+    if args.seed is not None:
+        argv.extend(["--seed", str(args.seed)])
+    if args.save_dir is not None:
+        argv.extend(["--save-dir", args.save_dir])
+    if args.verbose is not None:
+        argv.extend(["--verbose", str(args.verbose)])
+
+    if args.remainder:
+        argv.extend(args.remainder)
+
+    return argv
+
+
+def _start_tensorboard_if_requested(port: int) -> None:
+    import subprocess
+    import socket
+
+    def _port_in_use(p):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(("localhost", p)) == 0
+
+    if _port_in_use(port):
+        print(f"TensorBoard already running at http://localhost:{port}")
+        return
+
+    try:
+        print(f"Starting TensorBoard on port {port} (logs/tensorboard/train)")
+        # Use `uv run` if available, fall back to python module invocation
+        uv_exe = shutil.which("uv")
+        if uv_exe:
+            cmd = [uv_exe, "run", "tensorboard", "--logdir", "logs/tensorboard/train", "--port", str(port), "--bind_all"]
+            subprocess.Popen(cmd)
+        else:
+            # Run python -m tensorboard.main
+            cmd = [sys.executable, "-m", "tensorboard.main", "--logdir", "logs/tensorboard/train", "--port", str(port), "--bind_all"]
+            subprocess.Popen(cmd)
+
+    except Exception as e:
+        print(f"Could not start TensorBoard: {e}")
+
+
+def main():
+    args = parse_args()
+
+    # Optionally start tensorboard
+    if args.start_tensorboard:
+        import shutil
+        _start_tensorboard_if_requested(args.tensorboard_port)
+
+    argv = _compose_argv(args)
+
+    # Run the training module as a script in-process
+    # Set argv for the module to parse
+    sys_argv_backup = sys.argv
+    try:
+        sys.argv = argv
+        runpy.run_module("src.rl.training.train_script", run_name="__main__")
+    finally:
+        sys.argv = sys_argv_backup
+
+
+if __name__ == "__main__":
+    main()
