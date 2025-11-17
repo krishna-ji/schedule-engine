@@ -33,29 +33,27 @@ System design, data flow, and component interactions
 - Constraint system design (coming soon)
 - Repair system architecture (coming soon)
 
-### [04 - Algorithms](./04-algorithms/)
-Technical deep dives into algorithms and methods
+### [04 - Algorithms & Performance](./04-algorithms/)
+Technical deep dives into algorithms, methods, and performance optimization
 - **Heuristics:** [HEURISTICS_QUICKREF.md](./04-algorithms/HEURISTICS_QUICKREF.md)
 - **Large Neighborhood Search:** [LNS_PROD_RUN_GUIDE.md](./04-algorithms/LNS_PROD_RUN_GUIDE.md), [LNS_FORCE_TRIGGER_VALIDATION.md](./04-algorithms/LNS_FORCE_TRIGGER_VALIDATION.md)
 - **Block Clustering:** [BLOCK_CLUSTERING_CONFIG.md](./04-algorithms/BLOCK_CLUSTERING_CONFIG.md)
 - **Parallel Processing:** [PARALLEL_QUICKSTART.md](./04-algorithms/PARALLEL_QUICKSTART.md)
+- **Time Complexity Analysis:** [time-complexity-algorithmic-analysis/](./04-algorithms/time-complexity-algorithmic-analysis/)
+  - [Executive Summary](./04-algorithms/time-complexity-algorithmic-analysis/00_EXECUTIVE_SUMMARY.md)
+  - [Full Analysis](./04-algorithms/time-complexity-algorithmic-analysis/01_COMPLEXITY_ANALYSIS.md)
+  - [Optimization Strategies](./04-algorithms/time-complexity-algorithmic-analysis/02_OPTIMIZATION_STRATEGIES.md)
+  - [Benchmark Guide](./04-algorithms/time-complexity-algorithmic-analysis/03_BENCHMARK_GUIDE.md)
+- **GPU Acceleration:** [nvidia-gpu/](./04-algorithms/nvidia-gpu/)
+  - [Quick Start (5 min)](./04-algorithms/nvidia-gpu/QUICKSTART.md)
+  - [Comprehensive Guide](./04-algorithms/nvidia-gpu/GPU_ACCELERATION_GUIDE.md)
+  - [Deployment Guide](./04-algorithms/nvidia-gpu/DEPLOYMENT.md)
+- **Parallelization Analysis:** [parallelism/](./04-algorithms/parallelism/)
+- **Optimization Notes:** [PRODUCTION_OPTIMIZATION_SUMMARY.txt](./04-algorithms/PRODUCTION_OPTIMIZATION_SUMMARY.txt)
+- **Performance Analysis Reports:** [ANALYSIS_SUMMARY.md](./04-algorithms/ANALYSIS_SUMMARY.md), [CONSTRAINT_WEIGHT_ANALYSIS.md](./04-algorithms/CONSTRAINT_WEIGHT_ANALYSIS.md)
 - NSGA-II implementation (coming soon)
 
-### [05 - Performance](./05-performance/)
-Performance analysis, profiling, and optimization
-- **Time Complexity Analysis:** [time-complexity-algorithmic-analysis/](./05-performance/time-complexity-algorithmic-analysis/)
-  - [Executive Summary](./05-performance/time-complexity-algorithmic-analysis/00_EXECUTIVE_SUMMARY.md)
-  - [Full Analysis](./05-performance/time-complexity-algorithmic-analysis/01_COMPLEXITY_ANALYSIS.md)
-  - [Optimization Strategies](./05-performance/time-complexity-algorithmic-analysis/02_OPTIMIZATION_STRATEGIES.md)
-  - [Benchmark Guide](./05-performance/time-complexity-algorithmic-analysis/03_BENCHMARK_GUIDE.md)
-- **GPU Acceleration:** [nvidia-gpu/](./05-performance/nvidia-gpu/)
-  - [Quick Start (5 min)](./05-performance/nvidia-gpu/QUICKSTART.md)
-  - [Comprehensive Guide](./05-performance/nvidia-gpu/GPU_ACCELERATION_GUIDE.md)
-  - [Deployment Guide](./05-performance/nvidia-gpu/DEPLOYMENT.md)
-- **Parallelization Analysis:** [parallelism/](./05-performance/parallelism/)
-- **Optimization Notes:** [PRODUCTION_OPTIMIZATION_SUMMARY.txt](./05-performance/PRODUCTION_OPTIMIZATION_SUMMARY.txt)
-
-### [06 - Development](./06-development/)
+### [05 - Development](./06-development/)
 For developers: changelogs, implementation notes, code quality
 - **Changelogs:**
   - [Bug Fixes](./06-development/changelog/bugfixes.md)
@@ -68,33 +66,33 @@ For developers: changelogs, implementation notes, code quality
   - [Repair Registry Refactor](./06-development/implementation-notes/REPAIR_REGISTRY_REFACTOR.md)
 - **Code Quality:** [CODE_QUALITY_ENHANCEMENTS.md](./06-development/code-quality/CODE_QUALITY_ENHANCEMENTS.md)
 
-### [07 - Thesis & Report](./07-thesis-report/)
+### [06 - Thesis & Report](./07-thesis-report/)
 Thesis-ready documentation and academic content
 - Academic-style documentation
 - Thesis chapter materials
 - Publication-ready content
 - Evaluation metrics documentation
 
-### [08 - Q&A](./08-qna/)
+### [07 - Q&A](./08-qna/)
 Questions, discussions, and AI-assisted problem solving
 - Technical questions (your active workspace)
 - Algorithmic discussions
 - Architecture decisions
 - Troubleshooting sessions
 
-### [09 - Future Plans](./09-future-plans/)
+### [08 - Future Plans](./09-future-plans/)
 Roadmap, enhancement ideas, and research directions
 - Project roadmap (coming soon)
 - Phase 3 planning (coming soon)
 - Enhancement proposals (coming soon)
 - Research directions (coming soon)
 
-### [10 - AI Suggestions](./10-ai-suggestions/)
+### [09 - AI Suggestions](./10-ai-suggestions/)
 AI-generated recommendations and guides
 - [RL Phase 2.2-2.4 Guide](./10-ai-suggestions/rlphase2.2-2.4_guide_manual.md)
 - Historical AI suggestions: [olds/](./10-ai-suggestions/olds/)
 
-### [11 - Advanced Techniques](./11-advanced-techniques-suggest/)
+### [10 - Advanced Techniques](./11-advanced-techniques-suggest/)
 Comprehensive technical documentation for enhancing Memetic NSGA-II with advanced RL techniques
 - **[README & Navigation](./11-advanced-techniques-suggest/README.md)** ⭐ Start here
 - **Current State:** [01 - Current Architecture](./11-advanced-techniques-suggest/01-current-architecture.md)
@@ -136,10 +134,10 @@ Historical documentation and obsolete content
 4. [Metrics Guide](./02-user-guides/METRICS_QUICKSTART.md)
 
 ### "I want to optimize performance"
-1. ⚡ [GPU Quick Start](./05-performance/nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× speedup
-2. [Time Complexity Analysis](./05-performance/time-complexity-algorithmic-analysis/)
+1. ⚡ [GPU Quick Start](./04-algorithms/nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× speedup
+2. [Time Complexity Analysis](./04-algorithms/time-complexity-algorithmic-analysis/)
 3. [Parallel Processing](./04-algorithms/PARALLEL_QUICKSTART.md)
-4. [Optimization Strategies](./05-performance/time-complexity-algorithmic-analysis/02_OPTIMIZATION_STRATEGIES.md)
+4. [Optimization Strategies](./04-algorithms/time-complexity-algorithmic-analysis/02_OPTIMIZATION_STRATEGIES.md)
 
 ### "I want to understand the architecture"
 1. [RL-GA Integration](./03-architecture/rl-ga-integ-framework.md)
@@ -211,8 +209,8 @@ Historical documentation and obsolete content
 3. [Production Run Guide](./02-user-guides/PROD_RUN_GUIDE.md) - How to run
 
 ### For Performance ⚡
-1. [GPU Quick Start](./05-performance/nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× faster
-2. [Time Complexity Analysis](./05-performance/time-complexity-algorithmic-analysis/00_EXECUTIVE_SUMMARY.md)
+1. [GPU Quick Start](./04-algorithms/nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× faster
+2. [Time Complexity Analysis](./04-algorithms/time-complexity-algorithmic-analysis/00_EXECUTIVE_SUMMARY.md)
 3. [Parallel Processing](./04-algorithms/PARALLEL_QUICKSTART.md)
 
 ### For Development 🔧
@@ -222,8 +220,8 @@ Historical documentation and obsolete content
 
 ### For Research 🎓
 1. [Thesis Content](./07-thesis-report/)
-2. [Time Complexity Analysis](./05-performance/time-complexity-algorithmic-analysis/)
-3. [GPU Acceleration Guide](./05-performance/nvidia-gpu/GPU_ACCELERATION_GUIDE.md)
+2. [Time Complexity Analysis](./04-algorithms/time-complexity-algorithmic-analysis/)
+3. [GPU Acceleration Guide](./04-algorithms/nvidia-gpu/GPU_ACCELERATION_GUIDE.md)
 
 ---
 
@@ -232,7 +230,7 @@ Historical documentation and obsolete content
 ### As a User
 - Start with [QUICKREF.md](./QUICKREF.md)
 - Follow [02-user-guides/](./02-user-guides/) for daily usage
-- Check [05-performance/](./05-performance/) for optimization
+- Check [04-algorithms/](./04-algorithms/) for optimization
 
 ### As a Developer
 - Review [06-development/](./06-development/) for current state
@@ -241,7 +239,7 @@ Historical documentation and obsolete content
 
 ### As a Researcher
 - Mine [07-thesis-report/](./07-thesis-report/) for academic content
-- Study [05-performance/](./05-performance/) for analysis
+- Study [04-algorithms/](./04-algorithms/) for analysis and performance
 - Reference [archive/](./archive/) for historical context
 
 ### For Active Development
@@ -253,11 +251,15 @@ Historical documentation and obsolete content
 
 ## 📝 Recent Changes
 
+**November 18, 2025** - Documentation structure refinement:
+- ✅ Merged `05-performance/` into `04-algorithms/` (algorithms and performance are inseparable)
+- ✅ Renumbered sections 06-11 → 05-10 for consistency
+- ✅ Updated all internal links and cross-references
+
 **November 17, 2025** - Major documentation reorganization:
 - ✅ Restructured from 30+ loose files to 10 categorized folders
 - ✅ Moved `docs/code/` → `06-development/`
 - ✅ Moved `for_report/` → `07-thesis-report/`
-- ✅ Merged `report/` → `05-performance/`
 - ✅ Moved `suggest/` → `10-ai-suggestions/`
 - ✅ Created dedicated Q&A and Future Plans sections
 - ✅ Archived obsolete content (nothing deleted)

@@ -2,6 +2,19 @@
 
 This file tracks bug fixes in the schedule engine codebase.
 
+## [2025-01-18] Fixed hypervolume calculation returning 0 - DEAP function misuse
+
+**Issue:** Hypervolume indicator always returned 0 for all GA runs, making Pareto front quality assessment impossible.
+
+**Root Cause:** DEAP's `tools.hypervolume()` is a **selector function** that returns the index of the worst contributor, not a hypervolume calculator. The function was being called with `(pareto_front, ref_point)` and treated as a metric calculator, when it actually identifies which individual to remove for hypervolume-based selection.
+
+**Fix:** Implemented custom 2D hypervolume calculator using sweep-line algorithm with O(n log n) complexity. Algorithm sorts by first objective, calculates rectangular contributions (width × height), and sums areas.
+
+**Files Modified:**
+- `src/metrics/hypervolume.py` - Complete rewrite of `calculate_hypervolume()` function
+
+**Verification:** Tested with 4 scenarios - single point (250.0), 3-point front (350.0), dominated solutions (correctly filtered), feasible/infeasible mix (handles both). See `docs/06-development/bugfixes/hypervolume-calculation-fix.md` for detailed technical documentation.
+
 ## [2025-01-16] Fixed "Quantum out of valid range" errors - Hardcoded constant mismatch
 
 **Issue:** Training showed persistent warnings like "Quantum 42/43 out of valid range" when evaluating heuristic candidates during RL training. Errors occurred in `crowding_mutation`, `adaptive_large_neighborhood`, and `distance_preserving_crossover` heuristics.

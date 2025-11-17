@@ -25,7 +25,7 @@ The RL stack (environment, training, deployment, promotion) extends the GA sched
 - Curriculum changes require YAML updates plus doc updates in `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`.
 - Callbacks should log to TensorBoard using the provided writer; do not create new logging sinks unless coordinated.
 - Always gate long-running operations behind `if __name__ == "__main__":` to keep modules import-safe.
-- GPU acceleration is enabled by default (`device: cuda` in configs/base.yaml); see `docs/05-performance/nvidia-gpu/` for details.
+- GPU acceleration is enabled by default (`device: cuda` in configs/base.yaml); see `docs/04-algorithms/nvidia-gpu/` for details.
 
 ## Deployment & Promotion (`src/rl/deployment/`, `scripts/promote_model_to_prod.py`)
 - Use `ModelLoader` for all SB3 model loading; no direct `PPO.load()` calls elsewhere.
@@ -42,7 +42,7 @@ The RL stack (environment, training, deployment, promotion) extends the GA sched
 - Document technical Q&A in `docs/08-qna/technical-questions.md` for discussion history.
 - For new utilities, add usage examples (CLI snippets) similar to existing documentation sections.
 - Performance improvements should reference `docs/05-performance/` documentation.
-- GPU-related changes should coordinate with `docs/05-performance/nvidia-gpu/` guides.
+- GPU-related changes should coordinate with `docs/04-algorithms/nvidia-gpu/` guides.
 
 ## Testing Checklist
 - `pytest test/rl/test_diversity_metrics.py` for encoder/state changes.

@@ -110,4 +110,4 @@ rl:
     model_path: models/rl_agents/best_model.zip
 ```
 
-**Important**: GPU acceleration is enabled by default. See `docs/05-performance/nvidia-gpu/QUICKSTART.md` for setup.
+**Important**: GPU acceleration is enabled by default. See `docs/04-algorithms/nvidia-gpu/QUICKSTART.md` for setup.
