@@ -61,6 +61,30 @@ def promote_from_checkpoint(
             print(f"  - {ckpt.checkpoint_id} ({ckpt.stage}, {ckpt.status})")
         sys.exit(1)
 
+    # Validate checkpoint file exists
+    checkpoint_path = Path(checkpoint.model_path)
+    if not checkpoint_path.exists():
+        logger.error(f"Checkpoint file not found: {checkpoint.model_path}")
+        print(f"❌ Checkpoint file not found: {checkpoint.model_path}")
+        sys.exit(1)
+
+    # Validate checkpoint is a valid model
+    try:
+        from stable_baselines3 import PPO, DQN
+
+        if checkpoint.agent_type.lower() == "ppo":
+            _ = PPO.load(checkpoint.model_path)
+        elif checkpoint.agent_type.lower() == "dqn":
+            _ = DQN.load(checkpoint.model_path)
+        else:
+            logger.error(f"Unknown agent type: {checkpoint.agent_type}")
+            print(f"❌ Unknown agent type: {checkpoint.agent_type}")
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f"Invalid checkpoint file: {e}")
+        print(f"❌ Invalid checkpoint file: {e}")
+        sys.exit(1)
+
     # Validate checkpoint status
     if checkpoint.status != "validated":
         logger.warning(

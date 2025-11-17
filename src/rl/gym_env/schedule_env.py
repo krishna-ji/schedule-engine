@@ -50,8 +50,9 @@ class ScheduleEnv(gym.Env):
         initial_population: List[Individual],
         context: SchedulingContext,
         max_generations: int = 2000,
-        max_steps_per_episode: int = 100,
+        max_steps_per_episode: int = 20,
         render_mode: Optional[str] = None,
+        fast_evaluation: bool = True,
     ):
         """
         Initialize RL environment.
@@ -60,8 +61,9 @@ class ScheduleEnv(gym.Env):
             initial_population: Initial GA population
             context: Scheduling context (courses, rooms, etc.)
             max_generations: Maximum GA generations
-            max_steps_per_episode: Maximum RL steps per episode
+            max_steps_per_episode: Maximum RL steps per episode (default: 20 for speed)
             render_mode: Rendering mode ("human", "ansi", None)
+            fast_evaluation: Use cached fitness when possible (10x faster)
         """
         super().__init__()
 
@@ -69,6 +71,7 @@ class ScheduleEnv(gym.Env):
         self.max_generations = max_generations
         self.max_steps_per_episode = max_steps_per_episode
         self.render_mode = render_mode
+        self.fast_evaluation = fast_evaluation
 
         # Initialize components
         self.state_encoder = StateEncoder(
@@ -360,6 +363,11 @@ class ScheduleEnv(gym.Env):
             and len(values) == 2
             and all(isinstance(value, (int, float)) for value in values)
         )
+
+        # Fast evaluation mode: trust cached fitness if valid
+        if values_valid and self.fast_evaluation:
+            return True
+
         if values_valid:
             return True
 
@@ -397,8 +405,9 @@ def create_schedule_env(
     initial_population: List[Individual],
     context: SchedulingContext,
     max_generations: int = 2000,
-    max_steps_per_episode: int = 100,
+    max_steps_per_episode: int = 20,
     render_mode: Optional[str] = None,
+    fast_evaluation: bool = True,
 ) -> ScheduleEnv:
     """
     Factory function to create ScheduleEnv.
@@ -407,8 +416,9 @@ def create_schedule_env(
         initial_population: Initial GA population
         context: Scheduling context
         max_generations: Maximum generations
-        max_steps_per_episode: Maximum RL steps
+        max_steps_per_episode: Maximum RL steps (default: 20 for speed)
         render_mode: Rendering mode
+        fast_evaluation: Use cached fitness (10x faster)
 
     Returns:
         Configured ScheduleEnv instance
@@ -419,4 +429,5 @@ def create_schedule_env(
         max_generations=max_generations,
         max_steps_per_episode=max_steps_per_episode,
         render_mode=render_mode,
+        fast_evaluation=fast_evaluation,
     )

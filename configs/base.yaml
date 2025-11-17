@@ -310,7 +310,7 @@ rl:
 
   # Environment configuration
   environment:
-    max_steps_per_episode: 100 # RL steps per episode
+    max_steps_per_episode: 20 # RL steps per episode (reduced for faster training)
     observation_history_size: 10 # Recent heuristic applications to track
     render_mode: null # Options: null, "ansi", "human"
 
@@ -325,7 +325,7 @@ rl:
   agent:
     type: ppo # Options: ppo, dqn, random
     model_path: models/rl_agents/best_model.zip # Path to trained model
-    device: auto # Options: auto, cpu, cuda
+    device: cuda # Options: auto, cpu, cuda (CUDA enabled for 3-5x training speedup)
 
     # PPO-specific hyperparameters
     ppo:

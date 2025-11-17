@@ -325,29 +325,46 @@ class StateEncoder:
         return np.concatenate([base_features, history_array])
 
     def _normalize_observation(self, obs: NDArray[np.float64]) -> NDArray[np.float64]:
-        """Normalize observation to [0, 1] range."""
+        """
+        Normalize observation to [0, 1] range with robust handling.
+
+        Uses clipping to prevent extreme values from destabilizing training.
+        All features are normalized to [0, 1] or [-1, 1] as appropriate.
+        """
         normalized = obs.copy()
 
         # Fitness metrics (indices 0-4): clip to reasonable range
-        normalized[0:5] = np.clip(obs[0:5] / 1000.0, 0, 1)
+        # Handle division by zero and extreme values
+        normalized[0:5] = np.clip(obs[0:5] / (1000.0 + 1e-6), 0, 1)
 
-        # Diversity metrics (indices 5-9): already in [0, 1]
+        # Diversity metrics (indices 5-9): already in [0, 1], but clip for safety
         normalized[5:10] = np.clip(obs[5:10], 0, 1)
 
-        # Current generation (index 10)
-        normalized[10] = obs[10] / self.max_generations
+        # Current generation (index 10): normalize with bounds checking
+        if self.max_generations > 0:
+            normalized[10] = np.clip(obs[10] / self.max_generations, 0, 1)
+        else:
+            normalized[10] = 0.0
 
-        # Generations without improvement (index 11): clip to max_generations
-        normalized[11] = min(obs[11] / self.max_generations, 1.0)
+        # Generations without improvement (index 11): clip to [0, 1]
+        if self.max_generations > 0:
+            normalized[11] = np.clip(obs[11] / self.max_generations, 0, 1)
+        else:
+            normalized[11] = 0.0
 
         # Convergence/improvement rates (indices 12-13): clip to [-1, 1]
         normalized[12:14] = np.clip(obs[12:14], -1, 1)
 
         # Violation metrics (indices 14-16): clip to reasonable range
-        normalized[14:17] = np.clip(obs[14:17] / 100.0, 0, 1)
+        # Handle potential explosion of violations for infeasible schedules
+        normalized[14:17] = np.clip(obs[14:17] / (100.0 + 1e-6), 0, 1)
 
         # Heuristic history (indices 17+): normalize by max heuristic ID (20)
-        normalized[17:] = obs[17:] / 20.0
+        # Handle edge case where history might contain invalid IDs
+        normalized[17:] = np.clip(obs[17:] / 20.0, 0, 1)
+
+        # Final safety check: replace any NaN or Inf values with 0
+        normalized = np.nan_to_num(normalized, nan=0.0, posinf=1.0, neginf=0.0)
 
         return normalized
 

@@ -734,8 +734,47 @@ class GAScheduler:
                 notes="Initial population",
             )
 
+    def _cleanup_rl(self):
+        """
+        Release RL resources.
+
+        Cleans up RL components (models, caches) to prevent memory leaks
+        in long-running or repeated GA executions.
+        """
+        if not hasattr(self, "rl_controller") or self.rl_controller is None:
+            return
+
+        try:
+            # Clear inference engine cache
+            if hasattr(self.rl_controller, "inference_engine"):
+                if hasattr(self.rl_controller.inference_engine, "clear_cache"):
+                    self.rl_controller.inference_engine.clear_cache()
+
+            # Release model references
+            if hasattr(self, "rl_action_mapper"):
+                del self.rl_action_mapper
+
+            if hasattr(self, "rl_state_encoder"):
+                del self.rl_state_encoder
+
+            if hasattr(self, "rl_controller"):
+                del self.rl_controller
+
+            logger.debug("RL components cleaned up successfully")
+
+        except Exception as e:
+            logger.warning(f"Error during RL cleanup: {e}")
+
     def evolve(self):
         """Run genetic algorithm evolution loop."""
+        try:
+            self._run_evolution()
+        finally:
+            # Always cleanup RL resources
+            self._cleanup_rl()
+
+    def _run_evolution(self):
+        """Internal evolution loop implementation."""
         gen_times = []
 
         # Create elapsed/remaining time bar (shows above progress bar)

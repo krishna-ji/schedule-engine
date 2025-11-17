@@ -100,6 +100,11 @@ class ActionMapper:
         Returns:
             (modified_individual, success)
         """
+        import logging
+        import copy
+
+        logger = logging.getLogger(__name__)
+
         if not self.is_valid_action(action):
             # Invalid action - return unchanged
             return individual, False
@@ -112,6 +117,9 @@ class ActionMapper:
 
         # Apply heuristic with appropriate parameters
         try:
+            # Clone individual to avoid mutation issues
+            individual_copy = copy.deepcopy(individual)
+
             import inspect
 
             sig = inspect.signature(action_info.function)
@@ -121,17 +129,21 @@ class ActionMapper:
             if len(params) >= 2 and "parent2" in params:
                 # Crossover needs 2 parents - select random second parent from population
                 if population is None:
-                    raise ValueError(
+                    logger.warning(
                         f"Crossover operator {action_info.name} requires population parameter"
                     )
+                    return individual, False
                 import random
 
                 valid_parents = [ind for ind in population if ind is not individual]
                 if not valid_parents:
                     # Only one individual - can't crossover
+                    logger.debug(
+                        f"Cannot apply crossover {action_info.name}: insufficient population"
+                    )
                     return individual, False
                 parent2 = random.choice(valid_parents)
-                result = action_info.function(individual, parent2, context)
+                result = action_info.function(individual_copy, parent2, context)
                 # Crossover returns tuple of offspring - take first
                 if isinstance(result, tuple):
                     modified = result[0]
@@ -141,34 +153,66 @@ class ActionMapper:
             # Handle diversity heuristics with population parameter (individual, population, context, ...)
             elif "population" in params:
                 if population is None:
-                    raise ValueError(
+                    logger.warning(
                         f"Heuristic {action_info.name} requires population parameter"
                     )
+                    return individual, False
 
                 # Check if generation parameter also needed
                 if "generation" in params:
                     if generation is None:
-                        raise ValueError(
+                        logger.warning(
                             f"Heuristic {action_info.name} requires generation parameter"
                         )
+                        return individual, False
                     modified = action_info.function(
-                        individual, population, context, generation
+                        individual_copy, population, context, generation
                     )
                 else:
-                    modified = action_info.function(individual, population, context)
+                    modified = action_info.function(
+                        individual_copy, population, context
+                    )
 
             # Standard single-individual heuristics (individual, context)
             else:
-                modified = action_info.function(individual, context)
+                modified = action_info.function(individual_copy, context)
+
+            # Validate result
+            if not self._validate_result(modified):
+                logger.warning(f"Heuristic {action_info.name} returned invalid result")
+                return individual, False
 
             return modified, True
+
+        except TimeoutError:
+            logger.error(f"Heuristic {action_info.name} timed out")
+            return individual, False
+
         except Exception as e:
             # Heuristic failed - return original
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.debug(f"Action {action_info.name} failed: {e}")
+            logger.error(f"Action {action_info.name} failed: {e}", exc_info=True)
             return individual, False
+
+    def _validate_result(self, result) -> bool:
+        """
+        Validate heuristic result.
+
+        Args:
+            result: Result from heuristic function
+
+        Returns:
+            True if result is valid, False otherwise
+        """
+        if result is None:
+            return False
+        if not isinstance(result, list):
+            return False
+        if len(result) == 0:
+            return False
+        # Check if all elements have course_id attribute (basic gene validation)
+        if not all(hasattr(gene, "course_id") for gene in result):
+            return False
+        return True
 
     def is_valid_action(self, action: int) -> bool:
         """Check if action is valid and enabled."""

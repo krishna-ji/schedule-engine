@@ -136,18 +136,29 @@ class ModelLoader:
             raise
 
     def _resolve_path(self, model_path: str) -> str:
-        """Resolve model path (handle relative paths, add .zip extension)."""
+        """
+        Resolve model path (handle relative paths, add .zip extension).
+
+        Resolves paths relative to project root to avoid working directory issues.
+        """
         path = Path(model_path)
 
         # Add .zip if missing
         if not path.suffix:
             path = path.with_suffix(".zip")
 
-        # Handle relative paths
+        # Handle relative paths - resolve relative to project root
         if not path.is_absolute():
-            path = self.model_dir / path
+            # Try model_dir first
+            resolved = self.model_dir / path
+            if not resolved.exists():
+                # Fall back to project root
+                project_root = Path(__file__).parent.parent.parent.parent
+                resolved = project_root / path
 
-        return str(path)
+            path = resolved
+
+        return str(path.resolve())
 
     def preload_models(self, model_paths: list, agent_type: str = "ppo"):
         """

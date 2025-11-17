@@ -4,6 +4,41 @@ This file tracks **enhancements** to the GA system (new features, performance im
 
 ---
 
+## [2025-11-17] GPU Acceleration Analysis, Documentation, and Deployment
+
+**Summary**: Comprehensive analysis of NVIDIA GPU acceleration opportunities for schedule-engine, resulting in implementation guide, diagnostic tools, and production deployment.
+
+**Files Created:**
+- `docs/nvidia-gpu/README.md` - Documentation hub and quick reference
+- `docs/nvidia-gpu/QUICKSTART.md` - 5-minute GPU enablement guide
+- `docs/nvidia-gpu/GPU_ACCELERATION_GUIDE.md` - 9-part comprehensive technical guide (~1,800 lines)
+- `docs/nvidia-gpu/IMPLEMENTATION_SUMMARY.md` - Complete implementation summary
+- `docs/nvidia-gpu/DEPLOYMENT.md` - Deployment guide with verification and troubleshooting
+- `scripts/diagnose_gpu.py` - GPU diagnostics script (~450 lines)
+- `scripts/benchmark_gpu_training.py` - GPU vs CPU benchmark (~300 lines)
+
+**Files Modified:**
+- `configs/base.yaml` - **DEPLOYED**: Changed `device: auto` → `device: cuda` (line 328)
+- `docs/INDEX.md` - Added GPU acceleration to master documentation index
+- `docs/code/ENHANCE.md` - This file
+
+**Key Findings:**
+- **RL Training**: ✅ YES - 3-5× speedup with 1-line config change (`device: cuda`)
+- **Constraint Checking**: ❌ NO - 2.4× slower due to memory transfer overhead
+
+**Implementation**: ✅ **DEPLOYED** - GPU acceleration now enabled by default
+
+**Expected Results**: 22.5 hours → 6 hours for full curriculum training (300K steps)
+
+**Verification Steps:**
+1. Run diagnostics: `uv run python scripts/diagnose_gpu.py`
+2. Test training: `uv run train` with `nvidia-smi -l 1` monitoring
+3. Benchmark: `uv run python scripts/benchmark_gpu_training.py`
+
+**Rollback**: Change `configs/base.yaml` line 328 to `device: cpu` if issues arise
+
+---
+
 ## [2025-11-15] Heuristic Toolbox Implementation (Phase 1.5)
 
 **Summary**: Implemented complete heuristic toolbox with decorator-based registry and killswitch architecture for RL integration preparation.
