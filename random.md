@@ -13,3 +13,11 @@ and what types of comparsion study ? even not here you suggest? or can i remove 
 - i also need to modify the main.py and other codebased and ig should create wrappers around config to make upperconfigs for easy switching between runtimes. What do you think?
 
 and how are output handled in these kind of experiments? my approach is slightly fuckedup right? how can i enhance it? How can i manage outputs from different experiments loggers etc. and how to configure it as champ level researcher and product designer. 
+
+
+
+new rpompt
+Look at the implementation roadmap of : 11-advanced-techniques-suggest:?
+further topics are on same folder:
+11-advanced-techniques-suggest/
+make a list of things analyzing dependencies and everything: to implement at Phase 1:: 
