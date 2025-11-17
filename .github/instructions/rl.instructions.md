@@ -20,10 +20,12 @@ The RL stack (environment, training, deployment, promotion) extends the GA sched
 - When adding features, include normalization logic and document new indices in the encoder docstring.
 
 ## Training (`src/rl/training/`)
-- CLIs (`train_script.py`, `generate_validation_set.py`, `select_best_checkpoint.py`) must support UV execution (`uv run python ...`).
-- Curriculum changes require YAML updates plus doc updates in `docs/code/PHASE_2_RL_COMPLETE.md`.
+- CLIs (`train_script.py`, `generate_validation_set.py`, `select_best_checkpoint.py`) must support UV execution (`uv run train`, `uv run python ...`).
+- Training profiles in `config-train/` (test, med, prod) control curriculum stages and hyperparameters.
+- Curriculum changes require YAML updates plus doc updates in `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`.
 - Callbacks should log to TensorBoard using the provided writer; do not create new logging sinks unless coordinated.
 - Always gate long-running operations behind `if __name__ == "__main__":` to keep modules import-safe.
+- GPU acceleration is enabled by default (`device: cuda` in configs/base.yaml); see `docs/05-performance/nvidia-gpu/` for details.
 
 ## Deployment & Promotion (`src/rl/deployment/`, `scripts/promote_model_to_prod.py`)
 - Use `ModelLoader` for all SB3 model loading; no direct `PPO.load()` calls elsewhere.
@@ -36,8 +38,11 @@ The RL stack (environment, training, deployment, promotion) extends the GA sched
 - When extending hybrid controller modes or fallback strategies, update `configs/base.yaml` docs and onboarding guide.
 
 ## Documentation & Reporting
-- Record significant RL changes in `docs/code/PHASE_2_RL_COMPLETE.md` and reference them from `new-agent-onboarding-guide.md`.
+- Record significant RL changes in `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`.
+- Document technical Q&A in `docs/08-qna/technical-questions.md` for discussion history.
 - For new utilities, add usage examples (CLI snippets) similar to existing documentation sections.
+- Performance improvements should reference `docs/05-performance/` documentation.
+- GPU-related changes should coordinate with `docs/05-performance/nvidia-gpu/` guides.
 
 ## Testing Checklist
 - `pytest test/rl/test_diversity_metrics.py` for encoder/state changes.

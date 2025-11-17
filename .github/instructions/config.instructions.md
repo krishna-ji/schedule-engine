@@ -23,6 +23,8 @@ YAML-based configuration with inheritance: `base.yaml` + environment overrides. 
 3. Deep merge: environment values override base values
 4. Result: complete configuration with minimal duplication
 
+**Note**: Training uses separate configs in `config-train/` with similar inheritance (base + profile overrides).
+
 ## Rules
 
 ### Accessing Configuration
@@ -96,3 +98,16 @@ def validate_workers(cls, v):
         raise ValueError(f"num_workers ({v}) exceeds CPU count ({os.cpu_count()})")
     return v
 ```
+
+### GPU Configuration Example
+
+```yaml
+# configs/base.yaml
+rl:
+  device: cuda  # Enable GPU acceleration (auto, cuda, cpu)
+  agent:
+    type: ppo
+    model_path: models/rl_agents/best_model.zip
+```
+
+**Important**: GPU acceleration is enabled by default. See `docs/05-performance/nvidia-gpu/QUICKSTART.md` for setup.

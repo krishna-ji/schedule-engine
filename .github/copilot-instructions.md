@@ -6,10 +6,11 @@ University course scheduling engine using NSGA-II genetic algorithm with constra
 
 ## Phase Roadmap & Status
 
-- **Phase 1.5 – Heuristic Toolbox**: ✅ Complete (19 operators + registry, documented in `docs/PHASE_1.5_SUMMARY.md`).
-- **Phase 2.1 – Gymnasium Environment**: ✅ Complete (env, reward, action mapper). See `docs/PHASE_2.1_SUMMARY.md`.
-- **Phase 2.2-2.4 – RL Training/Deployment/Integration**: ✅ Code complete (`docs/code/PHASE_2_RL_COMPLETE.md`). Pending execution tasks: curriculum training runs, checkpoint selection, promotion, RL-enabled GA benchmarking, and documentation updates.
-- **Phase 3 – Advanced RL / Evaluation**: 🚧 Planned (multi-agent, transfer learning, evaluation suite) per `Todo.md` and `suggest/rlphase2.2-2.4_guide_manual.md`.
+- **Phase 1.5 – Heuristic Toolbox**: ✅ Complete (19 operators + registry, documented in `docs/06-development/implementation-notes/PHASE_1.5_SUMMARY.md`).
+- **Phase 2.1 – Gymnasium Environment**: ✅ Complete (env, reward, action mapper). See `docs/06-development/implementation-notes/PHASE_2.1_SUMMARY.md`.
+- **Phase 2.2-2.4 – RL Training/Deployment/Integration**: ✅ Code complete (`docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`). Pending execution tasks: curriculum training runs, checkpoint selection, promotion, RL-enabled GA benchmarking, and documentation updates.
+- **Phase 3 – Advanced RL / Evaluation**: 🚧 Planned (multi-agent, transfer learning, evaluation suite) per `Todo.md` and `docs/10-ai-suggestions/rlphase2.2-2.4_guide_manual.md`.
+- **GPU Acceleration**: ✅ Deployed (CUDA enabled in configs/base.yaml, see `docs/05-performance/nvidia-gpu/`).
 
 ## Tech Stack
 
@@ -74,11 +75,13 @@ python main.py --config path/to/custom.yaml
 
 ## Active Workstream (November 2025)
 
-1. **Run PPO curriculum training (100K–300K steps)** and capture TensorBoard logs.
-2. **Generate/refresh validation sets** (`scripts/generate_validation_set.py`).
-3. **Select & promote best checkpoint** using `scripts/select_best_checkpoint.py` + `scripts/promote_model_to_prod.py`.
-4. **Enable RL in configs/prod.yaml**, run `uv run prod`, and compare RL vs non-RL GA baselines.
-5. **Update docs** (especially `docs/code/PHASE_2_RL_COMPLETE.md`) with empirical results once runs finish.
+1. **GPU Acceleration**: ✅ Deployed (CUDA enabled, documentation complete in `docs/05-performance/nvidia-gpu/`)
+2. **Documentation Reorganization**: ✅ Complete (10-category structure, see `docs/INDEX.md`)
+3. **Run PPO curriculum training (100K–300K steps)** with GPU acceleration and capture TensorBoard logs.
+4. **Generate/refresh validation sets** (`scripts/generate_validation_set.py`).
+5. **Select & promote best checkpoint** using `scripts/select_best_checkpoint.py` + `scripts/promote_model_to_prod.py`.
+6. **Enable RL in configs/prod.yaml**, run `uv run prod`, and compare RL vs non-RL GA baselines.
+7. **Update docs** (especially `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`) with empirical results once runs finish.
 
 Always log notable runs in `output/` and reference them inside documentation or onboarding guides.
 
@@ -95,11 +98,13 @@ Always log notable runs in `output/` and reference them inside documentation or 
 
 ## Key References for Agents
 
-- `docs/code/PHASE_2_RL_COMPLETE.md` – authoritative summary of RL implementation (files, tasks, next steps).
-- `docs/PHASE_1.5_SUMMARY.md` & `docs/PHASE_2.1_SUMMARY.md` – prior phase retrospectives.
+- `docs/INDEX.md` – master navigation for all documentation (start here!).
+- `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md` – authoritative summary of RL implementation (files, tasks, next steps).
+- `docs/06-development/implementation-notes/PHASE_1.5_SUMMARY.md` & `PHASE_2.1_SUMMARY.md` – prior phase retrospectives.
+- `docs/05-performance/nvidia-gpu/` – GPU acceleration guides and deployment documentation.
 - `Todo.md` – master backlog (Phase 2+ and optional Phase 3).
-- `new-agent-onboarding-guide.md` – living document for onboarding / workspace hand-offs.
-- `.github/instructions/*.instructions.md` – path-specific rules (see new `rl.instructions.md`).
+- `docs/08-qna/technical-questions.md` – active Q&A workspace for technical discussions.
+- `.github/instructions/*.instructions.md` – path-specific rules (config, GA, RL, constraints, etc.).
 
 ## General Coding Standards
 
@@ -116,17 +121,28 @@ Always log notable runs in `output/` and reference them inside documentation or 
 ### 1. Code Documentation
 **Use Python docstrings only** - no separate .md files for code.
 
-### 2. Minor Changes → `docs/code/`
+### 2. Minor Changes → `docs/06-development/changelog/`
 Bugfixes, small enhancements, refactoring:
-- Add timestamped entry to `docs/code/{BUGFIX,ENHANCE,REFACTOR}.md`
+- Add timestamped entry to `docs/06-development/changelog/{bugfixes,enhancements}.md`
 - Format: `## [YYYY-MM-DD] Brief description` + file list
 - No detailed explanations needed
 
-### 3. Major Changes → `docs/for_report/`
-New algorithms, architectural changes:
-- Create new file in `docs/for_report/`
+### 3. Major Changes → `docs/06-development/implementation-notes/`
+Significant implementations, phase completions:
+- Create new file in `docs/06-development/implementation-notes/`
+- Comprehensive summary with status, files, examples
+- Structure: Overview → Tasks → Files → Usage → Next Steps
+
+### 4. Thesis Content → `docs/07-thesis-report/`
+Academic documentation, publication-ready content:
 - Thesis-ready prose with placement comment
 - Structure: Problem → Solution → Implementation → Results
+
+### 5. Questions & Discussions → `docs/08-qna/`
+Active technical Q&A workspace:
+- Use `docs/08-qna/technical-questions.md` for ongoing discussions
+- Track sessions chronologically with timestamps
+- Include context, questions, answers, and decisions
 
 ## Commit Message Format
 
