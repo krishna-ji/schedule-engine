@@ -8,6 +8,8 @@
 
 ## 📚 Documentation Structure
 
+**Note**: Section 11 (Advanced Techniques) added November 17, 2025 - Comprehensive guide for enhancing the Memetic NSGA-II architecture.
+
 ### [01 - Getting Started](./01-getting-started/)
 Quick onboarding for new users
 - Installation and setup (coming soon)
@@ -91,6 +93,24 @@ Roadmap, enhancement ideas, and research directions
 AI-generated recommendations and guides
 - [RL Phase 2.2-2.4 Guide](./10-ai-suggestions/rlphase2.2-2.4_guide_manual.md)
 - Historical AI suggestions: [olds/](./10-ai-suggestions/olds/)
+
+### [11 - Advanced Techniques](./11-advanced-techniques-suggest/)
+Comprehensive technical documentation for enhancing Memetic NSGA-II with advanced RL techniques
+- **[README & Navigation](./11-advanced-techniques-suggest/README.md)** ⭐ Start here
+- **Current State:** [01 - Current Architecture](./11-advanced-techniques-suggest/01-current-architecture.md)
+- **Practical Enhancements (Better):**
+  - [02 - Multi-Objective Reward](./11-advanced-techniques-suggest/02-multi-objective-reward.md) - Pareto-aware RL
+  - [03 - Specialist Agents](./11-advanced-techniques-suggest/03-specialist-agents.md) - Task-specific policies
+  - [04 - Constraint-Specific State](./11-advanced-techniques-suggest/04-constraint-specific-state.md) - Per-constraint breakdown
+  - [05 - Archive-Based Diversity](./11-advanced-techniques-suggest/05-archive-based-diversity.md) - Novelty search
+  - [06 - Memetic RL](./11-advanced-techniques-suggest/06-memetic-rl.md) - RL-guided local search
+  - [07 - Adaptive Probabilities](./11-advanced-techniques-suggest/07-adaptive-probabilities.md) - Dynamic operator tuning
+- **Advanced Ideas (Best):**
+  - [08 - Multi-Agent RL](./11-advanced-techniques-suggest/08-multi-agent-rl.md) - Ensemble specialists
+  - [09 - Hierarchical RL](./11-advanced-techniques-suggest/09-hierarchical-rl.md) - Two-level selection
+  - [10 - Transfer Learning](./11-advanced-techniques-suggest/10-transfer-learning.md) - Pre-training strategies
+  - [11 - Online Learning](./11-advanced-techniques-suggest/11-online-learning.md) - Production adaptation
+- **[12 - Implementation Roadmap](./11-advanced-techniques-suggest/12-implementation-roadmap.md)** - Prioritization guide
 
 ### [Archive](./archive/)
 Historical documentation and obsolete content
