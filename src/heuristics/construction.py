@@ -122,7 +122,6 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
                 course_id=course_code,
                 course_type=course_type,
                 group_ids=course.enrolled_group_ids,
-                time_quantum=time_quantum,
                 room_id=room_id,
                 instructor_id=instructor_id,
                 quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
@@ -237,7 +236,6 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
             course_id=course_code,
             course_type=course_type,
             group_ids=course.enrolled_group_ids,
-            time_quantum=time_quantum,
             room_id=room_id,
             instructor_id=instructor_id,
             quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
@@ -334,7 +332,6 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
             course_id=course_code,
             course_type=course_type,
             group_ids=course.enrolled_group_ids,
-            time_quantum=time_quantum,
             room_id=room_id,
             instructor_id=instructor_id,
             quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
@@ -409,7 +406,7 @@ def _calculate_urgency_scores(context: SchedulingContext) -> Dict[str, float]:
         # Courses with part-time instructors have higher urgency
         for instructor_id in course.qualified_instructor_ids:
             instructor = context.instructors.get(instructor_id)
-            if instructor and instructor.employment_type == "part_time":
+            if instructor and not instructor.is_full_time:
                 score += 3
 
         urgency[course_id] = score

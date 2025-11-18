@@ -31,3 +31,4 @@ Get-Content C:\Users\khem\.0\logs\prod_run_*.log -Wait
 
 # Option C: View existing application output (if any)
 Get-Content C:\Users\khem\.0\output\latest.log -Wait
+
