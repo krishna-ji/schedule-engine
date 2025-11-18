@@ -34,7 +34,7 @@ calendar:
 # Parallel Processing
 parallel:
   use_multiprocessing: true
-  num_workers: null # auto-detects number of CPU cores
+  num_workers: 16 # USE ALL 16 LOGICAL PROCESSORS
 
 # GA Settings (common - ngen/pop_size overridden per environment)
 ga:
@@ -359,9 +359,9 @@ rl:
     # PPO-specific hyperparameters
     ppo:
       learning_rate: 0.0003
-      n_steps: 2048
-      batch_size: 64
-      n_epochs: 10
+      n_steps: 8192
+      batch_size: 512
+      n_epochs: 20
       gamma: 0.99 # Discount factor
       gae_lambda: 0.95
       clip_range: 0.2

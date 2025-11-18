@@ -132,8 +132,8 @@ def generate_course_group_aware_population(
     if not silent:
         print(f"Found {len(course_group_pairs)} course-group pairs to schedule")
 
-    # Determine parallelization strategy
-    num_workers = max(1, multiprocessing.cpu_count() - 1) if parallel else 1
+    # Determine parallelization strategy - USE ALL THREADS
+    num_workers = 16 if parallel else 1
 
     # For small populations or debugging, use sequential generation
     if n < 10 or not parallel or num_workers == 1:
