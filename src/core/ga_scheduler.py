@@ -12,7 +12,6 @@ from pathlib import Path
 from deap import base, tools
 import random
 import time
-from rich.console import Console
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -34,8 +33,9 @@ from src.config import get_config
 from src.ga.evaluator.detailed_fitness import evaluate_detailed
 from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 logger = logging.getLogger(__name__)
 
 

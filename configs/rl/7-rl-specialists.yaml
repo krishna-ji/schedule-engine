@@ -1,0 +1,62 @@
+# Mode 7: RL-guided with Specialist Agents
+# ENHANCEMENT #4: Multi-agent RL with task-specific specialists
+
+# Inherits from configs/base.yaml
+
+# ================================================
+# MODE-SPECIFIC SETTINGS
+# ================================================
+
+rl:
+  enabled: true
+
+  # Specialist agents (NEW)
+  specialist_mode:
+    enabled: true # KILLSWITCH for specialist agents
+    coordination_strategy: "state_based" # state_based | ucb | meta_agent
+    agent_configs:
+      repair:
+        model_path: "models/rl_agents/specialist_repair_agent.zip"
+        trigger_threshold: 5 # Activate if hard violations >= 5
+      optimizer:
+        model_path: "models/rl_agents/specialist_optimizer_agent.zip"
+        trigger_threshold: 0 # Activate if feasible
+      explorer:
+        model_path: "models/rl_agents/specialist_explorer_agent.zip"
+        stagnation_window: 20 # Activate if no improvement in 20 gens
+      intensifier:
+        model_path: "models/rl_agents/specialist_intensifier_agent.zip"
+        elite_threshold: 1.5 # Activate if within 1.5x best fitness
+
+  # State encoding
+  state:
+    type: "constraint_specific"
+    enable_constraint_breakdown: true
+
+  # Reward calculation
+  reward:
+    type: "scalar"
+    scalar:
+      hard_penalty: -100.0
+      soft_penalty: -1.0
+
+# GA configuration
+ga:
+  population:
+    strategy: "hybrid" # Best for diverse search
+
+  operators:
+    crossover:
+      probability: 0.7 # Will be tuned by RL
+    mutation:
+      probability: 0.2 # Will be tuned by RL
+
+# Local search configuration
+local_search:
+  enabled: true
+  max_iterations: 10
+
+# Logging
+logging:
+  verbose: true
+  log_specialist_activations: true

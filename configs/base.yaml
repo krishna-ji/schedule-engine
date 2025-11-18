@@ -314,12 +314,41 @@ rl:
     observation_history_size: 10 # Recent heuristic applications to track
     render_mode: null # Options: null, "ansi", "human"
 
-  # Reward function weights
+  # State representation (ENHANCEMENT #2)
+  state:
+    type: constraint_specific # Options: aggregated, constraint_specific
+    enable_constraint_breakdown: true # Include per-constraint violations (8 hard + 4 soft = 12 features)
+    history_size: 10 # Recent heuristic applications to track
+    normalize: true # Normalize features to [0, 1]
+
+  # Reward function (ENHANCEMENT #1)
   reward:
-    fitness_weight: 1.0 # Weight for fitness improvement
-    diversity_weight: 0.1 # Weight for diversity bonus
-    time_weight: 0.01 # Weight for time penalty (discourage slow convergence)
+    type: scalar # Options: scalar, hypervolume, decomposed, adaptive
     normalize: true # Normalize rewards to [-1, 1]
+
+    # Scalar reward weights (type=scalar)
+    scalar:
+      hard_weight: 100.0 # Weight for hard violation improvement
+      soft_weight: 1.0 # Weight for soft violation improvement
+      cost_weight: 0.01 # Weight for action cost penalty
+
+    # Hypervolume reward (type=hypervolume)
+    hypervolume:
+      reference_point: [100.0, 1000.0] # Reference point for HV calculation [hard, soft]
+      min_improvement: 0.01 # Minimum HV change to count as reward
+
+    # Decomposed reward (type=decomposed)
+    decomposed:
+      weight_vector: [0.5, 0.5] # Weight vector [w_hard, w_soft] (should sum to 1.0)
+      ideal_point: [0.0, 0.0] # Ideal point [z_hard*, z_soft*] (updated dynamically)
+      scalarization: tchebycheff # Options: tchebycheff, weighted_sum
+
+    # Adaptive reward (type=adaptive)
+    adaptive:
+      strategy: feasibility # Options: feasibility, progress, stagnation
+      initial_hard_weight: 100.0 # Starting weight for hard violations
+      initial_soft_weight: 1.0 # Starting weight for soft violations
+      adaptation_rate: 0.1 # How quickly to adapt weights (0-1)
 
   # Agent configuration
   agent:

@@ -31,6 +31,7 @@ dependencies = [
     "stable-baselines3>=2.2.0",
     "torch>=2.0.0",
     "tensorboard>=2.15.0",
+    "pymoo>=0.6.1.5",
 ]
 
 [project.optional-dependencies]
@@ -43,20 +44,73 @@ dev = [
 ]
 
 [project.scripts]
+# ==============================================================================
+# MAIN ENGINE ENTRY POINTS
+# ==============================================================================
 schedule-engine = "main:main"
+
 # Environment shortcuts
 prod = "main:main_prod"
 test = "main:main_test"
-# Runtime mode shortcuts
-baseline = "main:main_baseline"
-repairs = "main:main_repairs"
-heuristics = "main:main_heuristics"
-full = "main:main_full"
-rl = "main:main_rl"
-roundrobin = "main:main_roundrobin"
-# Training shortcuts
+
+# ==============================================================================
+# RUNTIME MODES (10 Progressive Modes)
+# ==============================================================================
+# Baseline & Core Modes (1-4)
+baseline = "main:main_baseline"          # Mode 1: Pure NSGA-II
+repairs = "main:main_repairs"            # Mode 2: NSGA-II + IGLS repairs
+heuristics = "main:main_heuristics"      # Mode 3: NSGA-II + repairs + 19 heuristics
+full = "main:main_full"                  # Mode 4: Full GA (best non-RL)
+
+# Basic RL Modes (5-6)
+rl = "main:main_rl"                      # Mode 5: RL-guided heuristic selection
+roundrobin = "main:main_roundrobin"      # Mode 6: Fixed round-robin rotation
+
+# Advanced RL Modes (7-10) - Phase 3
+specialists = "main:main_specialists"    # Mode 7: RL with specialist agents
+archive = "main:main_archive"            # Mode 8: Archive-based diversity
+hierarchical = "main:main_hierarchical"  # Mode 9: Hierarchical RL (two-level)
+multiagent = "main:main_multiagent"      # Mode 10: Rank-based multi-agent RL
+
+# ==============================================================================
+# RL TRAINING & MODEL MANAGEMENT
+# ==============================================================================
 train = "src.rl.training.train_script:main"
-train-prod = "src.cli.train_prod:main"
+train-curriculum = "src.rl.training.curriculum:main"
+select-checkpoint = "scripts.cli:select_checkpoint"
+promote-model = "scripts.cli:promote_model"
+generate-validation = "scripts.cli:generate_validation"
+
+# ==============================================================================
+# DIAGNOSTICS & SYSTEM CHECKS
+# ==============================================================================
+diagnose-gpu = "scripts.cli:diagnose_gpu"
+test-dashboard = "scripts.cli:test_dashboard"
+check-data = "scripts.cli:check_data"
+verify-config = "scripts.cli:verify_config"
+verify-enhancements = "scripts.cli:verify_enhancements"
+
+# ==============================================================================
+# BENCHMARKING & PERFORMANCE
+# ==============================================================================
+benchmark-gpu = "scripts.cli:benchmark_gpu"
+benchmark-lns = "scripts.cli:benchmark_lns"
+benchmark-constraints = "scripts.cli:benchmark_constraints"
+
+# ==============================================================================
+# CONFIGURATION UTILITIES
+# ==============================================================================
+show-config = "scripts.cli:show_config"      # All constraints
+show-repair = "scripts.cli:show_repair"       # Repair system config
+show-soft = "scripts.cli:show_soft"           # Soft constraints only
+show-time = "scripts.cli:show_time"           # Time system config
+
+# ==============================================================================
+# DEVELOPMENT UTILITIES
+# ==============================================================================
+tensorboard = "scripts.cli:tensorboard"       # Start TensorBoard server
+git-squash = "scripts.cli:git_squash"         # Interactive commit squashing
+refactor-csv = "scripts.cli:refactor_csv"     # CSV export refactoring
 
 [build-system]
 requires = ["hatchling"]

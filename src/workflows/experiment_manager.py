@@ -11,12 +11,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict
-from rich.console import Console
 from rich.table import Table
 
 from src.config.runtime_mode import RuntimeMode
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 
 
 @dataclass

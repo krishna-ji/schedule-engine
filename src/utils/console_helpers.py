@@ -1,13 +1,13 @@
 """
-Console output helpers for standardized messaging.
+"""Console output helpers for standardized messaging.
 
 Provides consistent formatting for success, warning, error, and info messages
 throughout the application using Rich console formatting.
 """
 
-from rich.console import Console
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 
 
 def print_success(message: str, detail: str = None) -> None:

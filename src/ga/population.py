@@ -1,6 +1,5 @@
 from typing import List, Tuple
 import random
-from rich.console import Console
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 
@@ -9,8 +8,9 @@ from src.ga.individual import create_individual
 from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.core.types import SchedulingContext
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 
 
 def _create_single_individual_wrapper(args):

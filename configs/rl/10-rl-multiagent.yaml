@@ -1,0 +1,71 @@
+# Mode 10: Multi-agent RL by Pareto Rank
+# ENHANCEMENT #8: Rank-specific specialist agents
+
+# Inherits from configs/base.yaml
+
+# ================================================
+# MODE-SPECIFIC SETTINGS
+# ================================================
+
+rl:
+  enabled: true
+
+  # Multi-agent by rank (NEW)
+  multiagent:
+    enabled: true # KILLSWITCH for rank-based agents
+    num_rank_agents: 4 # Agents for ranks 1-4
+    agent_models:
+      rank_1_model: "models/rl_agents/rank_1_agent.zip" # Elite solutions
+      rank_2_model: "models/rl_agents/rank_2_agent.zip" # Good solutions
+      rank_3_model: "models/rl_agents/rank_3_agent.zip" # Moderate solutions
+      rank_4_model: "models/rl_agents/rank_4_agent.zip" # Poor solutions
+
+    # Rank-specific hyperparameters
+    rank_configs:
+      rank_1:
+        exploration_rate: 0.05 # Low exploration (careful refinement)
+        learning_rate: 0.0001 # Small updates
+      rank_2:
+        exploration_rate: 0.1 # Moderate exploration
+        learning_rate: 0.0003
+      rank_3:
+        exploration_rate: 0.2 # Higher exploration
+        learning_rate: 0.0005
+      rank_4:
+        exploration_rate: 0.3 # Aggressive exploration
+        learning_rate: 0.001
+
+  # State encoding
+  state:
+    type: "constraint_specific"
+    enable_constraint_breakdown: true
+
+  # Reward calculation
+  reward:
+    type: "decomposed" # MOEA/D-style decomposition
+    decomposed:
+      decomposition_method: "tchebycheff"
+      num_weight_vectors: 100
+
+# GA configuration
+ga:
+  population:
+    size: 200 # Larger population for multi-agent
+    strategy: "hybrid"
+
+  operators:
+    crossover:
+      probability: 0.7
+    mutation:
+      probability: 0.2
+
+# NSGA-II selection
+selection:
+  algorithm: "nsga2" # Maintains Pareto ranks
+  crowding_distance_weight: 1.0
+
+# Logging
+logging:
+  verbose: true
+  log_rank_assignments: true
+  log_agent_activations: true

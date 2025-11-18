@@ -22,6 +22,10 @@ class RuntimeMode(str, Enum):
     - NSGA_FULL: NSGA-II + repairs + heuristics + local search
     - RL_GUIDED: NSGA-II + RL-guided heuristic selection
     - ROUND_ROBIN: NSGA-II + round-robin heuristic selection
+    - RL_SPECIALISTS: RL with specialist agents (Enhancement #4)
+    - ARCHIVE_DIVERSITY: Archive-based diversity maintenance (Enhancement #5)
+    - RL_HIERARCHICAL: Hierarchical RL with two-level policies (Enhancement #7)
+    - RL_MULTIAGENT: Rank-based multi-agent RL (Enhancement #8)
     """
 
     BASELINE = "1-pure-nsga"
@@ -30,6 +34,10 @@ class RuntimeMode(str, Enum):
     NSGA_FULL = "4-nsga-full"
     RL_GUIDED = "5-rl-guided"
     ROUND_ROBIN = "6-roundrobin"
+    RL_SPECIALISTS = "7-rl-specialists"
+    ARCHIVE_DIVERSITY = "8-archive-diversity"
+    RL_HIERARCHICAL = "9-rl-hierarchical"
+    RL_MULTIAGENT = "10-rl-multiagent"
 
     @property
     def display_name(self) -> str:
@@ -41,6 +49,10 @@ class RuntimeMode(str, Enum):
             RuntimeMode.NSGA_FULL: "NSGA-II + Full (Repairs + Heuristics + LS)",
             RuntimeMode.RL_GUIDED: "RL-Guided Heuristic Selection",
             RuntimeMode.ROUND_ROBIN: "Round-Robin Heuristic Selection",
+            RuntimeMode.RL_SPECIALISTS: "RL with Specialist Agents",
+            RuntimeMode.ARCHIVE_DIVERSITY: "Archive-Based Diversity",
+            RuntimeMode.RL_HIERARCHICAL: "Hierarchical RL (Two-Level)",
+            RuntimeMode.RL_MULTIAGENT: "Rank-Based Multi-Agent RL",
         }
         return names[self]
 
@@ -59,6 +71,10 @@ class RuntimeMode(str, Enum):
             RuntimeMode.NSGA_FULL: "nsga",
             RuntimeMode.RL_GUIDED: "rl",
             RuntimeMode.ROUND_ROBIN: "hybrid",
+            RuntimeMode.RL_SPECIALISTS: "rl",
+            RuntimeMode.ARCHIVE_DIVERSITY: "rl",
+            RuntimeMode.RL_HIERARCHICAL: "rl",
+            RuntimeMode.RL_MULTIAGENT: "rl",
         }
         category = category_map[self]
         return Path(f"configs/{category}/{self.value}.yaml")
@@ -90,6 +106,22 @@ class RuntimeMode(str, Enum):
             RuntimeMode.ROUND_ROBIN: (
                 "Full NSGA-II with round-robin heuristic selection (no RL). "
                 "Cycles through all enabled heuristics in fixed order."
+            ),
+            RuntimeMode.RL_SPECIALISTS: (
+                "RL with 4 specialist agents (Repair, Optimizer, Explorer, Intensifier). "
+                "Context-aware agent selection based on solution state."
+            ),
+            RuntimeMode.ARCHIVE_DIVERSITY: (
+                "Archive-based diversity via novelty search and MAP-Elites. "
+                "Maintains behavioral diversity independent of fitness."
+            ),
+            RuntimeMode.RL_HIERARCHICAL: (
+                "Hierarchical RL with two-level policy (category → heuristic). "
+                "Faster learning via reduced action space."
+            ),
+            RuntimeMode.RL_MULTIAGENT: (
+                "Rank-based multi-agent RL (4 agents for Pareto ranks 1-4). "
+                "Specialists for elite, good, moderate, and poor solutions."
             ),
         }
         return descriptions[self]
@@ -178,6 +210,14 @@ class RuntimeMode(str, Enum):
             "round-robin": RuntimeMode.ROUND_ROBIN,
             "roundrobin": RuntimeMode.ROUND_ROBIN,
             "rr": RuntimeMode.ROUND_ROBIN,
+            "rl-specialists": RuntimeMode.RL_SPECIALISTS,
+            "specialists": RuntimeMode.RL_SPECIALISTS,
+            "archive-diversity": RuntimeMode.ARCHIVE_DIVERSITY,
+            "archive": RuntimeMode.ARCHIVE_DIVERSITY,
+            "rl-hierarchical": RuntimeMode.RL_HIERARCHICAL,
+            "hierarchical": RuntimeMode.RL_HIERARCHICAL,
+            "rl-multiagent": RuntimeMode.RL_MULTIAGENT,
+            "multiagent": RuntimeMode.RL_MULTIAGENT,
         }
 
         if normalized in aliases:

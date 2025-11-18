@@ -44,12 +44,23 @@ schedule-engine/
 
 ## Configuration System
 
-**New simplified structure:**
+**Modular structure with runtime modes:**
 - `configs/base.yaml` - All common settings (shared)
 - `configs/test.yaml` - Smoke test overrides (30 gens, 10 pop)
 - `configs/prod.yaml` - Best quality overrides (2000 gens, 200 pop)
+- `configs/baseline/1-pure-nsga.yaml` - Mode 1: Pure NSGA-II (all killswitches OFF)
+- `configs/nsga/2-nsga-repairs.yaml` - Mode 2: NSGA-II + IGLS repairs
+- `configs/nsga/3-nsga-heuristics.yaml` - Mode 3: NSGA-II + repairs + 19 heuristics
+- `configs/nsga/4-nsga-full.yaml` - Mode 4: Full GA (best non-RL)
+- `configs/rl/5-rl-guided.yaml` - Mode 5: RL-guided heuristic selection
+- `configs/hybrid/6-roundrobin.yaml` - Mode 6: Fixed round-robin rotation
+- `configs/rl/7-rl-specialists.yaml` - Mode 7: RL with specialist agents
+- `configs/rl/8-archive-diversity.yaml` - Mode 8: Archive-based diversity
+- `configs/rl/9-rl-hierarchical.yaml` - Mode 9: Hierarchical RL (two-level)
+- `configs/rl/10-rl-multiagent.yaml` - Mode 10: Rank-based multi-agent RL
 
 Environment configs inherit from base.yaml via deep merge in `src/config/loader.py`.
+Runtime mode configs support automatic killswitch validation.
 
 **Access config:** `from src.config import get_config; config = get_config()`
 
@@ -60,28 +71,50 @@ Environment configs inherit from base.yaml via deep merge in `src/config/loader.
 uv run test      # Smoke test (30 gens, ~5-10 min)
 uv run prod      # Best quality (2000 gens, ~24-48 hours)
 
+# Runtime mode shortcuts (UV)
+uv run baseline      # Mode 1: Pure NSGA-II baseline
+uv run repairs       # Mode 2: NSGA-II + IGLS repairs
+uv run heuristics    # Mode 3: NSGA-II + repairs + 19 heuristics
+uv run full          # Mode 4: Full GA (best non-RL)
+uv run rl            # Mode 5: RL-guided heuristic selection
+uv run roundrobin    # Mode 6: Fixed round-robin rotation
+uv run specialists   # Mode 7: RL with specialist agents
+uv run archive       # Mode 8: Archive-based diversity
+uv run hierarchical  # Mode 9: Hierarchical RL (two-level)
+uv run multiagent    # Mode 10: Rank-based multi-agent RL
+
 # Or Python directly
 python main.py --env test
 python main.py --env prod
+python main.py --mode baseline --env test
+python main.py --list-modes
+python main.py --compare
 python main.py --config path/to/custom.yaml
 ```
 
 ## Architecture
 
 - **Entry Point**: `main.py` with `main()` + environment-specific entry functions (`main_prod()`, `main_test()`)
+- **Runtime Modes**: 10 progressive modes (baseline → repairs → heuristics → full → RL-guided → round-robin → specialists → archive → hierarchical → multiagent) via `--mode` flag
+- **Experiment Management**: `src/workflows/experiment_manager.py` tracks runs in `manifest.json` with `ExperimentManager` class
 - **Workflow**: `src/workflows/standard_run.py` orchestrates: load → validate → feasibility → GA → decode → report
 - **GA Core**: `src/core/ga_scheduler.py` - GAScheduler class with DEAP toolbox, population init, evolution
 - **Multiprocessing**: Enabled via `parallel.use_multiprocessing` in YAML
+- **Advanced RL**: 8 enhancements (constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent)
 
-## Active Workstream (November 2025)
+## Active Workstream (January 2025)
 
-1. **GPU Acceleration**: ✅ Deployed (CUDA enabled, documentation complete in `docs/04-algorithms/nvidia-gpu/`)
-2. **Documentation Reorganization**: ✅ Complete (10-category structure, see `docs/INDEX.md`)
-3. **Run PPO curriculum training (100K–300K steps)** with GPU acceleration and capture TensorBoard logs.
-4. **Generate/refresh validation sets** (`scripts/generate_validation_set.py`).
-5. **Select & promote best checkpoint** using `scripts/select_best_checkpoint.py` + `scripts/promote_model_to_prod.py`.
-6. **Enable RL in configs/prod.yaml**, run `uv run prod`, and compare RL vs non-RL GA baselines.
-7. **Update docs** (especially `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`) with empirical results once runs finish.
+1. **Phase 3 Implementation**: ✅ Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
+2. **GPU Acceleration**: ✅ Deployed (CUDA enabled, documentation complete in `docs/04-algorithms/nvidia-gpu/`)
+3. **Documentation Reorganization**: ✅ Complete (10-category structure, see `docs/INDEX.md`)
+4. **Next Steps (Testing & Training):**
+   - Install pymoo: `uv add pymoo`
+   - Test constraint evaluator with existing data
+   - Train specialist agents (4 agents, 100K steps each)
+   - Train hierarchical policies (1 high-level + 5 low-level)
+   - Train rank-based agents (4 agents, 100K steps each)
+   - Benchmark all 10 runtime modes
+   - Document empirical results in `docs/06-development/implementation-notes/PHASE_3_RESULTS.md`
 
 Always log notable runs in `output/` and reference them inside documentation or onboarding guides.
 
@@ -99,6 +132,10 @@ Always log notable runs in `output/` and reference them inside documentation or 
 ## Key References for Agents
 
 - `docs/INDEX.md` – master navigation for all documentation (start here!).
+- `docs/02-user-guides/runtime-modes.md` – comprehensive guide to 10 runtime modes and experiment management.
+- `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md` – complete summary of 8 advanced RL/GA enhancements (constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent).
+- `docs/QUICKREF_RUNTIME_MODES.md` – quick reference for runtime mode CLI usage.
+- `RUNTIME_MODES_SUMMARY.md` – complete overview of runtime mode architecture and implementation.
 - `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md` – authoritative summary of RL implementation (files, tasks, next steps).
 - `docs/06-development/implementation-notes/PHASE_1.5_SUMMARY.md` & `PHASE_2.1_SUMMARY.md` – prior phase retrospectives.
 - `docs/04-algorithms/nvidia-gpu/` – GPU acceleration guides and deployment documentation.
@@ -139,6 +176,17 @@ Significant implementations, phase completions:
 - Create new file in `docs/06-development/implementation-notes/`
 - Comprehensive summary with status, files, examples
 - Structure: Overview → Tasks → Files → Usage → Next Steps
+
+### 4a. Experimental Features → Modular Configs + Killswitches
+When adding major new features requiring experimentation:
+- **Create modular config folder**: `configs/{category}/{mode-name}.yaml`
+- **Add RuntimeMode enum entry**: Update `src/config/runtime_mode.py`
+- **Implement killswitches**: Master switch in `base.yaml` (e.g., `rl.enabled`, `repair.enabled`)
+- **Document mode in user guide**: Add to `docs/02-user-guides/runtime-modes.md`
+- **Add UV shortcut**: Register in `pyproject.toml` `[project.scripts]`
+- **Use ExperimentManager**: Track runs via `src/workflows/experiment_manager.py`
+- **Killswitch validation**: Automatic via `RuntimeMode.validate_config()`
+- **Example**: See RL integration (configs/rl/5-rl-guided.yaml, rl.enabled killswitch)
 
 ### 5. Thesis Content → `docs/07-thesis-report/`
 Academic documentation, publication-ready content:

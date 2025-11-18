@@ -7,14 +7,20 @@ Fails fast with clear error messages to prevent cryptic runtime failures.
 
 from typing import List
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from rich.console import Console
 from src.core.types import SchedulingContext
+from src.exceptions import DataValidationError
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 
 
-class ValidationError:
-    """Represents a single validation error."""
+class ValidationError(DataValidationError):
+    """Represents a single validation error.
+    
+    Note: This inherits from DataValidationError (Exception subclass)
+    for proper exception handling while maintaining backward compatibility
+    with existing error collection code.
+    """
 
     def __init__(self, category: str, message: str, severity: str = "ERROR"):
         """
@@ -26,6 +32,7 @@ class ValidationError:
         self.category = category
         self.message = message
         self.severity = severity
+        super().__init__(f"[{severity}] {category}: {message}")
 
     def __str__(self):
         return f"[{self.severity}] {self.category}: {self.message}"

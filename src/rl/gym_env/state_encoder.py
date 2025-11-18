@@ -333,8 +333,8 @@ class StateEncoder:
 
         ENHANCEMENT #2: Per-constraint breakdown for targeted repair.
 
-        This method estimates per-constraint violations by examining individuals
-        that have cached constraint details. If not available, returns zeros.
+        Extracts per-constraint violation counts from individual metadata
+        if available (populated during evaluation). Averages across population.
 
         Returns:
             Dictionary mapping constraint names to average violation counts.
@@ -342,15 +342,11 @@ class StateEncoder:
         constraint_counts = {name: 0.0 for name in self.HARD_CONSTRAINT_NAMES}
         constraint_counts.update({name: 0.0 for name in self.SOFT_CONSTRAINT_NAMES})
 
-        # Check if any individual has constraint breakdown metadata
-        # (This would need to be populated during evaluation if available)
-        # For now, we return a placeholder that can be populated later
-        # when evaluate() is enhanced to store per-constraint breakdowns
-
-        # Placeholder: Extract from individual metadata if available
+        # Extract from individual metadata if available
+        # (This is populated during fitness evaluation in core/ga_scheduler.py)
         individuals_with_data = 0
         for ind in population:
-            if hasattr(ind, "constraint_breakdown"):
+            if hasattr(ind, "constraint_breakdown") and ind.constraint_breakdown:
                 individuals_with_data += 1
                 for constraint_name, value in ind.constraint_breakdown.items():
                     if constraint_name in constraint_counts:

@@ -9,7 +9,6 @@ import os
 import random
 from datetime import datetime
 from typing import Dict, Optional
-from rich.console import Console
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -38,8 +37,9 @@ from src.validation.feasibility_checker import (
 from src.workflows.reporting import generate_reports
 from src.utils.logger import GALogger
 from src.utils.constraint_logger import ConstraintLogger
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 
 
 def run_standard_workflow(

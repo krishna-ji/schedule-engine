@@ -1,0 +1,49 @@
+# Mode 8: Archive-based Diversity Maintenance
+# ENHANCEMENT #5: Novelty search and MAP-Elites for behavioral diversity
+
+# Inherits from configs/base.yaml
+
+# ================================================
+# MODE-SPECIFIC SETTINGS
+# ================================================
+
+# Archive configuration (NEW)
+archive:
+  enabled: true # KILLSWITCH for archive diversity
+
+  novelty:
+    enabled: true
+    max_size: 100 # Archive capacity
+    k_nearest: 15 # k-NN for novelty calculation
+    novelty_threshold: 0.1 # Min novelty to add
+    injection_rate: 0.05 # Inject 5% novel solutions per generation
+
+  map_elites:
+    enabled: true
+    feature_dimensions: 17 # Behavioral descriptor dimensions
+    bins_per_dimension: 5 # 5x5x...x5 grid (configurable)
+    sampling_rate: 0.1 # Sample 10% from archive per generation
+    elite_archive_size: 500 # Max archive size
+
+# GA configuration
+ga:
+  population:
+    size: 200 # Larger population for diversity
+    strategy: "hybrid"
+
+  operators:
+    crossover:
+      probability: 0.7
+    mutation:
+      probability: 0.3 # Higher mutation for exploration
+
+# Diversity maintenance
+diversity:
+  crowding_distance_weight: 2.0 # Emphasize diversity in selection
+  behavioral_diversity_bonus: 0.5 # Bonus for novel behaviors
+
+# Logging
+logging:
+  verbose: true
+  log_archive_coverage: true
+  log_novelty_scores: true

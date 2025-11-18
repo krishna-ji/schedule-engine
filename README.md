@@ -51,29 +51,69 @@ uv sync
 
 ### Running the Engine
 
+#### Environment Modes
+
 ```bash
 # Quick smoke test (30 generations, ~5-10 min)
 uv run test
 
-# Medium quality (400 generations, ~4-8 hours)
-uv run notprod
-
 # Best quality (2000 generations, ~24-48 hours)
 uv run prod
-
-# RL training (convenience):
-# Start RL training using built-in train script with a profile; both flags and the shorthand positional profile work:
-uv run train --profile prod
-# or shorthand:
-uv run train prod
-# Or using the dedicated convenience script
-uv run train-prod  # Runs production profile using defaults from config-train/prod.yaml
-# Note: If you need to pass extra flags over the profile defaults (e.g. --timesteps), use:
-uv run train --profile prod -- --timesteps 300000
 
 # Custom configuration
 python main.py --config path/to/custom.yaml
 ```
+
+#### Runtime Modes (10 Progressive Configurations)
+
+Systematic experimentation with different GA features:
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| 1. Baseline | `uv run baseline` | Pure NSGA-II (no enhancements) |
+| 2. Repairs | `uv run repairs` | NSGA-II + IGLS repairs |
+| 3. Heuristics | `uv run heuristics` | + 19 heuristic operators |
+| 4. Full | `uv run full` | + Local search (best non-RL) |
+| 5. RL-Guided | `uv run rl` | + RL-guided heuristics |
+| 6. Round-Robin | `uv run roundrobin` | + Fixed rotation |
+| 7. RL-Specialists | `uv run specialists` | + Specialist agents (repair/optimizer/explorer/intensifier) |
+| 8. Archive-Diversity | `uv run archive` | + Diversity maintenance (novelty search + MAP-Elites) |
+| 9. RL-Hierarchical | `uv run hierarchical` | + Two-level policies (category → heuristic) |
+| 10. RL-MultiAgent | `uv run multiagent` | + Rank-based agents (Pareto ranks 1-4) |
+
+See [`docs/02-user-guides/runtime-modes.md`](docs/02-user-guides/runtime-modes.md) for detailed explanations.
+
+#### RL Training
+
+Train RL agents for heuristic selection:
+
+```bash
+# Quick test (5 min, 500 steps)
+uv run train test
+
+# Medium quality (1-2 hours)
+uv run train med
+
+# Production quality (24-48 hours, 300K steps)
+uv run train prod
+
+# Monitor training progress
+python scripts/utilities/start_tensorboard.py
+# Open http://localhost:6006
+```
+
+See [`docs/02-user-guides/rl-training.md`](docs/02-user-guides/rl-training.md) for training workflows.
+
+---
+
+## 🎯 Development Status
+
+- ✅ **Phase 1**: Heuristic Toolbox (19 operators)
+- ✅ **Phase 2**: RL Integration (Gymnasium + SB3)
+- ✅ **Phase 3**: Advanced RL (8 enhancements: constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent)
+- 🚧 **Phase 4**: Empirical validation (in progress)
+
+See [`docs/06-development/PROJECT_TIMELINE.md`](docs/06-development/PROJECT_TIMELINE.md) for detailed timeline.
 
 ---
 

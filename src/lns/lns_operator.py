@@ -1,5 +1,5 @@
 """
-LNS repair operator for genetic algorithm.
+"""LNS repair operator for genetic algorithm.
 
 This module implements the Large Neighborhood Search operator with IGLS
 (Iterated Guided Local Search) as the repair strategy.
@@ -7,7 +7,6 @@ This module implements the Large Neighborhood Search operator with IGLS
 
 from typing import List, Dict
 import logging
-from rich.console import Console
 
 from src.ga.sessiongene import SessionGene
 from src.ga.individual import create_individual
@@ -19,6 +18,7 @@ from src.lns.conflict_detection import (
     find_hard_conflict_sessions,
     select_worst_conflicts,
 )
+from src.utils.console_service import get_console
 from src.lns.heuristic_repair import repair_with_heuristic
 from src.lns.diagnostics import (
     SubproblemDiagnostics,
@@ -30,7 +30,7 @@ from src.lns.diagnostics import (
 logger = logging.getLogger(__name__)
 
 # Console initialization
-console = Console()
+console = get_console()
 
 
 class LNSRepairStats:

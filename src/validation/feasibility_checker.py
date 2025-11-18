@@ -23,7 +23,6 @@ import sys
 from typing import Dict, List, Tuple, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
-from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
@@ -34,8 +33,9 @@ from src.entities.room import Room
 from src.entities.group import Group
 from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.config import get_config
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 
 
 @dataclass

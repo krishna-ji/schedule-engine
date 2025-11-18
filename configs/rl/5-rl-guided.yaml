@@ -203,12 +203,22 @@ rl:
     observation_history_size: 10
     render_mode: null
 
-  reward:
-    fitness_weight: 1.0
-    diversity_weight: 0.1
-    time_weight: 0.01
+  # ENHANCEMENT #2: Constraint-specific state representation
+  state:
+    type: constraint_specific # Use per-constraint breakdown
+    enable_constraint_breakdown: true # 8 hard + 4 soft = 12 additional features
+    history_size: 10
     normalize: true
-    use_hypervolume: true # Phase 2 enhancement
+
+  # ENHANCEMENT #1: Multi-objective reward (start with scalar, can switch to hypervolume)
+  reward:
+    type: scalar # Options: scalar, hypervolume, decomposed, adaptive
+    normalize: true
+
+    scalar:
+      hard_weight: 100.0
+      soft_weight: 1.0
+      cost_weight: 0.01
 
   agent:
     type: ppo # Trained PPO agent

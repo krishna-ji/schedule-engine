@@ -7,15 +7,15 @@ Runs standard GA-based course scheduling workflow with runtime mode support.
 import argparse
 import time
 from datetime import datetime
-from rich.console import Console
 from src.workflows import run_standard_workflow
 from src.workflows.experiment_manager import ExperimentManager
 from src.utils.experiment import sanitize_experiment_name
 from src.config import init_config
 from src.config.runtime_mode import RuntimeMode
 from src.config.loader import load_config
+from src.utils.console_service import get_console
 
-console = Console()
+console = get_console()
 
 
 def main():
@@ -230,71 +230,52 @@ def main():
         console.print()
 
 
-def main_prod():
-    """Entry point for production runs (uv run prod)"""
-    import os
-    import sys
-
-    os.environ["ENVIRONMENT"] = "prod"
-    sys.exit(main() or 0)
-
-
-def main_test():
-    """Entry point for test runs (uv run test)"""
-    import os
-    import sys
-
-    os.environ["ENVIRONMENT"] = "test"
-    sys.exit(main() or 0)
+def _create_env_entry_point(env: str):
+    """Factory for environment entry points."""
+    def entry_point():
+        import os
+        import sys
+        os.environ["ENVIRONMENT"] = env
+        sys.exit(main() or 0)
+    return entry_point
 
 
-# Runtime mode entry points for UV shortcuts
-def main_baseline():
-    """Entry point for baseline mode (uv run baseline)"""
-    import sys
-
-    sys.argv = ["main.py", "--mode", "baseline", "--env", "prod"]
-    sys.exit(main() or 0)
-
-
-def main_repairs():
-    """Entry point for repairs mode (uv run repairs)"""
-    import sys
-
-    sys.argv = ["main.py", "--mode", "nsga-repairs", "--env", "prod"]
-    sys.exit(main() or 0)
+def _create_mode_entry_point(mode: str, env: str = "prod"):
+    """Factory for runtime mode entry points."""
+    def entry_point():
+        import sys
+        sys.argv = ["main.py", "--mode", mode, "--env", env]
+        sys.exit(main() or 0)
+    return entry_point
 
 
-def main_heuristics():
-    """Entry point for heuristics mode (uv run heuristics)"""
-    import sys
+# Environment entry points
+main_prod = _create_env_entry_point("prod")
+main_prod.__doc__ = "Entry point for production runs (uv run prod)"
 
-    sys.argv = ["main.py", "--mode", "nsga-heuristics", "--env", "prod"]
-    sys.exit(main() or 0)
-
-
-def main_full():
-    """Entry point for full mode (uv run full)"""
-    import sys
-
-    sys.argv = ["main.py", "--mode", "nsga-full", "--env", "prod"]
-    sys.exit(main() or 0)
+main_test = _create_env_entry_point("test")
+main_test.__doc__ = "Entry point for test runs (uv run test)"
 
 
-def main_rl():
-    """Entry point for RL-guided mode (uv run rl)"""
-    import sys
+# Runtime mode entry points (Modes 1-10)
+_MODE_MAPPING = {
+    "baseline": ("baseline", "Mode 1: Pure NSGA-II (uv run baseline)"),
+    "repairs": ("nsga-repairs", "Mode 2: NSGA-II + repairs (uv run repairs)"),
+    "heuristics": ("nsga-heuristics", "Mode 3: NSGA-II + repairs + heuristics (uv run heuristics)"),
+    "full": ("nsga-full", "Mode 4: Full GA (uv run full)"),
+    "rl": ("rl-guided", "Mode 5: RL-guided heuristics (uv run rl)"),
+    "roundrobin": ("roundrobin", "Mode 6: Round-robin (uv run roundrobin)"),
+    "specialists": ("rl-specialists", "Mode 7: RL specialists (uv run specialists)"),
+    "archive": ("archive-diversity", "Mode 8: Archive diversity (uv run archive)"),
+    "hierarchical": ("rl-hierarchical", "Mode 9: Hierarchical RL (uv run hierarchical)"),
+    "multiagent": ("rl-multiagent", "Mode 10: Multi-agent RL (uv run multiagent)"),
+}
 
-    sys.argv = ["main.py", "--mode", "rl-guided", "--env", "prod"]
-    sys.exit(main() or 0)
-
-
-def main_roundrobin():
-    """Entry point for round-robin mode (uv run roundrobin)"""
-    import sys
-
-    sys.argv = ["main.py", "--mode", "roundrobin", "--env", "prod"]
-    sys.exit(main() or 0)
+# Generate entry points dynamically
+for func_name, (mode_value, doc) in _MODE_MAPPING.items():
+    entry_point = _create_mode_entry_point(mode_value)
+    entry_point.__doc__ = doc
+    globals()[f"main_{func_name}"] = entry_point
 
 
 if __name__ == "__main__":

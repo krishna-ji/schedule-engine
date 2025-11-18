@@ -8,118 +8,113 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.config import (
-    get_config,
-)  # get_config().hard_constraints, get_config().soft_constraints
-from src.constraints.registry import (
-    get_enabled_hard_constraints,
-    get_enabled_soft_constraints,
-)
-from src.utils.console import write_header, write_separator, write_info
+from src.config import get_config
+from rich.console import Console
+from rich.table import Table
+
+console = Console()
 
 
 def main():
-    write_header("CONSTRAINT CONFIGURATION (HARD + SOFT)")
+    config = get_config()
+
+    console.print("\n[bold cyan]" + "=" * 60 + "[/bold cyan]")
+    console.print("[bold cyan]CONSTRAINT CONFIGURATION[/bold cyan]".center(110))
+    console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]")
 
     # Hard Constraints Section
-    write_info("")
-    write_separator()
-    write_info("HARD CONSTRAINTS (Feasibility)".center(80))
-    write_separator()
+    console.print("\n[bold yellow]HARD CONSTRAINTS (Feasibility)[/bold yellow]\n")
 
-    hard_enabled_count = sum(
-        1 for cfg in get_config().hard_constraints.values() if cfg["enabled"]
-    )
-    hard_total_count = len(get_config().hard_constraints)
+    hard_table = Table(show_header=True, header_style="bold magenta")
+    hard_table.add_column("Constraint", style="cyan", width=45)
+    hard_table.add_column("Enabled", justify="center", width=10)
+    hard_table.add_column("Weight", justify="right", width=10)
 
-    write_info(
-        f"Status: {hard_enabled_count}/{hard_total_count} hard constraints enabled"
-    )
-    write_info("")
-
-    # Show enabled hard constraints
-    hard_enabled = get_enabled_hard_constraints()
-    if hard_enabled:
-        write_info("ENABLED HARD CONSTRAINTS:")
-        write_separator("-")
-        for name, info in hard_enabled.items():
-            write_info(f"  {name:<45} weight = {info['weight']:.2f}")
-        write_info("")
-
-    # Show disabled hard constraints
-    hard_disabled = [
-        name
-        for name, cfg in get_config().hard_constraints.items()
-        if not cfg["enabled"]
+    hard_constraints = [
+        (
+            "student_group_exclusivity",
+            config.hard_constraints.student_group_exclusivity,
+        ),
+        ("instructor_exclusivity", config.hard_constraints.instructor_exclusivity),
+        (
+            "instructor_qualifications",
+            config.hard_constraints.instructor_qualifications,
+        ),
+        (
+            "instructor_time_availability",
+            config.hard_constraints.instructor_time_availability,
+        ),
+        ("room_suitability", config.hard_constraints.room_suitability),
+        ("room_exclusivity", config.hard_constraints.room_exclusivity),
+        ("room_time_availability", config.hard_constraints.room_time_availability),
+        ("course_completeness", config.hard_constraints.course_completeness),
     ]
-    if hard_disabled:
-        write_info("DISABLED HARD CONSTRAINTS:")
-        write_separator("-")
-        for name in hard_disabled:
-            write_info(
-                f"  {name:<45} (weight = {get_config().hard_constraints[name]['weight']:.2f})"
-            )
-        write_info("")
 
-    # Show total hard weight
-    total_hard_weight = sum(info["weight"] for info in hard_enabled.values())
-    write_info(f"Total enabled hard weight: {total_hard_weight:.2f}")
+    hard_enabled_count = sum(1 for _, cfg in hard_constraints if cfg.enabled)
+    hard_total_count = len(hard_constraints)
+
+    for name, cfg in hard_constraints:
+        status = "[green]✓[/green]" if cfg.enabled else "[dim]✗[/dim]"
+        hard_table.add_row(name, status, f"{cfg.weight:.2f}")
+
+    console.print(hard_table)
+    console.print(f"\n[green]● {hard_enabled_count}/{hard_total_count} enabled[/green]")
+
+    total_hard_weight = sum(cfg.weight for _, cfg in hard_constraints if cfg.enabled)
+    console.print(f"[bold]Total weight: [cyan]{total_hard_weight:.2f}[/cyan][/bold]")
 
     # Soft Constraints Section
-    write_info("")
-    write_separator()
-    write_info("SOFT CONSTRAINTS (Quality)".center(80))
-    write_separator()
+    console.print("\n[bold yellow]SOFT CONSTRAINTS (Quality)[/bold yellow]\n")
 
-    soft_enabled_count = sum(
-        1 for cfg in get_config().soft_constraints.values() if cfg["enabled"]
-    )
-    soft_total_count = len(get_config().soft_constraints)
+    soft_table = Table(show_header=True, header_style="bold magenta")
+    soft_table.add_column("Constraint", style="cyan", width=40)
+    soft_table.add_column("Enabled", justify="center", width=10)
+    soft_table.add_column("Weight", justify="right", width=10)
+    soft_table.add_column("Penalty Info", style="dim", width=20)
 
-    write_info(
-        f"Status: {soft_enabled_count}/{soft_total_count} soft constraints enabled"
-    )
-    write_info("")
-
-    # Show enabled soft constraints
-    soft_enabled = get_enabled_soft_constraints()
-    if soft_enabled:
-        write_info("ENABLED SOFT CONSTRAINTS:")
-        write_separator("-")
-        for name, info in soft_enabled.items():
-            write_info(f"  {name:<45} weight = {info['weight']:.2f}")
-        write_info("")
-
-    # Show disabled soft constraints
-    soft_disabled = [
-        name
-        for name, cfg in get_config().soft_constraints.items()
-        if not cfg["enabled"]
+    soft_constraints = [
+        (
+            "student_schedule_compactness",
+            config.soft_constraints.student_schedule_compactness,
+        ),
+        (
+            "instructor_schedule_compactness",
+            config.soft_constraints.instructor_schedule_compactness,
+        ),
+        ("student_lunch_break", config.soft_constraints.student_lunch_break),
+        ("session_continuity", config.soft_constraints.session_continuity),
     ]
-    if soft_disabled:
-        write_info("DISABLED SOFT CONSTRAINTS:")
-        write_separator("-")
-        for name in soft_disabled:
-            write_info(
-                f"  {name:<45} (weight = {get_config().soft_constraints[name]['weight']:.2f})"
-            )
-        write_info("")
 
-    # Show total soft weight
-    total_soft_weight = sum(info["weight"] for info in soft_enabled.values())
-    write_info(f"Total enabled soft weight: {total_soft_weight:.2f}")
+    soft_enabled_count = sum(1 for _, cfg in soft_constraints if cfg.enabled)
+    soft_total_count = len(soft_constraints)
+
+    for name, cfg in soft_constraints:
+        status = "[green]✓[/green]" if cfg.enabled else "[dim]✗[/dim]"
+        penalty_info = ""
+        if cfg.gap_penalty_per_quantum:
+            penalty_info = f"gap: {cfg.gap_penalty_per_quantum}"
+        elif cfg.distance_penalty_per_quantum:
+            penalty_info = f"dist: {cfg.distance_penalty_per_quantum}"
+        soft_table.add_row(name, status, f"{cfg.weight:.2f}", penalty_info)
+
+    console.print(soft_table)
+    console.print(f"\n[green]● {soft_enabled_count}/{soft_total_count} enabled[/green]")
+    console.print(
+        f"[bold]Soft weight factor: [cyan]{config.soft_constraints.soft_weight_factor:.2f}[/cyan][/bold]"
+    )
+
+    total_soft_weight = sum(cfg.weight for _, cfg in soft_constraints if cfg.enabled)
+    console.print(
+        f"[bold]Total soft weight: [cyan]{total_soft_weight:.2f}[/cyan][/bold]"
+    )
 
     # Summary
-    write_info("")
-    write_separator()
-    write_info(
-        f"SUMMARY: {hard_enabled_count + soft_enabled_count} total constraints enabled"
+    console.print("\n[bold cyan]" + "=" * 60 + "[/bold cyan]")
+    console.print(
+        f"[bold]TOTAL: [green]{hard_enabled_count + soft_enabled_count}/{hard_total_count + soft_total_count}[/green] constraints enabled[/bold]"
     )
-    write_info(f"  - Hard: {hard_enabled_count}/{hard_total_count}")
-    write_info(f"  - Soft: {soft_enabled_count}/{soft_total_count}")
-    write_separator()
-    write_info("")
-    write_info("To modify: Edit config/constraints.py")
+    console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]")
+    console.print("\n[dim]To modify: Edit configs/base.yaml[/dim]\n")
 
 
 if __name__ == "__main__":

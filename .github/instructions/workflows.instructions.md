@@ -5,7 +5,7 @@ applyTo: "src/workflows/**/*.py"
 # Workflow Orchestration Instructions
 
 ## Overview
-High-level workflow orchestration that coordinates all components. Main workflow in `src/workflows/standard_run.py`, reporting in `src/workflows/reporting.py`.
+High-level workflow orchestration that coordinates all components. Main workflow in `src/workflows/standard_run.py`, reporting in `src/workflows/reporting.py`, experiment tracking in `src/workflows/experiment_manager.py`.
 
 ## Standard Workflow Pipeline
 
@@ -247,6 +247,86 @@ generate_reports(...)
 - Report GA convergence speed
 - Save timing data to logger
 
+## Experiment Management
+
+### ExperimentManager
+Track experiments systematically with `src/workflows/experiment_manager.py`:
+
+```python
+from src.workflows.experiment_manager import ExperimentManager
+from src.config.runtime_mode import RuntimeMode
+
+# Initialize manager
+manager = ExperimentManager(base_dir="output")
+
+# Register experiment run
+run = manager.register_run(
+    experiment_name="prod-baseline-r01",
+    runtime_mode=RuntimeMode.BASELINE,
+    config_snapshot=config.dict(),
+    tags=["production", "ablation", "baseline"]
+)
+
+# Run experiment (manager creates organized output directory)
+result = run_standard_workflow(
+    output_dir=run.output_dir,
+    config=config
+)
+
+# Update with results
+manager.update_run(
+    run_id=run.run_id,
+    final_fitness=(hard_violations, soft_penalty),
+    duration_seconds=elapsed_time
+)
+```
+
+### Experiment Comparison
+
+```python
+# Compare runtime modes
+comparison = manager.compare_modes(
+    experiment_name="prod-baseline-r01",
+    modes=[RuntimeMode.BASELINE, RuntimeMode.FULL, RuntimeMode.RL_GUIDED]
+)
+
+# Export to CSV
+manager.export_comparison_csv("output/comparison.csv")
+
+# CLI usage
+python main.py --compare  # View all experiments
+```
+
+### Manifest Structure
+
+Experiments tracked in `output/manifest.json`:
+```json
+{
+  "experiments": [
+    {
+      "run_id": "run_20251118_143022",
+      "experiment_name": "prod-baseline-r01",
+      "runtime_mode": "baseline",
+      "timestamp": "2025-11-18T14:30:22",
+      "output_dir": "output/evaluation_20251118_143022_baseline",
+      "config_snapshot": {...},
+      "final_fitness": [0, 123.45],
+      "duration_seconds": 3600.5,
+      "tags": ["production", "ablation"],
+      "notes": "Baseline run for comparison"
+    }
+  ]
+}
+```
+
+### Best Practices
+
+- **Use ExperimentManager for all production runs**: Ensures structured tracking
+- **Tag experiments meaningfully**: Use tags like `["ablation", "production", "gpu"]`
+- **Include notes**: Document experiment purpose and observations
+- **Compare systematically**: Run all modes with same data for fair comparison
+- **Archive manifest**: Commit `manifest.json` to git for reproducibility
+
 ## Never Do
 - ❌ Skip stage ordering (must follow: load → validate → feasibility → GA → decode → report)
 - ❌ Create output directory after GA runs (need it for logging)
@@ -254,3 +334,6 @@ generate_reports(...)
 - ❌ Modify context between stages (should be immutable)
 - ❌ Hardcode paths (use parameters)
 - ❌ Skip error handling (catch and log all exceptions)
+- ❌ Run production experiments without ExperimentManager (lose tracking)
+- ❌ Forget to register experiment runs (breaks reproducibility)
+- ❌ Skip runtime mode validation (always validate killswitches)
