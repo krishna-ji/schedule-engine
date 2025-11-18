@@ -1,0 +1,127 @@
+# ============================================================================
+# RUNTIME MODE 2: NSGA-II + IGLS Repairs
+# ============================================================================
+# GA with repair system (IGLS) but no advanced heuristics.
+# Tests effectiveness of repair system alone.
+
+ga:
+  ngen: 2000
+  pop_size: 200
+  cxpb: 0.75
+  mutpb: 0.25
+  elite_preservation: true
+  elite_size: 0.1
+  use_adaptive_probabilities: false
+  use_constraint_guided_mutation: false
+  population_strategy: hybrid # 25% greedy, 50% smart, 25% random
+  validate_population_integrity: false
+
+# Enable IGLS repair system
+repair:
+  enabled: true
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false
+
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: false
+    periodic_trigger:
+      enabled: false
+
+  stagnation_repair:
+    enabled: true
+    patience: 8
+    min_generation: 12
+    population_coverage: 0.4
+    max_iterations: 15
+    timeout_seconds: 120
+    cooldown: 5
+
+  selective_repair:
+    enabled: true
+    apply_probability: 0.4
+    apply_after_mutation: true
+    apply_after_crossover: true
+    detection_strategy: hybrid
+
+# Disable LNS
+lns:
+  enabled: false
+
+# Disable all enhancements
+enhancements:
+  master_enabled: false
+  memetic_mode: false
+  increased_population: false
+  frequent_repair: false
+  hypermutation:
+    enabled: false
+  constraint_priorities:
+    enabled: false
+  greedy_initialization_percent: 0.0
+  population_restart:
+    enabled: false
+  violation_heatmap:
+    enabled: false
+  multi_neighborhood:
+    enabled: false
+
+# Disable all heuristics (repairs only)
+heuristics:
+  construction:
+    largest_degree_first:
+      enabled: false
+    most_constrained_first:
+      enabled: false
+    earliest_deadline_first:
+      enabled: false
+
+  perturbation:
+    random_swap:
+      enabled: false
+    temporal_shift:
+      enabled: false
+    room_shuffle:
+      enabled: false
+    instructor_reassign:
+      enabled: false
+    multi_perturbation:
+      enabled: false
+
+  improvement:
+    kempe_chain:
+      enabled: false
+    ejection_chain:
+      enabled: false
+    variable_depth_search:
+      enabled: false
+
+  diversity:
+    distance_preserving_crossover:
+      enabled: false
+    crowding_mutation:
+      enabled: false
+    niching_selection:
+      enabled: false
+    adaptive_diversity_maintenance:
+      enabled: false
+
+  meta:
+    variable_neighborhood_descent:
+      enabled: false
+    iterated_local_search:
+      enabled: false
+    adaptive_large_neighborhood:
+      enabled: false
+    guided_local_search:
+      enabled: false
+
+# Disable RL
+rl:
+  enabled: false
+  mode: disabled

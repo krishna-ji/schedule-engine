@@ -42,6 +42,9 @@ class StateFeatures:
     avg_soft_violations: float
     violation_std: float
 
+    # ENHANCEMENT #2: Per-constraint breakdown (8 hard + 4 soft = 12 features)
+    constraint_breakdown: Dict[str, float]  # Per-constraint violation counts
+
     # Heuristic history (dynamic)
     recent_heuristic_ids: List[int]  # Last N heuristic applications
 
@@ -51,7 +54,7 @@ class StateEncoder:
     Encodes GA population state into normalized observation space.
 
     Observation space (Box):
-    - Shape: (21,) base features + (history_size,) heuristic history
+    - Shape: (29,) base features + (history_size,) heuristic history
     - All values normalized to [0, 1] or [-1, 1]
     - Handles missing/invalid values gracefully
 
@@ -60,14 +63,36 @@ class StateEncoder:
     - Diversity metrics (5): population, genotype, phenotype, fitness, unique_fitness_ratio
     - Progress metrics (4): generation, stagnation, convergence, improvement
     - Constraint metrics (3): hard, soft, violation_std
+    - ENHANCEMENT #2: Per-constraint breakdown (12): 8 hard + 4 soft constraint violations
     - Heuristic history (dynamic): recent heuristic IDs
     """
+
+    # Hard constraint names (8 total)
+    HARD_CONSTRAINT_NAMES = [
+        "student_group_exclusivity",
+        "instructor_exclusivity",
+        "instructor_qualifications",
+        "room_suitability",
+        "instructor_time_availability",
+        "room_time_availability",
+        "course_completeness",
+        "room_exclusivity",
+    ]
+
+    # Soft constraint names (4 total)
+    SOFT_CONSTRAINT_NAMES = [
+        "student_schedule_compactness",
+        "instructor_schedule_compactness",
+        "student_lunch_break",
+        "session_continuity",
+    ]
 
     def __init__(
         self,
         max_generations: int = 2000,
         history_size: int = 10,
         normalize: bool = True,
+        enable_constraint_breakdown: bool = True,
     ):
         """
         Initialize state encoder.
@@ -76,10 +101,12 @@ class StateEncoder:
             max_generations: Maximum GA generations (for normalization)
             history_size: Number of recent heuristic applications to track
             normalize: Whether to normalize features to [0, 1]
+            enable_constraint_breakdown: Enable per-constraint breakdown (Enhancement #2)
         """
         self.max_generations = max_generations
         self.history_size = history_size
         self.normalize = normalize
+        self.enable_constraint_breakdown = enable_constraint_breakdown
 
         # Track previous state for delta features
         self.prev_best_fitness: float | None = None
@@ -156,6 +183,11 @@ class StateEncoder:
         avg_soft = float(np.mean(np.abs(soft_violations)))
         violation_std = float(np.std(fitness_values))
 
+        # ENHANCEMENT #2: Per-constraint breakdown
+        constraint_breakdown = {}
+        if self.enable_constraint_breakdown:
+            constraint_breakdown = self._calculate_constraint_breakdown(population)
+
         # Update previous state
         self.prev_best_fitness = best_fitness
         self.prev_avg_fitness = avg_fitness
@@ -178,6 +210,7 @@ class StateEncoder:
             avg_hard_violations=avg_hard,
             avg_soft_violations=avg_soft,
             violation_std=violation_std,
+            constraint_breakdown=constraint_breakdown,
             recent_heuristic_ids=self.heuristic_history[-self.history_size :],
         )
 
@@ -292,6 +325,44 @@ class StateEncoder:
         improvement = self.prev_best_fitness - current_best
         return improvement / (abs(self.prev_best_fitness) + 1e-6)
 
+    def _calculate_constraint_breakdown(
+        self, population: List[Individual]
+    ) -> Dict[str, float]:
+        """
+        Calculate average violation count for each constraint across population.
+
+        ENHANCEMENT #2: Per-constraint breakdown for targeted repair.
+
+        This method estimates per-constraint violations by examining individuals
+        that have cached constraint details. If not available, returns zeros.
+
+        Returns:
+            Dictionary mapping constraint names to average violation counts.
+        """
+        constraint_counts = {name: 0.0 for name in self.HARD_CONSTRAINT_NAMES}
+        constraint_counts.update({name: 0.0 for name in self.SOFT_CONSTRAINT_NAMES})
+
+        # Check if any individual has constraint breakdown metadata
+        # (This would need to be populated during evaluation if available)
+        # For now, we return a placeholder that can be populated later
+        # when evaluate() is enhanced to store per-constraint breakdowns
+
+        # Placeholder: Extract from individual metadata if available
+        individuals_with_data = 0
+        for ind in population:
+            if hasattr(ind, "constraint_breakdown"):
+                individuals_with_data += 1
+                for constraint_name, value in ind.constraint_breakdown.items():
+                    if constraint_name in constraint_counts:
+                        constraint_counts[constraint_name] += value
+
+        # Average across individuals
+        if individuals_with_data > 0:
+            for key in constraint_counts:
+                constraint_counts[key] /= individuals_with_data
+
+        return constraint_counts
+
     def _features_to_vector(self, features: StateFeatures) -> NDArray[np.float64]:
         """Convert features to numpy vector."""
         base_features = np.array(
@@ -317,12 +388,30 @@ class StateEncoder:
             dtype=np.float64,
         )
 
+        # ENHANCEMENT #2: Add per-constraint breakdown (12 features)
+        if self.enable_constraint_breakdown:
+            constraint_features = []
+            # Add hard constraints (8 features)
+            for constraint_name in self.HARD_CONSTRAINT_NAMES:
+                value = features.constraint_breakdown.get(constraint_name, 0.0)
+                constraint_features.append(value)
+            # Add soft constraints (4 features)
+            for constraint_name in self.SOFT_CONSTRAINT_NAMES:
+                value = features.constraint_breakdown.get(constraint_name, 0.0)
+                constraint_features.append(value)
+            constraint_array = np.array(constraint_features, dtype=np.float64)
+        else:
+            constraint_array = np.array([], dtype=np.float64)
+
         # Pad heuristic history to fixed size
         history = features.recent_heuristic_ids[-self.history_size :]
         history_padded = history + [0] * (self.history_size - len(history))
         history_array = np.array(history_padded, dtype=np.float64)
 
-        return np.concatenate([base_features, history_array])
+        if self.enable_constraint_breakdown:
+            return np.concatenate([base_features, constraint_array, history_array])
+        else:
+            return np.concatenate([base_features, history_array])
 
     def _normalize_observation(self, obs: NDArray[np.float64]) -> NDArray[np.float64]:
         """
@@ -359,9 +448,17 @@ class StateEncoder:
         # Handle potential explosion of violations for infeasible schedules
         normalized[14:17] = np.clip(obs[14:17] / (100.0 + 1e-6), 0, 1)
 
-        # Heuristic history (indices 17+): normalize by max heuristic ID (20)
-        # Handle edge case where history might contain invalid IDs
-        normalized[17:] = np.clip(obs[17:] / 20.0, 0, 1)
+        if self.enable_constraint_breakdown:
+            # ENHANCEMENT #2: Normalize per-constraint breakdown (indices 17-28)
+            # 8 hard constraints + 4 soft constraints = 12 features
+            normalized[17:29] = np.clip(obs[17:29] / (50.0 + 1e-6), 0, 1)
+
+            # Heuristic history (indices 29+): normalize by max heuristic ID (20)
+            normalized[29:] = np.clip(obs[29:] / 20.0, 0, 1)
+        else:
+            # Heuristic history (indices 17+): normalize by max heuristic ID (20)
+            # Handle edge case where history might contain invalid IDs
+            normalized[17:] = np.clip(obs[17:] / 20.0, 0, 1)
 
         # Final safety check: replace any NaN or Inf values with 0
         normalized = np.nan_to_num(normalized, nan=0.0, posinf=1.0, neginf=0.0)
@@ -370,6 +467,15 @@ class StateEncoder:
 
     def _get_zero_features(self) -> StateFeatures:
         """Return zero features for empty population."""
+        zero_constraint_breakdown = {}
+        if self.enable_constraint_breakdown:
+            zero_constraint_breakdown = {
+                name: 0.0 for name in self.HARD_CONSTRAINT_NAMES
+            }
+            zero_constraint_breakdown.update(
+                {name: 0.0 for name in self.SOFT_CONSTRAINT_NAMES}
+            )
+
         return StateFeatures(
             best_fitness=0.0,
             avg_fitness=0.0,
@@ -388,6 +494,7 @@ class StateEncoder:
             avg_hard_violations=0.0,
             avg_soft_violations=0.0,
             violation_std=0.0,
+            constraint_breakdown=zero_constraint_breakdown,
             recent_heuristic_ids=[],
         )
 
@@ -407,4 +514,6 @@ class StateEncoder:
     @property
     def observation_dim(self) -> int:
         """Get observation space dimension."""
-        return 17 + self.history_size  # 17 base features + history
+        base_features = 17
+        constraint_features = 12 if self.enable_constraint_breakdown else 0
+        return base_features + constraint_features + self.history_size

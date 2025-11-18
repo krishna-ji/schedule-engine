@@ -1,0 +1,114 @@
+# ============================================================================
+# RUNTIME MODE 1: Pure NSGA-II Only (Baseline)
+# ============================================================================
+# Minimal GA with no repairs, no heuristics, no enhancements.
+# Use this as the baseline for comparing all other modes.
+
+ga:
+  ngen: 2000
+  pop_size: 200
+  cxpb: 0.75
+  mutpb: 0.25
+  elite_preservation: true
+  elite_size: 0.1
+  use_adaptive_probabilities: false
+  use_constraint_guided_mutation: false
+  population_strategy: random # Pure random initialization
+  validate_population_integrity: false
+
+# Disable all repairs
+repair:
+  enabled: false
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: false
+  memetic_mode: false
+
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: false
+    periodic_trigger:
+      enabled: false
+
+  stagnation_repair:
+    enabled: false
+
+  selective_repair:
+    enabled: false
+
+# Disable LNS
+lns:
+  enabled: false
+
+# Disable all enhancements
+enhancements:
+  master_enabled: false
+  memetic_mode: false
+  increased_population: false
+  frequent_repair: false
+  hypermutation:
+    enabled: false
+  constraint_priorities:
+    enabled: false
+  greedy_initialization_percent: 0.0
+  population_restart:
+    enabled: false
+  violation_heatmap:
+    enabled: false
+  multi_neighborhood:
+    enabled: false
+
+# Disable all heuristics
+heuristics:
+  construction:
+    largest_degree_first:
+      enabled: false
+    most_constrained_first:
+      enabled: false
+    earliest_deadline_first:
+      enabled: false
+
+  perturbation:
+    random_swap:
+      enabled: false
+    temporal_shift:
+      enabled: false
+    room_shuffle:
+      enabled: false
+    instructor_reassign:
+      enabled: false
+    multi_perturbation:
+      enabled: false
+
+  improvement:
+    kempe_chain:
+      enabled: false
+    ejection_chain:
+      enabled: false
+    variable_depth_search:
+      enabled: false
+
+  diversity:
+    distance_preserving_crossover:
+      enabled: false
+    crowding_mutation:
+      enabled: false
+    niching_selection:
+      enabled: false
+    adaptive_diversity_maintenance:
+      enabled: false
+
+  meta:
+    variable_neighborhood_descent:
+      enabled: false
+    iterated_local_search:
+      enabled: false
+    adaptive_large_neighborhood:
+      enabled: false
+    guided_local_search:
+      enabled: false
+
+# Disable RL
+rl:
+  enabled: false
+  mode: disabled

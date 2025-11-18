@@ -44,8 +44,17 @@ dev = [
 
 [project.scripts]
 schedule-engine = "main:main"
+# Environment shortcuts
 prod = "main:main_prod"
 test = "main:main_test"
+# Runtime mode shortcuts
+baseline = "main:main_baseline"
+repairs = "main:main_repairs"
+heuristics = "main:main_heuristics"
+full = "main:main_full"
+rl = "main:main_rl"
+roundrobin = "main:main_roundrobin"
+# Training shortcuts
 train = "src.rl.training.train_script:main"
 train-prod = "src.cli.train_prod:main"
 

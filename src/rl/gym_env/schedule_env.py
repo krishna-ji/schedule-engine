@@ -27,11 +27,12 @@ class ScheduleEnv(gym.Env):
     Gymnasium environment for schedule optimization.
 
     Observation Space:
-        Box(25,) - normalized features [0, 1]:
+        Box(39,) - normalized features [0, 1]:
         - Fitness metrics (5): best, avg, worst, std, range
-        - Diversity metrics (3): population, genotype, fitness
+        - Diversity metrics (5): population, genotype, phenotype, fitness, unique_ratio
         - Progress metrics (4): generation, stagnation, convergence, improvement
         - Violation metrics (3): hard, soft, std
+        - ENHANCEMENT #2: Per-constraint breakdown (12): 8 hard + 4 soft constraints
         - Heuristic history (10): recent heuristic applications
 
     Action Space:

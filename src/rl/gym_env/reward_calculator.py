@@ -5,11 +5,14 @@ Computes rewards based on:
 1. Fitness improvement (primary signal)
 2. Diversity bonus (encourage exploration)
 3. Time penalty (discourage slow convergence)
+
+ENHANCEMENT #1: Multi-objective reward shaping using hypervolume indicator.
 """
 
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, List, Optional
 from dataclasses import dataclass
 import numpy as np
+from numpy.typing import NDArray
 
 from src.core.types import Individual
 
@@ -21,6 +24,7 @@ class RewardComponents:
     fitness_reward: float
     diversity_bonus: float
     time_penalty: float
+    hypervolume_reward: float  # ENHANCEMENT #1
     total_reward: float
 
 
@@ -28,11 +32,15 @@ class RewardCalculator:
     """
     Calculate rewards for RL agent actions.
 
-    Reward Formula:
+    Reward Formula (scalar mode):
     reward = w1 * fitness_improvement + w2 * diversity_bonus - w3 * time_penalty
+
+    Reward Formula (hypervolume mode - ENHANCEMENT #1):
+    reward = w1 * hypervolume_delta + w2 * diversity_bonus - w3 * time_penalty
 
     Where:
     - fitness_improvement: Decrease in violations (negative fitness change)
+    - hypervolume_delta: Change in hypervolume indicator (multi-objective)
     - diversity_bonus: Reward for maintaining population diversity
     - time_penalty: Small penalty per generation to encourage fast convergence
     """
@@ -43,6 +51,9 @@ class RewardCalculator:
         diversity_weight: float = 0.1,
         time_weight: float = 0.01,
         normalize: bool = True,
+        use_hypervolume: bool = False,
+        reference_point: Optional[NDArray[np.float64]] = None,
+        hypervolume_scale: float = 1000.0,
     ):
         """
         Initialize reward calculator.
@@ -52,16 +63,38 @@ class RewardCalculator:
             diversity_weight: Weight for diversity bonus
             time_weight: Weight for time penalty
             normalize: Whether to normalize rewards to [-1, 1]
+            use_hypervolume: Use hypervolume-based reward (ENHANCEMENT #1)
+            reference_point: Reference point for hypervolume (e.g., [1000, 10000])
+            hypervolume_scale: Scale factor for hypervolume normalization
         """
         self.fitness_weight = fitness_weight
         self.diversity_weight = diversity_weight
         self.time_weight = time_weight
         self.normalize = normalize
 
+        # ENHANCEMENT #1: Hypervolume-based rewards
+        self.use_hypervolume = use_hypervolume
+        self.hypervolume_scale = hypervolume_scale
+
+        if use_hypervolume:
+            from src.rl.gym_env.hypervolume import HypervolumeCalculator
+
+            if reference_point is None:
+                # Default reference point for schedule optimization
+                reference_point = np.array([1000.0, 10000.0])
+
+            self.reference_point = np.asarray(reference_point, dtype=np.float64)
+            self.hv_calculator = HypervolumeCalculator(
+                reference_point=self.reference_point, minimize=True
+            )
+        else:
+            self.hv_calculator = None
+
         # Track previous state for delta calculation
         self.prev_best_fitness: float | None = None
         self.prev_avg_fitness: float | None = None
         self.prev_diversity: float | None = None
+        self.prev_pareto_front: Optional[NDArray[np.float64]] = None
 
     def calculate_reward(
         self,
@@ -69,6 +102,7 @@ class RewardCalculator:
         new_individual: Individual,
         population_diversity: float,
         generation: int,
+        population: Optional[List[Individual]] = None,
     ) -> Tuple[float, RewardComponents]:
         """
         Calculate reward for a single action.
@@ -78,12 +112,20 @@ class RewardCalculator:
             new_individual: Individual after action
             population_diversity: Current population diversity metric
             generation: Current generation number
+            population: Full population (needed for hypervolume calculation)
 
         Returns:
             (total_reward, reward_components)
         """
-        # 1. Fitness improvement reward
-        fitness_reward = self._calculate_fitness_reward(prev_individual, new_individual)
+        # 1. Fitness improvement reward (scalar or hypervolume)
+        if self.use_hypervolume and population is not None:
+            fitness_reward = self._calculate_hypervolume_reward(population)
+            hypervolume_reward = fitness_reward
+        else:
+            fitness_reward = self._calculate_fitness_reward(
+                prev_individual, new_individual
+            )
+            hypervolume_reward = 0.0
 
         # 2. Diversity bonus
         diversity_bonus = self._calculate_diversity_bonus(population_diversity)
@@ -102,9 +144,10 @@ class RewardCalculator:
             total_reward = np.clip(total_reward, -1.0, 1.0)
 
         components = RewardComponents(
-            fitness_reward=fitness_reward,
+            fitness_reward=fitness_reward if not self.use_hypervolume else 0.0,
             diversity_bonus=diversity_bonus,
             time_penalty=time_penalty,
+            hypervolume_reward=hypervolume_reward,
             total_reward=total_reward,
         )
 
@@ -158,6 +201,53 @@ class RewardCalculator:
         """
         return 0.001 * generation  # Small linear penalty
 
+    def _calculate_hypervolume_reward(self, population: List[Individual]) -> float:
+        """
+        Calculate hypervolume-based reward (ENHANCEMENT #1).
+
+        Reward = improvement in hypervolume indicator.
+        Positive reward: Pareto front improved
+        Negative reward: Pareto front degraded
+
+        Args:
+            population: Current GA population
+
+        Returns:
+            Hypervolume-based reward
+        """
+        if self.hv_calculator is None:
+            return 0.0
+
+        # Extract Pareto front (fitness values for all individuals)
+        pareto_front = np.array(
+            [
+                ind.fitness.values
+                for ind in population
+                if hasattr(ind, "fitness") and ind.fitness.valid
+            ]
+        )
+
+        if len(pareto_front) == 0:
+            return 0.0
+
+        # Calculate hypervolume
+        current_hv = self.hv_calculator.compute(pareto_front)
+
+        # Calculate reward as delta from previous state
+        if self.prev_pareto_front is None:
+            self.prev_pareto_front = pareto_front
+            prev_hv = current_hv
+        else:
+            prev_hv = self.hv_calculator.compute(self.prev_pareto_front)
+            self.prev_pareto_front = pareto_front
+
+        delta_hv = current_hv - prev_hv
+
+        # Normalize using tanh to [-1, 1]
+        normalized_reward = np.tanh(delta_hv / self.hypervolume_scale)
+
+        return float(normalized_reward)
+
     def _get_combined_fitness(self, individual: Individual) -> float:
         """
         Get combined fitness value.
@@ -208,15 +298,28 @@ class RewardCalculator:
         self.prev_best_fitness = None
         self.prev_avg_fitness = None
         self.prev_diversity = None
+        self.prev_pareto_front = None  # ENHANCEMENT #1
 
     def get_config(self) -> Dict[str, Any]:
         """Get reward calculator configuration."""
-        return {
+        config = {
             "fitness_weight": self.fitness_weight,
             "diversity_weight": self.diversity_weight,
             "time_weight": self.time_weight,
             "normalize": self.normalize,
         }
+
+        # ENHANCEMENT #1: Add hypervolume config
+        if self.use_hypervolume:
+            config.update(
+                {
+                    "use_hypervolume": True,
+                    "reference_point": self.reference_point.tolist(),
+                    "hypervolume_scale": self.hypervolume_scale,
+                }
+            )
+
+        return config
 
 
 def create_reward_calculator(
