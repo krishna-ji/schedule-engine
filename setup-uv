@@ -177,6 +177,33 @@ def install_dependencies():
             print_error("Failed to install dependencies")
             sys.exit(1)
 
+        # Install PyTorch with CUDA support (if NVIDIA GPU detected)
+        print()
+        print_info("Checking for NVIDIA GPU...")
+        try:
+            result = subprocess.run(["nvidia-smi"], capture_output=True, check=False)
+            if result.returncode == 0:
+                print_success(
+                    "NVIDIA GPU detected! Installing PyTorch with CUDA 12.1..."
+                )
+                subprocess.run(
+                    [
+                        "uv",
+                        "pip",
+                        "install",
+                        "--upgrade",
+                        "torch==2.4.1",
+                        "--index-url",
+                        "https://download.pytorch.org/whl/cu121",
+                    ],
+                    check=True,
+                )
+                print_success("PyTorch with CUDA 12.1 installed!")
+            else:
+                print_warning("No NVIDIA GPU detected. Using CPU-only PyTorch.")
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            print_warning("No NVIDIA GPU detected. Using CPU-only PyTorch.")
+
     elif Path("requirements.txt").exists():
         print_info("Using requirements.txt for installation...")
         try:

@@ -35,7 +35,9 @@ dependencies = [
     # Phase 2: RL Integration - pinned to tested versions
     "gymnasium==0.29.1",
     "stable-baselines3==2.3.2",
-    "torch==2.4.1",          # Last version with reliable Windows wheels
+    # PyTorch with CUDA 12.1 support (install from PyTorch index)
+    # Use: uv pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121
+    "torch==2.4.1",
     "tensorboard==2.18.0",
     "pymoo==0.6.1.3",
 ]
