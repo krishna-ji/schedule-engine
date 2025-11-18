@@ -17,10 +17,10 @@ _console: Optional[Console] = None
 def get_console() -> Console:
     """
     Get singleton console instance.
-    
+
     Returns:
         Console: Rich console for formatted output
-        
+
     Example:
         >>> from src.utils.console_service import get_console
         >>> console = get_console()
@@ -35,7 +35,7 @@ def get_console() -> Console:
 def reset_console() -> None:
     """
     Reset console instance (primarily for testing).
-    
+
     Allows tests to configure console with custom settings
     (e.g., record=True for capturing output).
     """
@@ -54,7 +54,7 @@ def configure_console(
 ) -> Console:
     """
     Configure console with specific settings.
-    
+
     Args:
         file: File-like object for output (default: sys.stdout)
         width: Console width in characters
@@ -62,10 +62,10 @@ def configure_console(
         force_jupyter: Force Jupyter mode
         no_color: Disable color output
         record: Enable output recording for testing
-        
+
     Returns:
         Console: Configured console instance
-        
+
     Example:
         >>> # Capture output for testing
         >>> console = configure_console(record=True)

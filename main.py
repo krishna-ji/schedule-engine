@@ -232,20 +232,26 @@ def main():
 
 def _create_env_entry_point(env: str):
     """Factory for environment entry points."""
+
     def entry_point():
         import os
         import sys
+
         os.environ["ENVIRONMENT"] = env
         sys.exit(main() or 0)
+
     return entry_point
 
 
 def _create_mode_entry_point(mode: str, env: str = "prod"):
     """Factory for runtime mode entry points."""
+
     def entry_point():
         import sys
+
         sys.argv = ["main.py", "--mode", mode, "--env", env]
         sys.exit(main() or 0)
+
     return entry_point
 
 
@@ -261,13 +267,19 @@ main_test.__doc__ = "Entry point for test runs (uv run test)"
 _MODE_MAPPING = {
     "baseline": ("baseline", "Mode 1: Pure NSGA-II (uv run baseline)"),
     "repairs": ("nsga-repairs", "Mode 2: NSGA-II + repairs (uv run repairs)"),
-    "heuristics": ("nsga-heuristics", "Mode 3: NSGA-II + repairs + heuristics (uv run heuristics)"),
+    "heuristics": (
+        "nsga-heuristics",
+        "Mode 3: NSGA-II + repairs + heuristics (uv run heuristics)",
+    ),
     "full": ("nsga-full", "Mode 4: Full GA (uv run full)"),
     "rl": ("rl-guided", "Mode 5: RL-guided heuristics (uv run rl)"),
     "roundrobin": ("roundrobin", "Mode 6: Round-robin (uv run roundrobin)"),
     "specialists": ("rl-specialists", "Mode 7: RL specialists (uv run specialists)"),
     "archive": ("archive-diversity", "Mode 8: Archive diversity (uv run archive)"),
-    "hierarchical": ("rl-hierarchical", "Mode 9: Hierarchical RL (uv run hierarchical)"),
+    "hierarchical": (
+        "rl-hierarchical",
+        "Mode 9: Hierarchical RL (uv run hierarchical)",
+    ),
     "multiagent": ("rl-multiagent", "Mode 10: Multi-agent RL (uv run multiagent)"),
 }
 

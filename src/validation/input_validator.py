@@ -16,7 +16,7 @@ console = get_console()
 
 class ValidationError(DataValidationError):
     """Represents a single validation error.
-    
+
     Note: This inherits from DataValidationError (Exception subclass)
     for proper exception handling while maintaining backward compatibility
     with existing error collection code.
