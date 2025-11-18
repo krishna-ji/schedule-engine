@@ -21,6 +21,7 @@ class ActionInfo:
     category: str
     function: Optional[Callable] = None
     enabled: bool = True
+    modifies_individual: bool = False
 
 
 class ActionMapper:
@@ -76,6 +77,7 @@ class ActionMapper:
                     category=h.category,
                     function=h.function,
                     enabled=getattr(h, "enabled", True),
+                    modifies_individual=getattr(h, "modifies_individual", False),
                 )
             )
 
@@ -150,6 +152,11 @@ class ActionMapper:
                 else:
                     modified = result
 
+            # Handle construction heuristics that build from scratch (context only)
+            elif action_info.category == "construction" or len(params) == 1:
+                # Construction heuristics take only context and return new individual
+                modified = action_info.function(context)
+
             # Handle diversity heuristics with population parameter (individual, population, context, ...)
             elif "population" in params:
                 if population is None:
@@ -165,17 +172,26 @@ class ActionMapper:
                             f"Heuristic {action_info.name} requires generation parameter"
                         )
                         return individual, False
-                    modified = action_info.function(
+                    result = action_info.function(
                         individual_copy, population, context, generation
                     )
                 else:
-                    modified = action_info.function(
-                        individual_copy, population, context
-                    )
+                    result = action_info.function(individual_copy, population, context)
+
+                # Handle in-place modification heuristics
+                if action_info.modifies_individual and isinstance(result, int):
+                    modified = individual_copy
+                else:
+                    modified = result
 
             # Standard single-individual heuristics (individual, context)
             else:
-                modified = action_info.function(individual_copy, context)
+                result = action_info.function(individual_copy, context)
+                # Handle in-place modification heuristics (return int improvement count)
+                if action_info.modifies_individual and isinstance(result, int):
+                    modified = individual_copy
+                else:
+                    modified = result
 
             # Validate result
             if not self._validate_result(modified):

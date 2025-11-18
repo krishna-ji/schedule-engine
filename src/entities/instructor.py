@@ -60,7 +60,7 @@ class Instructor:
         Returns:
             True if available, False otherwise
         """
-        if not 0 <= quanta < time_system.TOTAL_WEEKLY_QUANTA:
+        if not 0 <= quanta < time_system.total_quanta:
             return False
 
         if self.is_full_time:

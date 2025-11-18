@@ -1,4 +1,3 @@
-"""
 """LNS repair operator for genetic algorithm.
 
 This module implements the Large Neighborhood Search operator with IGLS

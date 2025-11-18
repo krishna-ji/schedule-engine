@@ -186,11 +186,8 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
     assigned_times = defaultdict(set)
     assigned_rooms = defaultdict(set)
 
-    # Build list of all sessions to schedule
-    sessions_to_schedule = []
-    for course_id, course in context.courses.items():
-        for session_idx in range(course.sessions_per_week):
-            sessions_to_schedule.append((course_id, session_idx, course))
+    # Build list of all sessions to schedule (one per course)
+    sessions_to_schedule = list(context.courses.items())
 
     # Schedule sessions in constraint order
     while sessions_to_schedule:
@@ -198,7 +195,7 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
         most_constrained = None
         min_options = float("inf")
 
-        for course_id, session_idx, course in sessions_to_schedule:
+        for course_id, course in sessions_to_schedule:
             # Count valid time slots
             valid_slots = _count_valid_time_slots(
                 context,
@@ -210,11 +207,11 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
 
             if valid_slots < min_options:
                 min_options = valid_slots
-                most_constrained = (course_id, session_idx, course)
+                most_constrained = (course_id, course)
 
         # Remove from pending list
         sessions_to_schedule.remove(most_constrained)
-        course_id, session_idx, course = most_constrained
+        course_id, course = most_constrained
 
         # Find best time slot
         time_quantum = _find_earliest_valid_time(
@@ -235,20 +232,22 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
         )
 
         # Create gene
+        course_code, course_type = course_id  # Unpack tuple
         gene = SessionGene(
-            course_id=course_id,
-            group_ids=course.group_ids,
+            course_id=course_code,
+            course_type=course_type,
+            group_ids=course.enrolled_group_ids,
             time_quantum=time_quantum,
-            duration_quanta=course.duration_quanta,
             room_id=room_id,
             instructor_id=instructor_id,
+            quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
         )
 
         individual.append(gene)
 
         # Update assignments
-        for q in range(time_quantum, time_quantum + course.duration_quanta):
-            for group_id in course.group_ids:
+        for q in range(time_quantum, time_quantum + course.quanta_per_week):
+            for group_id in course.enrolled_group_ids:
                 assigned_times[group_id].add(q)
             assigned_times[instructor_id].add(q)
             assigned_rooms[room_id].add(q)
@@ -310,45 +309,45 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
 
     for course_id, _urgency in sorted_courses:
         course = context.courses[course_id]
+        course_code, course_type = course_id  # Unpack tuple
 
-        # Schedule all sessions for this course
-        for session_idx in range(course.sessions_per_week):
-            # Find valid time slot
-            time_quantum = _find_earliest_valid_time(
-                context,
-                course,
-                time_system,
-                assigned_times,
-                assigned_rooms,
-            )
+        # Find valid time slot
+        time_quantum = _find_earliest_valid_time(
+            context,
+            course,
+            time_system,
+            assigned_times,
+            assigned_rooms,
+        )
 
-            if time_quantum is None:
-                time_quantum = random.choice(context.available_quanta)
+        if time_quantum is None:
+            time_quantum = random.choice(context.available_quanta)
 
-            # Find room and instructor
-            room_id = _find_suitable_room(context, course, time_quantum, assigned_rooms)
-            instructor_id = _select_qualified_instructor(
-                context, course, time_quantum, assigned_times
-            )
+        # Find room and instructor
+        room_id = _find_suitable_room(context, course, time_quantum, assigned_rooms)
+        instructor_id = _select_qualified_instructor(
+            context, course, time_quantum, assigned_times
+        )
 
-            # Create gene
-            gene = SessionGene(
-                course_id=course_id,
-                group_ids=course.group_ids,
-                time_quantum=time_quantum,
-                duration_quanta=course.duration_quanta,
-                room_id=room_id,
-                instructor_id=instructor_id,
-            )
+        # Create gene
+        gene = SessionGene(
+            course_id=course_code,
+            course_type=course_type,
+            group_ids=course.enrolled_group_ids,
+            time_quantum=time_quantum,
+            room_id=room_id,
+            instructor_id=instructor_id,
+            quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
+        )
 
-            individual.append(gene)
+        individual.append(gene)
 
-            # Update assignments
-            for q in range(time_quantum, time_quantum + course.duration_quanta):
-                for group_id in course.group_ids:
-                    assigned_times[group_id].add(q)
-                assigned_times[instructor_id].add(q)
-                assigned_rooms[room_id].add(q)
+        # Update assignments
+        for q in range(time_quantum, time_quantum + course.quanta_per_week):
+            for group_id in course.enrolled_group_ids:
+                assigned_times[group_id].add(q)
+            assigned_times[instructor_id].add(q)
+            assigned_rooms[room_id].add(q)
 
     return individual
 
@@ -378,12 +377,14 @@ def _calculate_conflict_degrees(context: SchedulingContext) -> Dict[str, int]:
                 degree += len(shared_instructors)
 
             # Check for shared groups
-            shared_groups = set(course.group_ids) & set(other_course.group_ids)
+            shared_groups = set(course.enrolled_group_ids) & set(
+                other_course.enrolled_group_ids
+            )
             if shared_groups:
                 degree += len(shared_groups) * 2  # Group conflicts more critical
 
         # Lab courses have higher degree (fewer room options)
-        if course.is_lab:
+        if course.course_type == "practical":
             degree += 5
 
         degrees[course_id] = degree
@@ -398,11 +399,11 @@ def _calculate_urgency_scores(context: SchedulingContext) -> Dict[str, float]:
     for course_id, course in context.courses.items():
         score = 0.0
 
-        # More sessions = higher urgency
-        score += course.sessions_per_week * 10
+        # More quanta = higher urgency
+        score += course.quanta_per_week * 10
 
         # Lab courses higher urgency (limited room options)
-        if course.is_lab:
+        if course.course_type == "practical":
             score += 5
 
         # Courses with part-time instructors have higher urgency
@@ -428,14 +429,14 @@ def _count_valid_time_slots(
 
     for time_quantum in context.available_quanta:
         # Check if slot is long enough
-        if time_quantum + course.duration_quanta > max(context.available_quanta):
+        if time_quantum + course.quanta_per_week > max(context.available_quanta):
             continue
 
         # Check group conflicts
-        time_range = range(time_quantum, time_quantum + course.duration_quanta)
+        time_range = range(time_quantum, time_quantum + course.quanta_per_week)
         has_conflict = False
 
-        for group_id in course.group_ids:
+        for group_id in course.enrolled_group_ids:
             if any(q in assigned_times[group_id] for q in time_range):
                 has_conflict = True
                 break
@@ -456,15 +457,15 @@ def _find_earliest_valid_time(
     """Find earliest valid time slot for a course session."""
     for time_quantum in context.available_quanta:
         # Check if slot is long enough
-        if time_quantum + course.duration_quanta > max(context.available_quanta):
+        if time_quantum + course.quanta_per_week > max(context.available_quanta):
             continue
 
         # Check conflicts
-        time_range = range(time_quantum, time_quantum + course.duration_quanta)
+        time_range = range(time_quantum, time_quantum + course.quanta_per_week)
         has_conflict = False
 
         # Check group conflicts
-        for group_id in course.group_ids:
+        for group_id in course.enrolled_group_ids:
             if any(q in assigned_times[group_id] for q in time_range):
                 has_conflict = True
                 break
@@ -482,14 +483,13 @@ def _find_suitable_room(
     assigned_rooms: Dict,
 ) -> str:
     """Find suitable room for course session."""
-    time_range = range(time_quantum, time_quantum + course.duration_quanta)
+    time_range = range(time_quantum, time_quantum + course.quanta_per_week)
 
-    # Filter rooms by type and capacity
+    # Filter rooms by features (type matching)
     suitable_rooms = [
         room_id
         for room_id, room in context.rooms.items()
-        if room.room_type == course.required_room_type
-        and room.capacity >= course.expected_students
+        if room.is_suitable_for_course_type(course.required_room_features)
     ]
 
     # Find available room
@@ -508,18 +508,24 @@ def _select_qualified_instructor(
     assigned_times: Dict,
 ) -> str:
     """Select qualified instructor for course session."""
-    time_range = range(time_quantum, time_quantum + course.duration_quanta)
+    time_range = range(time_quantum, time_quantum + course.quanta_per_week)
 
     # Find available qualified instructors
     available_instructors = []
+
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+
+    time_system = QuantumTimeSystem()
 
     for instructor_id in course.qualified_instructor_ids:
         instructor = context.instructors.get(instructor_id)
         if not instructor:
             continue
 
-        # Check availability
-        is_available = all(instructor.is_available(time_quantum) for q in time_range)
+        # Check availability for all quanta in the range
+        is_available = all(
+            instructor.is_available_at_quanta(q, time_system) for q in time_range
+        )
 
         # Check time conflicts
         has_conflict = any(q in assigned_times[instructor_id] for q in time_range)
