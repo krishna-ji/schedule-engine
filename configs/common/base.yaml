@@ -1,0 +1,62 @@
+# ============================================================================
+# COMMON CONFIGURATION - Shared Settings Across GA and RL
+# ============================================================================
+# Settings that apply to all components of the schedule engine.
+# Domain-specific settings are in configs/ga/ and configs/rl/
+
+# Time Configuration
+time:
+  quantum_minutes: 60
+  earliest_preferred_time: "08:00"
+  latest_preferred_time: "18:00"
+  midday_break_start: "12:00"
+  midday_break_end: "13:00"
+  max_session_coalescence: 3
+  max_sessions_per_day: 6
+  preferred_block_size_min: 2
+  preferred_block_size_max: 3
+  theory_isolated_penalty: 5
+  theory_oversized_penalty_per_quantum: 2
+  theory_max_excused_isolated: 1
+  practical_fragmentation_penalty: 10
+
+# I/O Paths
+io:
+  data_dir: data
+  output_dir: output
+
+# Calendar Display
+calendar:
+  show_instructor: true
+  show_room: true
+  show_group: true
+
+# Parallel Processing
+parallel:
+  use_multiprocessing: true
+  num_workers: null # auto-detects number of CPU cores
+
+# Feasibility Checks
+feasibility:
+  enable_checks: true
+  tolerance_margin: 0.05
+  fail_on_infeasibility: false
+  generate_report: true
+  show_console_output: true
+  save_report_on_success: true
+  checks:
+    instructor_workload:
+      enabled: true
+      severity: critical
+    instructor_qualification_bottleneck:
+      enabled: true
+      severity: critical
+    room_capacity_bottleneck:
+      enabled: true
+      severity: critical
+    room_feature_bottleneck:
+      enabled: true
+      severity: critical
+    group_pigeonhole:
+      enabled: true
+      severity: critical

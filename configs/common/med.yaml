@@ -1,0 +1,13 @@
+# ============================================================================
+# MED COMMON CONFIGURATION
+# ============================================================================
+# Medium run overrides for common settings.
+
+name: "Medium - Balanced Run"
+environment: med
+description: "Balanced run (200 gens, 50 pop, 2-4h runtime)"
+
+# Parallel Processing - Enabled
+parallel:
+  use_multiprocessing: true
+  num_workers: null # Auto-detect

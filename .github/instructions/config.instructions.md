@@ -6,22 +6,57 @@ applyTo: "src/config/**/*.py"
 
 ## Overview
 
-YAML-based configuration with inheritance: `base.yaml` + environment overrides. Loaded via `src/config/loader.py`, validated by `src/config/models.py`.
+YAML-based hierarchical configuration with domain separation and environment inheritance. Loaded via `src/config/loader.py`, validated by `src/config/models.py`.
 
 ## Key Files
 
 - `src/config/models.py` - Pydantic models (Config, GAConfig, RepairConfig, etc.)
-- `src/config/loader.py` - YAML loading with deep merge (base.yaml + env overrides)
+- `src/config/loader.py` - Hierarchical YAML loading with deep merge (supports legacy structure)
 - `src/config/__init__.py` - Global config object + `init_config()`, `get_config()`
-- `configs/base.yaml` - Common settings (shared by all environments)
-- `configs/{test,prod}.yaml` - Environment-specific overrides only
 
-## Configuration Inheritance
+## Configuration Structure
 
-1. Loader reads `configs/base.yaml` (all common settings)
-2. Loader reads environment file (e.g., `configs/prod.yaml`)
-3. Deep merge: environment values override base values
-4. Result: complete configuration with minimal duplication
+### Hierarchical (Preferred)
+```
+configs/
+├── common/          # Shared settings (time, I/O, parallel, feasibility)
+│   ├── base.yaml
+│   ├── prod.yaml
+│   ├── test.yaml
+│   └── med.yaml
+├── ga/              # GA-specific (operators, constraints, repair, heuristics)
+│   ├── base.yaml
+│   ├── prod.yaml
+│   ├── test.yaml
+│   └── med.yaml
+└── rl/              # RL-specific (agent, training, inference, evaluation)
+    ├── base.yaml
+    ├── prod.yaml
+    ├── test.yaml
+    └── med.yaml
+```
+
+### Legacy (Backward Compatible)
+```
+configs/
+├── base.yaml        # All settings mixed (backward compatibility)
+├── prod.yaml
+└── test.yaml
+```
+
+## Configuration Loading Order
+
+Hierarchical mode (when `configs/{common,ga,rl}/` exist):
+1. `configs/common/base.yaml`
+2. `configs/common/{environment}.yaml`
+3. `configs/ga/base.yaml`
+4. `configs/ga/{environment}.yaml`
+5. `configs/rl/base.yaml`
+6. `configs/rl/{environment}.yaml`
+
+Legacy mode (fallback):
+1. `configs/base.yaml`
+2. `configs/{environment}.yaml`
 
 **Note**: Training uses separate configs in `config-train/` with similar inheritance (base + profile overrides).
 
@@ -41,8 +76,14 @@ ngen = config.ga.ngen
 1. Add field to appropriate Pydantic model in `src/config/models.py`
 2. Include default value with type annotation
 3. Add validation if needed (`@field_validator`)
-4. Add to `configs/base.yaml` (if common to all environments)
-5. Override in specific env files (if environment-specific)
+4. **Hierarchical structure**: Add to appropriate domain base.yaml:
+   - Common settings → `configs/common/base.yaml`
+   - GA settings → `configs/ga/base.yaml`
+   - RL settings → `configs/rl/base.yaml`
+5. Override in specific env files if environment-specific:
+   - `configs/{domain}/prod.yaml`
+   - `configs/{domain}/test.yaml`
+   - `configs/{domain}/med.yaml`
 6. Update `Config.summary()` if user-facing
 
 ### YAML File Structure
@@ -50,9 +91,36 @@ ngen = config.ga.ngen
 - Use lowercase keys with underscores (e.g., `pop_size`, not `popSize`)
 - Group related settings under sections (ga, repair, parallel, etc.)
 - Include comments for non-obvious settings
-- **base.yaml**: Contains ALL common settings (used by all environments)
-- **Environment files**: Only override what differs (ngen, pop_size, parallel, repair triggers, etc.)
-- Keep test.yaml minimal (fast), prod.yaml comprehensive
+- **Domain base files**: Contains ALL domain-specific defaults
+- **Environment files**: Only override what differs per environment
+- Keep test.yaml minimal (fast), prod.yaml comprehensive (quality)
+- Use med.yaml for balanced development runs
+
+### Domain Organization
+
+**Common** (`configs/common/`):
+- Time configuration (quantum system, scheduling windows)
+- I/O paths (data_dir, output_dir)
+- Calendar display settings
+- Parallel processing configuration
+- Feasibility check settings
+
+**GA** (`configs/ga/`):
+- GA parameters (population, generations, crossover, mutation)
+- Hard and soft constraints
+- Repair system (IGLS, LNS, stagnation, selective)
+- Enhancements (hypermutation, population restart, etc.)
+- Heuristic toolbox (construction, perturbation, improvement, diversity, meta)
+
+**RL** (`configs/rl/`):
+- RL integration (enabled, mode)
+- Environment configuration
+- Reward function weights
+- Agent configuration (PPO/DQN hyperparameters)
+- Training configuration (curriculum, checkpoints)
+- Inference configuration
+- Hybrid controller settings
+- Evaluation and logging
 
 ### Validation Rules
 

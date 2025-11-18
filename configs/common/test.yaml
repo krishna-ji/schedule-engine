@@ -1,0 +1,13 @@
+# ============================================================================
+# TEST COMMON CONFIGURATION
+# ============================================================================
+# Test overrides for common settings (smoke test).
+
+name: "Test - Smoke Test"
+environment: test
+description: "Fast smoke test (30 gens, 10 pop, 5-10 min runtime)"
+
+# Parallel Processing - Disabled for easier debugging
+parallel:
+  use_multiprocessing: false
+  num_workers: null

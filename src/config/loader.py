@@ -1,6 +1,15 @@
 """
-Configuration loader with base.yaml inheritance.
-Loads configs with base.yaml + environment overrides.
+Configuration loader with hierarchical config support.
+Supports both legacy (single file) and new (multi-domain) structure.
+
+Legacy structure (backward compatible):
+- configs/base.yaml (all settings)
+- configs/{env}.yaml (overrides)
+
+New hierarchical structure:
+- configs/common/{base,env}.yaml (shared settings)
+- configs/ga/{base,env}.yaml (GA-specific)
+- configs/rl/{base,env}.yaml (RL-specific)
 """
 
 import os
@@ -24,19 +33,71 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+def _load_yaml(path: Path) -> dict:
+    """Load YAML file safely, returning empty dict if not found."""
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
+
+def _load_hierarchical_config(environment: str) -> dict:
+    """
+    Load hierarchical configuration from configs/{common,ga,rl}/ structure.
+    
+    Args:
+        environment: Environment name (prod, test, med)
+    
+    Returns:
+        Merged configuration dictionary
+    """
+    # Load base configs for each domain
+    common_base = _load_yaml(Path("configs/common/base.yaml"))
+    ga_base = _load_yaml(Path("configs/ga/base.yaml"))
+    rl_base = _load_yaml(Path("configs/rl/base.yaml"))
+    
+    # Load environment-specific overrides
+    common_env = _load_yaml(Path(f"configs/common/{environment}.yaml"))
+    ga_env = _load_yaml(Path(f"configs/ga/{environment}.yaml"))
+    rl_env = _load_yaml(Path(f"configs/rl/{environment}.yaml"))
+    
+    # Merge in order: common -> ga -> rl, with env overrides
+    result = {}
+    result = _deep_merge(result, common_base)
+    result = _deep_merge(result, common_env)
+    result = _deep_merge(result, ga_base)
+    result = _deep_merge(result, ga_env)
+    result = _deep_merge(result, rl_base)
+    result = _deep_merge(result, rl_env)
+    
+    return result
+
+
+def _check_hierarchical_structure() -> bool:
+    """Check if hierarchical config structure exists."""
+    return (Path("configs/common").exists() and 
+            Path("configs/ga").exists() and 
+            Path("configs/rl").exists())
+
+
 def load_config(config_path: str = None) -> Config:
     """
-    Load configuration with base.yaml + environment overrides.
+    Load configuration with support for hierarchical structure.
 
-    Config structure:
-    - base.yaml: All common settings
-    - prod.yaml/test.yaml: Only environment-specific overrides
+    Config structure (new hierarchical):
+    - configs/common/{base,env}.yaml: Shared settings
+    - configs/ga/{base,env}.yaml: GA-specific settings
+    - configs/rl/{base,env}.yaml: RL-specific settings
+
+    Legacy structure (backward compatible):
+    - configs/base.yaml: All settings
+    - configs/{env}.yaml: Environment overrides
 
     Loading priority:
-    1. Explicit config_path argument (--config flag) - loads with base.yaml merge
-    2. SCHEDULE_CONFIG environment variable - loads with base.yaml merge
-    3. configs/{ENVIRONMENT}.yaml (ENVIRONMENT env var) - loads with base.yaml merge
-    4. configs/test.yaml (default) - loads with base.yaml merge
+    1. Explicit config_path argument (--config flag)
+    2. SCHEDULE_CONFIG environment variable
+    3. Hierarchical structure (if exists): configs/{common,ga,rl}/{env}.yaml
+    4. Legacy structure: configs/{env}.yaml merged with base.yaml
     5. Built-in defaults
 
     Args:
@@ -45,56 +106,64 @@ def load_config(config_path: str = None) -> Config:
     Returns:
         Config object
     """
-    base_path = Path("configs/base.yaml")
-
-    # Load base config if it exists
-    base_dict = {}
-    if base_path.exists():
-        with open(base_path) as f:
-            base_dict = yaml.safe_load(f) or {}
-
-    # Priority 1: Explicit path
+    # Priority 1: Explicit path (legacy single-file mode)
     if config_path:
         if not Path(config_path).exists():
             print(f"[!ERR] Config file not found: {config_path}")
             sys.exit(1)
-        with open(config_path) as f:
-            override_dict = yaml.safe_load(f) or {}
-        merged = _deep_merge(base_dict, override_dict)
-        print(f"Loading config: {config_path} (merged with base.yaml)")
-        return Config(**merged)
+        
+        # Load with legacy base.yaml merge if base exists
+        base_path = Path("configs/base.yaml")
+        if base_path.exists():
+            base_dict = _load_yaml(base_path)
+            override_dict = _load_yaml(Path(config_path))
+            merged = _deep_merge(base_dict, override_dict)
+            print(f"Loading config: {config_path} (merged with base.yaml)")
+            return Config(**merged)
+        else:
+            # Direct load without base
+            config_dict = _load_yaml(Path(config_path))
+            print(f"Loading config: {config_path}")
+            return Config(**config_dict)
 
-    # Priority 2: Environment variable
+    # Priority 2: Environment variable (legacy single-file mode)
     env_config = os.getenv("SCHEDULE_CONFIG")
     if env_config:
         if not Path(env_config).exists():
             print(f"[!ERR] Config file not found: {env_config}")
             sys.exit(1)
-        with open(env_config) as f:
-            override_dict = yaml.safe_load(f) or {}
-        merged = _deep_merge(base_dict, override_dict)
-        print(
-            f"Loading config from SCHEDULE_CONFIG: {env_config} (merged with base.yaml)"
-        )
-        return Config(**merged)
+        
+        base_path = Path("configs/base.yaml")
+        if base_path.exists():
+            base_dict = _load_yaml(base_path)
+            override_dict = _load_yaml(Path(env_config))
+            merged = _deep_merge(base_dict, override_dict)
+            print(f"Loading config from SCHEDULE_CONFIG: {env_config} (merged with base.yaml)")
+            return Config(**merged)
+        else:
+            config_dict = _load_yaml(Path(env_config))
+            print(f"Loading config from SCHEDULE_CONFIG: {env_config}")
+            return Config(**config_dict)
 
-    # Priority 3: Environment-specific config
+    # Determine environment
     environment = os.getenv("ENVIRONMENT", "test")
-    env_path = Path(f"configs/{environment}.yaml")
-    if env_path.exists():
-        with open(env_path) as f:
-            override_dict = yaml.safe_load(f) or {}
-        merged = _deep_merge(base_dict, override_dict)
-        print(f"Loading config: configs/{environment}.yaml (merged with base.yaml)")
-        return Config(**merged)
+    
+    # Priority 3: Hierarchical structure (new method)
+    if _check_hierarchical_structure():
+        merged = _load_hierarchical_config(environment)
+        if merged:  # If we got any config from hierarchical structure
+            print(f"Loading hierarchical config: configs/{{common,ga,rl}}/{environment}.yaml")
+            return Config(**merged)
 
-    # Priority 4: Default test config
-    default_path = Path("configs/test.yaml")
-    if default_path.exists():
-        with open(default_path) as f:
-            override_dict = yaml.safe_load(f) or {}
+    # Priority 4: Legacy structure (backward compatibility)
+    base_path = Path("configs/base.yaml")
+    env_path = Path(f"configs/{environment}.yaml")
+    
+    if base_path.exists() or env_path.exists():
+        base_dict = _load_yaml(base_path)
+        override_dict = _load_yaml(env_path)
         merged = _deep_merge(base_dict, override_dict)
-        print("Loading config: configs/test.yaml (default, merged with base.yaml)")
+        print(f"Loading legacy config: configs/{environment}.yaml (merged with base.yaml)")
         return Config(**merged)
 
     # Priority 5: Built-in defaults only

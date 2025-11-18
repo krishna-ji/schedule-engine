@@ -1,0 +1,13 @@
+# ============================================================================
+# PROD COMMON CONFIGURATION
+# ============================================================================
+# Production overrides for common settings.
+
+name: "Production - Best Quality (No Constraints)"
+environment: prod
+description: "Maximum quality production run (1000 gens, 100 pop, 24-48h runtime)"
+
+# Parallel Processing - Maximum parallelization
+parallel:
+  use_multiprocessing: true
+  num_workers: null # Auto-detect all available cores

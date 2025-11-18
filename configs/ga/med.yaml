@@ -1,0 +1,30 @@
+# ============================================================================
+# MED GA CONFIGURATION
+# ============================================================================
+# Medium run overrides for GA settings.
+
+# GA Settings - MED: Balanced settings
+ga:
+  ngen: 200
+  pop_size: 50
+
+# IGLS Exhaustive Search - Balanced triggers
+repair:
+  exhaustive_search:
+    enabled: true
+    generations: [3, 25, 50, 100, 150]
+    population_coverage: 0.2 # Top 20% (10 individuals)
+    max_neighborhood_size: 100
+    timeout_seconds: 300
+
+  stagnation_repair:
+    patience: 10
+    min_generation: 15
+    population_coverage: 0.3
+    max_iterations: 12
+    timeout_seconds: 120
+    cooldown: 6
+
+  selective_repair:
+    apply_probability: 0.35
+    apply_after_crossover: false

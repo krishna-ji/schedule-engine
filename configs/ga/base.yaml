@@ -1,0 +1,243 @@
+# ============================================================================
+# GA CONFIGURATION - Genetic Algorithm Settings
+# ============================================================================
+# All GA-specific settings including operators, constraints, repair, and heuristics.
+
+# GA Settings (common - ngen/pop_size overridden per environment)
+ga:
+  cxpb: 0.75
+  mutpb: 0.25
+  elite_preservation: true
+  elite_size: 0.1
+  use_adaptive_probabilities: true
+  use_constraint_guided_mutation: true
+  population_strategy: hybrid
+  validate_population_integrity: false
+
+# Hard Constraints
+hard_constraints:
+  student_group_exclusivity:
+    enabled: true
+    weight: 3.0
+  instructor_exclusivity:
+    enabled: true
+    weight: 3.0
+  instructor_qualifications:
+    enabled: true
+    weight: 3.0
+  instructor_time_availability:
+    enabled: true
+    weight: 3.0
+  room_suitability:
+    enabled: true
+    weight: 2.5
+  room_exclusivity:
+    enabled: true
+    weight: 3.0
+  room_time_availability:
+    enabled: true
+    weight: 2.5
+  course_completeness:
+    enabled: true
+    weight: 2.0
+
+# Soft Constraints
+soft_constraints:
+  student_schedule_compactness:
+    enabled: true
+    weight: 1.5
+    gap_penalty_per_quantum: 2
+  instructor_schedule_compactness:
+    enabled: true
+    weight: 1.0
+    gap_penalty_per_quantum: 1
+  student_lunch_break:
+    enabled: true
+    weight: 1.2
+    distance_penalty_per_quantum: 2
+  session_continuity:
+    enabled: true
+    weight: 2.0
+  soft_weight_factor: 0.01
+
+# IGLS Repair System (common settings)
+repair:
+  enabled: true
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false
+  elite_percentage: 0.05
+  memetic_iterations: 1
+
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: false
+    periodic_trigger:
+      enabled: false
+
+  stagnation_repair:
+    enabled: true
+    patience: 8
+    min_generation: 12
+    population_coverage: 0.4
+    max_iterations: 15
+    timeout_seconds: 120
+    cooldown: 5
+
+  selective_repair:
+    enabled: true
+    apply_probability: 0.4
+    apply_after_mutation: true
+    apply_after_crossover: true
+    detection_strategy: hybrid
+
+# LNS-IGLS Configuration
+lns:
+  enabled: false
+  trigger_interval: 50
+  stagnation_threshold: 10
+  force_trigger_generations: [] # Force trigger on specific gens (e.g., [6, 50] for testing)
+  trigger_before_igls: false # Run LNS before exhaustive search
+  max_subproblem_size: 20
+  min_subproblem_size: 4
+  expand_neighborhood_hops: 0 # Expand conflict graph (0=disabled)
+  igls_max_iterations: 500
+  igls_time_limit: 5.0
+  apply_to_best_n: 1
+  enable_diagnostics: true # Log subproblem details
+
+# Enhancements (all disabled)
+enhancements:
+  master_enabled: false
+  memetic_mode: false
+  increased_population: false
+  frequent_repair: false
+  hypermutation:
+    enabled: false
+    trigger_on_stagnation: false
+    stagnation_window: 10
+    duration_generations: 1
+    mutation_rate: 0.5
+  constraint_priorities:
+    enabled: false
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  greedy_initialization_percent: 0.0
+  population_restart:
+    enabled: false
+    trigger_stagnation_gens: 50
+    restart_percentage: 0.3
+    min_interval_gens: 100
+  violation_heatmap:
+    enabled: false
+    target_hot_genes: false
+    top_n_hotspots: 5
+    persistence_file: "violation_heatmap.json"
+  multi_neighborhood:
+    enabled: false
+    max_combinations: 10
+    fallback_to_single: true
+
+# Heuristic Toolbox (Phase 1.5)
+heuristics:
+  # Construction heuristics - build schedules greedily
+  construction:
+    largest_degree_first:
+      enabled: true # Graph coloring heuristic - schedule most conflicting courses first
+      priority: 1
+    most_constrained_first:
+      enabled: true # MRV heuristic - schedule sessions with fewest options first
+      priority: 2
+    earliest_deadline_first:
+      enabled: true # Priority scheduling - courses with more sessions/week first
+      priority: 3
+
+  # Perturbation heuristics - shake solutions to escape local optima
+  perturbation:
+    random_swap:
+      enabled: true
+      priority: 1
+      swap_type: time # Options: time, room, both
+      num_swaps: 1
+    temporal_shift:
+      enabled: true
+      priority: 2
+      delta: null # null = random, or specify fixed shift
+      probability: 0.3
+    room_shuffle:
+      enabled: true
+      priority: 3
+      probability: 0.2
+    instructor_reassign:
+      enabled: true
+      priority: 4
+      probability: 0.15
+      prefer_available: true
+    multi_perturbation:
+      enabled: true # Enable for aggressive diversification in RL
+      priority: 5
+
+  # Improvement heuristics - local search for refinement
+  improvement:
+    kempe_chain:
+      enabled: true
+      priority: 1
+      max_iterations: 5
+    ejection_chain:
+      enabled: true
+      priority: 2
+      max_chain_length: 5
+      max_iterations: 3
+    variable_depth_search:
+      enabled: true # Enable for production RL training
+      priority: 3
+      max_depth: 3
+      max_iterations: 5
+
+  # Diversity heuristics - maintain population diversity
+  diversity:
+    distance_preserving_crossover:
+      enabled: true # Fixed: QuantumTimeSystem API updated
+      priority: 1
+      preserve_distance: 0.7
+    crowding_mutation:
+      enabled: true # Fixed: QuantumTimeSystem API + safe course lookups with .get()
+      priority: 2
+      intensity: 0.3
+    niching_selection:
+      enabled: true # Fixed: Individual-level operation for RL compatibility
+      priority: 3
+      niche_radius: 0.3
+      select_count: 10
+    adaptive_diversity_maintenance:
+      enabled: true # Fixed: QuantumTimeSystem API + individual-level operation
+      priority: 4
+      diversity_threshold: 0.2
+
+  # Meta-heuristics - high-level search strategies
+  meta:
+    variable_neighborhood_descent:
+      enabled: true # Systematic neighborhood exploration for local optimization
+      priority: 1
+      max_neighborhoods: 3
+      max_iterations: 5
+    iterated_local_search:
+      enabled: true # Perturbation + local search cycles for global search
+      priority: 2
+      num_iterations: 5
+      perturbation_strength: 0.3
+    adaptive_large_neighborhood:
+      enabled: true # Dynamic destroy-repair patterns for diversification
+      priority: 3
+      num_iterations: 10
+      initial_destroy_rate: 0.3
+    guided_local_search:
+      enabled: true # Penalty-based guidance to escape local optima
+      priority: 4
+      num_iterations: 10
+      penalty_factor: 0.1

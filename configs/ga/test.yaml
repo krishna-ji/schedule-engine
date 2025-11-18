@@ -1,0 +1,30 @@
+# ============================================================================
+# TEST GA CONFIGURATION
+# ============================================================================
+# Test overrides for GA settings (smoke test).
+
+# GA Settings - TEST: Minimal for quick validation
+ga:
+  ngen: 30
+  pop_size: 10
+
+# IGLS Exhaustive Search - Minimal triggers
+repair:
+  exhaustive_search:
+    enabled: true
+    generations: [3, 25]
+    population_coverage: 0.3 # Top 30% (3 individuals)
+    max_neighborhood_size: 80
+    timeout_seconds: 120
+
+  stagnation_repair:
+    patience: 8
+    min_generation: 12
+    population_coverage: 0.5
+    max_iterations: 10
+    timeout_seconds: 60
+    cooldown: 5
+
+  selective_repair:
+    apply_probability: 0.4
+    apply_after_crossover: true

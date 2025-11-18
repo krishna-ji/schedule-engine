@@ -1,0 +1,16 @@
+# ============================================================================
+# PROD RL CONFIGURATION
+# ============================================================================
+# Production overrides for RL settings.
+
+# RL Integration - Production settings
+rl:
+  # Enable RL in production after model is trained and validated
+  enabled: false # Set to true after Phase 2 execution complete
+  
+  # Use inference mode in production
+  mode: inference # inference mode for production deployment
+  
+  # Training configuration for production-level training
+  training:
+    total_timesteps: 300000 # Full production training (24-48h)

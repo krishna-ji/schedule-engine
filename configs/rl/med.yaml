@@ -1,0 +1,15 @@
+# ============================================================================
+# MED RL CONFIGURATION
+# ============================================================================
+# Medium run overrides for RL settings.
+
+# RL Integration - Medium settings
+rl:
+  # Disabled by default
+  enabled: false
+  
+  # Training configuration for balanced runs
+  training:
+    total_timesteps: 100000 # Medium training (8-16h)
+    checkpoint_interval: 10000
+    evaluation_interval: 5000

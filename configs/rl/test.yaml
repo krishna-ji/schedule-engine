@@ -1,0 +1,15 @@
+# ============================================================================
+# TEST RL CONFIGURATION
+# ============================================================================
+# Test overrides for RL settings (smoke test).
+
+# RL Integration - Test settings
+rl:
+  # Disabled for smoke tests
+  enabled: false
+  
+  # Training configuration for quick validation
+  training:
+    total_timesteps: 10000 # Quick smoke test (1-2h)
+    checkpoint_interval: 2000
+    evaluation_interval: 1000
