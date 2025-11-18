@@ -322,6 +322,16 @@ def get_heuristic_statistics_template() -> Dict[str, int]:
     return stats
 
 
+def get_registry() -> Dict[str, HeuristicMetadata]:
+    """
+    Public accessor for all heuristics registry.
+    
+    Returns:
+        Dict mapping heuristic names to metadata
+    """
+    return get_all_heuristics()
+
+
 if __name__ == "__main__":
     """Quick test of the heuristic registry."""
     from rich.console import Console
