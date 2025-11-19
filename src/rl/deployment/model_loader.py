@@ -298,11 +298,11 @@ class ModelLoader:
 
         if results["mean_ms"] > 100:
             logger.warning(
-                f"⚠ Mean load time {results['mean_ms']:.2f}ms exceeds target (100ms)"
+                f"[WARNING] Mean load time {results['mean_ms']:.2f}ms exceeds target (100ms)"
             )
         else:
             logger.info(
-                f"✓ Mean load time {results['mean_ms']:.2f}ms within target (<100ms)"
+                f"[OK] Mean load time {results['mean_ms']:.2f}ms within target (<100ms)"
             )
 
         return results

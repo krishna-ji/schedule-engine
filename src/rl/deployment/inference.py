@@ -274,11 +274,11 @@ class RLInference:
         # Check target
         if results["median_ms"] > 10.0:
             logger.warning(
-                f"⚠ Median latency {results['median_ms']:.2f}ms exceeds target (10ms)"
+                f"[WARNING] Median latency {results['median_ms']:.2f}ms exceeds target (10ms)"
             )
         else:
             logger.info(
-                f"✓ Median latency {results['median_ms']:.2f}ms within target (<10ms)"
+                f"[OK] Median latency {results['median_ms']:.2f}ms within target (<10ms)"
             )
 
         return results

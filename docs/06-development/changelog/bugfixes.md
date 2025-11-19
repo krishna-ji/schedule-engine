@@ -18,6 +18,25 @@ This file tracks bug fixes in the schedule engine codebase.
 
 **Result:** `uv sync` now resolves successfully and installs `torch==2.4.1+cu121` with CUDA support.
 
+## [2025-11-19] Fixed Unicode encoding errors in Windows logging
+
+**Issue:** Training failed with `UnicodeEncodeError: 'charmap' codec can't encode character '\u2713'` on Windows. Unicode checkmarks (✓), warnings (⚠), and other symbols in log messages couldn't be encoded using Windows' default `cp1252` encoding.
+
+**Root Cause:** Python logging on Windows uses the system's default encoding (`cp1252`), which doesn't support Unicode characters like ✓ (U+2713), ✗ (U+2717), ⚠ (U+26A0). These characters were used throughout the codebase for "pretty" console output, but they cause crashes when logging to stdout/stderr on Windows.
+
+**Fix:** Replaced all Unicode symbols in logging output with ASCII-safe alternatives:
+- `✓` → `[OK]`
+- `✗` → `[OFF]`
+- `⚠` → `[WARNING]`
+
+**Files Modified:**
+- `src/rl/training/train_script.py` - 3 checkmarks replaced
+- `src/rl/deployment/model_loader.py` - Checkmark and warning replaced
+- `src/rl/deployment/inference.py` - Checkmark and warning replaced
+- `src/rl/gym_env/action_space.py` - Checkmark/X in action descriptions replaced
+
+**Result:** Training now runs on Windows without encoding errors. Unicode symbols in docstrings/comments (→, etc.) are fine since they're not sent to loggers.
+
 ## [2025-11-19] Fixed duplicate 'device' parameter in RL agent creation
 
 **Issue:** RL training failed with `TypeError: PPO() got multiple values for keyword argument 'device'` when creating agents.

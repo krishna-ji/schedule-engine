@@ -272,7 +272,7 @@ class ActionMapper:
         """Get human-readable description of action space."""
         lines = [f"Action Space: {self.n_actions} actions\n"]
         for action in self.actions:
-            status = "✓" if action.enabled else "✗"
+            status = "[ON]" if action.enabled else "[OFF]"
             lines.append(
                 f"  [{action.action_id:2d}] {status} {action.name:30s} ({action.category})"
             )

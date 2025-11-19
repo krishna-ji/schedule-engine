@@ -310,7 +310,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     else:
         vec_env = DummyVecEnv(env_fns)
 
-    logger.info(f"✓ Parallel environments ready ({n_envs} workers)")
+    logger.info(f"[OK] Parallel environments ready ({n_envs} workers)")
     return vec_env
 
 
@@ -426,7 +426,7 @@ def main() -> None:
                 args, context, n_envs=args.n_envs, use_subproc=args.use_subproc
             )
             logger.info(
-                f"✓ Using {args.n_envs} parallel environments for {args.n_envs}x speedup"
+                f"[OK] Using {args.n_envs} parallel environments for {args.n_envs}x speedup"
             )
         else:
             env = create_environment(args, context)
@@ -547,7 +547,7 @@ def main() -> None:
             },
         )
 
-        logger.info("\n✓ Model saved to: %s", model_path)
+        logger.info("\n[OK] Model saved to: %s", model_path)
 
         stats = trainer.get_training_statistics()
         logger.info("\n" + "=" * 60)
