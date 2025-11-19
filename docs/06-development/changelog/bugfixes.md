@@ -2,6 +2,36 @@
 
 This file tracks bug fixes in the schedule engine codebase.
 
+## [2025-11-19] Fixed UV dependency resolution for PyTorch CUDA builds
+
+**Issue:** `uv sync` failed with "No solution found when resolving dependencies" for `torch==2.4.1+cu121`. The `+cu121` suffix indicates a CUDA-specific build from PyTorch's custom wheel repository, which UV couldn't locate using the default PyPI index.
+
+**Root Cause:** PyTorch CUDA builds (e.g., `2.4.1+cu121`) are hosted on a separate index at `https://download.pytorch.org/whl/cu121`, not on the main PyPI repository. UV requires explicit index configuration to find these wheels.
+
+**Fix:** Added PyTorch CUDA index configuration to `pyproject.toml`:
+- Added `[[tool.uv.index]]` for `pytorch-cu121` pointing to PyTorch's CUDA 12.1 repository
+- Set `index-strategy = "unsafe-best-match"` to allow fallback to PyPI for non-PyTorch packages
+- Configured `[tool.uv.sources]` to map `torch` and `torchvision` to the custom index
+
+**Files Modified:**
+- `pyproject.toml` - Added UV index configuration for PyTorch CUDA wheels
+
+**Result:** `uv sync` now resolves successfully and installs `torch==2.4.1+cu121` with CUDA support.
+
+## [2025-11-19] Fixed double-wrapping of vectorized environments in RL training
+
+**Issue:** RL training failed with `ValueError: The environment is of type SubprocVecEnv, not a Gymnasium environment` when using parallel environments (`n_envs > 1`).
+
+**Root Cause:** The `train_script.py` creates vectorized environments (`SubprocVecEnv` or `DummyVecEnv`) for parallel training, then passes them to `create_ppo_agent()` and `create_dqn_agent()`. However, these agent creation functions unconditionally wrapped the environment in `DummyVecEnv([lambda: env])`, causing double-wrapping. Stable-Baselines3 requires environments to be vectorized, but wrapping a `VecEnv` in another `VecEnv` is invalid.
+
+**Fix:** Added `isinstance(env, VecEnv)` checks in both `create_ppo_agent()` and `create_dqn_agent()` functions to detect already-vectorized environments and skip the wrapping step. This allows both single environments (wrapped automatically) and pre-vectorized environments (passed through) to work correctly.
+
+**Files Modified:**
+- `src/rl/agents/ppo_agent.py` - Added VecEnv import and isinstance check before wrapping (both in `create_ppo_agent()` and `load_ppo_agent()`)
+- `src/rl/agents/dqn_agent.py` - Added VecEnv import and isinstance check before wrapping (both in `create_dqn_agent()` and `load_dqn_agent()`)
+
+**Result:** Training now works with both single and parallel environments (`--n-envs 1` or `--n-envs 4+`).
+
 ## [2025-01-18] Fixed hypervolume calculation returning 0 - DEAP function misuse
 
 **Issue:** Hypervolume indicator always returned 0 for all GA runs, making Pareto front quality assessment impossible.

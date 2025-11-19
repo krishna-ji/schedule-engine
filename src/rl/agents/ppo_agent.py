@@ -6,7 +6,7 @@ Provides pre-configured PPO agent for heuristic selection.
 
 from typing import Optional, Dict, Any
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 import gymnasium as gym
 
 from src.config import get_config
@@ -50,8 +50,11 @@ def create_ppo_agent(
     n_epochs = n_epochs or ppo_config.n_epochs
     gamma = gamma or ppo_config.gamma
 
-    # Wrap environment in DummyVecEnv (required by SB3)
-    vec_env = DummyVecEnv([lambda: env])
+    # Wrap environment in DummyVecEnv if not already vectorized (required by SB3)
+    if isinstance(env, VecEnv):
+        vec_env = env
+    else:
+        vec_env = DummyVecEnv([lambda: env])
 
     # Create PPO agent
     model = PPO(
@@ -93,7 +96,11 @@ def load_ppo_agent(
         Loaded PPO agent
     """
     if env is not None:
-        vec_env = DummyVecEnv([lambda: env])
+        # Wrap environment if not already vectorized
+        if isinstance(env, VecEnv):
+            vec_env = env
+        else:
+            vec_env = DummyVecEnv([lambda: env])
         model = PPO.load(model_path, env=vec_env, device=device)
     else:
         model = PPO.load(model_path, device=device)
