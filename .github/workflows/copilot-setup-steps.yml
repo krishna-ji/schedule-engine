@@ -3,76 +3,76 @@ name: "Copilot Setup Steps"
 # Automatically run the setup steps when they are changed to allow for easy validation, and
 # allow manual testing through the repository's "Actions" tab
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - .github/workflows/copilot-setup-steps.yml
-  pull_request:
-    paths:
-      - .github/workflows/copilot-setup-steps.yml
+    workflow_dispatch:
+    push:
+        paths:
+            - .github/workflows/copilot-setup-steps.yml
+    pull_request:
+        paths:
+            - .github/workflows/copilot-setup-steps.yml
 
 jobs:
-  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
-  copilot-setup-steps:
-    runs-on: ubuntu-latest
+    # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+    copilot-setup-steps:
+        runs-on: ubuntu-latest
 
-    # Set the permissions to the lowest permissions possible needed for your steps.
-    # Copilot will be given its own token for its operations.
-    permissions:
-      contents: read  # for actions/checkout
+        # Set the permissions to the lowest permissions possible needed for your steps.
+        # Copilot will be given its own token for its operations.
+        permissions:
+            contents: read # for actions/checkout
 
-    # You can define any steps you want, and they will run before the agent starts.
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+        # You can define any steps you want, and they will run before the agent starts.
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
 
-      - name: Install UV package manager
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            - name: Install UV package manager
+              run: |
+                  curl -LsSf https://astral.sh/uv/install.sh | sh
+                  echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Create virtual environment and install dependencies
-        run: |
-          uv venv .venv
-          uv sync --frozen
-        env:
-          # Install PyTorch with CUDA support (for GPU-accelerated fitness evaluation)
-          PYTORCH_INDEX_URL: https://download.pytorch.org/whl/cu121
+            - name: Create virtual environment and install dependencies
+              run: |
+                  uv venv .venv
+                  uv sync --frozen
+              env:
+                  # Install PyTorch with CUDA support (for GPU-accelerated fitness evaluation)
+                  PYTORCH_INDEX_URL: https://download.pytorch.org/whl/cu121
 
-      - name: Verify installation
-        run: |
-          source .venv/bin/activate
-          python -c "import deap; print(f'DEAP: {deap.__version__}')"
-          python -c "import pydantic; print(f'Pydantic: {pydantic.__version__}')"
-          python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-          python -c "import gymnasium; print(f'Gymnasium: {gymnasium.__version__}')"
-          python -c "import stable_baselines3; print(f'SB3: {stable_baselines3.__version__}')"
+            - name: Verify installation
+              run: |
+                  source .venv/bin/activate
+                  python -c "import deap; print(f'DEAP: {deap.__version__}')"
+                  python -c "import pydantic; print(f'Pydantic: {pydantic.__version__}')"
+                  python -c "import torch; print(f'PyTorch: {torch.__version__}')"
+                  python -c "import gymnasium; print(f'Gymnasium: {gymnasium.__version__}')"
+                  python -c "import stable_baselines3; print(f'SB3: {stable_baselines3.__version__}')"
 
-      - name: Verify project structure
-        run: |
-          test -f main.py || (echo "main.py not found"; exit 1)
-          test -d src || (echo "src/ directory not found"; exit 1)
-          test -d configs || (echo "configs/ directory not found"; exit 1)
-          test -d data || (echo "data/ directory not found"; exit 1)
-          test -f pyproject.toml || (echo "pyproject.toml not found"; exit 1)
+            - name: Verify project structure
+              run: |
+                  test -f main.py || (echo "main.py not found"; exit 1)
+                  test -d src || (echo "src/ directory not found"; exit 1)
+                  test -d configs || (echo "configs/ directory not found"; exit 1)
+                  test -d data || (echo "data/ directory not found"; exit 1)
+                  test -f pyproject.toml || (echo "pyproject.toml not found"; exit 1)
 
-      - name: Run quick syntax check
-        run: |
-          source .venv/bin/activate
-          python -m py_compile main.py
-          python -m py_compile src/**/*.py
+            - name: Run quick syntax check
+              run: |
+                  source .venv/bin/activate
+                  python -m py_compile main.py
+                  python -m py_compile src/**/*.py
 
-      - name: Cache UV dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/uv
-            .venv
-          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
+            - name: Cache UV dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cache/uv
+                      .venv
+                  key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-uv-
