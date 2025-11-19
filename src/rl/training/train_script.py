@@ -227,16 +227,15 @@ def create_environment(args, context):
 
     from src.ga.evaluator.fitness import evaluate as evaluate_fitness
     from src.ga.population import generate_course_group_aware_population
-    import multiprocessing
 
-    # Detect if we're inside a daemon process (SubprocVecEnv worker)
-    # Daemon processes cannot spawn child processes - use sequential
-    is_daemon = multiprocessing.current_process().daemon
-
+    # CRITICAL: Inside SubprocVecEnv worker processes, we CANNOT use nested multiprocessing
+    # This function runs inside each of the 16 parallel RL environments (daemon processes)
+    # Daemon processes cannot spawn child processes in Python
+    # Solution: Always use sequential population generation in RL training
     initial_population = generate_course_group_aware_population(
         n=args.population_size,
         context=context,
-        parallel=not is_daemon,  # Only parallelize if NOT in daemon process
+        parallel=False,  # MUST be False - we're already inside 16 parallel processes
     )
 
     for individual in initial_population:
