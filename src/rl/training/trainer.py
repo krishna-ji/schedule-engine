@@ -30,6 +30,32 @@ from src.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
+class RolloutProgressCallback(BaseCallback):
+    """Logs collected timesteps during training to avoid silent rollouts."""
+
+    def __init__(self, log_interval_steps: int, total_timesteps: int) -> None:
+        super().__init__()
+        self.log_interval_steps = max(1, log_interval_steps)
+        self.total_timesteps = total_timesteps
+        self._last_logged = 0
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps - self._last_logged >= self.log_interval_steps:
+            pct = (
+                (self.num_timesteps / self.total_timesteps) * 100
+                if self.total_timesteps
+                else 0.0
+            )
+            logger.info(
+                "Rollout progress: %s/%s env steps (%.1f%%)",
+                f"{self.num_timesteps:,}",
+                f"{self.total_timesteps:,}" if self.total_timesteps else "?",
+                pct,
+            )
+            self._last_logged = self.num_timesteps
+        return True
+
+
 class RLTrainer:
     """
     Trains RL agent to select heuristics for GA scheduler.
@@ -53,6 +79,7 @@ class RLTrainer:
         n_envs: int = 1,
         use_subproc: bool = False,
         device: str = "auto",
+        debug_logging: bool = False,
         **agent_kwargs,
     ):
         """
@@ -67,6 +94,7 @@ class RLTrainer:
             n_envs: Number of parallel environments (1=no parallelization)
             use_subproc: Use SubprocVecEnv for true parallelism (recommended for CPU-heavy)
             device: PyTorch device ("auto", "cuda", "cpu")
+            debug_logging: Enable detailed progress logging
             **agent_kwargs: Additional agent-specific arguments
         """
         self.env = env
@@ -74,6 +102,7 @@ class RLTrainer:
         self.verbose = verbose
         self.n_envs = n_envs
         self.use_subproc = use_subproc
+        self.debug_logging = debug_logging
 
         # Determine device
         if device == "auto":
@@ -142,6 +171,15 @@ class RLTrainer:
         else:
             raise ValueError(f"Unknown agent type: {self.agent_type}")
 
+        if self.debug_logging and self.agent_type == "ppo":
+            rollout_steps = getattr(agent, "n_steps", 0)
+            total_steps = rollout_steps * max(1, self.n_envs)
+            logger.info(
+                "PPO rollout size: %s steps/env (total %s per update)",
+                rollout_steps,
+                total_steps,
+            )
+
         logger.info(f"Created {self.agent_type.upper()} agent")
         return agent
 
@@ -169,6 +207,19 @@ class RLTrainer:
         # Create agent if not exists
         if self.agent is None:
             self.agent = self.create_agent()
+
+        # Inject rollout progress callback if debug logging requested
+        if self.debug_logging:
+            if callbacks is None:
+                callbacks = []
+            callbacks = list(callbacks)
+            log_interval = getattr(self.agent, "n_steps", 2048)
+            callbacks.append(
+                RolloutProgressCallback(
+                    log_interval_steps=max(1, log_interval // 4),
+                    total_timesteps=total_timesteps,
+                )
+            )
 
         # Set up callbacks
         callback_list = CallbackList(callbacks) if callbacks else None

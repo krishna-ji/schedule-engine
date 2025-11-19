@@ -120,6 +120,22 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--debug-logging",
+        dest="debug_logging",
+        action="store_true",
+        default=None,
+        help="Enable verbose environment/debug logging",
+    )
+
+    parser.add_argument(
+        "--debug-log-interval",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Minimum step interval between debug log entries when enabled",
+    )
+
+    parser.add_argument(
         "--seed",
         type=int,
         default=None,
@@ -199,6 +215,11 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
     args.verbose = pick("verbose", 1)
     args.save_prefix = profile.get("save_prefix", "rl_agent")
     args.seed = pick("seed")
+    args.debug_logging = pick("debug_logging", False)
+    args.debug_log_interval = pick("debug_log_interval", 25)
+    if args.debug_log_interval is None:
+        args.debug_log_interval = 25
+    args.debug_log_interval = max(1, int(args.debug_log_interval))
     args.no_eval = getattr(args, "no_eval", False) or not profile.get(
         "enable_eval", True
     )
@@ -220,7 +241,7 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
     args.device = profile.get("device", "auto")
 
 
-def create_environment(args, context):
+def create_environment(args, context, env_rank: int = 0):
     """Create RL environment for training."""
 
     logger.info("Creating RL environment...")
@@ -255,6 +276,9 @@ def create_environment(args, context):
         context=context,
         max_generations=args.max_generations,
         max_steps_per_episode=args.max_steps,
+        debug_logging=args.debug_logging,
+        env_rank=env_rank,
+        debug_log_interval=args.debug_log_interval,
     )
 
     if args.seed is not None:
@@ -294,7 +318,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
         """Create a single environment with unique seed."""
 
         def _init():
-            env = create_environment(args, context)
+            env = create_environment(args, context, env_rank=rank)
             if args.seed is not None:
                 env.reset(seed=args.seed + rank)
             return env
@@ -385,6 +409,12 @@ def main() -> None:
         random.seed(args.seed)
         np.random.seed(args.seed)
 
+    if args.debug_logging:
+        logger.info(
+            "Debug logging ENABLED: environment steps and rollout progress will be logged every %s steps.",
+            args.debug_log_interval,
+        )
+
     logger.info("=" * 60)
     logger.info("RL AGENT TRAINING")
     logger.info("=" * 60)
@@ -446,6 +476,7 @@ def main() -> None:
             n_envs=args.n_envs,
             use_subproc=args.use_subproc,
             device=args.device,
+            debug_logging=args.debug_logging,
         )
 
         # Start TensorBoard in background

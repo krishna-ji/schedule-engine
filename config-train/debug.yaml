@@ -1,0 +1,22 @@
+# ============================================================================
+# DEBUG PROFILE: Single-env CPU smoke test
+# ----------------------------------------------------------------------------
+# Minimal settings to reproduce RL training issues quickly.
+# Limits timesteps and disables parallel envs/SubprocVecEnv for easy debugging.
+# ============================================================================
+profile: debug
+base_profile: test
+
+timesteps: 200
+max_generations: 10
+max_steps: 5
+population_size: 8
+seed: 123
+
+parallel:
+  n_envs: 1
+  use_subproc: false
+
+device: cpu
+
+save_prefix: rl_agent_debug

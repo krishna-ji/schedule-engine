@@ -7,6 +7,7 @@ effective heuristics at each step.
 
 import copy
 import logging
+import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
@@ -54,6 +55,9 @@ class ScheduleEnv(gym.Env):
         max_steps_per_episode: int = 20,
         render_mode: Optional[str] = None,
         fast_evaluation: bool = True,
+        debug_logging: bool = False,
+        env_rank: int = 0,
+        debug_log_interval: int = 25,
     ):
         """
         Initialize RL environment.
@@ -65,6 +69,9 @@ class ScheduleEnv(gym.Env):
             max_steps_per_episode: Maximum RL steps per episode (default: 20 for speed)
             render_mode: Rendering mode ("human", "ansi", None)
             fast_evaluation: Use cached fitness when possible (10x faster)
+            debug_logging: Enable verbose instrumentation output
+            env_rank: Environment index when running in parallel
+            debug_log_interval: Step interval between debug log entries
         """
         super().__init__()
 
@@ -73,6 +80,9 @@ class ScheduleEnv(gym.Env):
         self.max_steps_per_episode = max_steps_per_episode
         self.render_mode = render_mode
         self.fast_evaluation = fast_evaluation
+        self.debug_logging = debug_logging
+        self.env_rank = env_rank
+        self.debug_log_interval = max(1, debug_log_interval)
 
         # Initialize components
         self.state_encoder = StateEncoder(
@@ -103,6 +113,14 @@ class ScheduleEnv(gym.Env):
         # Render buffer
         self.render_buffer: List[str] = []
         self._fitness_evaluator: Optional[Callable] = None
+        self._last_debug_step = -1
+
+        self._debug_log(
+            "Environment initialized (population=%s, max_steps=%s, max_generations=%s)",
+            len(self.population),
+            self.max_steps_per_episode,
+            self.max_generations,
+        )
 
     def reset(
         self,
@@ -119,6 +137,8 @@ class ScheduleEnv(gym.Env):
         Returns:
             (initial_observation, info)
         """
+        reset_start = time.perf_counter()
+
         super().reset(seed=seed)
 
         # Reset episode counters
@@ -128,6 +148,7 @@ class ScheduleEnv(gym.Env):
         self.best_fitness_ever = float("inf")
         self.episode_heuristic_counts = {}
         self.render_buffer = []
+        self._last_debug_step = -1
 
         # Reset components
         self.state_encoder.reset()
@@ -146,6 +167,14 @@ class ScheduleEnv(gym.Env):
 
         info = self._get_info()
 
+        duration_ms = (time.perf_counter() - reset_start) * 1000
+        self._debug_log(
+            "Environment reset complete (seed=%s, pop=%s, duration=%.2f ms)",
+            seed,
+            len(self.population),
+            duration_ms,
+        )
+
         return observation, info
 
     def step(
@@ -160,17 +189,35 @@ class ScheduleEnv(gym.Env):
         Returns:
             (observation, reward, terminated, truncated, info)
         """
+        step_start = time.perf_counter()
+
         # Convert numpy array to int (SB3 returns actions as arrays)
         if isinstance(action, np.ndarray):
             action = int(action.item())
 
         # Validate action
         if not self.action_mapper.is_valid_action(action):
+            self._debug_log(
+                "Invalid action %s received; applying penalty (population=%s)",
+                action,
+                len(self.population),
+            )
             # Invalid action - penalize and return
             obs = self.state_encoder.encode(
                 self.population,
                 self.current_generation,
                 self.generations_without_improvement,
+            )
+            self._maybe_log_step_summary(
+                action_label=f"invalid_{action}",
+                reward=-0.1,
+                success=False,
+                population_diversity=self.state_encoder._calculate_diversity(
+                    self.population
+                ),
+                duration_ms=(time.perf_counter() - step_start) * 1000,
+                improvement_note="",
+                force=True,
             )
             return obs, -0.1, False, False, {"error": "invalid_action"}
 
@@ -188,9 +235,16 @@ class ScheduleEnv(gym.Env):
         prev_individual = self._clone_individual(best_individual)
         working_individual = self._clone_individual(best_individual)
 
-        logger.debug(
-            f"Step {self.current_step}: Action={action_label} ({action}), "
-            f"Gen={self.current_generation}, Prev_Fitness={prev_fitness}"
+        prev_hard = prev_fitness[0] if len(prev_fitness) > 0 else float("inf")
+        prev_soft = prev_fitness[1] if len(prev_fitness) > 1 else 0.0
+
+        self._debug_log(
+            "Selected action=%s (%s); generation=%s, prev_fitness=(%.2f, %.2f)",
+            action_label,
+            action,
+            self.current_generation,
+            prev_hard,
+            prev_soft,
         )
 
         modified_individual, success = self.action_mapper.apply_action(
@@ -201,7 +255,7 @@ class ScheduleEnv(gym.Env):
             generation=self.current_generation,
         )
 
-        logger.debug(f"Action {action_label} success={success}")
+        self._debug_log("Action %s success=%s", action_label, success)
 
         candidate = (
             modified_individual
@@ -252,9 +306,16 @@ class ScheduleEnv(gym.Env):
         else:
             self.generations_without_improvement += 1
 
-        logger.debug(
-            f"Result: Reward={reward:.4f}, BestFit={current_best_fitness:.2f}, "
-            f"Diversity={population_diversity:.4f}, Stagnation={self.generations_without_improvement} {improvement}"
+        duration_ms = (time.perf_counter() - step_start) * 1000
+
+        self._maybe_log_step_summary(
+            action_label=action_label,
+            reward=reward,
+            success=success,
+            population_diversity=population_diversity,
+            duration_ms=duration_ms,
+            improvement_note=improvement,
+            force=bool(improvement),
         )
 
         self.current_generation += 1
@@ -305,6 +366,56 @@ class ScheduleEnv(gym.Env):
             "heuristic_counts": self.episode_heuristic_counts.copy(),
             "population_size": len(self.population),
         }
+
+    def _debug_log(self, message: str, *args: Any) -> None:
+        """Emit prefixed debug logs when instrumentation is enabled."""
+
+        if not self.debug_logging:
+            return
+
+        logger.info(
+            "[env=%s gen=%s step=%s] " + message,
+            self.env_rank,
+            self.current_generation,
+            self.current_step,
+            *args,
+        )
+
+    def _maybe_log_step_summary(
+        self,
+        *,
+        action_label: str,
+        reward: float,
+        success: bool,
+        population_diversity: float,
+        duration_ms: float,
+        improvement_note: str,
+        force: bool = False,
+    ) -> None:
+        """Log periodic step summaries to avoid overwhelming the console."""
+
+        if not self.debug_logging:
+            return
+
+        if (
+            not force
+            and self.current_step - self._last_debug_step < self.debug_log_interval
+        ):
+            return
+
+        self._last_debug_step = self.current_step
+        self._debug_log(
+            "Step summary: action=%s reward=%.4f success=%s best=%.2f diversity=%.4f "
+            "stagnation=%s duration=%.2f ms %s",
+            action_label,
+            reward,
+            success,
+            self._get_best_fitness(),
+            population_diversity,
+            self.generations_without_improvement,
+            duration_ms,
+            improvement_note,
+        )
 
     def render(self) -> Optional[str]:
         """Render environment state."""
@@ -424,6 +535,9 @@ def create_schedule_env(
     max_steps_per_episode: int = 20,
     render_mode: Optional[str] = None,
     fast_evaluation: bool = True,
+    debug_logging: bool = False,
+    env_rank: int = 0,
+    debug_log_interval: int = 25,
 ) -> ScheduleEnv:
     """
     Factory function to create ScheduleEnv.
@@ -435,6 +549,9 @@ def create_schedule_env(
         max_steps_per_episode: Maximum RL steps (default: 20 for speed)
         render_mode: Rendering mode
         fast_evaluation: Use cached fitness (10x faster)
+        debug_logging: Enable verbose instrumentation output
+        env_rank: Environment index when running in parallel
+        debug_log_interval: Interval between debug log lines
 
     Returns:
         Configured ScheduleEnv instance
@@ -446,4 +563,7 @@ def create_schedule_env(
         max_steps_per_episode=max_steps_per_episode,
         render_mode=render_mode,
         fast_evaluation=fast_evaluation,
+        debug_logging=debug_logging,
+        env_rank=env_rank,
+        debug_log_interval=debug_log_interval,
     )
