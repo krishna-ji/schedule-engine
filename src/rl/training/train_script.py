@@ -227,11 +227,16 @@ def create_environment(args, context):
 
     from src.ga.evaluator.fitness import evaluate as evaluate_fitness
     from src.ga.population import generate_course_group_aware_population
+    import multiprocessing
 
+    # Detect if we're inside a daemon process (SubprocVecEnv worker)
+    # Daemon processes cannot spawn child processes - use sequential
+    is_daemon = multiprocessing.current_process().daemon
+    
     initial_population = generate_course_group_aware_population(
         n=args.population_size,
         context=context,
-        parallel=True,  # Enable parallelization for 3-6x speedup
+        parallel=not is_daemon,  # Only parallelize if NOT in daemon process
     )
 
     for individual in initial_population:
