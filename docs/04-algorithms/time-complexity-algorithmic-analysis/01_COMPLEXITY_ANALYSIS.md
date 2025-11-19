@@ -88,7 +88,7 @@ def decode_individual(
 - 150 sessions: 2-3ms
 - 300 sessions: 5-10ms
 
-**Verdict:** ✅ Not a bottleneck (already optimal)
+**Verdict:**  Not a bottleneck (already optimal)
 
 ---
 
@@ -127,7 +127,7 @@ Where total quanta Q = S × Q_per_session, so approximately **O(S × Q_per_sessi
 - 150 sessions × 4 quanta: ~600 operations → 1-2ms
 - 300 sessions × 5 quanta: ~1500 operations → 3-5ms
 
-**Verdict:** ✅ Optimal algorithm (single pass with hash map)
+**Verdict:**  Optimal algorithm (single pass with hash map)
 
 ---
 
@@ -152,7 +152,7 @@ def instructor_exclusivity(sessions: List[CourseSession]) -> int:
 
 **Complexity:** **O(S × Q_per_session) ≈ O(S × Q)**
 
-**Verdict:** ✅ Optimal algorithm
+**Verdict:**  Optimal algorithm
 
 ---
 
@@ -209,7 +209,7 @@ def room_suitability(sessions: List[CourseSession]) -> int:
 
 **Complexity:** **O(S)** - Simple string comparison per session
 
-**Verdict:** ✅ Optimal
+**Verdict:**  Optimal
 
 ---
 
@@ -238,7 +238,7 @@ def instructor_time_availability(sessions: List[CourseSession]) -> int:
 
 **Current Implementation:** Uses set, so **O(S × Q_per_session) ≈ O(S)**
 
-**Verdict:** ✅ Optimal (uses sets)
+**Verdict:**  Optimal (uses sets)
 
 ---
 
@@ -259,7 +259,7 @@ def room_time_availability(sessions: List[CourseSession]) -> int:
 
 **Complexity:** **O(S × Q_per_session) ≈ O(S)**
 
-**Verdict:** ✅ Optimal
+**Verdict:**  Optimal
 
 ---
 
@@ -305,7 +305,7 @@ Where:
 - G = average groups per course ≈ 2-5
 - S × G ≈ 150 × 2 = 300 for medium dataset
 
-**Verdict:** ✅ Optimal (two-pass algorithm is necessary)
+**Verdict:**  Optimal (two-pass algorithm is necessary)
 
 ---
 
@@ -330,7 +330,7 @@ def room_exclusivity(sessions: List[CourseSession]) -> int:
 
 **Complexity:** **O(S × Q_per_session) ≈ O(S × Q)**
 
-**Verdict:** ✅ Optimal
+**Verdict:**  Optimal
 
 ---
 
@@ -401,7 +401,7 @@ Where:
 
 **Typical values:** O(150 × 4 + 20 × 5 × 10) = O(600 + 1000) = **O(1600) operations**
 
-**Verdict:** ✅ Acceptable (could optimize sorting by using range scan instead)
+**Verdict:**  Acceptable (could optimize sorting by using range scan instead)
 
 ---
 
@@ -417,7 +417,7 @@ def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
 
 Where I = unique instructors ≈ 15-30
 
-**Verdict:** ✅ Acceptable
+**Verdict:**  Acceptable
 
 ---
 
@@ -606,7 +606,7 @@ For population size P:
 
 ## 7. Critical Findings
 
-### 7.1 ✅ What's Working Well
+### 7.1  What's Working Well
 
 1. **Hash-based conflict detection** (O(S × Q)) - optimal
 2. **Single-pass algorithms** - no unnecessary iterations
@@ -629,7 +629,7 @@ For population size P:
 
 **Total potential speedup:** 10-20% (8-17ms per evaluation)
 
-### 7.3 🔴 Primary Bottleneck (NOT in constraints)
+### 7.3  Primary Bottleneck (NOT in constraints)
 
 Based on RL profiling:
 - Constraint evaluation: ~40ms (4%)
@@ -643,9 +643,9 @@ Based on RL profiling:
 
 ### 8.1 Immediate Actions (Low-Hanging Fruit)
 
-1. ✅ **Convert qualification lists to sets** - 1 hour implementation
-2. ✅ **Remove unnecessary sorting** in soft constraints - 2 hours
-3. ✅ **Profile RL environment** to identify real bottleneck - 1 hour
+1.  **Convert qualification lists to sets** - 1 hour implementation
+2.  **Remove unnecessary sorting** in soft constraints - 2 hours
+3.  **Profile RL environment** to identify real bottleneck - 1 hour
 
 **Expected Impact:** 10-15% faster evaluation
 

@@ -195,8 +195,8 @@ repair:
 ### 3. Monitor IGLS Performance
 Watch the logs for:
 ```
-🔥 Gen X: EXHAUSTIVE SEARCH triggered
-   ✅ Exhaustive search complete: N genes improved, total reduction: X, time: Ys
+ Gen X: EXHAUSTIVE SEARCH triggered
+    Exhaustive search complete: N genes improved, total reduction: X, time: Ys
 ```
 
 If timeout occurs frequently, reduce coverage or increase timeout.
@@ -240,9 +240,9 @@ After first production run:
 **Short Answer**: ⚠️ **Not recommended as-is**
 
 **Issues**:
-- ❌ Exhaustive only at gen 3 & 25 (insufficient for 500 gens)
-- ❌ Timeout likely insufficient for 100 pop
-- ❌ No VM-specific tuning
+-  Exhaustive only at gen 3 & 25 (insufficient for 500 gens)
+-  Timeout likely insufficient for 100 pop
+-  No VM-specific tuning
 
 **Next Steps**:
 1. Tell me your VM specs

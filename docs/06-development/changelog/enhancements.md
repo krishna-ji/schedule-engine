@@ -23,10 +23,10 @@ This file tracks **enhancements** to the GA system (new features, performance im
 - `docs/code/ENHANCE.md` - This file
 
 **Key Findings:**
-- **RL Training**: ✅ YES - 3-5× speedup with 1-line config change (`device: cuda`)
-- **Constraint Checking**: ❌ NO - 2.4× slower due to memory transfer overhead
+- **RL Training**:  YES - 3-5× speedup with 1-line config change (`device: cuda`)
+- **Constraint Checking**:  NO - 2.4× slower due to memory transfer overhead
 
-**Implementation**: ✅ **DEPLOYED** - GPU acceleration now enabled by default
+**Implementation**:  **DEPLOYED** - GPU acceleration now enabled by default
 
 **Expected Results**: 22.5 hours → 6 hours for full curriculum training (300K steps)
 
@@ -200,10 +200,10 @@ Evaluating Initial Population...  (no duplicate warnings)
 ```
 
 **Benefits:**
-- ✅ Cleaner console output
-- ✅ No information loss (table already shows all missing courses)
-- ✅ Easier to read evolution progress
-- ✅ Reduced visual clutter
+-  Cleaner console output
+-  No information loss (table already shows all missing courses)
+-  Easier to read evolution progress
+-  Reduced visual clutter
 
 ---
 
@@ -241,12 +241,12 @@ RAM   : ━━━━━━━━━━━━━━━━━━━━ 0.18GB (Pea
 - Zero impact on GA performance (monitoring runs in parallel)
 
 **Benefits:**
-1. ✅ **Real-time visibility** - See resource usage as it happens
-2. ✅ **Process-specific** - Only this Python program, not entire system
-3. ✅ **Per-core detail** - Identify which CPU cores are being used
-4. ✅ **Peak tracking** - Monitor maximum memory consumption
-5. ✅ **Zero overhead** - Background thread doesn't slow down GA
-6. ✅ **Smooth updates** - 2Hz refresh rate (0.5s interval)
+1.  **Real-time visibility** - See resource usage as it happens
+2.  **Process-specific** - Only this Python program, not entire system
+3.  **Per-core detail** - Identify which CPU cores are being used
+4.  **Peak tracking** - Monitor maximum memory consumption
+5.  **Zero overhead** - Background thread doesn't slow down GA
+6.  **Smooth updates** - 2Hz refresh rate (0.5s interval)
 
 **Use Cases:**
 - Identify CPU bottlenecks (which cores are saturated)
@@ -394,13 +394,13 @@ python main.py --env prod
 ```
 
 **Benefits:**
-1. ✅ **1.76x Overall Speedup** - Runtime reduced from ~120s to ~68s
-2. ✅ **4-8x IGLS Speedup** - Biggest bottleneck (30s → 4-7s) dramatically reduced
-3. ✅ **Production-Ready** - Timeout protection, error handling, sequential fallback
-4. ✅ **Zero Config** - Works automatically with existing configurations
-5. ✅ **Backward Compatible** - No breaking changes, can disable per component
-6. ✅ **Windows-Safe** - Uses spawn method for ProcessPoolExecutor
-7. ✅ **Maintainable** - Clear separation of parallel/sequential logic
+1.  **1.76x Overall Speedup** - Runtime reduced from ~120s to ~68s
+2.  **4-8x IGLS Speedup** - Biggest bottleneck (30s → 4-7s) dramatically reduced
+3.  **Production-Ready** - Timeout protection, error handling, sequential fallback
+4.  **Zero Config** - Works automatically with existing configurations
+5.  **Backward Compatible** - No breaking changes, can disable per component
+6.  **Windows-Safe** - Uses spawn method for ProcessPoolExecutor
+7.  **Maintainable** - Clear separation of parallel/sequential logic
 
 **Documentation:**
 - Comprehensive implementation summary: `report/parallelism/IMPLEMENTATION_SUMMARY.md`
@@ -434,7 +434,7 @@ python main.py --env prod
 - Zero breaking changes, full backward compatibility
 - Ready for production deployment after testing
 
-**Status:** ✅ **IMPLEMENTATION COMPLETE** - All 6 priority parallelizations implemented and ready for testing
+**Status:**  **IMPLEMENTATION COMPLETE** - All 6 priority parallelizations implemented and ready for testing
 
 ---
 
@@ -477,13 +477,13 @@ python main.py --env prod
 
 ### Benefits
 
-✅ **10-100x faster installation** - Typical install time: 45s → 5s  
-✅ **No pip dependency** - UV is standalone Rust binary  
-✅ **Better dependency resolution** - Fewer conflicts  
-✅ **Modern Python standard** - pyproject.toml (PEP 621)  
-✅ **Drop-in replacement** - Same commands as pip  
-✅ **Global package cache** - Saves disk space  
-✅ **Production ready** - By Astral (creators of Ruff)  
+ **10-100x faster installation** - Typical install time: 45s → 5s  
+ **No pip dependency** - UV is standalone Rust binary  
+ **Better dependency resolution** - Fewer conflicts  
+ **Modern Python standard** - pyproject.toml (PEP 621)  
+ **Drop-in replacement** - Same commands as pip  
+ **Global package cache** - Saves disk space  
+ **Production ready** - By Astral (creators of Ruff)  
 
 ### Usage
 
@@ -541,12 +541,12 @@ To use pip instead of UV, simply use original scripts:
 ### Testing
 
 Verified on Windows with UV 0.9.3:
-- ✅ pyproject.toml created with all dependencies
-- ✅ setup-uv.ps1 auto-installs UV
-- ✅ setup-uv.sh auto-installs UV
-- ✅ Dependencies install from pyproject.toml
-- ✅ Backward compatibility with pip maintained
-- ✅ Documentation updated
+-  pyproject.toml created with all dependencies
+-  setup-uv.ps1 auto-installs UV
+-  setup-uv.sh auto-installs UV
+-  Dependencies install from pyproject.toml
+-  Backward compatibility with pip maintained
+-  Documentation updated
 
 ### Impact
 
@@ -610,11 +610,11 @@ penalty += gap_penalty  # CONFIG-DRIVEN
 ```
 
 **Benefits:**
-1. ✅ **Single Source of Truth**: `common.yaml` now contains ALL penalty factors (hard + soft)
-2. ✅ **Environment Tuning**: Can override penalties in test/dev/prod configs
-3. ✅ **Experimentation**: Easy to test different penalty values without code changes
-4. ✅ **Documentation**: Penalty values visible in config with inline comments
-5. ✅ **Type Safety**: Pydantic validates penalty values are non-negative integers
+1.  **Single Source of Truth**: `common.yaml` now contains ALL penalty factors (hard + soft)
+2.  **Environment Tuning**: Can override penalties in test/dev/prod configs
+3.  **Experimentation**: Easy to test different penalty values without code changes
+4.  **Documentation**: Penalty values visible in config with inline comments
+5.  **Type Safety**: Pydantic validates penalty values are non-negative integers
 
 **Example Override (prod.yaml):**
 ```yaml
@@ -624,10 +624,10 @@ soft_constraints:
 ```
 
 **Testing:**
-- ✅ Config loads successfully with new fields
-- ✅ Dev config inherits penalty factors from common.yaml
-- ✅ Soft constraint functions import without errors
-- ✅ No compilation errors in models.py or soft.py
+-  Config loads successfully with new fields
+-  Dev config inherits penalty factors from common.yaml
+-  Soft constraint functions import without errors
+-  No compilation errors in models.py or soft.py
 
 **Impact:** Zero behavior change with default values (all penalties = 1). Future tuning now possible via config.
 
@@ -704,12 +704,12 @@ INIT,13748.0,1751.00,306.0,...,0.6440,0.000000,0.000000,0.000000,0.000000,0.021,
 ```
 
 **Benefits:**
-- ✅ Single source of truth for all generation data
-- ✅ Easy to load in pandas: `pd.read_csv('logger_all.csv')`
-- ✅ No redundant CSV files (was ~20 files, now 1)
-- ✅ All metrics aligned by generation (no merge needed)
-- ✅ Crash-safe: flushes after each generation
-- ✅ Excel-friendly: opens directly
+-  Single source of truth for all generation data
+-  Easy to load in pandas: `pd.read_csv('logger_all.csv')`
+-  No redundant CSV files (was ~20 files, now 1)
+-  All metrics aligned by generation (no merge needed)
+-  Crash-safe: flushes after each generation
+-  Excel-friendly: opens directly
 
 **Migration:** 
 - Old: `pd.read_csv('CSVs/convergence_metrics.csv')`
@@ -837,11 +837,11 @@ Environment-specific values override common defaults.
 
 ### Validation
 
-- ✅ Config loading test (common + dev merge)
-- ✅ Config loading test (common + prod overrides)
-- ✅ Config loading test (common + test inheritance)
-- ✅ Block clustering tests (8/8 passed with new system)
-- ✅ Backward compatibility (standalone configs still work)
+-  Config loading test (common + dev merge)
+-  Config loading test (common + prod overrides)
+-  Config loading test (common + test inheritance)
+-  Block clustering tests (8/8 passed with new system)
+-  Backward compatibility (standalone configs still work)
 
 ---
 
@@ -1289,14 +1289,14 @@ python main.py --env dev
 - Minimum 50-gen interval between restarts (prevents thrashing)
 - Use case: Last resort when hypermutation fails, HC > 10 persists
 
-**2. Violation Heatmap** ✅ SAFE - Enabled by default
+**2. Violation Heatmap**  SAFE - Enabled by default
 - Tracks constraint violations per gene (course, type, groups) across generations
 - 6 violation types: availability, overlap, instructor_conflict, room_conflict, qualification, room_type
 - Saves to JSON in output directory: `violation_heatmap.json`
 - Summary table shows top-N hotspots (20 in dev, 30 in prod)
 - Zero performance overhead, high diagnostic value
 
-**3. Multi-Neighborhood Local Search** ✅ SAFE - Enabled by default
+**3. Multi-Neighborhood Local Search**  SAFE - Enabled by default
 - Combined repair moves: time shift + instructor change + room change simultaneously
 - Tests up to 50 combinations (dev) / 100 combinations (prod) per violated gene
 - Fallback to single-neighborhood if combined moves fail

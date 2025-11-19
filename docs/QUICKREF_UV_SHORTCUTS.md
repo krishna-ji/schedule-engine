@@ -2,7 +2,7 @@
 
 Complete list of all UV shortcuts for running schedule-engine commands.
 
-## 🏃 Runtime Modes (Schedule Generation)
+##  Runtime Modes (Schedule Generation)
 
 Run the genetic algorithm with different configurations:
 
@@ -28,7 +28,7 @@ uv run hierarchical      # Mode 9: Hierarchical RL (high-level + low-level polic
 uv run multiagent        # Mode 10: Rank-based multi-agent cooperation
 ```
 
-## 🎓 Training & Model Management
+##  Training & Model Management
 
 RL agent training and deployment:
 
@@ -43,7 +43,7 @@ uv run select-checkpoint    # Analyze training checkpoints, select best model
 uv run promote-model        # Deploy validated model to production
 ```
 
-## 🔍 Diagnostics & Validation
+##  Diagnostics & Validation
 
 System health checks and data validation:
 
@@ -58,7 +58,7 @@ uv run verify-config        # Verify configuration standardization
 uv run verify-enhancements  # Verify Phase 3 enhancements implemented
 ```
 
-## 📊 Benchmarking & Performance
+##  Benchmarking & Performance
 
 Performance measurement and optimization:
 
@@ -92,7 +92,7 @@ uv run git-squash           # Interactive git commit squashing
 uv run refactor-csv         # CSV export refactoring utility
 ```
 
-## 📋 Common Workflows
+##  Common Workflows
 
 ### Quick Smoke Test
 ```bash
@@ -155,24 +155,24 @@ uv run show-soft
 uv run show-time
 ```
 
-## 🎯 Runtime Mode Comparison
+##  Runtime Mode Comparison
 
 Quick reference for choosing the right mode:
 
 | Mode | Name | Speed | Quality | Best For |
 |------|------|-------|---------|----------|
-| 1 | baseline | ⚡⚡⚡⚡⚡ | ⭐⭐ | Quick tests, baseline comparison |
-| 2 | repairs | ⚡⚡⚡⚡ | ⭐⭐⭐ | Feasibility-focused schedules |
-| 3 | heuristics | ⚡⚡⚡ | ⭐⭐⭐⭐ | Balanced quality/speed |
-| 4 | full | ⚡⚡ | ⭐⭐⭐⭐⭐ | Best non-RL quality |
-| 5 | rl | ⚡⚡ | ⭐⭐⭐⭐⭐ | Adaptive heuristic selection |
-| 6 | roundrobin | ⚡⚡⚡ | ⭐⭐⭐⭐ | Deterministic diversity |
-| 7 | specialists | ⚡⚡ | ⭐⭐⭐⭐⭐⭐ | Multi-agent cooperation |
-| 8 | archive | ⚡⚡ | ⭐⭐⭐⭐⭐⭐ | Diversity preservation |
-| 9 | hierarchical | ⚡⚡ | ⭐⭐⭐⭐⭐⭐ | Two-level optimization |
-| 10 | multiagent | ⚡ | ⭐⭐⭐⭐⭐⭐ | Maximum quality (slowest) |
+| 1 | baseline |  |  | Quick tests, baseline comparison |
+| 2 | repairs |  |  | Feasibility-focused schedules |
+| 3 | heuristics |  |  | Balanced quality/speed |
+| 4 | full |  |  | Best non-RL quality |
+| 5 | rl |  |  | Adaptive heuristic selection |
+| 6 | roundrobin |  |  | Deterministic diversity |
+| 7 | specialists |  |  | Multi-agent cooperation |
+| 8 | archive |  |  | Diversity preservation |
+| 9 | hierarchical |  |  | Two-level optimization |
+| 10 | multiagent |  |  | Maximum quality (slowest) |
 
-## 🔧 Custom Arguments
+##  Custom Arguments
 
 Most commands accept additional arguments:
 
@@ -193,7 +193,7 @@ uv run select-checkpoint --log-dir logs/train --metric episode_reward_mean
 # (Edit scripts/utilities/start_tensorboard.py to change port)
 ```
 
-## 📖 Related Documentation
+##  Related Documentation
 
 - **Main README**: `README.md` - Project overview and installation
 - **Runtime Modes Guide**: `docs/02-user-guides/runtime-modes.md` - Detailed mode explanations
@@ -201,7 +201,7 @@ uv run select-checkpoint --log-dir logs/train --metric episode_reward_mean
 - **Training Guide**: `docs/02-user-guides/rl-training.md` - RL training workflow
 - **Configuration Guide**: `docs/02-user-guides/configuration.md` - Config system
 
-## 🆘 Troubleshooting
+##  Troubleshooting
 
 ### Command not found
 ```bash

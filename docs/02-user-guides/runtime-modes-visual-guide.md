@@ -70,7 +70,7 @@
 
 ---
 
-## 🔄 Mode Progression Flow
+##  Mode Progression Flow
 
 ```
 ┌──────────────┐
@@ -112,7 +112,7 @@
 
 ---
 
-## 📁 Config Inheritance
+##  Config Inheritance
 
 ```
 base.yaml (Common Settings)
@@ -150,7 +150,7 @@ base.yaml (Common Settings)
 
 ```
 output/
-├── experiment_manifest.json       📊 Master tracking database
+├── experiment_manifest.json        Master tracking database
 │
 ├── baseline/
 │   └── pure-nsga/
@@ -180,7 +180,7 @@ output/
 
 ---
 
-## 🔀 Decision Flow
+##  Decision Flow
 
 ```
 User runs: python main.py --mode baseline --env prod
@@ -213,9 +213,9 @@ User runs: python main.py --mode baseline --env prod
              │
     ┌────────▼──────────────────────────────────┐
     │  Validate killswitches:                   │  ◄── Validate
-    │  - repair.enabled = false ✅              │
-    │  - rl.enabled = false ✅                  │
-    │  - enhancements.master_enabled = false ✅ │
+    │  - repair.enabled = false               │
+    │  - rl.enabled = false                   │
+    │  - enhancements.master_enabled = false  │
     └────────┬──────────────────────────────────┘
              │
     ┌────────▼──────────────────────────────────┐
@@ -242,7 +242,7 @@ User runs: python main.py --mode baseline --env prod
 
 ---
 
-## 🎯 Killswitch Validation
+##  Killswitch Validation
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -257,21 +257,21 @@ User runs: python main.py --mode baseline --env prod
 ├───────────────┤  ├───────────────┤  ├───────────────┤
 │ Must have:    │  │ Must have:    │  │ Must have:    │
 │               │  │               │  │               │
-│ repair = ❌   │  │ repair = ✅   │  │ rl = ✅       │
-│ rl = ❌       │  │ enhancements  │  │ mode =        │
-│ enhancements  │  │   = ✅        │  │  inference    │
-│   = ❌        │  │               │  │               │
+│ repair =    │  │ repair =    │  │ rl =        │
+│ rl =        │  │ enhancements  │  │ mode =        │
+│ enhancements  │  │   =         │  │  inference    │
+│   =         │  │               │  │               │
 └───────────────┘  └───────────────┘  └───────────────┘
         │                  │                  │
         ▼                  ▼                  ▼
 ┌───────────────────────────────────────────────────┐
-│  ✅ Valid     ❌ Invalid (raises ValueError)      │
+│   Valid      Invalid (raises ValueError)      │
 └───────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔄 Experiment Lifecycle
+##  Experiment Lifecycle
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -320,49 +320,49 @@ User runs: python main.py --mode baseline --env prod
 
 ---
 
-## 🎨 Color-Coded Mode Map
+##  Color-Coded Mode Map
 
 ```
-🔴 Mode 1: Baseline (Pure NSGA-II)
+ Mode 1: Baseline (Pure NSGA-II)
    └─► Research baseline
        NO enhancements
        
-🟡 Mode 2: NSGA-II + Repairs
+ Mode 2: NSGA-II + Repairs
    └─► + IGLS repair system
        Test repair effectiveness
        
-🟢 Mode 3: NSGA-II + Repairs + Heuristics
+ Mode 3: NSGA-II + Repairs + Heuristics
    └─► + 19 heuristic operators
        Test heuristic toolbox
        
-🔵 Mode 4: NSGA-II + Full
+ Mode 4: NSGA-II + Full
    └─► + Local search + all enhancements
        Best non-RL configuration
        
-🤖 Mode 5: RL-Guided
+ Mode 5: RL-Guided
    └─► + RL agent (PPO) controls selection
        AI-driven optimization
        
-🔄 Mode 6: Round-Robin
+ Mode 6: Round-Robin
    └─► + Fixed heuristic rotation
        Deterministic baseline for RL
 ```
 
 ---
 
-## 📊 Comparison Matrix
+##  Comparison Matrix
 
 ```
 ┌──────────────┬─────────┬─────────┬────────────┬──────┬────┬────────────┐
 │   Feature    │ Baseline│ Repairs │ Heuristics │ Full │ RL │ RoundRobin │
 ├──────────────┼─────────┼─────────┼────────────┼──────┼────┼────────────┤
-│ Repairs      │    ❌   │    ✅   │     ✅     │  ✅  │ ✅ │     ✅     │
-│ Heuristics   │    ❌   │    ❌   │     ✅     │  ✅  │ ✅ │     ✅     │
-│ Memetic LS   │    ❌   │    ❌   │     ❌     │  ✅  │ ✅ │     ✅     │
-│ LNS-IGLS     │    ❌   │    ❌   │     ❌     │  ✅  │ ✅ │     ✅     │
-│ Enhancements │    ❌   │    ❌   │     ❌     │  ✅  │ ✅ │     ✅     │
-│ Adaptive     │    ❌   │    ❌   │     ❌     │  ✅  │ ✅ │     ❌     │
-│ RL Agent     │    ❌   │    ❌   │     ❌     │  ❌  │ ✅ │     ❌     │
+│ Repairs      │       │       │          │    │  │          │
+│ Heuristics   │       │       │          │    │  │          │
+│ Memetic LS   │       │       │          │    │  │          │
+│ LNS-IGLS     │       │       │          │    │  │          │
+│ Enhancements │       │       │          │    │  │          │
+│ Adaptive     │       │       │          │    │  │          │
+│ RL Agent     │       │       │          │    │  │          │
 ├──────────────┼─────────┼─────────┼────────────┼──────┼────┼────────────┤
 │ Complexity   │  Simple │   Low   │   Medium   │ High │Max │    High    │
 │ Runtime      │   Fast  │  Medium │   Medium   │ Slow │Med │    Slow    │

@@ -1,31 +1,31 @@
 # Parallelization Audit - Quick Summary
 
-## 🎯 Current State
+##  Current State
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │          SCHEDULE ENGINE PARALLELIZATION STATUS         │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
-│  ✅ PARALLEL (40-50% of runtime)                        │
+│   PARALLEL (40-50% of runtime)                        │
 │     └─ Fitness Evaluation (GA Core)                     │
 │        └─ 3-6x speedup on multi-core systems            │
 │                                                          │
-│  ❌ SEQUENTIAL (50-60% of runtime)                      │
-│     ├─ Data Loading           (~1.5s)   ✅ Can parallel │
-│     ├─ Validation             (~0.8s)   ✅ Can parallel │
+│   SEQUENTIAL (50-60% of runtime)                      │
+│     ├─ Data Loading           (~1.5s)    Can parallel │
+│     ├─ Validation             (~0.8s)    Can parallel │
 │     ├─ Feasibility Check      (~1.6s)   ⚠️  Partial    │
-│     ├─ Population Init        (~3.0s)   ✅ Can parallel │
-│     ├─ Crossover/Mutation     (~20s)    ❌ Too fast    │
-│     ├─ IGLS Repair            (~30s)    ✅ Can parallel │
-│     ├─ Report Generation      (~12s)    ✅ Can parallel │
-│     ├─ Export (JSON/PDF)      (~4s)     ✅ Can parallel │
+│     ├─ Population Init        (~3.0s)    Can parallel │
+│     ├─ Crossover/Mutation     (~20s)     Too fast    │
+│     ├─ IGLS Repair            (~30s)     Can parallel │
+│     ├─ Report Generation      (~12s)     Can parallel │
+│     ├─ Export (JSON/PDF)      (~4s)      Can parallel │
 │     └─ Logging                (~4s)     ⚠️  Partial    │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 📊 Quick Metrics
+##  Quick Metrics
 
 | Metric | Value | Notes |
 |--------|-------|-------|
@@ -35,9 +35,9 @@
 | **Partially Parallelizable** | 3 (21%) | Validation, feasibility, logging |
 | **Not Worth Parallelizing** | 5 (36%) | Too fast (overhead > benefit) |
 
-## 🚀 Top 3 Improvement Opportunities
+##  Top 3 Improvement Opportunities
 
-### 1. Parallelize Report Generation 🏆
+### 1. Parallelize Report Generation 
 - **Current:** 12s sequential
 - **After:** 1.2-2.4s parallel
 - **Speedup:** 5-10x
@@ -45,7 +45,7 @@
 - **Impact:** HIGH
 - **Why:** I/O-bound, 15+ independent plots
 
-### 2. Parallelize IGLS (Repair System) ⚡
+### 2. Parallelize IGLS (Repair System) 
 - **Current:** 30s sequential
 - **After:** 4-8s parallel
 - **Speedup:** 4-8x
@@ -53,7 +53,7 @@
 - **Impact:** HIGH
 - **Why:** CPU-bound, gene-level parallelism
 
-### 3. Parallelize Data Loading 📂
+### 3. Parallelize Data Loading 
 - **Current:** 1.5s sequential
 - **After:** 0.5-0.7s parallel
 - **Speedup:** 2-3x
@@ -61,7 +61,7 @@
 - **Impact:** MEDIUM
 - **Why:** I/O-bound, independent JSON files
 
-## 💡 Expected Results
+##  Expected Results
 
 ### Scenario 1: Quick Wins (Recommendations #1 + #3)
 ```
@@ -90,7 +90,7 @@ Effort: 18-25 hours
 ROI: ★★★☆☆ (Good)
 ```
 
-## 🎯 Recommended Action Plan
+##  Recommended Action Plan
 
 ### Week 1: Quick Wins
 - [ ] Implement parallel report generation (2-3h)
@@ -111,9 +111,9 @@ ROI: ★★★☆☆ (Good)
 - [ ] Monitor CPU utilization
 - [ ] Document performance improvements
 
-## 🔥 Critical Insights
+##  Critical Insights
 
-### What You're Doing RIGHT ✅
+### What You're Doing RIGHT 
 1. Worker initialization pattern (no pickling overhead)
 2. Process-local context (no shared state issues)
 3. Proper pool cleanup (no resource leaks)
@@ -125,7 +125,7 @@ ROI: ★★★☆☆ (Good)
 3. Report generation is sequential (easy win, 5-10x speedup)
 4. Data pipeline is sequential (I/O-bound, trivial to parallelize)
 
-## 📈 Performance Projection
+##  Performance Projection
 
 ```
 Current Runtime Breakdown:
@@ -168,7 +168,7 @@ Hard (6-10 hours each):
   ✗ Operator parallelization (not recommended)
 ```
 
-## 📞 Next Steps
+##  Next Steps
 
 1. **Review full report:** `report/PARALLEL_AUDIT.md`
 2. **Start with quick wins:** Report generation + data loading

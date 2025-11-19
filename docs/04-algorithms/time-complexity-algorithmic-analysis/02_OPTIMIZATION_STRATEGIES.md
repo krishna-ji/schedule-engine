@@ -275,10 +275,10 @@ def _check_instructor_exclusivity_delta(
 | **Overall** | **40ms** | **2-5ms** | **8-20×** |
 
 **When to Use:**
-- ✅ Mutation operators (typically 1-5% genes changed)
-- ✅ RL single-action steps (1 gene modified)
-- ❌ Crossover (typically 50% genes changed) - use full eval
-- ❌ Initial population - no previous fitness
+-  Mutation operators (typically 1-5% genes changed)
+-  RL single-action steps (1 gene modified)
+-  Crossover (typically 50% genes changed) - use full eval
+-  Initial population - no previous fitness
 
 ---
 
@@ -700,9 +700,9 @@ def instructor_exclusivity_fast(sessions):
 ## 6. Implementation Roadmap
 
 ### Phase 1: Quick Wins (1-2 days)
-1. ✅ Convert qualification lists to sets
-2. ✅ Remove unnecessary sorting in soft constraints
-3. ✅ Add fitness caching for duplicates
+1.  Convert qualification lists to sets
+2.  Remove unnecessary sorting in soft constraints
+3.  Add fitness caching for duplicates
 
 **Expected Impact:** 15-20% speedup
 

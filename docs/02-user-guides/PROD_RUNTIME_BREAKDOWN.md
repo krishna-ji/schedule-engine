@@ -21,14 +21,14 @@ exhaustive_timeout: 10 minutes (600s) per trigger
 ```
 Gen 1:   Population initialization (hybrid: 25% greedy, 50% smart, 25% random)
 Gen 2:   Normal evolution (~5-10s per gen with 100 pop)
-Gen 3:   🔥 EXHAUSTIVE SEARCH TRIGGER #1
+Gen 3:    EXHAUSTIVE SEARCH TRIGGER #1
          ├─ Top 15% (15 individuals)
          ├─ 120 max neighbors per gene
          ├─ Timeout: 10 minutes
          └─ Expected: 3-8 minutes (early violations are easy to fix)
          
 Gens 4-29: Normal evolution
-Gen 30:  🔥 EXHAUSTIVE SEARCH TRIGGER #2
+Gen 30:   EXHAUSTIVE SEARCH TRIGGER #2
          ├─ Top 15% (15 individuals)
          ├─ Expected: 5-10 minutes (more optimized already)
          └─ Major consolidation of solutions
@@ -46,7 +46,7 @@ Gens 31-99:   Normal evolution
               ├─ May trigger stagnation repair if stuck
               └─ Selective repair cleaning 40% of offspring
 
-Gen 100: 🔥 EXHAUSTIVE SEARCH TRIGGER #3
+Gen 100:  EXHAUSTIVE SEARCH TRIGGER #3
          ├─ Mid-evolution deep optimization
          ├─ Expected: 8-10 minutes (harder to improve now)
          └─ Refinement of established solutions
@@ -64,7 +64,7 @@ Gens 101-199: Continued evolution
 **Duration: 3-5 hours**
 
 ```
-Gen 200: 🔥 EXHAUSTIVE SEARCH TRIGGER #4
+Gen 200:  EXHAUSTIVE SEARCH TRIGGER #4
          ├─ Late mid-evolution push
          ├─ Expected: 9-10 minutes (diminishing returns)
          └─ Fine-tuning near-optimal solutions
@@ -83,7 +83,7 @@ Gens 201-349: Refinement phase
 **Duration: 5-8 hours**
 
 ```
-Gen 350: 🔥 EXHAUSTIVE SEARCH TRIGGER #5
+Gen 350:  EXHAUSTIVE SEARCH TRIGGER #5
          ├─ Late evolution refinement
          ├─ Expected: 9-10 minutes (very small improvements)
          └─ Polishing best solutions
@@ -93,7 +93,7 @@ Gens 351-479: Final evolution
               ├─ Population fully converged
               └─ Quality plateau reached
 
-Gen 480: 🔥 EXHAUSTIVE SEARCH TRIGGER #6
+Gen 480:  EXHAUSTIVE SEARCH TRIGGER #6
          ├─ Final polish before end
          ├─ Expected: 9-10 minutes
          └─ Last chance optimization
@@ -153,11 +153,11 @@ python main.py --config configs/prod_test.yaml
 
 Watch for:
 ```
-🔥 Gen 3: EXHAUSTIVE SEARCH triggered
-   ✅ Exhaustive search complete: N genes improved, time: X.Xs
+ Gen 3: EXHAUSTIVE SEARCH triggered
+    Exhaustive search complete: N genes improved, time: X.Xs
 ```
 
-If X < 300s: You can run prod.yaml safely ✅
+If X < 300s: You can run prod.yaml safely 
 If X > 300s: Use prod_safe.yaml instead (50 pop) ⚠️
 
 ---
@@ -213,7 +213,7 @@ python main.py --env test
 - No crashes
 - Config loads
 
-✅ Already done!
+ Already done!
 
 ---
 
@@ -227,9 +227,9 @@ python main.py --config configs/prod_test.yaml
 - Multiprocessing effectiveness
 
 **Decision criteria**:
-- Gen 3 exhaustive < 5 min: ✅ Run prod.yaml
+- Gen 3 exhaustive < 5 min:  Run prod.yaml
 - Gen 3 exhaustive 5-10 min: ⚠️ Run prod_safe.yaml
-- Gen 3 exhaustive > 10 min: 🔴 Need to tune (reduce pop or coverage)
+- Gen 3 exhaustive > 10 min:  Need to tune (reduce pop or coverage)
 
 ---
 
@@ -255,10 +255,10 @@ python main.py --config configs/prod_safe.yaml
 python main.py --env prod
 ```
 **Only if**:
-- ✅ prod_test.yaml completed successfully
-- ✅ Exhaustive took < 5 minutes with 100 pop
-- ✅ Memory usage was OK (< 80% peak)
-- ✅ You have 12-24 hours to spare
+-  prod_test.yaml completed successfully
+-  Exhaustive took < 5 minutes with 100 pop
+-  Memory usage was OK (< 80% peak)
+-  You have 12-24 hours to spare
 
 ---
 
@@ -273,11 +273,11 @@ python main.py --env prod
 ### Practical Answer: NOT RECOMMENDED YET
 
 **Why?**
-1. ❌ You haven't validated 100 pop performance
-2. ❌ Don't know your VM's actual capacity
-3. ❌ Don't know if exhaustive will timeout
-4. ❌ 12-24 hour commitment without validation
-5. ❌ Might waste time on wrong settings
+1.  You haven't validated 100 pop performance
+2.  Don't know your VM's actual capacity
+3.  Don't know if exhaustive will timeout
+4.  12-24 hour commitment without validation
+5.  Might waste time on wrong settings
 
 **Instead, do this:**
 ```bash
@@ -295,8 +295,8 @@ python main.py --config configs/prod_test.yaml
 
 | Config | Runtime | Purpose | When to Use |
 |--------|---------|---------|-------------|
-| **test** | 5 min | Smoke test | ✅ Always first (done!) |
-| **prod_test** | 30-60 min | Scale validation | 👉 **DO THIS NEXT** |
+| **test** | 5 min | Smoke test |  Always first (done!) |
+| **prod_test** | 30-60 min | Scale validation |  **DO THIS NEXT** |
 | **prod_safe** | 4-6 hours | VM-friendly production | After prod_test, if 100 pop is slow |
 | **prod** | 12-24 hours | Maximum quality | After prod_test, if 100 pop is fast |
 
@@ -318,4 +318,4 @@ python main.py --config configs/prod_test.yaml
 2. How long did gen 25 exhaustive take?
 3. What's your VM specs (cores/RAM)?
 
-Then I'll tell you which config is optimal for your setup! 🎯
+Then I'll tell you which config is optimal for your setup! 

@@ -2,7 +2,7 @@
 
 This project uses **UV** for blazingly fast dependency management (10-100x faster than pip).
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Windows (PowerShell)
 
@@ -141,19 +141,19 @@ pip install --force-reinstall -r requirements.txt
 | Size | ~50MB | ~50MB | ~3GB |
 | Setup Time | **3-5 seconds** | 30-45 seconds | 5+ minutes |
 | Installation Speed | **10-100x faster** | Baseline | Slower than pip |
-| Dependency Resolution | ✅ Excellent | ⚠️ Good | ✅ Excellent |
-| No pip needed | ✅ Yes | N/A | ✅ Yes |
-| Production Ready | ✅ Yes | ✅ Yes | ✅ Yes |
+| Dependency Resolution |  Excellent | ⚠️ Good |  Excellent |
+| No pip needed |  Yes | N/A |  Yes |
+| Production Ready |  Yes |  Yes |  Yes |
 
 ## UV vs Conda
 
 This project uses **UV instead of Conda** because:
 
-1. ✅ **10-100x faster** installation
-2. ✅ **50x smaller** (50MB vs 3GB)
-3. ✅ **Pure Python** - no system libraries needed
-4. ✅ **Modern standard** - pyproject.toml (PEP 621)
-5. ✅ **Better for CI/CD** - faster builds
-6. ✅ **Standalone binary** - no pip dependency
+1.  **10-100x faster** installation
+2.  **50x smaller** (50MB vs 3GB)
+3.  **Pure Python** - no system libraries needed
+4.  **Modern standard** - pyproject.toml (PEP 621)
+5.  **Better for CI/CD** - faster builds
+6.  **Standalone binary** - no pip dependency
 
 UV is the modern choice for Python-only projects.

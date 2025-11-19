@@ -82,12 +82,12 @@ uv run python scripts/benchmark_gpu_training.py
 ```
 CPU: 125s
 GPU: 32s
-Speedup: 3.9× faster ✅
+Speedup: 3.9× faster 
 ```
 
 ---
 
-## ✅ Done!
+##  Done!
 
 Your RL training is now 3-5× faster!
 
@@ -97,7 +97,7 @@ Your RL training is now 3-5× faster!
 **After GPU:**
 - 300K training: ~20 minutes
 
-**Time saved per full training run:** ~70 minutes ⏰
+**Time saved per full training run:** ~70 minutes 
 
 ---
 

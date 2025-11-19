@@ -6,7 +6,7 @@
 
 ---
 
-## 📚 Documentation Structure
+##  Documentation Structure
 
 **Note**: Section 11 (Advanced Techniques) added November 17, 2025 - Comprehensive guide for enhancing the Memetic NSGA-II architecture.
 
@@ -94,7 +94,7 @@ AI-generated recommendations and guides
 
 ### [10 - Advanced Techniques](./11-advanced-techniques-suggest/)
 Comprehensive technical documentation for enhancing Memetic NSGA-II with advanced RL techniques
-- **[README & Navigation](./11-advanced-techniques-suggest/README.md)** ⭐ Start here
+- **[README & Navigation](./11-advanced-techniques-suggest/README.md)**  Start here
 - **Current State:** [01 - Current Architecture](./11-advanced-techniques-suggest/01-current-architecture.md)
 - **Practical Enhancements (Better):**
   - [02 - Multi-Objective Reward](./11-advanced-techniques-suggest/02-multi-objective-reward.md) - Pareto-aware RL
@@ -119,10 +119,10 @@ Historical documentation and obsolete content
 
 ---
 
-## 🚀 Quick Access by Task
+##  Quick Access by Task
 
 ### "I want to get started"
-1. [Quick Reference](./QUICKREF.md) ⭐ Start here
+1. [Quick Reference](./QUICKREF.md)  Start here
 2. [Getting Started](./01-getting-started/)
 3. [UV Quick Start](./02-user-guides/UV_QUICKSTART.md)
 4. [Configuration Basics](./02-user-guides/CONFIG_QUICKSTART.md)
@@ -134,7 +134,7 @@ Historical documentation and obsolete content
 4. [Metrics Guide](./02-user-guides/METRICS_QUICKSTART.md)
 
 ### "I want to optimize performance"
-1. ⚡ [GPU Quick Start](./04-algorithms/nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× speedup
+1.  [GPU Quick Start](./04-algorithms/nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× speedup
 2. [Time Complexity Analysis](./04-algorithms/time-complexity-algorithmic-analysis/)
 3. [Parallel Processing](./04-algorithms/PARALLEL_QUICKSTART.md)
 4. [Optimization Strategies](./04-algorithms/time-complexity-algorithmic-analysis/02_OPTIMIZATION_STRATEGIES.md)
@@ -158,7 +158,7 @@ Historical documentation and obsolete content
 
 ---
 
-## 📖 Documentation Standards
+##  Documentation Standards
 
 ### File Organization
 - **Numbered folders** (01-10) indicate logical reading order
@@ -172,15 +172,15 @@ Historical documentation and obsolete content
 - **XX_CATEGORY.md** - Numbered sections in analysis docs
 
 ### Status Indicators
-- ✅ Complete - Stable, current documentation
-- 🚧 In Progress - Active development
-- 📝 Draft - Initial version
+-  Complete - Stable, current documentation
+-  In Progress - Active development
+-  Draft - Initial version
 - 🗄️ Archive - Historical reference only
-- ⭐ Recommended - Start here for this topic
+-  Recommended - Start here for this topic
 
 ---
 
-## 🔗 External References
+##  External References
 
 ### Project Files
 - Main README: [../README.md](../README.md)
@@ -201,31 +201,31 @@ Historical documentation and obsolete content
 
 ---
 
-## 🎯 Most Important Documents
+##  Most Important Documents
 
-### For New Users ⭐
+### For New Users 
 1. [QUICKREF.md](./QUICKREF.md) - Essential commands (start here!)
 2. [UV Quick Start](./02-user-guides/UV_QUICKSTART.md) - Package manager
 3. [Production Run Guide](./02-user-guides/PROD_RUN_GUIDE.md) - How to run
 
-### For Performance ⚡
+### For Performance 
 1. [GPU Quick Start](./04-algorithms/nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× faster
 2. [Time Complexity Analysis](./04-algorithms/time-complexity-algorithmic-analysis/00_EXECUTIVE_SUMMARY.md)
 3. [Parallel Processing](./04-algorithms/PARALLEL_QUICKSTART.md)
 
-### For Development 🔧
+### For Development 
 1. [Phase 2 RL Complete](./06-development/implementation-notes/PHASE_2_RL_COMPLETE.md)
 2. [Enhancement Changelog](./06-development/changelog/enhancements.md)
 3. [Architecture Framework](./03-architecture/rl-ga-integ-framework.md)
 
-### For Research 🎓
+### For Research 
 1. [Thesis Content](./07-thesis-report/)
 2. [Time Complexity Analysis](./04-algorithms/time-complexity-algorithmic-analysis/)
 3. [GPU Acceleration Guide](./04-algorithms/nvidia-gpu/GPU_ACCELERATION_GUIDE.md)
 
 ---
 
-## 💡 How to Use This Documentation
+##  How to Use This Documentation
 
 ### As a User
 - Start with [QUICKREF.md](./QUICKREF.md)
@@ -249,24 +249,24 @@ Historical documentation and obsolete content
 
 ---
 
-## 📝 Recent Changes
+##  Recent Changes
 
 **November 18, 2025** - Documentation structure refinement:
-- ✅ Merged `05-performance/` into `04-algorithms/` (algorithms and performance are inseparable)
-- ✅ Renumbered sections 06-11 → 05-10 for consistency
-- ✅ Updated all internal links and cross-references
+-  Merged `05-performance/` into `04-algorithms/` (algorithms and performance are inseparable)
+-  Renumbered sections 06-11 → 05-10 for consistency
+-  Updated all internal links and cross-references
 
 **November 17, 2025** - Major documentation reorganization:
-- ✅ Restructured from 30+ loose files to 10 categorized folders
-- ✅ Moved `docs/code/` → `06-development/`
-- ✅ Moved `for_report/` → `07-thesis-report/`
-- ✅ Moved `suggest/` → `10-ai-suggestions/`
-- ✅ Created dedicated Q&A and Future Plans sections
-- ✅ Archived obsolete content (nothing deleted)
-- ✅ Added navigation READMEs to all folders
+-  Restructured from 30+ loose files to 10 categorized folders
+-  Moved `docs/code/` → `06-development/`
+-  Moved `for_report/` → `07-thesis-report/`
+-  Moved `suggest/` → `10-ai-suggestions/`
+-  Created dedicated Q&A and Future Plans sections
+-  Archived obsolete content (nothing deleted)
+-  Added navigation READMEs to all folders
 
 ---
 
-**🎉 Documentation is now organized, navigable, and maintainable!**
+** Documentation is now organized, navigable, and maintainable!**
 
 **Questions?** Use [08-qna/](./08-qna/) to ask anything!

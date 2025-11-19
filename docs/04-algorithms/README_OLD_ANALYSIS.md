@@ -1,35 +1,35 @@
-# 📂 Analysis Report Index
+#  Analysis Report Index
 ## Evaluation: evaluation_20251027_083447 (150 generations)
 
 **Generated**: 2025-10-27  
 **Analyst**: GitHub Copilot  
-**Status**: ✅ Complete - Ready for Implementation
+**Status**:  Complete - Ready for Implementation
 
 ---
 
-## 🎯 Start Here
+##  Start Here
 
 ### If you have 2 minutes:
-👉 **Read**: `QUICK_REFERENCE.md`  
+ **Read**: `QUICK_REFERENCE.md`  
 - One-page summary of the weight issue
 - Before/after comparison
 - Commands to execute
 
 ### If you have 10 minutes:
-👉 **Read**: `ANALYSIS_SUMMARY.md`  
+ **Read**: `ANALYSIS_SUMMARY.md`  
 - Complete overview
 - What to do and why
 - Expected results
 
 ### If you have 30 minutes:
-👉 **Read**: `CONSTRAINT_WEIGHT_ANALYSIS.md`  
+ **Read**: `CONSTRAINT_WEIGHT_ANALYSIS.md`  
 - Deep technical analysis
 - Mathematical proof of dominance
 - Three testing scenarios
 - Implementation checklist
 
 ### If you want everything:
-👉 **Read**: `DETAILED_ANALYSIS_REPORT.md`  
+ **Read**: `DETAILED_ANALYSIS_REPORT.md`  
 - Full 150-generation analysis
 - All 5 root causes
 - Complete recommendations
@@ -37,9 +37,9 @@
 
 ---
 
-## 📄 Report Files
+##  Report Files
 
-### 1. **QUICK_REFERENCE.md** ⚡
+### 1. **QUICK_REFERENCE.md** 
 **Purpose**: Fast lookup  
 **Length**: 1 page  
 **Content**: 
@@ -53,7 +53,7 @@
 
 ---
 
-### 2. **ANALYSIS_SUMMARY.md** 📋
+### 2. **ANALYSIS_SUMMARY.md** 
 **Purpose**: Executive overview  
 **Length**: ~100 lines  
 **Content**:
@@ -68,7 +68,7 @@
 
 ---
 
-### 3. **CONSTRAINT_WEIGHT_ANALYSIS.md** 🔬
+### 3. **CONSTRAINT_WEIGHT_ANALYSIS.md** 
 **Purpose**: Deep technical dive into weight imbalance  
 **Length**: ~500 lines  
 **Content**:
@@ -88,7 +88,7 @@
 
 ---
 
-### 4. **DETAILED_ANALYSIS_REPORT.md** 📊
+### 4. **DETAILED_ANALYSIS_REPORT.md** 
 **Purpose**: Comprehensive analysis of entire GA run  
 **Length**: ~600 lines  
 **Content**:
@@ -108,7 +108,7 @@
 
 ---
 
-### 5. **IMMEDIATE_ACTION_PLAN.md** 🔧
+### 5. **IMMEDIATE_ACTION_PLAN.md** 
 **Purpose**: Step-by-step implementation guide  
 **Length**: ~400 lines  
 **Content**:
@@ -128,7 +128,7 @@
 
 ---
 
-## 🔴 The Critical Finding
+##  The Critical Finding
 
 ### Problem:
 **Session block clustering** (quality preference) is weighted the same as critical safety constraints, but generates 7x more violations, causing it to dominate 73.6% of the optimization penalty.
@@ -147,7 +147,7 @@ Reduce block clustering weight from 2.0 → 1.0 (or 0.5), increase safety weight
 
 ---
 
-## 📊 Key Metrics
+##  Key Metrics
 
 | Metric | Current (Gen 150) | Target (Next Run) |
 |--------|------------------|-------------------|
@@ -160,7 +160,7 @@ Reduce block clustering weight from 2.0 → 1.0 (or 0.5), increase safety weight
 
 ---
 
-## 🎯 Priority Order
+##  Priority Order
 
 | # | Issue | File with Fix | Time | Impact |
 |---|-------|---------------|------|--------|
@@ -173,7 +173,7 @@ Reduce block clustering weight from 2.0 → 1.0 (or 0.5), increase safety weight
 
 ---
 
-## 🚀 Quick Start Guide
+##  Quick Start Guide
 
 ### Step 1: Read Orientation (5 minutes)
 ```bash
@@ -230,22 +230,22 @@ cat output/evaluation_*/logger.txt | grep "Hard violations" | tail -1
 
 ---
 
-## 📁 Additional Files Created
+##  Additional Files Created
 
 ### Scripts:
-- ✅ `scripts/check_data_quality.py` - Data integrity diagnostic tool
+-  `scripts/check_data_quality.py` - Data integrity diagnostic tool
 
 ### Reports (in `report/` directory):
-1. ✅ `README.md` - This index file
-2. ✅ `QUICK_REFERENCE.md` - 1-page summary
-3. ✅ `ANALYSIS_SUMMARY.md` - Executive overview
-4. ✅ `CONSTRAINT_WEIGHT_ANALYSIS.md` - Technical deep dive
-5. ✅ `DETAILED_ANALYSIS_REPORT.md` - Complete analysis
-6. ✅ `IMMEDIATE_ACTION_PLAN.md` - Implementation guide
+1.  `README.md` - This index file
+2.  `QUICK_REFERENCE.md` - 1-page summary
+3.  `ANALYSIS_SUMMARY.md` - Executive overview
+4.  `CONSTRAINT_WEIGHT_ANALYSIS.md` - Technical deep dive
+5.  `DETAILED_ANALYSIS_REPORT.md` - Complete analysis
+6.  `IMMEDIATE_ACTION_PLAN.md` - Implementation guide
 
 ---
 
-## 🎓 Understanding the Core Issue
+##  Understanding the Core Issue
 
 ### The Analogy:
 
@@ -275,7 +275,7 @@ GA spends 73.6% effort on the 7,408 grouping issues, ignoring the 1,046 conflict
 
 ---
 
-## 💡 Key Insights
+##  Key Insights
 
 ### 1. **Weights Direct Search, Not Just Scoring**
 - Weights don't just "score" solutions
@@ -308,32 +308,32 @@ GA spends 73.6% effort on the 7,408 grouping issues, ignoring the 1,046 conflict
 
 ---
 
-## ✅ Success Metrics
+##  Success Metrics
 
 ### After Weight Fix (Target):
-- ✅ Hard violations < 5,000 (was 10,064)
-- ✅ Group overlaps < 500 (was 1,046) 
-- ✅ Instructor conflicts < 150 (was 250)
-- ✅ Schedule is USABLE (can physically execute)
+-  Hard violations < 5,000 (was 10,064)
+-  Group overlaps < 500 (was 1,046) 
+-  Instructor conflicts < 150 (was 250)
+-  Schedule is USABLE (can physically execute)
 - ⚠️ Block clustering 8,000-12,000 (was 7,408, acceptable increase)
 
 ### After Repair System Fix (Ultimate Target):
-- ✅ Hard violations < 1,000
-- ✅ Group overlaps < 100
-- ✅ Instructor conflicts < 50
-- ✅ Schedule is GOOD QUALITY
-- ✅ Block clustering 4,000-8,000
+-  Hard violations < 1,000
+-  Group overlaps < 100
+-  Instructor conflicts < 50
+-  Schedule is GOOD QUALITY
+-  Block clustering 4,000-8,000
 
 ### Production Ready (Long-term):
-- ✅ Hard violations < 200 (ideally 0)
-- ✅ Group overlaps 0-20
-- ✅ Instructor conflicts 0-10
-- ✅ Block clustering 2,000-4,000
-- ✅ All soft constraints optimized
+-  Hard violations < 200 (ideally 0)
+-  Group overlaps 0-20
+-  Instructor conflicts 0-10
+-  Block clustering 2,000-4,000
+-  All soft constraints optimized
 
 ---
 
-## 📞 Need Help?
+##  Need Help?
 
 ### If weight fix doesn't work:
 1. Check you edited the right config file
@@ -355,7 +355,7 @@ GA spends 73.6% effort on the 7,408 grouping issues, ignoring the 1,046 conflict
 
 ---
 
-## 🎯 Bottom Line
+##  Bottom Line
 
 **THE FIX**: Change 3 weights in config (15 minutes)  
 **THE IMPACT**: 60-90% reduction in critical violations  
@@ -365,11 +365,11 @@ GA spends 73.6% effort on the 7,408 grouping issues, ignoring the 1,046 conflict
 **Next run should achieve**:
 - Group overlaps: 1,046 → 200-500 (70-80% better)
 - Instructor conflicts: 250 → 50-150 (60-80% better)
-- **USABLE SCHEDULE** ✅
+- **USABLE SCHEDULE** 
 
 ---
 
-**Report Status**: ✅ Complete  
+**Report Status**:  Complete  
 **Analysis Quality**: Comprehensive (5 documents, 2,000+ lines)  
 **Confidence Level**: Very High (mathematical certainty)  
 **Recommendation**: Apply weight fix immediately, expect dramatic improvement  

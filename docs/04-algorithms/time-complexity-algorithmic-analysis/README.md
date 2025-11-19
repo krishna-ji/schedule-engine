@@ -11,7 +11,7 @@ Comprehensive algorithmic complexity analysis and optimization guide for the sch
 
 ---
 
-## 📚 Documents
+##  Documents
 
 ### [01_COMPLEXITY_ANALYSIS.md](./01_COMPLEXITY_ANALYSIS.md)
 **Complete Big-O complexity analysis of all constraint functions**
@@ -24,9 +24,9 @@ Comprehensive algorithmic complexity analysis and optimization guide for the sch
 - Total evaluation: ~40ms for medium dataset (150 sessions)
 
 **Key Findings:**
-- ✅ Most constraints are already optimal (hash-based, single-pass)
+-  Most constraints are already optimal (hash-based, single-pass)
 - ⚠️ Minor optimizations possible (10-20% improvement)
-- 🔴 Primary bottleneck is NOT in constraints (only 4% of RL time)
+-  Primary bottleneck is NOT in constraints (only 4% of RL time)
 
 ### [02_OPTIMIZATION_STRATEGIES.md](./02_OPTIMIZATION_STRATEGIES.md)
 **Concrete optimization proposals with code examples**
@@ -61,7 +61,7 @@ Comprehensive algorithmic complexity analysis and optimization guide for the sch
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Run Benchmark
 
@@ -92,7 +92,7 @@ pyinstrument -r html -o report.html scripts/bench_constraint_check.py
 
 ---
 
-## 📊 Key Results
+##  Key Results
 
 ### Current Performance (Medium Dataset)
 
@@ -107,11 +107,11 @@ pyinstrument -r html -o report.html scripts/bench_constraint_check.py
 
 | Constraint | Complexity | Time | Status |
 |------------|-----------|------|---------|
-| `student_group_exclusivity` | O(S × Q) | 2-5ms | ✅ Optimal |
-| `instructor_exclusivity` | O(S × Q) | 2-5ms | ✅ Optimal |
-| `room_exclusivity` | O(S × Q) | 2-5ms | ✅ Optimal |
+| `student_group_exclusivity` | O(S × Q) | 2-5ms |  Optimal |
+| `instructor_exclusivity` | O(S × Q) | 2-5ms |  Optimal |
+| `room_exclusivity` | O(S × Q) | 2-5ms |  Optimal |
 | `instructor_qualifications` | O(S × I) | 1-3ms | ⚠️ Minor opt |
-| `course_completeness` | O(S × G + C × G) | 2-5ms | ✅ Optimal |
+| `course_completeness` | O(S × G + C × G) | 2-5ms |  Optimal |
 | `student_schedule_compactness` | O(S × Q + G × D × Q_d) | 3-8ms | ⚠️ Minor opt |
 | `session_continuity` | O(S × Q + C × D × Q_d × log(Q_d)) | 5-15ms | ⚠️ Remove sort |
 
@@ -126,15 +126,15 @@ pyinstrument -r html -o report.html scripts/bench_constraint_check.py
 
 ---
 
-## 🎯 Recommendations
+##  Recommendations
 
 ### Immediate Actions
 
-1. ✅ **Profile RL environment** - constraint evaluation is only 4% of time
+1.  **Profile RL environment** - constraint evaluation is only 4% of time
    - Focus on state encoding, action mapping overhead
    - RL training: 1000ms/step, evaluation: 40ms/step
    
-2. ✅ **Implement Phase 1 optimizations** - low-hanging fruit
+2.  **Implement Phase 1 optimizations** - low-hanging fruit
    - Convert lists to sets in Course entity
    - Remove sorting in soft constraints
    - Add basic fitness caching
@@ -154,7 +154,7 @@ pyinstrument -r html -o report.html scripts/bench_constraint_check.py
 
 ---
 
-## 📈 Scaling Analysis
+##  Scaling Analysis
 
 ### Time Complexity Growth
 
@@ -183,7 +183,7 @@ Full prod run (200 pop × 2000 gens):
 
 ---
 
-## 🔬 For Stack Overflow / External Review
+##  For Stack Overflow / External Review
 
 ### Short Version (Quick Ask)
 
@@ -209,7 +209,7 @@ See: **Prompts in `prompt.md`** Section 3
 
 ---
 
-## 📝 Related Documents
+##  Related Documents
 
 **In This Directory:**
 - `01_COMPLEXITY_ANALYSIS.md` - Complete Big-O analysis
@@ -231,7 +231,7 @@ See: **Prompts in `prompt.md`** Section 3
 
 ---
 
-## 🧪 Testing Optimizations
+##  Testing Optimizations
 
 After implementing optimizations:
 
@@ -256,7 +256,7 @@ After implementing optimizations:
 
 ---
 
-## 📞 Contact / Questions
+##  Contact / Questions
 
 For questions about this analysis:
 1. Review documents in this directory

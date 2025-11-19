@@ -55,7 +55,7 @@ def promote_from_checkpoint(
     checkpoint = manager.get_checkpoint(checkpoint_id)
     if not checkpoint:
         logger.error(f"Checkpoint not found: {checkpoint_id}")
-        print(f"❌ Checkpoint not found: {checkpoint_id}")
+        print(f" Checkpoint not found: {checkpoint_id}")
         print(f"\nAvailable checkpoints:")
         for ckpt in manager.list_checkpoints():
             print(f"  - {ckpt.checkpoint_id} ({ckpt.stage}, {ckpt.status})")
@@ -65,7 +65,7 @@ def promote_from_checkpoint(
     checkpoint_path = Path(checkpoint.model_path)
     if not checkpoint_path.exists():
         logger.error(f"Checkpoint file not found: {checkpoint.model_path}")
-        print(f"❌ Checkpoint file not found: {checkpoint.model_path}")
+        print(f" Checkpoint file not found: {checkpoint.model_path}")
         sys.exit(1)
 
     # Validate checkpoint is a valid model
@@ -78,11 +78,11 @@ def promote_from_checkpoint(
             _ = DQN.load(checkpoint.model_path)
         else:
             logger.error(f"Unknown agent type: {checkpoint.agent_type}")
-            print(f"❌ Unknown agent type: {checkpoint.agent_type}")
+            print(f" Unknown agent type: {checkpoint.agent_type}")
             sys.exit(1)
     except Exception as e:
         logger.error(f"Invalid checkpoint file: {e}")
-        print(f"❌ Invalid checkpoint file: {e}")
+        print(f" Invalid checkpoint file: {e}")
         sys.exit(1)
 
     # Validate checkpoint status
@@ -97,7 +97,7 @@ def promote_from_checkpoint(
             print("Promotion cancelled")
             sys.exit(0)
 
-    print(f"📦 Promoting checkpoint: {checkpoint_id}")
+    print(f" Promoting checkpoint: {checkpoint_id}")
     print(f"   Model: {checkpoint.model_path}")
     print(f"   Agent: {checkpoint.agent_type}")
     print(f"   Stage: {checkpoint.stage}")
@@ -120,17 +120,17 @@ def promote_from_checkpoint(
             checkpoint_id=checkpoint_id,
         )
 
-        print(f"✅ Model promoted successfully!")
+        print(f" Model promoted successfully!")
         print(f"   Deployment ID: {registration.model_id}")
         print(f"   Config updated: {prod_config_path}")
         print(f"   Registry updated: {registry_path}")
         print()
-        print(f"💡 To use in production, run:")
+        print(f" To use in production, run:")
         print(f"   uv run prod")
 
     except Exception as e:
         logger.exception("Promotion failed")
-        print(f"❌ Promotion failed: {e}")
+        print(f" Promotion failed: {e}")
         sys.exit(1)
 
 
@@ -155,10 +155,10 @@ def promote_from_file(
 
     if not model_path.exists():
         logger.error(f"Model file not found: {model_path}")
-        print(f"❌ Model file not found: {model_path}")
+        print(f" Model file not found: {model_path}")
         sys.exit(1)
 
-    print(f"📦 Promoting model file: {model_path}")
+    print(f" Promoting model file: {model_path}")
     print(f"   Agent: {agent_type}")
     print()
 
@@ -177,17 +177,17 @@ def promote_from_file(
             notes=notes,
         )
 
-        print(f"✅ Model promoted successfully!")
+        print(f" Model promoted successfully!")
         print(f"   Deployment ID: {registration.model_id}")
         print(f"   Config updated: {prod_config_path}")
         print(f"   Registry updated: {registry_path}")
         print()
-        print(f"💡 To use in production, run:")
+        print(f" To use in production, run:")
         print(f"   uv run prod")
 
     except Exception as e:
         logger.exception("Promotion failed")
-        print(f"❌ Promotion failed: {e}")
+        print(f" Promotion failed: {e}")
         sys.exit(1)
 
 
@@ -200,7 +200,7 @@ def rollback_deployment() -> None:
     # Get current deployment
     current = registry.get_active_deployment()
     if not current:
-        print("❌ No active deployment found")
+        print(" No active deployment found")
         sys.exit(1)
 
     print(f"Current deployment: {current.model_id}")
@@ -216,15 +216,15 @@ def rollback_deployment() -> None:
     try:
         registration = registry.rollback_to_previous()
         if registration:
-            print(f"✅ Rolled back successfully!")
+            print(f" Rolled back successfully!")
             print(f"   Now using: {registration.model_id}")
             print(f"   Model: {registration.model_path}")
         else:
-            print("❌ Rollback failed: No previous deployment found")
+            print(" Rollback failed: No previous deployment found")
             sys.exit(1)
     except Exception as e:
         logger.exception("Rollback failed")
-        print(f"❌ Rollback failed: {e}")
+        print(f" Rollback failed: {e}")
         sys.exit(1)
 
 
@@ -244,7 +244,7 @@ def list_deployments(limit: int = 10) -> None:
     print()
 
     for dep in deployments:
-        status_icon = "🟢" if dep.status == "active" else "⚪"
+        status_icon = "" if dep.status == "active" else ""
         print(f"{status_icon} {dep.model_id}")
         print(f"   Model: {dep.model_path}")
         print(f"   Agent: {dep.agent_type}")

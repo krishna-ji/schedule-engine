@@ -1,4 +1,4 @@
-# 🎓 THESIS EXPERIMENTS - COMPREHENSIVE GUIDE
+#  THESIS EXPERIMENTS - COMPREHENSIVE GUIDE
 
 **Purpose:** Run 4 progressive experiments to demonstrate algorithmic improvements  
 **Date:** November 19, 2025  
@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 EXPERIMENT OVERVIEW
+##  EXPERIMENT OVERVIEW
 
 | Exp # | Mode | Description | Command | Runtime | Purpose |
 |-------|------|-------------|---------|---------|---------|
@@ -22,7 +22,7 @@
 
 ---
 
-## 🔬 EXPERIMENT 1: Pure NSGA-II Baseline
+##  EXPERIMENT 1: Pure NSGA-II Baseline
 
 ### **What It Tests:**
 - Raw NSGA-II performance without any enhancements
@@ -69,7 +69,7 @@ python main.py --mode baseline --env prod
 - **Soft violations:** High (300-800)
 - **Convergence:** Slow, plateaus early
 - **Runtime:** 1.5-2.5 hours
-- **Quality:** ⭐⭐ (baseline - worst quality)
+- **Quality:**  (baseline - worst quality)
 
 ### **Thesis Reporting:**
 ```
@@ -83,7 +83,7 @@ Experiment 1: Pure NSGA-II Baseline
 
 ---
 
-## 🔬 EXPERIMENT 2: NSGA-II + IGLS Repairs
+##  EXPERIMENT 2: NSGA-II + IGLS Repairs
 
 ### **What It Tests:**
 - Impact of IGLS repair system
@@ -132,7 +132,7 @@ uv run exp2 --env test
 - **Soft violations:** Medium (150-400)
 - **Convergence:** Better than baseline, still slow
 - **Runtime:** 1.5-2.5 hours
-- **Quality:** ⭐⭐⭐ (significant improvement)
+- **Quality:**  (significant improvement)
 
 ### **Thesis Reporting:**
 ```
@@ -145,7 +145,7 @@ Experiment 2: NSGA-II with IGLS Repair
 
 ---
 
-## 🔬 EXPERIMENT 3: NSGA-II + Repairs + Heuristics (No Local Search)
+##  EXPERIMENT 3: NSGA-II + Repairs + Heuristics (No Local Search)
 
 ### **What It Tests:**
 - Impact of 19 advanced heuristics
@@ -205,7 +205,7 @@ uv run exp3 --env test
 - **Soft violations:** Medium (100-300)
 - **Convergence:** Moderate speed
 - **Runtime:** 1.5-2.5 hours
-- **Quality:** ⭐⭐⭐⭐ (good quality)
+- **Quality:**  (good quality)
 
 ### **Thesis Reporting:**
 ```
@@ -219,7 +219,7 @@ Experiment 3: Hyper-Heuristic with Fixed Selection (No Local Search)
 
 ---
 
-## 🔬 EXPERIMENT 4: Round-Robin + Local Search
+##  EXPERIMENT 4: Round-Robin + Local Search
 
 ### **What It Tests:**
 - Same heuristics as Exp 3
@@ -264,7 +264,7 @@ uv run exp4 --env test
 - **Soft violations:** Low (50-200)
 - **Convergence:** Fast, reaches high quality
 - **Runtime:** 1.5-2.5 hours
-- **Quality:** ⭐⭐⭐⭐⭐ (very high quality)
+- **Quality:**  (very high quality)
 
 ### **Thesis Reporting:**
 ```
@@ -279,7 +279,7 @@ Experiment 4: Hyper-Heuristic + Large Neighborhood Search
 
 ---
 
-## 🔬 EXPERIMENT 5: RL-Guided Adaptive Selection
+##  EXPERIMENT 5: RL-Guided Adaptive Selection
 
 ### **What It Tests:**
 - Reinforcement Learning intelligence
@@ -350,7 +350,7 @@ uv run exp5 --env test
 - **Soft violations:** Very low (20-100)
 - **Convergence:** Fastest, intelligent exploration
 - **Runtime:** 1.5-2.5 hours
-- **Quality:** ⭐⭐⭐⭐⭐ (optimal quality)
+- **Quality:**  (optimal quality)
 
 ### **Thesis Reporting:**
 ```
@@ -367,7 +367,7 @@ Experiment 5: Reinforcement Learning Guided Hyper-Heuristic
 
 ---
 
-## 📊 COMPARISON TABLE FOR THESIS
+##  COMPARISON TABLE FOR THESIS
 
 After all experiments complete, create this table:
 
@@ -379,13 +379,13 @@ After all experiments complete, create this table:
 | **Convergence Gen** | 800+ | 600+ | 500+ | 400+ | 300+ |
 | **Runtime (hours)** | 2.0 | 2.1 | 2.2 | 2.4 | 2.5 |
 | **GPU Utilization** | 75% | 78% | 80% | 82% | 85% |
-| **Quality Rating** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Quality Rating** |  |  |  |  |  |
 | **Improvement vs Baseline** | 0% | 60-70% | 70-80% | 85-90% | 95-98% |
 | **Improvement vs Previous** | - | +60-70% | +15-20% | +15-20% | +5-10% |
 
 ---
 
-## 🎯 RECOMMENDED RUN SEQUENCE
+##  RECOMMENDED RUN SEQUENCE
 
 ### **Option A: Full Sequence (Overnight/Weekend)**
 Run all experiments back-to-back with monitoring:
@@ -398,7 +398,7 @@ $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $log_dir = "output/thesis_experiments_$timestamp"
 New-Item -ItemType Directory -Path $log_dir -Force
 
-Write-Host "🎓 THESIS EXPERIMENTS - Starting at $(Get-Date)" -ForegroundColor Green
+Write-Host " THESIS EXPERIMENTS - Starting at $(Get-Date)" -ForegroundColor Green
 Write-Host "Results will be saved to: $log_dir" -ForegroundColor Cyan
 
 # Experiment 1: Baseline
@@ -426,7 +426,7 @@ if (Test-Path "models/rl_agents/best_model.zip") {
     Write-Host "Train first: uv run train-rl --env prod --timesteps 100000" -ForegroundColor Cyan
 }
 
-Write-Host "`n✅ All experiments complete! Results in: $log_dir" -ForegroundColor Green
+Write-Host "`n All experiments complete! Results in: $log_dir" -ForegroundColor Green
 EOF
 
 # Run the script
@@ -467,7 +467,7 @@ uv run exp5 --env prod      # 1.5-2.5h - RL-Guided
 
 ---
 
-## 📈 MONITORING DURING EXPERIMENTS
+##  MONITORING DURING EXPERIMENTS
 
 ### **Terminal 1: Run Experiment**
 ```bash
@@ -500,7 +500,7 @@ Get-ChildItem output/evaluation_* -Directory |
 
 ---
 
-## 📊 RESULT COLLECTION
+##  RESULT COLLECTION
 
 After each experiment completes, results are saved to:
 ```
@@ -537,7 +537,7 @@ output/evaluation_<timestamp>/
 
 ---
 
-## 🎓 THESIS STRUCTURE SUGGESTIONS
+##  THESIS STRUCTURE SUGGESTIONS
 
 ### **Chapter 5: Experimental Results**
 
@@ -619,7 +619,7 @@ Ensure 2-5GB free space in `output/` directory.
 
 ---
 
-## 🚀 QUICK START CHECKLIST
+##  QUICK START CHECKLIST
 
 - [ ] Verify data files present: `ls data/*.json`
 - [ ] Test all configs work: `uv run exp1 --env test` (repeat for exp2-5)
@@ -638,15 +638,15 @@ Ensure 2-5GB free space in `output/` directory.
 
 ---
 
-## 🎉 EXPECTED THESIS IMPACT
+##  EXPECTED THESIS IMPACT
 
 **Your contributions will demonstrate:**
 
-1. ✅ **Baseline establishment** (Exp 1)
-2. ✅ **Repair system effectiveness** (Exp 2: +60-70%)
-3. ✅ **Hyper-heuristic value** (Exp 3: +70-80%)
-4. ✅ **Local search contribution** (Exp 4: +85-90%, isolates LNS impact)
-5. ✅ **RL intelligent adaptation** (Exp 5: +95-98%, shows adaptive selection value)
+1.  **Baseline establishment** (Exp 1)
+2.  **Repair system effectiveness** (Exp 2: +60-70%)
+3.  **Hyper-heuristic value** (Exp 3: +70-80%)
+4.  **Local search contribution** (Exp 4: +85-90%, isolates LNS impact)
+5.  **RL intelligent adaptation** (Exp 5: +95-98%, shows adaptive selection value)
 
 **Total improvement:** Near-perfect scheduling (0-3 hard violations vs 20-50 baseline)
 
@@ -656,7 +656,7 @@ Ensure 2-5GB free space in `output/` directory.
 
 ---
 
-## 📞 TROUBLESHOOTING
+##  TROUBLESHOOTING
 
 ### **Problem: "RL model not found"**
 ```bash
@@ -687,7 +687,7 @@ md5sum data/*.json  # Should be identical across runs
 
 ---
 
-## ✅ YOU'RE READY!
+##  YOU'RE READY!
 
 **Start with:**
 ```bash
@@ -698,11 +698,11 @@ uv run exp1 --env test
 uv run exp1 --env prod
 ```
 
-**Watch it run, then move to the next experiment!** 🎓🚀
+**Watch it run, then move to the next experiment!** 
 
 ---
 
-## 📝 QUICK COMMAND REFERENCE
+##  QUICK COMMAND REFERENCE
 
 ```bash
 # Thesis experiments (logical names)

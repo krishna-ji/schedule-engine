@@ -57,11 +57,11 @@ def test_course_initialization(sample_course):
 
 #### 2. Use descriptive test names
 ```python
-# Good ✅
+# Good 
 def test_fitness_evaluation_with_no_violations_returns_zero():
     ...
 
-# Bad ❌
+# Bad 
 def test_fitness():
     ...
 ```
@@ -187,22 +187,22 @@ def test_complete_scheduling_workflow(tmp_path):
 
 ## Common Pitfalls to Avoid
 
-❌ **Don't test implementation details** (private methods)  
-❌ **Don't write flaky tests** (dependent on timing/randomness)  
-❌ **Don't skip test cleanup** (use fixtures with `yield`)  
-❌ **Don't test library code** (e.g., don't test DEAP internals)
+ **Don't test implementation details** (private methods)  
+ **Don't write flaky tests** (dependent on timing/randomness)  
+ **Don't skip test cleanup** (use fixtures with `yield`)  
+ **Don't test library code** (e.g., don't test DEAP internals)
 
-✅ **Do test public APIs**  
-✅ **Do test business logic**  
-✅ **Do test error handling**  
-✅ **Do test integration points**
+ **Do test public APIs**  
+ **Do test business logic**  
+ **Do test error handling**  
+ **Do test integration points**
 
 ## Never Do
 
-- ❌ Put test files outside `test/` directory
-- ❌ Commit failing tests
-- ❌ Skip testing after major changes
-- ❌ Use production data in tests (create minimal test data)
-- ❌ Hardcode paths (use relative paths from test/ directory)
-- ❌ Leave debug print statements in committed tests
-- ❌ Write tests without docstrings
+-  Put test files outside `test/` directory
+-  Commit failing tests
+-  Skip testing after major changes
+-  Use production data in tests (create minimal test data)
+-  Hardcode paths (use relative paths from test/ directory)
+-  Leave debug print statements in committed tests
+-  Write tests without docstrings

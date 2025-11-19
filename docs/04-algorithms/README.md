@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 ### Core Algorithms
 - **HEURISTICS_QUICKREF.md** - Heuristic operators and Phase 1.5 implementation
@@ -16,7 +16,7 @@
 
 ### Performance Analysis & Optimization
 - **time-complexity-algorithmic-analysis/** - Detailed complexity analysis and optimization strategies
-- **nvidia-gpu/** - GPU acceleration guides and deployment (⚡ 5 min setup, 3-5× speedup)
+- **nvidia-gpu/** - GPU acceleration guides and deployment ( 5 min setup, 3-5× speedup)
 - **parallelism/** - Parallelization deep dives
 - **PRODUCTION_OPTIMIZATION_SUMMARY.txt** - Optimization notes
 - **QUICK_REFERENCE.md** - Performance quick reference
@@ -27,7 +27,7 @@
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [Architecture ←](../03-architecture/)
 - [Development Notes →](../06-development/implementation-notes/)

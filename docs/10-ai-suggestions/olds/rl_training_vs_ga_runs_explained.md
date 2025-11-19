@@ -182,8 +182,8 @@ Output: 30 schedules (30 JSON files)
 ### What is Curriculum Learning?
 
 **Analogy**: Learning math
-- ❌ Bad: Start with calculus (too hard, give up)
-- ✅ Good: Start with addition → multiplication → algebra → calculus
+-  Bad: Start with calculus (too hard, give up)
+-  Good: Start with addition → multiplication → algebra → calculus
 
 **In RL**: Train on easy problems first, gradually increase difficulty
 
@@ -371,7 +371,7 @@ Result: 30 schedules, statistical analysis
 
 ```python
 # WRONG UNDERSTANDING:
-"500 training episodes = 500 models"  ❌
+"500 training episodes = 500 models"  
 
 # CORRECT UNDERSTANDING:
 "500 training episodes = 1 model trained 500 times"  ✓
@@ -434,7 +434,7 @@ def filter_courses_by_count(context, num_courses: int):
 def train_curriculum():
     """Train agent using curriculum learning."""
     
-    console.print("[bold]🎓 RL Training with Curriculum Learning[/bold]\n")
+    console.print("[bold] RL Training with Curriculum Learning[/bold]\n")
     
     # Load full dataset
     qts, full_context = load_input_data("data")
@@ -492,7 +492,7 @@ def train_curriculum():
     # Save final model
     final_path = "models/rl_agents/schedule_ppo_curriculum.zip"
     agent.save(final_path)
-    console.print(f"\n✅ [bold green]Training complete![/bold green]")
+    console.print(f"\n [bold green]Training complete![/bold green]")
     console.print(f"Model saved: {final_path}")
     
     return agent
@@ -573,7 +573,7 @@ if __name__ == "__main__":
 
 ### Q1: "If I run GA 30 times, do I have 30 models?"
 
-**Answer**: ❌ NO - You have 1 model, used 30 times
+**Answer**:  NO - You have 1 model, used 30 times
 
 ```
 Training (once):    → 1 model created
@@ -693,14 +693,14 @@ tensorboard --logdir logs/tensorboard
 
 **Key Takeaways**:
 
-1. ✅ **Training produces 1 model** (not 30 models)
-2. ✅ **Model learns by running mini-GA 500+ times internally**
-3. ✅ **Production uses that 1 model for all 30 GA runs**
-4. ✅ **Curriculum learning = easy→medium→hard progressive training**
-5. ✅ **Vary course count in curriculum** (10→20→40 courses)
-6. ✅ **Training = learn phase** | **Production = use phase**
+1.  **Training produces 1 model** (not 30 models)
+2.  **Model learns by running mini-GA 500+ times internally**
+3.  **Production uses that 1 model for all 30 GA runs**
+4.  **Curriculum learning = easy→medium→hard progressive training**
+5.  **Vary course count in curriculum** (10→20→40 courses)
+6.  **Training = learn phase** | **Production = use phase**
 
-**Next step**: Implement training script and run your first RL training session! 🚀
+**Next step**: Implement training script and run your first RL training session! 
 
 
 

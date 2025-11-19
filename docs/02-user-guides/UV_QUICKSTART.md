@@ -1,6 +1,6 @@
 # UV Quick Start Guide
 
-## 🚀 One-Command Setup
+##  One-Command Setup
 
 **Windows:**
 ```powershell
@@ -18,7 +18,7 @@ That's it! The script will:
 3. Install all dependencies
 4. Verify installation
 
-## 📦 Manual Setup (3 Commands)
+##  Manual Setup (3 Commands)
 
 ### Windows
 ```powershell
@@ -46,7 +46,7 @@ source .venv/bin/activate
 uv pip install -e .
 ```
 
-## ⚡ Speed Comparison
+##  Speed Comparison
 
 | Task | pip | UV | Speedup |
 |------|-----|----|----|
@@ -54,27 +54,27 @@ uv pip install -e .
 | Install one package | 8s | 1s | **8x faster** |
 | Update all | 60s | 6s | **10x faster** |
 
-## 🔧 Common Commands
+##  Common Commands
 
 ```bash
 # Install all dependencies
 uv sync                          # From pyproject.toml (smart!)
 
 # Add/remove packages (auto-updates pyproject.toml!)
-uv add package-name              # Install AND update pyproject.toml ✨
-uv remove package-name           # Remove AND update pyproject.toml ✨
+uv add package-name              # Install AND update pyproject.toml 
+uv remove package-name           # Remove AND update pyproject.toml 
 
 # List packages
 uv pip list
 
 # Run without activation
-uv run python main.py --env test  # No activation needed! ⚡
+uv run python main.py --env test  # No activation needed! 
 
 # Lock dependencies
 uv lock                          # Create uv.lock with exact versions
 ```
 
-## 📋 Daily Workflow
+##  Daily Workflow
 
 ```bash
 # No activation needed with native UV!
@@ -88,7 +88,7 @@ source .venv/bin/activate      # Linux/macOS
 python main.py --env test
 ```
 
-## 🆘 Troubleshooting
+##  Troubleshooting
 
 ### "uv: command not found"
 **Solution:** Restart your terminal after installing UV
@@ -99,7 +99,7 @@ python main.py --env test
 ### Want to go back to pip?
 **Solution:** Just use `.\setup-venv.ps1` instead
 
-## 📚 More Info
+##  More Info
 
 - Full migration guide: `docs/UV_MIGRATION.md`
 - Detailed setup: `docs/VENV_SETUP.md`
@@ -107,11 +107,11 @@ python main.py --env test
 
 ## Why UV?
 
-✅ **10-100x faster** than pip  
-✅ **No pip dependency** - standalone binary  
-✅ **Better dependency resolution**  
-✅ **Drop-in replacement** - same commands  
-✅ **Production ready** - by Astral (Ruff creators)  
+ **10-100x faster** than pip  
+ **No pip dependency** - standalone binary  
+ **Better dependency resolution**  
+ **Drop-in replacement** - same commands  
+ **Production ready** - by Astral (Ruff creators)  
 
 Ready to try? Just run:
 ```powershell

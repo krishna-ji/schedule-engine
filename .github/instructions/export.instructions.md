@@ -209,9 +209,9 @@ plt.savefig(output_path)
 - Limit data points in plots (e.g., every Nth generation for long runs)
 
 ## Never Do
-- ❌ Overwrite existing output directories (always create timestamped)
-- ❌ Use raster formats (PNG/JPG) for plots unless specified
-- ❌ Hardcode file paths (use output_dir parameter)
-- ❌ Skip error handling (log and continue if one export fails)
-- ❌ Use Monday-first ordering in calendars (always Sunday-first)
-- ❌ Forget to close file handles after writing
+-  Overwrite existing output directories (always create timestamped)
+-  Use raster formats (PNG/JPG) for plots unless specified
+-  Hardcode file paths (use output_dir parameter)
+-  Skip error handling (log and continue if one export fails)
+-  Use Monday-first ordering in calendars (always Sunday-first)
+-  Forget to close file handles after writing

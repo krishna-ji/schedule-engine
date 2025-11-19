@@ -2,7 +2,7 @@
 
 Complete documentation for all NSGA-II schedule engine visualizations.
 
-## 📚 Documentation Files
+##  Documentation Files
 
 ### [00_INDEX.md](./00_INDEX.md) — **START HERE**
 Master index with:
@@ -40,7 +40,7 @@ Algorithm dynamics and optimization progress:
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### I need to...
 
@@ -64,7 +64,7 @@ Algorithm dynamics and optimization progress:
 
 ---
 
-## 📊 Plot Categories
+##  Plot Categories
 
 ### By Purpose
 - **Trade-Off Analysis**: pareto_front*.pdf
@@ -79,7 +79,7 @@ Algorithm dynamics and optimization progress:
 
 ---
 
-## 📁 Where Plots are Saved
+##  Where Plots are Saved
 
 ```
 output/evaluation_<timestamp>/
@@ -109,7 +109,7 @@ output/evaluation_<timestamp>/
 
 ---
 
-## 🔍 Key Concepts Explained
+##  Key Concepts Explained
 
 ### What is the Pareto Front?
 The set of **non-dominated solutions** where improving one objective (e.g., reducing hard violations) worsens another (e.g., increasing soft penalties). Represents optimal trade-offs.
@@ -125,7 +125,7 @@ Percentage of population with **zero hard constraint violations**. Higher = more
 
 ---
 
-## 📖 Reading Order
+##  Reading Order
 
 ### For First-Time Users
 1. **00_INDEX.md** - Overview & quick reference
@@ -149,20 +149,20 @@ Percentage of population with **zero hard constraint violations**. Higher = more
 
 ## ⚠️ Common Pitfalls
 
-❌ **Judging success by single metric** (e.g., only hypervolume)  
-✅ Use convergence_dashboard.pdf for holistic view
+ **Judging success by single metric** (e.g., only hypervolume)  
+ Use convergence_dashboard.pdf for holistic view
 
-❌ **Ignoring diversity metric** → premature convergence undetected  
-✅ Always check diversity.pdf trend
+ **Ignoring diversity metric** → premature convergence undetected  
+ Always check diversity.pdf trend
 
-❌ **Comparing absolute hypervolume across different problems**  
-✅ Only compare runs with same reference point
+ **Comparing absolute hypervolume across different problems**  
+ Only compare runs with same reference point
 
-❌ **Assuming high spacing is always bad**  
-✅ Early generations naturally have high spacing
+ **Assuming high spacing is always bad**  
+ Early generations naturally have high spacing
 
-❌ **Selecting first Pareto solution without checking**  
-✅ Use pareto_front_detail.pdf and CSV to choose wisely
+ **Selecting first Pareto solution without checking**  
+ Use pareto_front_detail.pdf and CSV to choose wisely
 
 ---
 
@@ -175,7 +175,7 @@ Percentage of population with **zero hard constraint violations**. Higher = more
 
 ---
 
-## 📞 Getting Help
+##  Getting Help
 
 **Interpretation questions**: Read relevant section in category files  
 **Unexpected patterns**: Check [Troubleshooting Guide](./00_INDEX.md#troubleshooting-guide)  
@@ -184,7 +184,7 @@ Percentage of population with **zero hard constraint violations**. Higher = more
 
 ---
 
-## 🔗 Related Documentation
+##  Related Documentation
 
 - **Algorithm**: `docs/QUICKREF.md`
 - **Configuration**: `docs/CONFIG_QUICKSTART.md`

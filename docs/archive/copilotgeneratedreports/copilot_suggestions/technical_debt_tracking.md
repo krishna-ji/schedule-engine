@@ -11,19 +11,19 @@
 This document catalogs specific instances of technical debt, code smells, and areas requiring attention in the Schedule Engine codebase.
 
 **Debt Severity Scale:**
-- 🔴 **Critical** - Blocks future development or causes bugs
-- 🟡 **High** - Significant impact on maintainability
-- 🟢 **Medium** - Minor impact, can wait
-- 🔵 **Low** - Nice to have, cosmetic
+-  **Critical** - Blocks future development or causes bugs
+-  **High** - Significant impact on maintainability
+-  **Medium** - Minor impact, can wait
+-  **Low** - Nice to have, cosmetic
 
 ---
 
 ## 1. Testing Debt
 
-### 1.1 Zero Automated Test Coverage 🔴 CRITICAL
+### 1.1 Zero Automated Test Coverage  CRITICAL
 
 **Location:** Entire codebase  
-**Severity:** 🔴 Critical  
+**Severity:**  Critical  
 **Impact:** High risk of regressions, difficult to refactor confidently
 
 **Evidence:**
@@ -48,10 +48,10 @@ Create test suite with minimum 70% coverage for core modules (constraints, GA op
 
 ## 2. Complexity Debt
 
-### 2.1 Large File - `repair.py` (2409 lines) 🟡 HIGH
+### 2.1 Large File - `repair.py` (2409 lines)  HIGH
 
 **Location:** `src/ga/operators/repair.py`  
-**Severity:** 🟡 High  
+**Severity:**  High  
 **Impact:** Hard to navigate, difficult to test individual repair strategies
 
 **Evidence:**
@@ -86,10 +86,10 @@ src/ga/operators/repair/
 
 **Estimated Fix Time:** 3-4 hours
 
-### 2.2 Large File - `ga_scheduler.py` (1350 lines) 🟡 HIGH
+### 2.2 Large File - `ga_scheduler.py` (1350 lines)  HIGH
 
 **Location:** `src/core/ga_scheduler.py`  
-**Severity:** 🟡 High  
+**Severity:**  High  
 **Impact:** Mixing concerns (worker init, GA logic, metrics, UI)
 
 **Evidence:**
@@ -109,10 +109,10 @@ src/core/
 
 **Estimated Fix Time:** 2-3 hours
 
-### 2.3 High Cyclomatic Complexity in `mutate_time_quanta()` 🟢 MEDIUM
+### 2.3 High Cyclomatic Complexity in `mutate_time_quanta()`  MEDIUM
 
 **Location:** `src/ga/operators/mutation.py:77-150`  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Cyclomatic Complexity:** ~15
 
 **Evidence:**
@@ -182,10 +182,10 @@ def mutate_time_quanta(gene, course, context):
 
 ## 3. Performance Debt
 
-### 3.1 Repeated Qualified Instructor Lookups 🟡 HIGH
+### 3.1 Repeated Qualified Instructor Lookups  HIGH
 
 **Location:** `src/ga/operators/mutation.py:29-35`  
-**Severity:** 🟡 High  
+**Severity:**  High  
 **Impact:** Repeated O(n) lookups during every mutation
 
 **Evidence:**
@@ -224,10 +224,10 @@ class SchedulingContext:
 
 **Estimated Fix Time:** 1 hour
 
-### 3.2 Repeated Room Suitability Calculations 🟢 MEDIUM
+### 3.2 Repeated Room Suitability Calculations  MEDIUM
 
 **Location:** `src/ga/operators/mutation.py:50-58`  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Impact:** Repeated O(m) lookups for room suitability
 
 **Similar Issue:** Same pattern as qualified instructors
@@ -238,10 +238,10 @@ class SchedulingContext:
 
 **Estimated Fix Time:** 1 hour
 
-### 3.3 Decoding Individual Multiple Times 🟢 MEDIUM
+### 3.3 Decoding Individual Multiple Times  MEDIUM
 
 **Location:** `src/ga/evaluator/fitness.py:35`  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Impact:** Decode same individual for hard + soft + detailed constraints
 
 **Evidence:**
@@ -269,10 +269,10 @@ def decode_individual_cached(individual_tuple, ...):
 
 ## 4. Memory Debt
 
-### 4.1 Missing `__slots__` in High-Frequency Classes 🟢 MEDIUM
+### 4.1 Missing `__slots__` in High-Frequency Classes  MEDIUM
 
 **Location:** `src/ga/sessiongene.py`  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Impact:** Excessive memory usage for large populations
 
 **Evidence:**
@@ -311,10 +311,10 @@ class SessionGene:
 
 ## 5. Code Organization Debt
 
-### 5.1 Inconsistent Error Handling 🟢 MEDIUM
+### 5.1 Inconsistent Error Handling  MEDIUM
 
 **Location:** Throughout `src/encoder/input_encoder.py`  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Impact:** Silent failures, unclear error messages
 
 **Evidence:**
@@ -357,10 +357,10 @@ def load_with_validation(json_path: str, validator: Callable):
 
 **Estimated Fix Time:** 2 hours
 
-### 5.2 Magic Numbers in Code 🔵 LOW
+### 5.2 Magic Numbers in Code  LOW
 
 **Location:** Multiple files  
-**Severity:** 🔵 Low  
+**Severity:**  Low  
 **Impact:** Unclear meaning of hardcoded values
 
 **Examples:**
@@ -389,10 +389,10 @@ GREEDY_POPULATION_PERCENTAGE = 0.25
 
 **Estimated Fix Time:** 1 hour
 
-### 5.3 Code Duplication in Constraint Functions 🟢 MEDIUM
+### 5.3 Code Duplication in Constraint Functions  MEDIUM
 
 **Location:** `src/constraints/hard.py`  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Impact:** Copy-paste pattern repeated 4+ times
 
 **Evidence:**
@@ -429,10 +429,10 @@ Extract common pattern (see Section 2.3 in comprehensive report)
 
 ## 6. Documentation Debt
 
-### 6.1 Missing API Documentation 🟢 MEDIUM
+### 6.1 Missing API Documentation  MEDIUM
 
 **Location:** Entire codebase  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Impact:** Hard for new developers to understand API
 
 **Evidence:**
@@ -452,10 +452,10 @@ sphinx-build -b html docs docs/_build
 
 **Estimated Fix Time:** 2-3 hours
 
-### 6.2 Missing Architecture Decision Records 🔵 LOW
+### 6.2 Missing Architecture Decision Records  LOW
 
 **Location:** `docs/`  
-**Severity:** 🔵 Low  
+**Severity:**  Low  
 **Impact:** Unclear why certain design decisions were made
 
 **Recommendation:**
@@ -467,10 +467,10 @@ Create `docs/adr/` directory with ADR templates
 
 ## 7. Maintenance Debt
 
-### 7.1 No Type Checking with mypy 🟡 HIGH
+### 7.1 No Type Checking with mypy  HIGH
 
 **Location:** Entire codebase  
-**Severity:** 🟡 High  
+**Severity:**  High  
 **Impact:** Type errors not caught until runtime
 
 **Evidence:**
@@ -491,10 +491,10 @@ disallow_untyped_defs = false  # Start lenient
 
 **Estimated Fix Time:** 2-3 hours (initial setup + fixing errors)
 
-### 7.2 Manual Dependency Management 🟢 MEDIUM
+### 7.2 Manual Dependency Management  MEDIUM
 
 **Location:** `requirements.txt`  
-**Severity:** 🟢 Medium  
+**Severity:**  Medium  
 **Impact:** No lock file, inconsistent environments
 
 **Recommendation:**
@@ -516,48 +516,48 @@ Or use modern `pyproject.toml` with poetry/hatch
 
 | Severity | Count | Estimated Total Fix Time |
 |----------|-------|--------------------------|
-| 🔴 Critical | 1 | 20-30 hours |
-| 🟡 High | 5 | 12-15 hours |
-| 🟢 Medium | 8 | 10-12 hours |
-| 🔵 Low | 3 | 3-4 hours |
+|  Critical | 1 | 20-30 hours |
+|  High | 5 | 12-15 hours |
+|  Medium | 8 | 10-12 hours |
+|  Low | 3 | 3-4 hours |
 | **TOTAL** | **17** | **45-61 hours** |
 
 ### Debt by Category
 
 | Category | Issues | Priority |
 |----------|--------|----------|
-| Testing | 1 | 🔴 Critical |
-| Complexity | 3 | 🟡 High |
-| Performance | 3 | 🟡 High |
-| Memory | 1 | 🟢 Medium |
-| Organization | 3 | 🟢 Medium |
-| Documentation | 2 | 🟢 Medium |
-| Maintenance | 2 | 🟡 High |
+| Testing | 1 |  Critical |
+| Complexity | 3 |  High |
+| Performance | 3 |  High |
+| Memory | 1 |  Medium |
+| Organization | 3 |  Medium |
+| Documentation | 2 |  Medium |
+| Maintenance | 2 |  High |
 
 ---
 
 ## Prioritized Action Plan
 
 ### Week 1-2: Critical Items
-1. ✅ Set up pytest testing infrastructure (1 item, 20-30h)
-2. ✅ Write tests for constraints and GA operators
+1.  Set up pytest testing infrastructure (1 item, 20-30h)
+2.  Write tests for constraints and GA operators
 
 ### Week 3-4: High Priority Items
-1. ✅ Add caching to SchedulingContext (2h)
-2. ✅ Split large files (repair.py, ga_scheduler.py) (5-7h)
-3. ✅ Add mypy type checking (3h)
-4. ✅ Extract mutation strategies (2h)
+1.  Add caching to SchedulingContext (2h)
+2.  Split large files (repair.py, ga_scheduler.py) (5-7h)
+3.  Add mypy type checking (3h)
+4.  Extract mutation strategies (2h)
 
 ### Week 5-6: Medium Priority Items
-1. ✅ Add `__slots__` to SessionGene (10min)
-2. ✅ Standardize error handling (2h)
-3. ✅ Extract common constraint patterns (1h)
-4. ✅ Set up Sphinx documentation (3h)
+1.  Add `__slots__` to SessionGene (10min)
+2.  Standardize error handling (2h)
+3.  Extract common constraint patterns (1h)
+4.  Set up Sphinx documentation (3h)
 
 ### Week 7-8: Low Priority Items
-1. ✅ Define constants for magic numbers (1h)
-2. ✅ Create ADR documentation (ongoing)
-3. ✅ Modernize dependency management (1h)
+1.  Define constants for magic numbers (1h)
+2.  Create ADR documentation (ongoing)
+3.  Modernize dependency management (1h)
 
 ---
 

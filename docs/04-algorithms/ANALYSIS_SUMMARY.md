@@ -1,35 +1,35 @@
-# 📋 Analysis Summary & Action Plan
+#  Analysis Summary & Action Plan
 ## Evaluation: 2025-10-27 (evaluation_20251027_083447)
 
 ---
 
-## 🎯 Quick Summary
+##  Quick Summary
 
 After analyzing your 150-generation dev run, I've identified **two critical blockers** preventing convergence:
 
-### 🔴 **BLOCKER #1: Constraint Weight Imbalance** (HIGHEST PRIORITY)
+###  **BLOCKER #1: Constraint Weight Imbalance** (HIGHEST PRIORITY)
 - **Block clustering** (quality preference) is 73.6% of total penalty
 - **Group overlaps** (critical safety) INCREASED by 175% (380 → 1,046)
 - **Instructor conflicts** (critical safety) INCREASED by 229% (76 → 250)
 - **Root Cause**: Block clustering weighted same as safety constraints, but generates 7x more violations
 - **Impact**: Schedule is **PHYSICALLY IMPOSSIBLE** to execute (students/instructors double-booked)
 
-### 🔴 **BLOCKER #2: Repair System Bug** 
+###  **BLOCKER #2: Repair System Bug** 
 - Zero repairs executed despite `memetic_mode: true` configuration
 - `repairs_total: 0` every generation
 - Needs code-level debugging
 
 ---
 
-## 📊 The Numbers
+##  The Numbers
 
 | Constraint | Initial | Final | Change | Severity |
 |------------|---------|-------|--------|----------|
-| **Block Clustering** | 10,618 | 7,408 | ↓ 30% ✅ | Quality (nice-to-have) |
-| **Group Overlaps** | 380 | 1,046 | ↑ 175% ❌ | **CRITICAL SAFETY** |
-| **Instructor Conflicts** | 76 | 250 | ↑ 229% ❌ | **CRITICAL SAFETY** |
+| **Block Clustering** | 10,618 | 7,408 | ↓ 30%  | Quality (nice-to-have) |
+| **Group Overlaps** | 380 | 1,046 | ↑ 175%  | **CRITICAL SAFETY** |
+| **Instructor Conflicts** | 76 | 250 | ↑ 229%  | **CRITICAL SAFETY** |
 | **Availability** | 910 | 914 | → | Important |
-| **Room Type** | 678 | 446 | ↓ 34% ✅ | Functional |
+| **Room Type** | 678 | 446 | ↓ 34%  | Functional |
 
 **Current Penalty Distribution**:
 ```
@@ -45,9 +45,9 @@ Total penalty: ~20,128
 
 ---
 
-## 🔧 What You Need to Do
+##  What You Need to Do
 
-### ✅ **STEP 1: Fix Weights (15 minutes, 60-90% impact)**
+###  **STEP 1: Fix Weights (15 minutes, 60-90% impact)**
 
 **Option A - Conservative** (Recommended First):
 ```yaml
@@ -88,7 +88,7 @@ hard_constraints:
 
 ---
 
-### ✅ **STEP 2: Check Data Quality (30 minutes)**
+###  **STEP 2: Check Data Quality (30 minutes)**
 
 Run the diagnostic script I created:
 ```bash
@@ -104,7 +104,7 @@ This will identify:
 
 ---
 
-### ✅ **STEP 3: Test New Configuration (45 minutes)**
+###  **STEP 3: Test New Configuration (45 minutes)**
 
 ```bash
 # Quick smoke test (5 min)
@@ -128,7 +128,7 @@ python main.py --config configs/dev_rebalanced.yaml
 
 ---
 
-### 🔍 **STEP 4: Debug Repair System (2-4 hours)**
+###  **STEP 4: Debug Repair System (2-4 hours)**
 
 Only if weights don't solve it:
 
@@ -155,7 +155,7 @@ Only if weights don't solve it:
 
 ---
 
-## 📚 Detailed Reports Generated
+##  Detailed Reports Generated
 
 I've created three comprehensive reports in the `report/` directory:
 
@@ -185,20 +185,20 @@ I've created three comprehensive reports in the `report/` directory:
 
 ---
 
-## 🎯 Priority Order
+##  Priority Order
 
 | # | Task | Time | Impact | Status |
 |---|------|------|--------|--------|
-| **1** | Fix constraint weights | 15 min | 60-90% | ⚪ **DO THIS FIRST** |
-| **2** | Run data quality check | 30 min | 10-20% | ⚪ Before next run |
-| **3** | Test new config (test env) | 5 min | Validation | ⚪ Smoke test |
-| **4** | Run full dev with new weights | 35 min | See results | ⚪ Main test |
-| **5** | Debug repair system | 2-4 hrs | 30-50% | ⚪ If still needed |
-| **6** | Apply other tweaks | 30 min | 10-15% | ⚪ Fine-tuning |
+| **1** | Fix constraint weights | 15 min | 60-90% |  **DO THIS FIRST** |
+| **2** | Run data quality check | 30 min | 10-20% |  Before next run |
+| **3** | Test new config (test env) | 5 min | Validation |  Smoke test |
+| **4** | Run full dev with new weights | 35 min | See results |  Main test |
+| **5** | Debug repair system | 2-4 hrs | 30-50% |  If still needed |
+| **6** | Apply other tweaks | 30 min | 10-15% |  Fine-tuning |
 
 ---
 
-## 💡 Key Insights
+##  Key Insights
 
 ### Why Weights Matter More Than Repair System:
 
@@ -211,22 +211,22 @@ I've created three comprehensive reports in the `report/` directory:
 ### The Trade-off You're Making:
 
 **Current situation**:
-- ✅ Good block clustering (classes grouped nicely)
-- ❌ 1,046 students double-booked (**UNUSABLE**)
-- ❌ 250 instructors double-booked (**UNUSABLE**)
+-  Good block clustering (classes grouped nicely)
+-  1,046 students double-booked (**UNUSABLE**)
+-  250 instructors double-booked (**UNUSABLE**)
 
 **After weight fix**:
 - ⚠️ Worse block clustering (classes more spread out)
-- ✅ 100-300 student conflicts (80-90% reduction)
-- ✅ 50-100 instructor conflicts (60-80% reduction)
-- ✅ **USABLE SCHEDULE**
+-  100-300 student conflicts (80-90% reduction)
+-  50-100 instructor conflicts (60-80% reduction)
+-  **USABLE SCHEDULE**
 
 **Philosophy**: 
 > "An inconvenient but valid schedule is better than a convenient but impossible one."
 
 ---
 
-## 📈 Expected Progression
+##  Expected Progression
 
 ### After Weight Fix Only:
 ```
@@ -260,7 +260,7 @@ Status: PRODUCTION READY
 
 ---
 
-## 🚀 Getting Started Right Now
+##  Getting Started Right Now
 
 ```bash
 # 1. Navigate to project
@@ -296,9 +296,9 @@ python main.py --env dev
 
 ---
 
-## 📞 What to Look For in Results
+##  What to Look For in Results
 
-### ✅ **Success Indicators**:
+###  **Success Indicators**:
 - Hard violations < 5,000 (was 10,064)
 - Group overlaps < 500 (was 1,046)  
 - Instructor conflicts < 150 (was 250)
@@ -311,28 +311,28 @@ python main.py --env dev
 - Diversity still collapsing < 0.20
 - New errors or crashes
 
-### ❌ **Needs Further Action**:
+###  **Needs Further Action**:
 - Hard violations > 7,000
 - Critical constraints increasing instead of decreasing
 - System unstable or crashing
 
 ---
 
-## 📁 Files Generated
+##  Files Generated
 
 Located in `c:\Users\krishna\Desktop\schedule-engine\report\`:
 
-1. ✅ `DETAILED_ANALYSIS_REPORT.md` - Comprehensive analysis (600 lines)
-2. ✅ `CONSTRAINT_WEIGHT_ANALYSIS.md` - Weight imbalance deep dive (500 lines)
-3. ✅ `IMMEDIATE_ACTION_PLAN.md` - Step-by-step fixes (400 lines)
-4. ✅ `ANALYSIS_SUMMARY.md` - This quick reference (you are here!)
+1.  `DETAILED_ANALYSIS_REPORT.md` - Comprehensive analysis (600 lines)
+2.  `CONSTRAINT_WEIGHT_ANALYSIS.md` - Weight imbalance deep dive (500 lines)
+3.  `IMMEDIATE_ACTION_PLAN.md` - Step-by-step fixes (400 lines)
+4.  `ANALYSIS_SUMMARY.md` - This quick reference (you are here!)
 
 **Also created**:
-- ✅ `scripts/check_data_quality.py` - Data integrity diagnostic script
+-  `scripts/check_data_quality.py` - Data integrity diagnostic script
 
 ---
 
-## 🎓 Understanding the Core Issue
+##  Understanding the Core Issue
 
 ### Why This Happened:
 
@@ -358,7 +358,7 @@ Your GA is working correctly—it's optimizing exactly what you told it to optim
 
 ---
 
-## ✅ Next Steps (In Order)
+##  Next Steps (In Order)
 
 1. **Read** `CONSTRAINT_WEIGHT_ANALYSIS.md` (understand the problem)
 2. **Apply** weight changes to `configs/dev.yaml` (15 minutes)

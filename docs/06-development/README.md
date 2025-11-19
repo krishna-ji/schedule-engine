@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 ### Changelogs
 - **changelog/bugfixes.md** - Bug fix history
@@ -22,7 +22,7 @@
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [Performance ←](../05-performance/)
 - [Architecture](../03-architecture/)

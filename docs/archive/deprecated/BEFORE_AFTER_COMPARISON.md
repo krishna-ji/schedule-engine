@@ -18,10 +18,10 @@ for block_size in blocks:
 ```
 
 **Problems:**
-- ❌ Theory and practical treated the same
-- ❌ No pedagogical awareness
-- ❌ Hardcoded penalties (no tuning)
-- ❌ All isolated sessions penalized equally
+-  Theory and practical treated the same
+-  No pedagogical awareness
+-  Hardcoded penalties (no tuning)
+-  All isolated sessions penalized equally
 
 ### After (Course-Type-Aware)
 
@@ -44,10 +44,10 @@ else:
 ```
 
 **Benefits:**
-- ✅ Pedagogically appropriate rules
-- ✅ Configurable penalties
-- ✅ First isolated session excused (practical)
-- ✅ Heavy penalty for practical fragmentation
+-  Pedagogically appropriate rules
+-  Configurable penalties
+-  First isolated session excused (practical)
+-  Heavy penalty for practical fragmentation
 
 ## 2. Configuration
 
@@ -61,9 +61,9 @@ PREFERRED_BLOCK_SIZE_MAX = 3
 ```
 
 **Problems:**
-- ❌ Requires code changes to tune
-- ❌ No environment-specific settings
-- ❌ Same values for all course types
+-  Requires code changes to tune
+-  No environment-specific settings
+-  Same values for all course types
 
 ### After
 
@@ -82,9 +82,9 @@ time:
 ```
 
 **Benefits:**
-- ✅ No code changes needed
-- ✅ Environment-specific (test/dev/prod)
-- ✅ Course-type-specific settings
+-  No code changes needed
+-  Environment-specific (test/dev/prod)
+-  Course-type-specific settings
 
 ## 3. Repair Heuristics
 
@@ -99,9 +99,9 @@ def repair_session_clustering(individual, context):
 ```
 
 **Problems:**
-- ❌ Doesn't prioritize single-block for practicals
-- ❌ May create multiple blocks for labs
-- ❌ No course-type awareness
+-  Doesn't prioritize single-block for practicals
+-  May create multiple blocks for labs
+-  No course-type awareness
 
 ### After
 
@@ -120,9 +120,9 @@ def repair_session_clustering(individual, context):
 ```
 
 **Benefits:**
-- ✅ Practical courses get single-block treatment
-- ✅ Theory courses maintain flexibility
-- ✅ Repair matches constraint logic
+-  Practical courses get single-block treatment
+-  Theory courses maintain flexibility
+-  Repair matches constraint logic
 
 ## 4. Example Scenarios
 
@@ -135,19 +135,19 @@ def repair_session_clustering(individual, context):
 **After:**
 - Distribution: [1, 2, 3] → Penalty = 0 (first isolated excused!)
 - Repair: Only triggered if multiple isolated sessions
-- Result: More schedule flexibility ✅
+- Result: More schedule flexibility 
 
 ### Scenario 2: 3-hour Lab (Practical)
 
 **Before:**
 - Distribution: [2, 1] → Penalty = 5 (isolated)
 - Repair: May leave as [2, 1] or change to [1, 2]
-- Problem: Still fragmented ❌
+- Problem: Still fragmented 
 
 **After:**
 - Distribution: [2, 1] → Penalty = 20 (fragmentation!)
 - Repair: Forces consolidation to [3]
-- Result: Continuous lab time ✅
+- Result: Continuous lab time 
 
 ### Scenario 3: 9-hour Theory Course
 
@@ -158,19 +158,19 @@ def repair_session_clustering(individual, context):
 **After:**
 - Distribution: [9] → Penalty = 6 (6 quanta beyond 3)
 - Repair: Splits to [3, 3, 3]
-- Same behavior, but now configurable! ✅
+- Same behavior, but now configurable! 
 
 ### Scenario 4: 6-hour Lab (Practical)
 
 **Before:**
 - Distribution: [2, 2, 2] → Penalty = 0 (no isolated, not oversized)
 - Repair: No action
-- Problem: Lab is still fragmented! ❌
+- Problem: Lab is still fragmented! 
 
 **After:**
 - Distribution: [2, 2, 2] → Penalty = 40 (2 splits × 20)
 - Repair: Consolidates to [6]
-- Result: Proper lab session ✅
+- Result: Proper lab session 
 
 ## 5. Environment-Specific Tuning
 
@@ -212,28 +212,28 @@ practical_fragmentation_penalty: 50
 ### Theory Courses
 
 **Improvements:**
-- ✅ First isolated session excused (more realistic)
-- ✅ Configurable tolerance
-- ✅ Environment-specific strictness
-- ✅ Better reflects actual scheduling needs
+-  First isolated session excused (more realistic)
+-  Configurable tolerance
+-  Environment-specific strictness
+-  Better reflects actual scheduling needs
 
 ### Practical Courses
 
 **Improvements:**
-- ✅ Heavy penalty for ANY fragmentation
-- ✅ Repair actively consolidates blocks
-- ✅ Matches pedagogical requirement
-- ✅ Guaranteed continuous lab time
+-  Heavy penalty for ANY fragmentation
+-  Repair actively consolidates blocks
+-  Matches pedagogical requirement
+-  Guaranteed continuous lab time
 
 ### System-Wide
 
 **Improvements:**
-- ✅ No code changes for tuning
-- ✅ Environment-specific configs
-- ✅ Pedagogically accurate
-- ✅ Better schedule quality
-- ✅ Comprehensive testing
-- ✅ Full documentation
+-  No code changes for tuning
+-  Environment-specific configs
+-  Pedagogically accurate
+-  Better schedule quality
+-  Comprehensive testing
+-  Full documentation
 
 ## 8. Migration Path
 

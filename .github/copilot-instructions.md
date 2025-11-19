@@ -1,6 +1,6 @@
 # Schedule Engine - Copilot Agent Guide
 
-## 🎯 Project Overview
+##  Project Overview
 
 **Type**: University course scheduling optimization system  
 **Domain**: Educational timetabling, multi-objective optimization  
@@ -73,11 +73,11 @@ uv run list-experiments
 
 ## Phase Roadmap & Status
 
-- **Phase 1.5 – Heuristic Toolbox**: ✅ Complete (19 operators + registry, documented in `docs/06-development/implementation-notes/PHASE_1.5_SUMMARY.md`).
-- **Phase 2.1 – Gymnasium Environment**: ✅ Complete (env, reward, action mapper). See `docs/06-development/implementation-notes/PHASE_2.1_SUMMARY.md`.
-- **Phase 2.2-2.4 – RL Training/Deployment/Integration**: ✅ Code complete (`docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`). Pending execution tasks: curriculum training runs, checkpoint selection, promotion, RL-enabled GA benchmarking, and documentation updates.
-- **Phase 3 – Advanced RL / Evaluation**: 🚧 Planned (multi-agent, transfer learning, evaluation suite) per `Todo.md` and `docs/10-ai-suggestions/rlphase2.2-2.4_guide_manual.md`.
-- **GPU Acceleration**: ✅ Deployed (CUDA enabled in configs/base.yaml, see `docs/04-algorithms/nvidia-gpu/`).
+- **Phase 1.5 – Heuristic Toolbox**:  Complete (19 operators + registry, documented in `docs/06-development/implementation-notes/PHASE_1.5_SUMMARY.md`).
+- **Phase 2.1 – Gymnasium Environment**:  Complete (env, reward, action mapper). See `docs/06-development/implementation-notes/PHASE_2.1_SUMMARY.md`.
+- **Phase 2.2-2.4 – RL Training/Deployment/Integration**:  Code complete (`docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`). Pending execution tasks: curriculum training runs, checkpoint selection, promotion, RL-enabled GA benchmarking, and documentation updates.
+- **Phase 3 – Advanced RL / Evaluation**:  Planned (multi-agent, transfer learning, evaluation suite) per `Todo.md` and `docs/10-ai-suggestions/rlphase2.2-2.4_guide_manual.md`.
+- **GPU Acceleration**:  Deployed (CUDA enabled in configs/base.yaml, see `docs/04-algorithms/nvidia-gpu/`).
 
 ## Tech Stack
 
@@ -183,20 +183,20 @@ python main.py --config path/to/custom.yaml
 
 ## Active Workstream (November 2025)
 
-1. **Phase 3 Implementation**: ✅ Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
-2. **GPU Acceleration**: ✅ Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
+1. **Phase 3 Implementation**:  Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
+2. **GPU Acceleration**:  Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
    - GPU batch evaluator: 10-50x speedup (`src/ga/evaluator/gpu_batch_evaluator.py`)
    - Parallel crossover/mutation: 3-5x speedup (multiprocessing)
    - Parallel feasibility checks: 3-5x speedup (concurrent)
    - **Combined speedup**: 13-34x (34 hours → 1-2.5 hours)
-3. **Thesis Experiments**: ✅ Ready (5 progressive experiments)
+3. **Thesis Experiments**:  Ready (5 progressive experiments)
    - Exp 1: Pure NSGA-II baseline (`uv run exp1`)
    - Exp 2: + IGLS repairs (`uv run exp2`)
    - Exp 3: + 19 heuristics (`uv run exp3`)
    - Exp 4: + Local search (`uv run exp4`)
    - Exp 5: + RL-guided (`uv run exp5`)
    - **Guide**: `docs/45-resource-unused-problem/THESIS_EXPERIMENTS_GUIDE.md`
-4. **Documentation Reorganization**: ✅ Complete (10-category structure, see `docs/INDEX.md`)
+4. **Documentation Reorganization**:  Complete (10-category structure, see `docs/INDEX.md`)
 5. **Next Steps (Execution):**
    - Run all 5 thesis experiments (6-10 hours total)
    - Analyze results and generate comparison plots
@@ -230,7 +230,7 @@ Always log notable runs in `output/` and reference them inside documentation or 
 - `docs/08-qna/technical-questions.md` – active Q&A workspace for technical discussions.
 - `.github/instructions/*.instructions.md` – path-specific rules (config, GA, RL, constraints, tests, etc.).
 
-## 📋 Coding Standards & Best Practices
+##  Coding Standards & Best Practices
 
 ### Python Style Guidelines
 - **PEP 8 Compliant**: Line length 88 (Black default)
@@ -354,7 +354,7 @@ System design, component interactions, data flow:
 - Component relationships
 - Design patterns and principles
 
-## 📝 Commit Message Format
+##  Commit Message Format
 
 **Format**: `<type>(<scope>): <summary>`
 

@@ -32,12 +32,12 @@ Generation 6: LNS repair FORCED to trigger with full diagnostics:
 
 ## Success Indicators
 
-✅ **LNS triggered on gen 6** (forced)
-✅ **Conflicts detected** (>0 sessions)
-✅ **Pre-check passed** or gave clear reason
-✅ **Heuristic attempted** with iteration count/time
-✅ **CP escalation** if heuristic failed (hybrid mode)
-✅ **Repair outcome** (SUCCESS/FAILED) with timing
+ **LNS triggered on gen 6** (forced)
+ **Conflicts detected** (>0 sessions)
+ **Pre-check passed** or gave clear reason
+ **Heuristic attempted** with iteration count/time
+ **CP escalation** if heuristic failed (hybrid mode)
+ **Repair outcome** (SUCCESS/FAILED) with timing
 
 ## Failure Scenarios & Fixes
 
@@ -164,4 +164,4 @@ A: Set `force_trigger_generations: [6, 10, 15]` to test 3 times in 20-gen run.
 
 ---
 
-**Ready to validate!** Run the test config, confirm console output looks good, then proceed to production with confidence. 🚀
+**Ready to validate!** Run the test config, confirm console output looks good, then proceed to production with confidence. 

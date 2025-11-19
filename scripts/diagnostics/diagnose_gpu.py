@@ -31,10 +31,10 @@ def check_cuda_availability():
     print(f"CUDA Available: {cuda_available}")
 
     if cuda_available:
-        print(f"✅ CUDA is properly configured")
+        print(f" CUDA is properly configured")
         return True
     else:
-        print(f"❌ CUDA is NOT available")
+        print(f" CUDA is NOT available")
         print(f"\nPossible reasons:")
         print(f"1. No NVIDIA GPU detected")
         print(f"2. NVIDIA drivers not installed or outdated")
@@ -127,11 +127,11 @@ def test_gpu_operations():
         print(f"  ✓ Gradient computed: {a.grad is not None}")
         print(f"  ✓ Gradient device: {a.grad.device}")
 
-        print("\n✅ All GPU operations successful!")
+        print("\n All GPU operations successful!")
         return True
 
     except Exception as e:
-        print(f"\n❌ GPU operation failed: {e}")
+        print(f"\n GPU operation failed: {e}")
         return False
 
 
@@ -154,24 +154,24 @@ def test_config_device():
             )
             return False
         elif device == "cuda":
-            print(f"✅ Config correctly set for GPU training")
+            print(f" Config correctly set for GPU training")
             return True
         elif device == "auto":
             actual = "cuda" if torch.cuda.is_available() else "cpu"
             print(f"ℹ️  'auto' will use: {actual}")
             if torch.cuda.is_available():
-                print(f"💡 TIP: Set 'device: cuda' explicitly for guaranteed GPU usage")
+                print(f" TIP: Set 'device: cuda' explicitly for guaranteed GPU usage")
             return True
         else:
             print(f"ℹ️  Using CPU (device: {device})")
             if torch.cuda.is_available():
                 print(
-                    f"💡 TIP: Change to 'device: cuda' in configs/base.yaml for GPU acceleration"
+                    f" TIP: Change to 'device: cuda' in configs/base.yaml for GPU acceleration"
                 )
             return True
 
     except Exception as e:
-        print(f"❌ Failed to load config: {e}")
+        print(f" Failed to load config: {e}")
         return False
 
 
@@ -193,8 +193,8 @@ def estimate_vram_usage():
     print(f"{'Batch Processing':<30} {'~100 MB':<15} {'Temporary tensors'}")
     print(f"{'Overhead & Fragmentation':<30} {'~100 MB':<15} {'Safety margin'}")
     print(f"{'-'*60}")
-    print(f"{'Total (typical)':<30} {'~500 MB':<15} {'✅ Well within 8GB'}")
-    print(f"{'Total (maximum)':<30} {'~1 GB':<15} {'✅ Still plenty of room'}")
+    print(f"{'Total (typical)':<30} {'~500 MB':<15} {' Well within 8GB'}")
+    print(f"{'Total (maximum)':<30} {'~1 GB':<15} {' Still plenty of room'}")
     print(f"")
 
     # Check current GPU
@@ -204,10 +204,10 @@ def estimate_vram_usage():
     print(f"")
 
     if gpu_mem >= 8:
-        print(f"✅ Your GPU has sufficient VRAM for RL training")
-        print(f"💡 You can even run 2-3 training sessions simultaneously!")
+        print(f" Your GPU has sufficient VRAM for RL training")
+        print(f" You can even run 2-3 training sessions simultaneously!")
     elif gpu_mem >= 4:
-        print(f"✅ Your GPU has sufficient VRAM for RL training")
+        print(f" Your GPU has sufficient VRAM for RL training")
     else:
         print(f"⚠️  Your GPU has limited VRAM - may need to reduce batch sizes")
 
@@ -217,7 +217,7 @@ def print_recommendations():
     print_section("Recommendations")
 
     if torch.cuda.is_available():
-        print("✅ GPU is ready for training!")
+        print(" GPU is ready for training!")
         print("")
         print("Next steps:")
         print("1. Enable GPU in config:")
@@ -232,7 +232,7 @@ def print_recommendations():
         print("4. Monitor GPU usage:")
         print("   nvidia-smi -l 1")
     else:
-        print("❌ GPU not available")
+        print(" GPU not available")
         print("")
         print("To enable GPU:")
         print("1. Install NVIDIA drivers:")
@@ -267,12 +267,12 @@ def main():
     # Exit code
     if cuda_ok and gpu_ok:
         print(f"\n{'='*60}")
-        print("✅ GPU DIAGNOSTICS PASSED")
+        print(" GPU DIAGNOSTICS PASSED")
         print(f"{'='*60}\n")
         sys.exit(0)
     else:
         print(f"\n{'='*60}")
-        print("❌ GPU DIAGNOSTICS FAILED")
+        print(" GPU DIAGNOSTICS FAILED")
         print(f"{'='*60}\n")
         sys.exit(1)
 

@@ -1,10 +1,10 @@
 # GPU Acceleration - Quick Reference Card
 
-**Status:** ✅ **ENABLED** (as of November 17, 2025)
+**Status:**  **ENABLED** (as of November 17, 2025)
 
 ---
 
-## ⚡ What Changed
+##  What Changed
 
 ```yaml
 # configs/base.yaml line 328
@@ -13,7 +13,7 @@ device: cuda  # GPU acceleration enabled
 
 ---
 
-## 🚀 Quick Verification (30 seconds)
+##  Quick Verification (30 seconds)
 
 ```powershell
 # 1. Check GPU is detected
@@ -26,11 +26,11 @@ uv run python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
 uv run python scripts/diagnose_gpu.py
 ```
 
-**Expected:** All checks pass ✅
+**Expected:** All checks pass 
 
 ---
 
-## 🎯 Quick Test (3 minutes)
+##  Quick Test (3 minutes)
 
 ```powershell
 # Terminal 1: Start training
@@ -44,7 +44,7 @@ nvidia-smi -l 1
 
 ---
 
-## 📊 Performance Gain
+##  Performance Gain
 
 | Training | Before | After | Speedup |
 |----------|--------|-------|---------|
@@ -54,7 +54,7 @@ nvidia-smi -l 1
 
 ---
 
-## 🔧 Rollback (if needed)
+##  Rollback (if needed)
 
 Edit `configs/base.yaml` line 328:
 ```yaml
@@ -63,7 +63,7 @@ device: cpu  # or device: auto
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
 - **Quick Start:** [QUICKSTART.md](./QUICKSTART.md)
 - **Full Guide:** [GPU_ACCELERATION_GUIDE.md](./GPU_ACCELERATION_GUIDE.md)
@@ -72,7 +72,7 @@ device: cpu  # or device: auto
 
 ---
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 | Issue | Quick Fix |
 |-------|-----------|

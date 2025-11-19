@@ -99,8 +99,8 @@ def generate_my_strategy(context, pop_size, toolbox):
 ```
 
 ## Never Do
-- ❌ Modify individual length during crossover (breaks alignment)
-- ❌ Create genes for courses not enrolled by groups
-- ❌ Access config before it's initialized
-- ❌ Use `print()` in worker processes (use logger or suppress)
-- ❌ Share mutable state across multiprocessing workers
+-  Modify individual length during crossover (breaks alignment)
+-  Create genes for courses not enrolled by groups
+-  Access config before it's initialized
+-  Use `print()` in worker processes (use logger or suppress)
+-  Share mutable state across multiprocessing workers

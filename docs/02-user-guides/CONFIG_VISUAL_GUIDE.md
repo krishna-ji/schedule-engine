@@ -267,7 +267,7 @@ Examples:
 
 ## Best Practices
 
-### ✅ DO
+###  DO
 
 - Define defaults in `common.yaml`
 - Override in test/dev/prod only when necessary
@@ -275,7 +275,7 @@ Examples:
 - Use comments to explain overrides
 - Group related parameters together
 
-### ❌ DON'T
+###  DON'T
 
 - Duplicate values across multiple files
 - Put tuning parameters in `common.yaml`

@@ -64,7 +64,7 @@ pip list
 
 ## Notes
 
-- ✅ `.venv/` is already in `.gitignore`
-- ✅ No conda required
-- ✅ Python 3.8+ compatible (tested with 3.13)
-- 📝 Full documentation: `VENV_SETUP.md`
+-  `.venv/` is already in `.gitignore`
+-  No conda required
+-  Python 3.8+ compatible (tested with 3.13)
+-  Full documentation: `VENV_SETUP.md`

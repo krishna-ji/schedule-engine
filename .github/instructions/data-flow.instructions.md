@@ -141,9 +141,9 @@ for group in groups.values():
 ```
 
 ## Never Do
-- ❌ Mutate entities after creation
-- ❌ Use 1-indexed quanta (always 0-indexed)
-- ❌ Hardcode time ranges (use config.time settings)
-- ❌ Skip validation of JSON data
-- ❌ Use Monday-first ordering (always Sunday-first)
-- ❌ Access database or API (data comes from JSON only)
+-  Mutate entities after creation
+-  Use 1-indexed quanta (always 0-indexed)
+-  Hardcode time ranges (use config.time settings)
+-  Skip validation of JSON data
+-  Use Monday-first ordering (always Sunday-first)
+-  Access database or API (data comes from JSON only)

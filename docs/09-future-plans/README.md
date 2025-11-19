@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 ### Planning Documents
 - **roadmap.md** - Overall project roadmap (coming soon)
@@ -14,7 +14,7 @@
 
 ---
 
-## 🎯 Purpose
+##  Purpose
 
 This section is for:
 
@@ -25,7 +25,7 @@ This section is for:
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [Q&A ←](../08-qna/)
 - [AI Suggestions →](../10-ai-suggestions/)

@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 ### Question Categories
 - **technical-questions.md** - Technical implementation questions
@@ -14,7 +14,7 @@
 
 ---
 
-## 💡 How to Use This Section
+##  How to Use This Section
 
 This is your **active workspace** for asking questions and having technical discussions with AI agents:
 
@@ -25,7 +25,7 @@ This is your **active workspace** for asking questions and having technical disc
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [Thesis Report ←](../07-thesis-report/)
 - [Future Plans →](../09-future-plans/)

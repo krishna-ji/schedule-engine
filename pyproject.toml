@@ -58,7 +58,7 @@ dev = [
 schedule-engine = "main:main"
 
 # ==============================================================================
-# 🎓 THESIS EXPERIMENTS - Core Comparisons
+#  THESIS EXPERIMENTS - Core Comparisons
 # ==============================================================================
 # Use these commands for your thesis experiments (logical progression)
 thesis-exp1-baseline = "main:main_baseline"           # Exp 1: Pure NSGA-II (baseline)
@@ -75,7 +75,7 @@ exp4 = "main:main_roundrobin"
 exp5 = "main:main_rl"
 
 # ==============================================================================
-# 🔬 ABLATION STUDIES - Isolate Component Contributions
+#  ABLATION STUDIES - Isolate Component Contributions
 # ==============================================================================
 # These help understand "which part contributes what"
 ablation-no-repairs = "main:main_baseline"            # Baseline (no repairs)
@@ -99,7 +99,7 @@ prod-repairs = "main:main_repairs"
 prod-heuristics = "main:main_heuristics"
 
 # ==============================================================================
-# 🚀 ORIGINAL RUNTIME MODES (10 Progressive Modes)
+#  ORIGINAL RUNTIME MODES (10 Progressive Modes)
 # ==============================================================================
 # Baseline & Core Modes (1-4)
 baseline = "main:main_baseline"          # Mode 1: Pure NSGA-II
@@ -118,7 +118,7 @@ hierarchical = "main:main_hierarchical"  # Mode 9: Hierarchical RL (two-level)
 multiagent = "main:main_multiagent"      # Mode 10: Rank-based multi-agent RL
 
 # ==============================================================================
-# 🤖 RL TRAINING & MODEL MANAGEMENT
+#  RL TRAINING & MODEL MANAGEMENT
 # ==============================================================================
 # Training commands for Experiment 5 (RL-guided)
 train-rl = "src.rl.training.train_script:main"        # Train RL agent (100K timesteps)
@@ -133,7 +133,7 @@ train = "src.rl.training.train_script:main"
 generate-validation = "scripts.cli:generate_validation"
 
 # ==============================================================================
-# 📊 RESULTS ANALYSIS & COMPARISON
+#  RESULTS ANALYSIS & COMPARISON
 # ==============================================================================
 # Compare experiment results for thesis
 compare-experiments = "scripts.cli:compare_experiments"  # Compare all thesis experiments
@@ -143,7 +143,7 @@ analyze-convergence = "scripts.cli:analyze_convergence"  # Convergence analysis
 analyze-diversity = "scripts.cli:analyze_diversity"      # Diversity metrics
 
 # ==============================================================================
-# 🔍 DIAGNOSTICS & SYSTEM CHECKS
+#  DIAGNOSTICS & SYSTEM CHECKS
 # ==============================================================================
 diagnose-gpu = "scripts.cli:diagnose_gpu"
 diagnose-system = "scripts.cli:diagnose_system"          # Full system check
@@ -153,7 +153,7 @@ verify-config = "scripts.cli:verify_config"
 verify-enhancements = "scripts.cli:verify_enhancements"
 
 # ==============================================================================
-# ⚡ BENCHMARKING & PERFORMANCE
+#  BENCHMARKING & PERFORMANCE
 # ==============================================================================
 benchmark-gpu = "scripts.cli:benchmark_gpu"
 benchmark-lns = "scripts.cli:benchmark_lns"

@@ -7,14 +7,14 @@
 
 ## What's Been Done
 
-### ✅ Phase 1: Heuristic Toolbox (COMPLETE)
+###  Phase 1: Heuristic Toolbox (COMPLETE)
 - **19 heuristic operators** across 5 categories (construction, perturbation, improvement, diversity, meta)
 - Registry-based architecture with decorators
 - Config-driven killswitches
 - Full test coverage
 - **Location**: `src/heuristics/`, `test/test_heuristics.py`
 
-### ✅ Phase 2: RL Integration (CODE COMPLETE)
+###  Phase 2: RL Integration (CODE COMPLETE)
 - **Phase 2.1**: Gymnasium environment (21-dimensional state space, 20 actions)
 - **Phase 2.2**: Training infrastructure (trainer, curriculum, callbacks, checkpoints)
 - **Phase 2.3**: Deployment (model loader, inference engine, hybrid controller)
@@ -204,21 +204,21 @@ vim docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md
 ## Success Indicators
 
 ### Training Success
-- ✅ Reward curve shows improvement over curriculum stages
-- ✅ Agent advances through all 3 stages (easy→medium→hard)
-- ✅ Final checkpoints show positive median_reward
-- ✅ No crashes or errors during training
+-  Reward curve shows improvement over curriculum stages
+-  Agent advances through all 3 stages (easy→medium→hard)
+-  Final checkpoints show positive median_reward
+-  No crashes or errors during training
 
 ### Deployment Success
-- ✅ Model loads in <100ms
-- ✅ Inference completes in <10ms (median)
-- ✅ No errors in production run with RL enabled
-- ✅ RL actions successfully applied (check logs)
+-  Model loads in <100ms
+-  Inference completes in <10ms (median)
+-  No errors in production run with RL enabled
+-  RL actions successfully applied (check logs)
 
 ### Performance Success (Ideal but not required initially)
-- ✅ RL-enabled GA matches baseline performance (no regression)
-- ⭐ RL-enabled GA exceeds baseline (improvement)
-- ⭐ Learned policy shows interpretable patterns
+-  RL-enabled GA matches baseline performance (no regression)
+-  RL-enabled GA exceeds baseline (improvement)
+-  Learned policy shows interpretable patterns
 
 ---
 

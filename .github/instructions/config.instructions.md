@@ -35,14 +35,14 @@ applyTo: "configs/**/*.yaml"
 Every major feature has a master killswitch:
 
 ```yaml
-# CORRECT ✅: Explicit killswitch
+# CORRECT : Explicit killswitch
 repair:
   enabled: true  # Master killswitch
   stagnation_repair:
     enabled: true
     patience: 8
 
-# WRONG ❌: Missing master switch
+# WRONG : Missing master switch
 repair:
   stagnation_repair:
     enabled: true  # Can't work if parent is disabled!
@@ -52,11 +52,11 @@ repair:
 Use `null` for runtime auto-detection:
 
 ```yaml
-# CORRECT ✅: Let system detect CPU count
+# CORRECT : Let system detect CPU count
 parallel:
   num_workers: null  # Auto-detect all available cores
 
-# WRONG ❌: Hardcoded value (not portable)
+# WRONG : Hardcoded value (not portable)
 parallel:
   num_workers: 16  # Fails on systems with fewer cores
 ```
@@ -80,14 +80,14 @@ ga:
 
 ### 4. Descriptive Comments
 ```yaml
-# CORRECT ✅: Explain purpose and values
+# CORRECT : Explain purpose and values
 repair:
   enabled: true
   stagnation_repair:
     patience: 8  # Generations without improvement before repair
     population_coverage: 0.4  # Repair top 40% of population
 
-# WRONG ❌: Missing context
+# WRONG : Missing context
 repair:
   enabled: true
   stagnation_repair:
@@ -182,39 +182,39 @@ rl:
 
 ### Common Errors to Avoid
 
-❌ **Tabs instead of spaces**
+ **Tabs instead of spaces**
 ```yaml
 repair:
 	enabled: true  # ERROR: tab character
 ```
 
-✅ **Use 2 spaces**
+ **Use 2 spaces**
 ```yaml
 repair:
   enabled: true
 ```
 
-❌ **Inconsistent indentation**
+ **Inconsistent indentation**
 ```yaml
 ga:
   ngen: 2000
     pop_size: 200  # ERROR: wrong indentation
 ```
 
-✅ **Consistent 2-space indent**
+ **Consistent 2-space indent**
 ```yaml
 ga:
   ngen: 2000
   pop_size: 200
 ```
 
-❌ **Missing quotes for special strings**
+ **Missing quotes for special strings**
 ```yaml
 time:
   earliest_preferred_time: 08:00  # ERROR: treated as number
 ```
 
-✅ **Quote time strings**
+ **Quote time strings**
 ```yaml
 time:
   earliest_preferred_time: "08:00"
@@ -264,12 +264,12 @@ ga:
 
 ## When to Create New Config
 
-✅ **Do create** new config for:
+ **Do create** new config for:
 - New experimental mode
 - Thesis experiment configuration
 - Special hardware setup (GPU, large runners)
 
-❌ **Don't create** new config for:
+ **Don't create** new config for:
 - One-off parameter tweaks (use CLI override instead)
 - Personal preferences (use environment configs)
 - Temporary debugging (modify test.yaml)
@@ -291,9 +291,9 @@ uv run exp1 --env prod --config my-config.yaml --ngen 500
 
 ## Never Do
 
-- ❌ Use tabs instead of spaces
-- ❌ Hardcode system-specific values (use `null` for auto-detection)
-- ❌ Duplicate common settings in env files (put in base.yaml)
-- ❌ Add features without killswitches (`enabled: bool` field required)
-- ❌ Skip validation before committing (run `uv run verify-config`)
-- ❌ Commit configs without header comments explaining purpose
+-  Use tabs instead of spaces
+-  Hardcode system-specific values (use `null` for auto-detection)
+-  Duplicate common settings in env files (put in base.yaml)
+-  Add features without killswitches (`enabled: bool` field required)
+-  Skip validation before committing (run `uv run verify-config`)
+-  Commit configs without header comments explaining purpose

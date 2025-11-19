@@ -1,6 +1,6 @@
 # Runtime Modes - Quick Reference
 
-## 🚀 Quick Start
+##  Quick Start
 
 ```bash
 # List all modes
@@ -23,7 +23,7 @@ python main.py --compare
 
 ---
 
-## 📊 Modes at a Glance
+##  Modes at a Glance
 
 | # | Mode | Features | Use Case | Command |
 |---|------|----------|----------|---------|
@@ -36,7 +36,7 @@ python main.py --compare
 
 ---
 
-## 🎯 Common Workflows
+##  Common Workflows
 
 ### Feature Ablation Study
 ```bash
@@ -71,7 +71,7 @@ uv run full  # Or whichever performed best
 
 ---
 
-## 📁 Output Structure
+##  Output Structure
 
 ```
 output/
@@ -91,7 +91,7 @@ output/
 
 ---
 
-## 🔧 Configuration Files
+##  Configuration Files
 
 ```
 configs/
@@ -111,17 +111,17 @@ configs/
 
 | Feature | 1 | 2 | 3 | 4 | 5 | 6 |
 |---------|---|---|---|---|---|---|
-| Repairs | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Heuristics | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Memetic LS | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| LNS-IGLS | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Enhancements | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Adaptive Prob | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| RL Agent | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Repairs |  |  |  |  |  |  |
+| Heuristics |  |  |  |  |  |  |
+| Memetic LS |  |  |  |  |  |  |
+| LNS-IGLS |  |  |  |  |  |  |
+| Enhancements |  |  |  |  |  |  |
+| Adaptive Prob |  |  |  |  |  |  |
+| RL Agent |  |  |  |  |  |  |
 
 ---
 
-## 💡 Tips
+##  Tips
 
 **Smoke Testing:** Use `--env test` for quick validation (30 gens, ~5 min)
 ```bash
@@ -149,7 +149,7 @@ manager.export_comparison_csv("output/results.csv")
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
 - **Full Guide:** `docs/02-user-guides/runtime-modes.md` (2500+ lines)
 - **Implementation:** `docs/06-development/implementation-notes/RUNTIME_MODES_IMPLEMENTATION.md`
@@ -158,7 +158,7 @@ manager.export_comparison_csv("output/results.csv")
 
 ---
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 **Q: "Config validation failed"**  
 A: Config violates mode constraints. Check killswitches in config file match expected values.
@@ -171,14 +171,14 @@ A: Use unique experiment names or timestamps (automatic with `--experiment` flag
 
 ---
 
-## 🚦 Status Indicators
+##  Status Indicators
 
-- 🔴 **Baseline** - Pure GA, no enhancements
-- 🟡 **Repairs** - Basic repair system
-- 🟢 **Heuristics** - Full heuristic toolbox
-- 🔵 **Full** - Best non-RL configuration
-- 🤖 **RL-Guided** - AI-driven heuristic selection
-- 🔄 **Round-Robin** - Fixed heuristic rotation
+-  **Baseline** - Pure GA, no enhancements
+-  **Repairs** - Basic repair system
+-  **Heuristics** - Full heuristic toolbox
+-  **Full** - Best non-RL configuration
+-  **RL-Guided** - AI-driven heuristic selection
+-  **Round-Robin** - Fixed heuristic rotation
 
 ---
 

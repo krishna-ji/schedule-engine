@@ -1,9 +1,9 @@
-# 🔧 IMMEDIATE ACTION PLAN
+#  IMMEDIATE ACTION PLAN
 ## Quick Fix Guide - Priority Ordered
 
 ---
 
-## 🚨 **STOP! Read This First**
+##  **STOP! Read This First**
 
 Your GA produced **10,064 hard violations** after 150 generations. This is **completely unusable**. 
 
@@ -11,7 +11,7 @@ Your GA produced **10,064 hard violations** after 150 generations. This is **com
 
 ---
 
-## 🔥 **CRITICAL BUG: Repair System Not Running**
+##  **CRITICAL BUG: Repair System Not Running**
 
 ### **Problem**
 ```
@@ -62,7 +62,7 @@ Your config has `memetic_mode: true` but repairs aren't running. Check if memeti
 
 ---
 
-## 🔴 **PRIORITY 1: Data Quality Check**
+##  **PRIORITY 1: Data Quality Check**
 
 ### **Problem**: Duplicate Course Enrollments
 
@@ -105,13 +105,13 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
             })
     
     if issues:
-        print(f"\n❌ Found {len(issues)} groups with duplicate enrollments:\n")
+        print(f"\n Found {len(issues)} groups with duplicate enrollments:\n")
         for issue in issues:
             print(f"  Group {issue['group']}:")
             for course, count in issue['count'].items():
                 print(f"    - {course} appears {count} times")
     else:
-        print("\n✅ No duplicate enrollments found!")
+        print("\n No duplicate enrollments found!")
     
     return issues
 
@@ -131,7 +131,7 @@ If duplicates are found, **manually edit `data/Groups.json`** to remove them, OR
 
 ---
 
-## 🟠 **PRIORITY 2: Quick Config Fixes**
+##  **PRIORITY 2: Quick Config Fixes**
 
 ### **Fix 1: Reduce Block Clustering Weight**
 
@@ -210,7 +210,7 @@ repair:
 
 ---
 
-## ✅ **TESTING PROTOCOL**
+##  **TESTING PROTOCOL**
 
 After implementing fixes, follow this sequence:
 
@@ -221,9 +221,9 @@ python main.py --env test
 ```
 
 **Check for**:
-- ✅ No crashes
-- ✅ `repairs_total > 0` in logger
-- ✅ Hard violations decreasing
+-  No crashes
+-  `repairs_total > 0` in logger
+-  Hard violations decreasing
 
 ---
 
@@ -234,10 +234,10 @@ python main.py --env dev
 ```
 
 **Success criteria**:
-- ✅ Hard violations < 5,000 by gen 100
-- ✅ Diversity stays > 0.30
-- ✅ Repairs executed > 1,000 total
-- ✅ No stagnation > 10 generations
+-  Hard violations < 5,000 by gen 100
+-  Diversity stays > 0.30
+-  Repairs executed > 1,000 total
+-  No stagnation > 10 generations
 
 ---
 
@@ -257,7 +257,7 @@ python main.py --env dev
 
 ---
 
-## 📊 **How to Read Results**
+##  **How to Read Results**
 
 ### **Check Logger File**
 
@@ -288,7 +288,7 @@ tail -n 5 output/evaluation_<timestamp>/CSVs/hard_constraints_all.csv
 
 ---
 
-## 🎯 **Success Metrics**
+##  **Success Metrics**
 
 | Metric | Current | Target (Good) | Excellent |
 |--------|---------|---------------|-----------|
@@ -300,7 +300,7 @@ tail -n 5 output/evaluation_<timestamp>/CSVs/hard_constraints_all.csv
 
 ---
 
-## 🔍 **Debugging Checklist**
+##  **Debugging Checklist**
 
 If issues persist after fixes:
 
@@ -334,7 +334,7 @@ If issues persist after fixes:
 
 ---
 
-## 📞 **Need More Help?**
+##  **Need More Help?**
 
 ### **Share These Files**:
 1. `output/evaluation_<timestamp>/logger.txt`
@@ -355,21 +355,21 @@ Specific issue: [describe]
 
 ---
 
-## 🚀 **Timeline Estimate**
+##  **Timeline Estimate**
 
 | Task | Time | Status |
 |------|------|--------|
-| Fix repair system | 2-4 hours | 🔴 CRITICAL |
-| Data quality check | 30 min | 🔴 CRITICAL |
-| Apply config fixes | 15 min | 🟠 EASY |
-| Run test + dev | 45 min | ⚪ WAITING |
-| Analyze results | 30 min | ⚪ WAITING |
-| Iterate if needed | 2-3 hours | ⚪ WAITING |
+| Fix repair system | 2-4 hours |  CRITICAL |
+| Data quality check | 30 min |  CRITICAL |
+| Apply config fixes | 15 min |  EASY |
+| Run test + dev | 45 min |  WAITING |
+| Analyze results | 30 min |  WAITING |
+| Iterate if needed | 2-3 hours |  WAITING |
 | **TOTAL** | **4-8 hours** | **TODAY** |
 
 ---
 
-## ✅ **Quick Start (Right Now!)**
+##  **Quick Start (Right Now!)**
 
 ```bash
 # 1. Create diagnostic script
@@ -396,4 +396,4 @@ grep "repairs_total" output/evaluation_*/logger.txt
 
 ---
 
-**Good luck! The fixes are straightforward—you'll have this working soon! 🚀**
+**Good luck! The fixes are straightforward—you'll have this working soon! **

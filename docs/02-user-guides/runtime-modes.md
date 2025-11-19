@@ -58,20 +58,20 @@ output/
 
 ## Runtime Modes
 
-### Mode 1: Pure NSGA-II (Baseline) 🔴
+### Mode 1: Pure NSGA-II (Baseline) 
 
 **File:** `configs/baseline/1-pure-nsga.yaml`
 
 **Description:** Minimal NSGA-II with no repairs, no heuristics, no enhancements. Use as baseline for comparing all other modes.
 
 **Features:**
-- ✅ Pure NSGA-II genetic algorithm
-- ✅ Random population initialization
-- ❌ No repairs (IGLS disabled)
-- ❌ No heuristics (Phase 1.5 disabled)
-- ❌ No local search (LNS-IGLS disabled)
-- ❌ No RL guidance
-- ❌ No enhancements
+-  Pure NSGA-II genetic algorithm
+-  Random population initialization
+-  No repairs (IGLS disabled)
+-  No heuristics (Phase 1.5 disabled)
+-  No local search (LNS-IGLS disabled)
+-  No RL guidance
+-  No enhancements
 
 **Usage:**
 ```bash
@@ -89,20 +89,20 @@ python main.py --mode 1-pure-nsga
 
 ---
 
-### Mode 2: NSGA-II + Repairs 🟡
+### Mode 2: NSGA-II + Repairs 
 
 **File:** `configs/nsga/2-nsga-repairs.yaml`
 
 **Description:** NSGA-II with IGLS repair system but no advanced heuristics. Tests effectiveness of repair system alone.
 
 **Features:**
-- ✅ NSGA-II genetic algorithm
-- ✅ Hybrid population initialization (25% greedy, 50% smart, 25% random)
-- ✅ IGLS repair system (stagnation + selective)
-- ❌ No Phase 1.5 heuristics
-- ❌ No local search
-- ❌ No RL guidance
-- ❌ No enhancements
+-  NSGA-II genetic algorithm
+-  Hybrid population initialization (25% greedy, 50% smart, 25% random)
+-  IGLS repair system (stagnation + selective)
+-  No Phase 1.5 heuristics
+-  No local search
+-  No RL guidance
+-  No enhancements
 
 **Usage:**
 ```bash
@@ -118,25 +118,25 @@ python main.py --mode repairs
 
 ---
 
-### Mode 3: NSGA-II + Repairs + Heuristics 🟢
+### Mode 3: NSGA-II + Repairs + Heuristics 
 
 **File:** `configs/nsga/3-nsga-heuristics.yaml`
 
 **Description:** NSGA-II with repairs + Phase 1.5 heuristic toolbox (19 operators). Tests effectiveness of heuristic operators.
 
 **Features:**
-- ✅ NSGA-II genetic algorithm
-- ✅ Hybrid population initialization
-- ✅ IGLS repair system
-- ✅ **Phase 1.5 heuristics** (19 operators):
+-  NSGA-II genetic algorithm
+-  Hybrid population initialization
+-  IGLS repair system
+-  **Phase 1.5 heuristics** (19 operators):
   - Construction: Largest-degree-first, Most-constrained-first, Earliest-deadline-first
   - Perturbation: Random swap, Temporal shift, Room shuffle, Instructor reassign
   - Improvement: Kempe chain, Ejection chain, Variable-depth search
   - Diversity: Distance-preserving crossover, Crowding mutation, Niching, Adaptive diversity
   - Meta: VND, ILS, ALNS, Guided local search
-- ✅ Constraint-guided mutation
-- ❌ No memetic local search
-- ❌ No RL guidance
+-  Constraint-guided mutation
+-  No memetic local search
+-  No RL guidance
 
 **Usage:**
 ```bash
@@ -152,26 +152,26 @@ python main.py --mode heuristics
 
 ---
 
-### Mode 4: NSGA-II + Full (Best GA) 🔵
+### Mode 4: NSGA-II + Full (Best GA) 
 
 **File:** `configs/nsga/4-nsga-full.yaml`
 
 **Description:** Full NSGA-II with repairs, heuristics, and LNS-IGLS local search. This is the "best GA" configuration without RL.
 
 **Features:**
-- ✅ NSGA-II genetic algorithm
-- ✅ Hybrid population initialization
-- ✅ IGLS repair system with **memetic mode**
-- ✅ Phase 1.5 heuristics (all 19 operators)
-- ✅ **LNS-IGLS local search**
-- ✅ **Adaptive probabilities**
-- ✅ **All enhancements enabled**:
+-  NSGA-II genetic algorithm
+-  Hybrid population initialization
+-  IGLS repair system with **memetic mode**
+-  Phase 1.5 heuristics (all 19 operators)
+-  **LNS-IGLS local search**
+-  **Adaptive probabilities**
+-  **All enhancements enabled**:
   - Hypermutation
   - Constraint priorities
   - Population restart
   - Violation heatmap
   - Multi-neighborhood search
-- ❌ No RL guidance
+-  No RL guidance
 
 **Usage:**
 ```bash
@@ -187,24 +187,24 @@ python main.py --mode full
 
 ---
 
-### Mode 5: RL-Guided 🤖
+### Mode 5: RL-Guided 
 
 **File:** `configs/rl/5-rl-guided.yaml`
 
 **Description:** Full NSGA-II with RL agent controlling heuristic selection. RL guides both repair strategies and local search budget.
 
 **Features:**
-- ✅ NSGA-II genetic algorithm
-- ✅ IGLS repair system with memetic mode
-- ✅ Phase 1.5 heuristics (RL selects from these)
-- ✅ LNS-IGLS local search
-- ✅ All enhancements enabled
-- ✅ **RL agent** (PPO) in inference mode
+-  NSGA-II genetic algorithm
+-  IGLS repair system with memetic mode
+-  Phase 1.5 heuristics (RL selects from these)
+-  LNS-IGLS local search
+-  All enhancements enabled
+-  **RL agent** (PPO) in inference mode
   - Trained model: `models/rl_agents/best_model.zip`
   - State space: 39D (constraint-specific)
   - Reward: Multi-objective with hypervolume
   - Action: Heuristic selection (19 options)
-- ✅ GPU acceleration (CUDA enabled)
+-  GPU acceleration (CUDA enabled)
 
 **Usage:**
 ```bash
@@ -224,23 +224,23 @@ python main.py --mode rl
 
 ---
 
-### Mode 6: Round-Robin 🔄
+### Mode 6: Round-Robin 
 
 **File:** `configs/hybrid/6-roundrobin.yaml`
 
 **Description:** Full NSGA-II with round-robin heuristic selection (no RL). Cycles through all enabled heuristics in fixed order.
 
 **Features:**
-- ✅ NSGA-II genetic algorithm
-- ✅ IGLS repair system with memetic mode
-- ✅ Phase 1.5 heuristics (applied in round-robin by priority)
-- ✅ LNS-IGLS local search
-- ✅ All enhancements enabled
-- ✅ **Fixed round-robin scheduling**
+-  NSGA-II genetic algorithm
+-  IGLS repair system with memetic mode
+-  Phase 1.5 heuristics (applied in round-robin by priority)
+-  LNS-IGLS local search
+-  All enhancements enabled
+-  **Fixed round-robin scheduling**
   - No adaptive probabilities
   - Deterministic heuristic rotation
   - Priority-based ordering
-- ❌ No RL guidance
+-  No RL guidance
 
 **Usage:**
 ```bash
@@ -360,13 +360,13 @@ manager.export_comparison_csv("output/comparison.csv")
 
 | Feature | Baseline | Repairs | Heuristics | Full | RL | RoundRobin |
 |---------|----------|---------|------------|------|-------|------------|
-| `repair.enabled` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `heuristics.*.enabled` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| `repair.memetic_mode` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| `lns.enabled` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| `enhancements.master_enabled` | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| `ga.use_adaptive_probabilities` | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| `rl.enabled` | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `repair.enabled` |  |  |  |  |  |  |
+| `heuristics.*.enabled` |  |  |  |  |  |  |
+| `repair.memetic_mode` |  |  |  |  |  |  |
+| `lns.enabled` |  |  |  |  |  |  |
+| `enhancements.master_enabled` |  |  |  |  |  |  |
+| `ga.use_adaptive_probabilities` |  |  |  |  |  |  |
+| `rl.enabled` |  |  |  |  |  |  |
 
 ### Validation
 

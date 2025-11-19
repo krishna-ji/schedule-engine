@@ -1,31 +1,31 @@
-# 🔬 Schedule Engine - Detailed Analysis Report
+#  Schedule Engine - Detailed Analysis Report
 ## Evaluation Run: 2025-10-27 08:34:47
 
 ---
 
-## 📊 Executive Summary
+##  Executive Summary
 
 **Run Configuration**: Dev environment (100 generations → Extended to 150)  
 **Total Runtime**: 33.61 minutes (2016.42 seconds)  
 **Final Best Solution**: **10,064 hard violations** | **1,221 soft penalties**
 
-### 🚨 **Critical Finding**
+###  **Critical Finding**
 **The GA is NOT converging to a feasible solution.** After 150 generations, the schedule still has **10,064 hard constraint violations**, indicating **severe structural problems** that prevent the algorithm from finding valid schedules.
 
 ---
 
-## 🎯 Key Metrics
+##  Key Metrics
 
 | Metric | Initial | Final | Improvement | Status |
 |--------|---------|-------|-------------|--------|
-| **Hard Violations** | 12,662 | 10,064 | ↓ 20.5% | ❌ **UNACCEPTABLE** |
+| **Hard Violations** | 12,662 | 10,064 | ↓ 20.5% |  **UNACCEPTABLE** |
 | **Soft Penalties** | 1,665 | 1,221 | ↓ 26.7% | ⚠️ Secondary concern |
-| **Diversity** | 0.6934 | 0.1525 | ↓ 78.0% | ❌ **COLLAPSED** |
-| **Avg Time/Gen** | - | 8.766s | - | ✅ Acceptable |
+| **Diversity** | 0.6934 | 0.1525 | ↓ 78.0% |  **COLLAPSED** |
+| **Avg Time/Gen** | - | 8.766s | - |  Acceptable |
 
 ---
 
-## 📈 Convergence Analysis
+##  Convergence Analysis
 
 ### 1. **Overall Trend: Slow Degrading Plateau**
 
@@ -81,7 +81,7 @@ Gen 150: ██ 0.153 (15%) ← COLLAPSED
 
 ---
 
-## 🔍 Constraint Breakdown
+##  Constraint Breakdown
 
 ### **Hard Constraints Analysis**
 
@@ -100,7 +100,7 @@ Gen 150: ██ 0.153 (15%) ← COLLAPSED
 
 ---
 
-### 🚨 **Root Cause #1: Session Block Clustering Penalty**
+###  **Root Cause #1: Session Block Clustering Penalty**
 
 **This is the PRIMARY culprit—accounting for 79% of all violations!**
 
@@ -126,7 +126,7 @@ Gen 150:  7,928 violations (-25%)
 
 ---
 
-### 🚨 **Root Cause #2: Group Overlap Violations**
+###  **Root Cause #2: Group Overlap Violations**
 
 **996 instances where multiple courses are scheduled for the same group at the same time.**
 
@@ -162,7 +162,7 @@ Group BAR5A @ Sunday 08:00 has 8 OVERLAPPING sessions:
 
 ---
 
-### 🚨 **Root Cause #3: Availability Violations**
+###  **Root Cause #3: Availability Violations**
 
 **918 violations where sessions are scheduled outside instructor/group/room availability windows.**
 
@@ -177,7 +177,7 @@ This suggests:
 
 ---
 
-### 🚨 **Root Cause #4: Room Type Mismatch**
+###  **Root Cause #4: Room Type Mismatch**
 
 **464 violations where courses are assigned to wrong room types.**
 
@@ -190,7 +190,7 @@ This suggests:
 
 ---
 
-### 🚨 **Root Cause #5: Instructor Conflicts**
+###  **Root Cause #5: Instructor Conflicts**
 
 **248 violations where one instructor is scheduled in multiple sessions simultaneously.**
 
@@ -198,7 +198,7 @@ Lower than group overlaps, but still significant. Shows instructors are being ov
 
 ---
 
-## 🛑 **What's NOT Working**
+##  **What's NOT Working**
 
 ### 1. **Repair Heuristics: Zero Activity** ⚠️
 
@@ -247,38 +247,38 @@ The GA is using NSGA-II (multi-objective) with only **5% elite preservation**. T
 
 ---
 
-## 💡 **Root Cause Summary**
+##  **Root Cause Summary**
 
 ### **Primary Culprits** (in order of impact):
 
-1. **🔴 Block Clustering Penalty (79% of violations)**
+1. ** Block Clustering Penalty (79% of violations)**
    - Time slot fragmentation
    - Competing constraints prevent block formation
    - No effective repair mechanism
 
-2. **🔴 Repair System Failure (0 repairs executed)**
+2. ** Repair System Failure (0 repairs executed)**
    - Configuration bug or code issue
    - Critical mechanism completely inactive
 
-3. **🟠 Group Overlap Violations (10% of violations)**
+3. ** Group Overlap Violations (10% of violations)**
    - Data quality issues (duplicate enrollments)
    - Time window scarcity
    - Weak crossover protection
 
-4. **🟠 Diversity Collapse (78% loss)**
+4. ** Diversity Collapse (78% loss)**
    - Population became too homogeneous
    - Trapped in local optima
    - Cannot explore better solutions
 
-5. **🟡 Availability & Room Type Violations**
+5. ** Availability & Room Type Violations**
    - Too restrictive constraints
    - Weak mutation/repair balance
 
 ---
 
-## 🎯 **Actionable Recommendations**
+##  **Actionable Recommendations**
 
-### **🔥 CRITICAL - Must Fix Immediately**
+### ** CRITICAL - Must Fix Immediately**
 
 #### 1. **Fix Repair System (HIGHEST PRIORITY)**
 
@@ -385,7 +385,7 @@ This ensures the best solutions survive longer.
 
 ---
 
-### **📌 MEDIUM PRIORITY**
+### ** MEDIUM PRIORITY**
 
 #### 7. **Investigate Availability Constraints**
 
@@ -441,7 +441,7 @@ This focuses repair/mutation on problematic genes.
 
 ---
 
-## 📋 **Detailed Constraint Analysis**
+##  **Detailed Constraint Analysis**
 
 ### **Soft Constraints (Final Values)**
 
@@ -456,22 +456,22 @@ This focuses repair/mutation on problematic genes.
 
 ---
 
-## 🔧 **Implementation Priority Matrix**
+##  **Implementation Priority Matrix**
 
 | Priority | Action | Impact | Effort | Time |
 |----------|--------|--------|--------|------|
-| 🔥 **P0** | Fix repair system | **CRITICAL** | Medium | 2-4 hours |
-| 🔥 **P0** | Clean duplicate enrollments | **HIGH** | Low | 30 min |
+|  **P0** | Fix repair system | **CRITICAL** | Medium | 2-4 hours |
+|  **P0** | Clean duplicate enrollments | **HIGH** | Low | 30 min |
 | ⚠️ **P1** | Reduce block clustering weight | **HIGH** | Low | 5 min |
 | ⚠️ **P1** | Add block-aware mutation | **HIGH** | High | 4-8 hours |
 | ⚠️ **P1** | Increase diversity (restart) | **MEDIUM** | Medium | 2-3 hours |
-| 📌 **P2** | Reduce mutation rate | **MEDIUM** | Low | 5 min |
-| 📌 **P2** | Strengthen elite preservation | **MEDIUM** | Low | 5 min |
-| 📌 **P2** | Audit availability constraints | **MEDIUM** | Medium | 1-2 hours |
+|  **P2** | Reduce mutation rate | **MEDIUM** | Low | 5 min |
+|  **P2** | Strengthen elite preservation | **MEDIUM** | Low | 5 min |
+|  **P2** | Audit availability constraints | **MEDIUM** | Medium | 1-2 hours |
 
 ---
 
-## 🧪 **Suggested Experiment Sequence**
+##  **Suggested Experiment Sequence**
 
 ### **Experiment 1: Repair System Validation** (URGENT)
 ```bash
@@ -510,7 +510,7 @@ python main.py --env prod
 
 ---
 
-## 📊 **Comparison: What Success Looks Like**
+##  **Comparison: What Success Looks Like**
 
 | Metric | Current (Bad) | Target (Good) | Stretch Goal |
 |--------|--------------|---------------|--------------|
@@ -522,7 +522,7 @@ python main.py --env prod
 
 ---
 
-## 🎓 **Lessons Learned**
+##  **Lessons Learned**
 
 ### What Went Wrong:
 1. **Repair system completely failed** (0 repairs) - most critical issue
@@ -540,38 +540,38 @@ python main.py --env prod
 
 ---
 
-## 🚀 **Next Steps (Actionable Plan)**
+##  **Next Steps (Actionable Plan)**
 
 ### **Phase 1: Critical Fixes (Today)**
-1. ✅ Debug and fix repair system
-2. ✅ Check Groups.json for duplicate enrollments
-3. ✅ Reduce block clustering weight to 1.0
-4. ✅ Reduce mutation rate to 0.15
-5. ✅ Run quick test (`--env test`)
+1.  Debug and fix repair system
+2.  Check Groups.json for duplicate enrollments
+3.  Reduce block clustering weight to 1.0
+4.  Reduce mutation rate to 0.15
+5.  Run quick test (`--env test`)
 
 ### **Phase 2: Validation (Tomorrow)**
-1. ✅ Run dev config with fixes
-2. ✅ Verify repairs > 0 in logger
-3. ✅ Check hard violations < 5,000
-4. ✅ Monitor diversity stays > 0.30
+1.  Run dev config with fixes
+2.  Verify repairs > 0 in logger
+3.  Check hard violations < 5,000
+4.  Monitor diversity stays > 0.30
 
 ### **Phase 3: Advanced Improvements (This Week)**
-1. ✅ Implement block-aware mutation
-2. ✅ Add population restart mechanism
-3. ✅ Tune availability constraints
-4. ✅ Run full production config
+1.  Implement block-aware mutation
+2.  Add population restart mechanism
+3.  Tune availability constraints
+4.  Run full production config
 
 ### **Phase 4: Final Validation (Next Week)**
-1. ✅ Achieve zero hard violations
-2. ✅ Optimize soft constraints
-3. ✅ Generate thesis-quality schedules
-4. ✅ Document results
+1.  Achieve zero hard violations
+2.  Optimize soft constraints
+3.  Generate thesis-quality schedules
+4.  Document results
 
 ---
 
-## 📝 **Conclusion**
+##  **Conclusion**
 
-**Current Status**: ❌ **System is NOT operational**
+**Current Status**:  **System is NOT operational**
 
 The schedule engine is currently unable to produce feasible schedules. The primary bottlenecks are:
 

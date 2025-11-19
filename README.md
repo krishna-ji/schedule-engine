@@ -1,4 +1,4 @@
-# 📅 Schedule Engine
+#  Schedule Engine
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -13,22 +13,22 @@ A multi-objective optimization system for generating university timetables that 
 
 ---
 
-## ✨ Features
+##  Features
 
-- 🧬 **NSGA-II Multi-objective Optimization**: Pareto-optimal solutions for conflicting objectives
-- ⚡ **Parallel Processing**: 3-6x speedup with multiprocessing support
-- 🎯 **Constraint-Based**: Hard constraints (conflicts) + soft preferences (gaps, compactness)
-- 🔧 **Intelligent Repair**: IGLS (Intensive Greedy Local Search) for constraint violation reduction
-- 📊 **Rich Analytics**: Evolution plots, Pareto fronts, constraint heatmaps
-- 📄 **PDF Calendar Export**: Color-coded timetables for easy visualization
-- ✅ **Feasibility Analysis**: Pre-GA validation to detect impossible scheduling scenarios
-- 🎨 **Terminal UI**: Real-time progress tracking with Rich formatting
+-  **NSGA-II Multi-objective Optimization**: Pareto-optimal solutions for conflicting objectives
+-  **Parallel Processing**: 3-6x speedup with multiprocessing support
+-  **Constraint-Based**: Hard constraints (conflicts) + soft preferences (gaps, compactness)
+-  **Intelligent Repair**: IGLS (Intensive Greedy Local Search) for constraint violation reduction
+-  **Rich Analytics**: Evolution plots, Pareto fronts, constraint heatmaps
+-  **PDF Calendar Export**: Color-coded timetables for easy visualization
+-  **Feasibility Analysis**: Pre-GA validation to detect impossible scheduling scenarios
+-  **Terminal UI**: Real-time progress tracking with Rich formatting
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
-### Installation with UV ⚡
+### Installation with UV 
 
 **One-line setup (Windows/Linux/macOS):**
 ```bash
@@ -106,18 +106,18 @@ See [`docs/02-user-guides/rl-training.md`](docs/02-user-guides/rl-training.md) f
 
 ---
 
-## 🎯 Development Status
+##  Development Status
 
-- ✅ **Phase 1**: Heuristic Toolbox (19 operators)
-- ✅ **Phase 2**: RL Integration (Gymnasium + SB3)
-- ✅ **Phase 3**: Advanced RL (8 enhancements: constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent)
-- 🚧 **Phase 4**: Empirical validation (in progress)
+-  **Phase 1**: Heuristic Toolbox (19 operators)
+-  **Phase 2**: RL Integration (Gymnasium + SB3)
+-  **Phase 3**: Advanced RL (8 enhancements: constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent)
+-  **Phase 4**: Empirical validation (in progress)
 
 See [`docs/06-development/PROJECT_TIMELINE.md`](docs/06-development/PROJECT_TIMELINE.md) for detailed timeline.
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 schedule-engine/
@@ -147,7 +147,7 @@ schedule-engine/
 
 ---
 
-## 🎯 Architecture
+##  Architecture
 
 ### Workflow Pipeline
 
@@ -184,7 +184,7 @@ Rooms
 
 ---
 
-## 📊 Output Structure
+##  Output Structure
 
 ```
 output/evaluation_<timestamp>/
@@ -226,7 +226,7 @@ See [`docs/CONFIG_QUICKSTART.md`](docs/CONFIG_QUICKSTART.md) for details.
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
 ### Quick References
 - [`docs/QUICKREF.md`](docs/QUICKREF.md) - Command cheatsheet
@@ -244,7 +244,7 @@ See [`docs/CONFIG_QUICKSTART.md`](docs/CONFIG_QUICKSTART.md) for details.
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 # Run all unit tests
@@ -262,7 +262,7 @@ pytest -k "constraint" test/unit/
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 We welcome contributions! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for:
 - Development setup
@@ -273,13 +273,13 @@ We welcome contributions! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for:
 
 ---
 
-## 📄 License
+##  License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **DEAP**: Distributed Evolutionary Algorithms in Python
 - **Rich**: Beautiful terminal formatting
@@ -287,14 +287,14 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📬 Contact
+##  Contact
 
 **Authors**: Krishna Acharya, Dinanath Padhya, Bipul Dahal
 **Project**: BEI Major Project (University Course Scheduling)
 
 ---
 
-## 🎓 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 

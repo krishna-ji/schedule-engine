@@ -1229,9 +1229,9 @@ new_individual, success = mapper.apply_action(
 
 | Heuristic | Category | Time (ms) | Ranking |
 |-----------|----------|-----------|---------|
-| `temporal_shift` | Perturbation | 5 | ⚡ Fastest |
-| `room_swap` | Perturbation | 8 | ⚡ Fastest |
-| `session_swap` | Perturbation | 10 | ⚡ Fastest |
+| `temporal_shift` | Perturbation | 5 |  Fastest |
+| `room_swap` | Perturbation | 8 |  Fastest |
+| `session_swap` | Perturbation | 10 |  Fastest |
 | `instructor_local_search` | Improvement | 20 | Fast |
 | `room_local_search` | Improvement | 25 | Fast |
 | `random_feasible` | Construction | 30 | Fast |
@@ -1321,4 +1321,4 @@ For detailed implementation, see source files in `src/heuristics/`.
 
 ---
 
-**Document Status**: ✅ Complete - Ready for use as reference
+**Document Status**:  Complete - Ready for use as reference

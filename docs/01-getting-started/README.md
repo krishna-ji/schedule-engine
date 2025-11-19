@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 1. **Installation** - Setup instructions (coming soon)
 2. **Quick Start** - First run guide (coming soon)
@@ -13,7 +13,7 @@
 
 ---
 
-## 🚀 Quick Links
+##  Quick Links
 
 - [Main Documentation Index](../INDEX.md)
 - [Quick Reference Card](../QUICKREF.md)

@@ -11,7 +11,7 @@ Optimized all common settings for production-quality schedule generation with fo
 
 ---
 
-## 📊 Key Optimizations
+##  Key Optimizations
 
 ### 1. Time Configuration - Extended Scheduling Window
 
@@ -151,7 +151,7 @@ Optimized all common settings for production-quality schedule generation with fo
 
 ---
 
-## 📈 Expected Performance Improvements
+##  Expected Performance Improvements
 
 ### Quality Metrics (Estimated)
 - **Hard Violations**: -20-30% reduction (stronger weights + better repair)
@@ -174,9 +174,9 @@ Optimized all common settings for production-quality schedule generation with fo
 
 ---
 
-## 🎯 Production-Ready Features
+##  Production-Ready Features
 
-### ✅ Enabled for Production
+###  Enabled for Production
 1. **Extended operating hours** (08:00-18:00) - realistic university day
 2. **Stronger constraint weights** - critical violations get priority
 3. **Better penalty structure** - pedagogically sound scheduling
@@ -189,7 +189,7 @@ Optimized all common settings for production-quality schedule generation with fo
 2. **Stagnation triggers** - should fire 2-4 times in 200-500 gen runs
 3. **Memory usage** - larger neighborhoods may increase peak memory
 
-### 🔧 Tuning Recommendations
+###  Tuning Recommendations
 Based on your runs, adjust:
 
 **If converges too slowly:**
@@ -209,15 +209,15 @@ Based on your runs, adjust:
 
 ---
 
-## 🚀 Migration from Previous Settings
+##  Migration from Previous Settings
 
 ### Backward Compatibility
-✅ All changes are backward compatible
-✅ Existing test/dev/prod configs still work
-✅ Only common.yaml modified - no code changes needed
+ All changes are backward compatible
+ Existing test/dev/prod configs still work
+ Only common.yaml modified - no code changes needed
 
 ### Breaking Changes
-❌ None - all changes are parameter tuning
+ None - all changes are parameter tuning
 
 ### Recommended Actions
 1. **Test first**: Run test config to verify (5 min)
@@ -239,7 +239,7 @@ Based on your runs, adjust:
 
 ---
 
-## 📋 Validation Checklist
+##  Validation Checklist
 
 Before deploying to production:
 
@@ -255,7 +255,7 @@ Before deploying to production:
 
 ---
 
-## 🎓 Summary: Why These Optimizations?
+##  Summary: Why These Optimizations?
 
 ### Scientific Rationale
 1. **Constraint weights**: Research shows critical constraints need 50-100% higher weights
@@ -276,7 +276,7 @@ Before deploying to production:
 
 ---
 
-## 📖 References
+##  References
 
 Configuration decisions based on:
 - Timetabling literature best practices

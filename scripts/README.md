@@ -2,7 +2,7 @@
 
 Utility scripts for development, testing, training, and validation.
 
-## 🚀 Quick Start
+##  Quick Start
 
 All scripts are accessible via **UV shortcuts** for easy execution:
 
@@ -32,7 +32,7 @@ uv run tensorboard            # Start TensorBoard server
 uv run git-squash             # Interactive commit squashing
 ```
 
-## 📁 Directory Structure
+##  Directory Structure
 
 ```
 scripts/
@@ -44,7 +44,7 @@ scripts/
 └── utilities/         # General utilities
 ```
 
-## 🔧 Benchmarking
+##  Benchmarking
 
 Performance measurement and comparison scripts.
 
@@ -65,7 +65,7 @@ uv run benchmark-constraints
 python scripts/benchmarking/benchmark_gpu_training.py
 ```
 
-## 🎓 Training
+##  Training
 
 RL agent training infrastructure and model management.
 
@@ -88,7 +88,7 @@ python scripts/training/select_best_checkpoint.py --log-dir logs/tensorboard/tra
 python scripts/training/promote_model_to_prod.py --checkpoint best_model.zip
 ```
 
-## ✅ Validation
+##  Validation
 
 Data quality checks and configuration validation.
 
@@ -111,7 +111,7 @@ python scripts/validation/verify_config_standardization.py
 python scripts/validation/verify_enhancements.py
 ```
 
-## 🔍 Diagnostics
+##  Diagnostics
 
 System health checks and integration tests.
 
@@ -162,7 +162,7 @@ python scripts/utilities/start_tensorboard.py
 python scripts/utilities/git_squash.py
 ```
 
-## 🚀 Common Workflows
+##  Common Workflows
 
 ### Complete Training Workflow
 ```bash
@@ -212,7 +212,7 @@ uv run diagnose-gpu
 uv run test-dashboard
 ```
 
-## 📝 Adding New Scripts
+##  Adding New Scripts
 
 When adding new scripts:
 
@@ -234,7 +234,7 @@ When adding new scripts:
 7. **Update this README** with script description and usage examples
 8. **Update `__all__` in `scripts/cli.py`**
 
-## 🔗 Related Documentation
+##  Related Documentation
 
 - [Development Workflow](../docs/06-development/)
 - [RL Training Guide](../docs/02-user-guides/rl-training.md)

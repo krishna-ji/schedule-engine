@@ -9,8 +9,8 @@
 ## Executive Summary
 
 ### Parallelization Status
-- **Fitness Evaluation**: ✅ **PARALLEL** (multiprocessing with worker pools)
-- **Everything Else**: ❌ **SEQUENTIAL** (blocking execution)
+- **Fitness Evaluation**:  **PARALLEL** (multiprocessing with worker pools)
+- **Everything Else**:  **SEQUENTIAL** (blocking execution)
 
 ### Key Findings
 1. **Only 1 component runs in parallel** (fitness evaluation in GA loop)
@@ -20,12 +20,12 @@
 
 ---
 
-## 🎯 What Runs in PARALLEL?
+##  What Runs in PARALLEL?
 
 ### 1. Fitness Evaluation (GA Core)
 **Location:** `src/core/ga_scheduler.py` + `src/ga/evaluator/fitness.py`
 
-**Status:** ✅ **FULLY PARALLEL**
+**Status:**  **FULLY PARALLEL**
 
 **How it works:**
 ```python
@@ -63,12 +63,12 @@ parallel:
 
 ---
 
-## 🐌 What Runs SEQUENTIALLY (Blocking)?
+##  What Runs SEQUENTIALLY (Blocking)?
 
 ### 2. Data Loading Pipeline
 **Location:** `src/workflows/standard_run.py` → `load_input_data()`
 
-**Status:** ❌ **SEQUENTIAL (blocking)**
+**Status:**  **SEQUENTIAL (blocking)**
 
 **What happens:**
 ```python
@@ -83,7 +83,7 @@ link_courses_and_instructors(courses, instructors)      # ~0.1s
 ```
 
 **Runtime:** ~1.5s total  
-**Parallelizable?** ✅ **YES** (I/O-bound, independent operations)
+**Parallelizable?**  **YES** (I/O-bound, independent operations)
 
 **Improvement potential:**
 - Load JSON files in parallel using `ThreadPoolExecutor`
@@ -95,7 +95,7 @@ link_courses_and_instructors(courses, instructors)      # ~0.1s
 ### 3. Input Validation
 **Location:** `src/validation/input_validator.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking)**
+**Status:**  **SEQUENTIAL (blocking)**
 
 **What happens:**
 ```python
@@ -111,7 +111,7 @@ self._validate_room_features_for_enrolled_courses()    # ~0.1s
 ```
 
 **Runtime:** ~0.8s total  
-**Parallelizable?** ✅ **YES** (independent validation checks)
+**Parallelizable?**  **YES** (independent validation checks)
 
 **Improvement potential:**
 - Run validation checks in parallel using `ThreadPoolExecutor`
@@ -123,7 +123,7 @@ self._validate_room_features_for_enrolled_courses()    # ~0.1s
 ### 4. Feasibility Checking
 **Location:** `src/validation/feasibility_checker.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking)**
+**Status:**  **SEQUENTIAL (blocking)**
 
 **What happens:**
 ```python
@@ -148,7 +148,7 @@ check_group_pigeonhole()                        # ~0.5s
 ### 5. Population Initialization
 **Location:** `src/ga/population.py` + `src/ga/hybrid_population.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking)**
+**Status:**  **SEQUENTIAL (blocking)**
 
 **What happens:**
 ```python
@@ -159,7 +159,7 @@ for i in range(pop_size):
 ```
 
 **Runtime:** ~1-5s (depending on strategy and pop_size)  
-**Parallelizable?** ✅ **YES** (embarrassingly parallel)
+**Parallelizable?**  **YES** (embarrassingly parallel)
 
 **Improvement potential:**
 - Generate individuals in parallel using `multiprocessing.Pool`
@@ -171,7 +171,7 @@ for i in range(pop_size):
 ### 6. Initial Population Evaluation
 **Location:** `src/core/ga_scheduler.py` → `initialize_population()`
 
-**Status:** ✅ **ALREADY PARALLEL** (uses toolbox.map)
+**Status:**  **ALREADY PARALLEL** (uses toolbox.map)
 
 **Runtime:** ~2-10s (depending on pop_size)  
 **Note:** Already optimized, no further improvement needed
@@ -181,7 +181,7 @@ for i in range(pop_size):
 ### 7. Genetic Operators (Crossover & Mutation)
 **Location:** `src/ga/operators/crossover.py` + `src/ga/operators/mutation.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking within generation)**
+**Status:**  **SEQUENTIAL (blocking within generation)**
 
 **What happens:**
 ```python
@@ -212,7 +212,7 @@ for mutant in offspring:
 ### 8. Repair System (IGLS)
 **Location:** `src/ga/operators/intensive_local_search.py` + `src/ga/operators/repair.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking)**
+**Status:**  **SEQUENTIAL (blocking)**
 
 **What happens:**
 ```python
@@ -223,7 +223,7 @@ for individual in individuals_to_optimize:           # Sequential loop
 ```
 
 **Runtime:** ~10-180s (when triggered, with timeout protection)  
-**Parallelizable?** ✅ **YES** (highly beneficial)
+**Parallelizable?**  **YES** (highly beneficial)
 
 **Improvement potential:**
 - Parallelize at individual level (optimize multiple individuals concurrently)
@@ -240,7 +240,7 @@ for individual in individuals_to_optimize:           # Sequential loop
 ### 9. Detailed Fitness Evaluation (Constraint Breakdown)
 **Location:** `src/ga/evaluator/detailed_fitness.py`
 
-**Status:** ❌ **SEQUENTIAL (only for best individual per generation)**
+**Status:**  **SEQUENTIAL (only for best individual per generation)**
 
 **What happens:**
 ```python
@@ -252,14 +252,14 @@ hard_details, soft_details = evaluate_detailed(
 ```
 
 **Runtime:** ~0.01s per generation (negligible)  
-**Parallelizable?** ❌ **NO** (only 1 evaluation, overhead not worth it)
+**Parallelizable?**  **NO** (only 1 evaluation, overhead not worth it)
 
 ---
 
 ### 10. Decoding Chromosomes
 **Location:** `src/decoder/individual_decoder.py`
 
-**Status:** ❌ **SEQUENTIAL (within fitness evaluation)**
+**Status:**  **SEQUENTIAL (within fitness evaluation)**
 
 **What happens:**
 ```python
@@ -271,14 +271,14 @@ for gene in individual:
 ```
 
 **Runtime:** ~0.001s per individual (inside parallel fitness eval)  
-**Parallelizable?** ❌ **NO** (too fast, part of parallel fitness eval anyway)
+**Parallelizable?**  **NO** (too fast, part of parallel fitness eval anyway)
 
 ---
 
 ### 11. Constraint Evaluation (Hard & Soft)
 **Location:** `src/constraints/hard.py` + `src/constraints/soft.py`
 
-**Status:** ❌ **SEQUENTIAL within each fitness evaluation**
+**Status:**  **SEQUENTIAL within each fitness evaluation**
 
 **What happens:**
 ```python
@@ -305,7 +305,7 @@ for constraint_func in enabled_constraints:
 ### 12. Report Generation (Plotting)
 **Location:** `src/workflows/reporting.py` + `src/exporter/*.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking)**
+**Status:**  **SEQUENTIAL (blocking)**
 
 **What happens:**
 ```python
@@ -326,7 +326,7 @@ plot_convergence_dashboard(...)                              # ~1.0s
 ```
 
 **Runtime:** ~6-15s total  
-**Parallelizable?** ✅ **YES** (highly beneficial, I/O-bound)
+**Parallelizable?**  **YES** (highly beneficial, I/O-bound)
 
 **Improvement potential:**
 - Generate all plots in parallel using `ThreadPoolExecutor`
@@ -343,7 +343,7 @@ plot_convergence_dashboard(...)                              # ~1.0s
 ### 13. Schedule Export (JSON + PDF)
 **Location:** `src/exporter/exporter.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking)**
+**Status:**  **SEQUENTIAL (blocking)**
 
 **What happens:**
 ```python
@@ -353,7 +353,7 @@ generate_pdf_calendar(schedule, output_file)  # ~2-5s
 ```
 
 **Runtime:** ~2.5-5.5s total  
-**Parallelizable?** ✅ **YES** (JSON and PDF generation are independent)
+**Parallelizable?**  **YES** (JSON and PDF generation are independent)
 
 **Improvement potential:**
 - Generate JSON and PDF concurrently using threads
@@ -364,7 +364,7 @@ generate_pdf_calendar(schedule, output_file)  # ~2-5s
 ### 14. Logging (Console + File)
 **Location:** `src/utils/logger.py` + `src/utils/constraint_logger.py`
 
-**Status:** ❌ **SEQUENTIAL (blocking I/O)**
+**Status:**  **SEQUENTIAL (blocking I/O)**
 
 **What happens:**
 ```python
@@ -383,26 +383,26 @@ constraint_logger.log_generation()   # ~0.02s per generation
 
 ---
 
-## 📊 Runtime Breakdown Analysis
+##  Runtime Breakdown Analysis
 
 ### Typical Production Run (200 generations, pop_size=50)
 
 | Component | Status | Time (s) | % of Total | Parallelizable? |
 |-----------|--------|----------|------------|-----------------|
-| **Data Loading** | Sequential | 1.5 | 1% | ✅ YES (2-3x speedup) |
-| **Validation** | Sequential | 0.8 | 0.5% | ✅ YES (3-4x speedup) |
+| **Data Loading** | Sequential | 1.5 | 1% |  YES (2-3x speedup) |
+| **Validation** | Sequential | 0.8 | 0.5% |  YES (3-4x speedup) |
 | **Feasibility Check** | Sequential | 1.6 | 1% | ⚠️ PARTIAL (2-3x speedup) |
-| **Population Init** | Sequential | 3.0 | 2% | ✅ YES (3-6x speedup) |
-| **Initial Eval** | **Parallel** | 5.0 | 3% | ✅ Already parallel |
+| **Population Init** | Sequential | 3.0 | 2% |  YES (3-6x speedup) |
+| **Initial Eval** | **Parallel** | 5.0 | 3% |  Already parallel |
 | **Evolution (200 gens)** | | | | |
-| ├─ Crossover/Mutation | Sequential | 20.0 | 13% | ❌ NO (overhead > benefit) |
-| ├─ Fitness Eval | **Parallel** | 60.0 | 40% | ✅ Already parallel |
-| ├─ Metrics Tracking | Sequential | 5.0 | 3% | ❌ NO (negligible) |
-| ├─ IGLS (gens 3, 25) | Sequential | 30.0 | 20% | ✅ YES (4-8x speedup) |
-| **Reporting** | Sequential | 12.0 | 8% | ✅ YES (5-10x speedup) |
-| **Export** | Sequential | 4.0 | 2.5% | ✅ YES (2x speedup) |
+| ├─ Crossover/Mutation | Sequential | 20.0 | 13% |  NO (overhead > benefit) |
+| ├─ Fitness Eval | **Parallel** | 60.0 | 40% |  Already parallel |
+| ├─ Metrics Tracking | Sequential | 5.0 | 3% |  NO (negligible) |
+| ├─ IGLS (gens 3, 25) | Sequential | 30.0 | 20% |  YES (4-8x speedup) |
+| **Reporting** | Sequential | 12.0 | 8% |  YES (5-10x speedup) |
+| **Export** | Sequential | 4.0 | 2.5% |  YES (2x speedup) |
 | **Logging** | Sequential | 4.0 | 2.5% | ⚠️ PARTIAL (1.5-2x speedup) |
-| **Other** | Sequential | 3.1 | 2.5% | ❌ NO |
+| **Other** | Sequential | 3.1 | 2.5% |  NO |
 | **TOTAL** | | **150s** | **100%** | |
 
 ### Key Observations:
@@ -412,7 +412,7 @@ constraint_logger.log_generation()   # ~0.02s per generation
 
 ---
 
-## 🚀 Improvement Recommendations
+##  Improvement Recommendations
 
 ### Priority 1: High Impact, Low Effort
 
@@ -564,32 +564,32 @@ def validate(self):
 
 ---
 
-## 🎓 Best Practices & Lessons Learned
+##  Best Practices & Lessons Learned
 
 ### What Your Code Does RIGHT:
 
-1. ✅ **Worker initialization pattern** eliminates pickling overhead
+1.  **Worker initialization pattern** eliminates pickling overhead
    ```python
    pool = Pool(initializer=_worker_init, initargs=(data_dir, seed))
    ```
 
-2. ✅ **Spawn method** for Windows compatibility
+2.  **Spawn method** for Windows compatibility
    ```python
    # Windows-safe multiprocessing (automatic in Pool creation)
    ```
 
-3. ✅ **Process-local context** avoids shared state issues
+3.  **Process-local context** avoids shared state issues
    ```python
    _WORKER_CONTEXT = None  # Module-level, set once per worker
    ```
 
-4. ✅ **Proper pool cleanup**
+4.  **Proper pool cleanup**
    ```python
    pool.close()
    pool.join()
    ```
 
-5. ✅ **DEAP creator types** initialized in workers
+5.  **DEAP creator types** initialized in workers
    ```python
    if not hasattr(creator, "FitnessMulti"):
        creator.create("FitnessMulti", ...)
@@ -604,7 +604,7 @@ def validate(self):
 
 ---
 
-## 📈 Expected Total Speedup
+##  Expected Total Speedup
 
 ### Conservative Estimate (implementing Priority 1 only):
 - **Current runtime:** 150s
@@ -626,7 +626,7 @@ def validate(self):
 
 ---
 
-## 🔍 Monitoring & Profiling Recommendations
+##  Monitoring & Profiling Recommendations
 
 ### 1. Add Timing Instrumentation
 ```python
@@ -665,16 +665,16 @@ logger.log_parallel_metrics(
 
 ---
 
-## 🎯 Action Plan Summary
+##  Action Plan Summary
 
 ### Immediate Actions (Next Sprint):
-1. ✅ **Parallelize report generation** (5-10x speedup, 2-3 hours)
-2. ✅ **Parallelize data loading** (2-3x speedup, 1-2 hours)
+1.  **Parallelize report generation** (5-10x speedup, 2-3 hours)
+2.  **Parallelize data loading** (2-3x speedup, 1-2 hours)
 
 ### Short-term Actions (Next Month):
-3. ✅ **Parallelize IGLS** (4-8x speedup, 4-6 hours)
-4. ✅ **Parallelize population init** (3-6x speedup, 3-4 hours)
-5. ✅ **Parallelize validation** (3-4x speedup, 2-3 hours)
+3.  **Parallelize IGLS** (4-8x speedup, 4-6 hours)
+4.  **Parallelize population init** (3-6x speedup, 3-4 hours)
+5.  **Parallelize validation** (3-4x speedup, 2-3 hours)
 
 ### Long-term Considerations (Future Optimization):
 - Investigate GPU acceleration for constraint evaluation (if needed)
@@ -683,7 +683,7 @@ logger.log_parallel_metrics(
 
 ---
 
-## 📚 References
+##  References
 
 ### Existing Documentation:
 - `docs/code/BUGFIX.md` - Multiprocessing fixes

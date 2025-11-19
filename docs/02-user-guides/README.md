@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 ### Running the Engine
 - **running-engine.md** - Production run guide, runtime breakdown
@@ -15,7 +15,7 @@
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [Getting Started ←](../01-getting-started/)
 - [Architecture →](../03-architecture/)

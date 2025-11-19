@@ -1216,7 +1216,7 @@ The RL-GA integration framework provides:
 4. **Extensible Architecture**: Decorator-based heuristic registry
 5. **Comprehensive Monitoring**: TensorBoard training + inference metrics
 
-**Status**: ✅ Production-ready. Ready for training and deployment.
+**Status**:  Production-ready. Ready for training and deployment.
 
 **Next Steps**:
 1. Train RL agent on full curriculum (100K-500K timesteps)

@@ -1,9 +1,9 @@
 ## [2025-11-18] Modular Runtime Mode Architecture
 
-### 🎯 Summary
+###  Summary
 Implemented modular, killswitch-compatible configuration architecture supporting 6 runtime modes for systematic benchmarking and research experiments.
 
-### ✨ Features Added
+###  Features Added
 
 #### Runtime Modes (6 total)
 - **Mode 1: Baseline** (`configs/baseline/1-pure-nsga.yaml`)
@@ -56,7 +56,7 @@ Implemented modular, killswitch-compatible configuration architecture supporting
 - `RuntimeMode` enum with display names, descriptions, validation
 - Config priority: runtime_mode → explicit path → env var → default
 
-### 📁 Files Created (12 files)
+###  Files Created (12 files)
 
 **Source Code:**
 - `src/config/runtime_mode.py` (250 lines) - Runtime mode enum + validation
@@ -76,24 +76,24 @@ Implemented modular, killswitch-compatible configuration architecture supporting
 - `docs/QUICKREF_RUNTIME_MODES.md` (150 lines) - Quick reference
 - `RUNTIME_MODES_SUMMARY.md` (500 lines) - Complete overview
 
-### 🔧 Files Modified (3 files)
+###  Files Modified (3 files)
 - `src/config/loader.py` - Added `runtime_mode` parameter, validation
 - `main.py` - Added `--mode`, `--list-modes`, `--compare` flags + UV entry points
 - `pyproject.toml` - Added 6 runtime mode shortcuts
 
-### 📊 Killswitch Matrix
+###  Killswitch Matrix
 
 | Feature | Baseline | Repairs | Heuristics | Full | RL | RoundRobin |
 |---------|----------|---------|------------|------|-----|------------|
-| Repairs | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Heuristics | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Memetic LS | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| LNS-IGLS | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Enhancements | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Adaptive Prob | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| RL Agent | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Repairs |  |  |  |  |  |  |
+| Heuristics |  |  |  |  |  |  |
+| Memetic LS |  |  |  |  |  |  |
+| LNS-IGLS |  |  |  |  |  |  |
+| Enhancements |  |  |  |  |  |  |
+| Adaptive Prob |  |  |  |  |  |  |
+| RL Agent |  |  |  |  |  |  |
 
-### 🚀 Usage Examples
+###  Usage Examples
 
 ```bash
 # List all modes
@@ -115,23 +115,23 @@ uv run baseline && uv run repairs && uv run heuristics && uv run full
 python main.py --compare
 ```
 
-### 📈 Impact
+###  Impact
 
 **Development Efficiency:**
-- ⚡ 10x faster experiment setup (one command vs manual config editing)
-- ⚡ 5x faster comparison analysis (automatic tracking)
-- ⚡ 3x faster reproduction (clear mode names)
+-  10x faster experiment setup (one command vs manual config editing)
+-  5x faster comparison analysis (automatic tracking)
+-  3x faster reproduction (clear mode names)
 
 **Disk Management:**
-- 📁 30% space savings (organized outputs enable selective cleanup)
-- 📁 Smart organization (easy to find specific mode outputs)
+-  30% space savings (organized outputs enable selective cleanup)
+-  Smart organization (easy to find specific mode outputs)
 
 **Maintainability:**
-- ✅ Single source of truth (base.yaml)
-- ✅ Easy mode creation (copy + modify killswitches)
-- ✅ Automatic validation (prevents config errors)
+-  Single source of truth (base.yaml)
+-  Easy mode creation (copy + modify killswitches)
+-  Automatic validation (prevents config errors)
 
-### 🎓 Research Applications
+###  Research Applications
 
 **Ablation Studies:**
 - Test component contributions: Baseline → Repairs → Heuristics → Full
@@ -142,26 +142,26 @@ python main.py --compare
 **Scalability Analysis:**
 - Test modes at different problem sizes (10, 20, 40 courses)
 
-### ✅ Testing
+###  Testing
 
 **Automated:**
-- Import tests: ✅ All modules import successfully
-- Config loading: ✅ All 6 modes load with correct killswitches
-- Validation: ✅ Killswitch violations raise errors
+- Import tests:  All modules import successfully
+- Config loading:  All 6 modes load with correct killswitches
+- Validation:  Killswitch violations raise errors
 
 **Manual:**
-- CLI tests: ✅ `--list-modes`, `--compare` work correctly
-- Output organization: ✅ Directories created in correct structure
-- Experiment tracking: ✅ Manifest.json updates correctly
+- CLI tests:  `--list-modes`, `--compare` work correctly
+- Output organization:  Directories created in correct structure
+- Experiment tracking:  Manifest.json updates correctly
 
-### 🔮 Future Enhancements
+###  Future Enhancements
 
 - Mode 7: RL-tuned constraint weights
 - Mode 8: Multi-agent RL (specialist agents)
 - Automated benchmarking suite with statistical analysis
 - Visualization dashboard for experiment tracking
 
-### 📚 Documentation
+###  Documentation
 
 - **User Guide:** `docs/02-user-guides/runtime-modes.md` (2500 lines)
 - **Implementation:** `docs/06-development/implementation-notes/RUNTIME_MODES_IMPLEMENTATION.md`

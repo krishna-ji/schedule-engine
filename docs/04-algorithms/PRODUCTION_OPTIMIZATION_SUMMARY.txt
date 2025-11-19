@@ -122,10 +122,10 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                            READY TO USE                                      ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
-║  ✅ All optimizations applied to common.yaml                                 ║
-║  ✅ Backward compatible - no breaking changes                                ║
-║  ✅ Test/dev/prod configs still work                                         ║
-║  ✅ Validated - config loads successfully                                    ║
+║   All optimizations applied to common.yaml                                 ║
+║   Backward compatible - no breaking changes                                ║
+║   Test/dev/prod configs still work                                         ║
+║   Validated - config loads successfully                                    ║
 ║                                                                              ║
 ║  RECOMMENDED FIRST RUN:                                                      ║
 ║  python main.py --config configs/prod_safe.yaml                              ║

@@ -5,7 +5,7 @@
 
 ---
 
-## 📚 Quick Navigation
+##  Quick Navigation
 
 ### Getting Started
 - [Quick Reference](./QUICKREF.md) - Essential commands and daily usage
@@ -30,12 +30,12 @@
 - [Block Clustering Config](./BLOCK_CLUSTERING_CONFIG.md) - Time block optimization
 
 ### Performance & Optimization
-- **[Time Complexity Analysis](./time-complexity-algorithmic-analysis/)** ⭐ **NEW**
+- **[Time Complexity Analysis](./time-complexity-algorithmic-analysis/)**  **NEW**
   - [Executive Summary](./time-complexity-algorithmic-analysis/00_EXECUTIVE_SUMMARY.md)
   - [Full Complexity Analysis](./time-complexity-algorithmic-analysis/01_COMPLEXITY_ANALYSIS.md)
   - [Optimization Strategies](./time-complexity-algorithmic-analysis/02_OPTIMIZATION_STRATEGIES.md)
   - [Benchmark Guide](./time-complexity-algorithmic-analysis/03_BENCHMARK_GUIDE.md)
-- **[GPU Acceleration Guide](./nvidia-gpu/)** 🚀 **NEW**
+- **[GPU Acceleration Guide](./nvidia-gpu/)**  **NEW**
   - [Quick Start (5 min)](./nvidia-gpu/QUICKSTART.md)
   - [Comprehensive Guide](./nvidia-gpu/GPU_ACCELERATION_GUIDE.md)
   - Diagnostics: `scripts/diagnose_gpu.py`
@@ -43,7 +43,7 @@
 
 ---
 
-## 📖 By Category
+##  By Category
 
 ### Configuration & Setup
 
@@ -60,9 +60,9 @@
 
 | Document | Description | Status |
 |----------|-------------|--------|
-| [Phase 1.5 Summary](./PHASE_1.5_SUMMARY.md) | Heuristic toolbox implementation | ✅ Complete |
-| [Phase 2.1 Summary](./PHASE_2.1_SUMMARY.md) | RL environment implementation | ✅ Complete |
-| [Implementation Complete](./IMPLEMENTATION_COMPLETE.md) | Feature completion status | ✅ Complete |
+| [Phase 1.5 Summary](./PHASE_1.5_SUMMARY.md) | Heuristic toolbox implementation |  Complete |
+| [Phase 2.1 Summary](./PHASE_2.1_SUMMARY.md) | RL environment implementation |  Complete |
+| [Implementation Complete](./IMPLEMENTATION_COMPLETE.md) | Feature completion status |  Complete |
 | [Implementation Summary](./IMPLEMENTATION_SUMMARY.md) | Development summary | Archive |
 
 ### Performance & Benchmarking
@@ -101,7 +101,7 @@
 
 ---
 
-## 🔍 By Use Case
+##  By Use Case
 
 ### "I want to run the engine"
 1. Start with [UV Quick Start](./UV_QUICKSTART.md) or [Quick Reference](./QUICKREF.md)
@@ -133,7 +133,7 @@
 
 ---
 
-## 📂 Subdirectories
+##  Subdirectories
 
 ### `/code/` - Code Documentation
 Detailed implementation notes and technical documentation for specific features.
@@ -147,7 +147,7 @@ Academic-style documentation suitable for thesis chapters or technical reports.
 ### `/generated-figures-interpretation/` - Figure Analysis
 Interpretation guides for generated visualization outputs.
 
-### `/time-complexity-algorithmic-analysis/` ⭐ **NEW**
+### `/time-complexity-algorithmic-analysis/`  **NEW**
 Complete algorithmic complexity analysis and optimization guide.
 
 **Contents:**
@@ -156,7 +156,7 @@ Complete algorithmic complexity analysis and optimization guide.
 - Optimization strategies with code examples
 - Benchmarking and profiling guide
 
-### `/nvidia-gpu/` 🚀 **NEW**
+### `/nvidia-gpu/`  **NEW**
 NVIDIA GPU acceleration guide for RL training.
 
 **Contents:**
@@ -171,7 +171,7 @@ Historical AI-generated suggestions and analysis (November 2025).
 
 ---
 
-## 🎯 Most Important Documents
+##  Most Important Documents
 
 ### For New Users
 1. [UV Quick Start](./UV_QUICKSTART.md) - Get started in 5 minutes
@@ -184,14 +184,14 @@ Historical AI-generated suggestions and analysis (November 2025).
 3. [RL-GA Integration](./rl-ga-integ-framework.md) - Architecture overview
 
 ### For Optimization
-1. [GPU Quick Start](./nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× speedup ⚡
+1. [GPU Quick Start](./nvidia-gpu/QUICKSTART.md) - 5 min, 3-5× speedup 
 2. [Executive Summary](./time-complexity-algorithmic-analysis/00_EXECUTIVE_SUMMARY.md) - Performance analysis
 3. [Optimization Strategies](./time-complexity-algorithmic-analysis/02_OPTIMIZATION_STRATEGIES.md) - Actionable proposals
 4. [Benchmark Guide](./time-complexity-algorithmic-analysis/03_BENCHMARK_GUIDE.md) - Measure improvements
 
 ---
 
-## 📝 Documentation Standards
+##  Documentation Standards
 
 ### File Naming
 - `UPPERCASE.md` - Major documentation, quick references
@@ -206,14 +206,14 @@ Historical AI-generated suggestions and analysis (November 2025).
 - **Last Updated** date
 
 ### Status Indicators
-- ✅ Complete - Stable, current
-- 🚧 In Progress - Active development
-- 📝 Draft - Initial version
+-  Complete - Stable, current
+-  In Progress - Active development
+-  Draft - Initial version
 - 🗄️ Archive - Historical reference
 
 ---
 
-## 🔗 External References
+##  External References
 
 ### Project Structure
 - Main README: `../README.md`

@@ -145,8 +145,8 @@ python main.py --env prod
 ### 8. Verification
 
 All configurations verified to load correctly:
-- ✅ prod: ngen=2000, pop=200, parallel=True
-- ✅ notprod: ngen=400, pop=80, parallel=True
-- ✅ test: ngen=30, pop=10, parallel=False
+-  prod: ngen=2000, pop=200, parallel=True
+-  notprod: ngen=400, pop=80, parallel=True
+-  test: ngen=30, pop=10, parallel=False
 
 All inherit from base.yaml successfully with proper deep merging.

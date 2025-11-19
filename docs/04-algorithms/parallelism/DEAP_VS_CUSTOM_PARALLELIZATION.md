@@ -13,19 +13,19 @@
 
 | Component | Parallelization Type | Why This Choice |
 |-----------|---------------------|-----------------|
-| **Fitness Evaluation** | ✅ DEAP Native (`toolbox.map`) | Perfect fit - DEAP designed for this |
-| **Population Initialization** | ❌ Custom (ProcessPoolExecutor) | Outside DEAP scope - happens before toolbox |
-| **IGLS Repair** | ❌ Custom (ProcessPoolExecutor) | Not a GA operator - external heuristic |
-| **Data Loading** | ❌ Custom (ThreadPoolExecutor) | I/O-bound, not GA-related |
-| **Validation** | ❌ Custom (ThreadPoolExecutor) | Pre-GA validation phase |
-| **Report Generation** | ❌ Custom (ThreadPoolExecutor) | Post-GA plotting phase |
-| **Export** | ❌ Custom (ThreadPoolExecutor) | Post-GA file generation |
+| **Fitness Evaluation** |  DEAP Native (`toolbox.map`) | Perfect fit - DEAP designed for this |
+| **Population Initialization** |  Custom (ProcessPoolExecutor) | Outside DEAP scope - happens before toolbox |
+| **IGLS Repair** |  Custom (ProcessPoolExecutor) | Not a GA operator - external heuristic |
+| **Data Loading** |  Custom (ThreadPoolExecutor) | I/O-bound, not GA-related |
+| **Validation** |  Custom (ThreadPoolExecutor) | Pre-GA validation phase |
+| **Report Generation** |  Custom (ThreadPoolExecutor) | Post-GA plotting phase |
+| **Export** |  Custom (ThreadPoolExecutor) | Post-GA file generation |
 
 ---
 
 ## Where We USE DEAP Native Parallelization
 
-### ✅ Fitness Evaluation (Correct Choice)
+###  Fitness Evaluation (Correct Choice)
 
 **Location**: `src/core/ga_scheduler.py`
 
@@ -57,11 +57,11 @@ class GAScheduler:
 ```
 
 **Why DEAP Native is Perfect Here**:
-1. ✅ **Designed for this**: DEAP's `toolbox.map` is specifically built for parallel fitness evaluation
-2. ✅ **Automatic distribution**: DEAP handles work distribution across workers
-3. ✅ **Clean integration**: Single line `toolbox.register("map", pool.map)` enables parallelism
-4. ✅ **Worker initialization**: Uses `_worker_init()` to serialize context once per worker
-5. ✅ **No overhead**: Direct use of multiprocessing.Pool without wrapper functions
+1.  **Designed for this**: DEAP's `toolbox.map` is specifically built for parallel fitness evaluation
+2.  **Automatic distribution**: DEAP handles work distribution across workers
+3.  **Clean integration**: Single line `toolbox.register("map", pool.map)` enables parallelism
+4.  **Worker initialization**: Uses `_worker_init()` to serialize context once per worker
+5.  **No overhead**: Direct use of multiprocessing.Pool without wrapper functions
 
 **Performance**:
 - Parallelizes 40-50% of total runtime
@@ -72,7 +72,7 @@ class GAScheduler:
 
 ## Where We DON'T Use DEAP Native (And Why)
 
-### 1. Population Initialization ❌
+### 1. Population Initialization 
 
 **Why Not DEAP?**
 
@@ -102,10 +102,10 @@ def generate_course_group_aware_population(n, context, parallel=True):
 ```
 
 **Why Custom is Better**:
-- ✅ Parallelizes BEFORE DEAP toolbox exists
-- ✅ Gene-level parallelism (create 100 individuals concurrently)
-- ✅ Filters failed creations (None results)
-- ✅ Reports generation statistics
+-  Parallelizes BEFORE DEAP toolbox exists
+-  Gene-level parallelism (create 100 individuals concurrently)
+-  Filters failed creations (None results)
+-  Reports generation statistics
 
 **Could DEAP Do This?**
 Technically yes, but awkwardly:
@@ -125,7 +125,7 @@ individuals = list(toolbox.map(toolbox.create_individual, [context] * n))
 
 ---
 
-### 2. IGLS Repair System ❌
+### 2. IGLS Repair System 
 
 **Why Not DEAP?**
 
@@ -161,10 +161,10 @@ def apply_exhaustive_search(individual, context, parallel=True):
 ```
 
 **Why Custom is Better**:
-- ✅ Gene-level parallelism (DEAP works at individual level)
-- ✅ Timeout protection (DEAP has no timeout concept)
-- ✅ Task cancellation (prevent hanging workers)
-- ✅ Granular error handling per gene
+-  Gene-level parallelism (DEAP works at individual level)
+-  Timeout protection (DEAP has no timeout concept)
+-  Task cancellation (prevent hanging workers)
+-  Granular error handling per gene
 
 **Could DEAP Do This?**
 No, because:
@@ -176,7 +176,7 @@ No, because:
 
 ---
 
-### 3. Data Loading, Validation, Reporting, Export ❌
+### 3. Data Loading, Validation, Reporting, Export 
 
 **Why Not DEAP?**
 
@@ -208,9 +208,9 @@ with ThreadPoolExecutor(max_workers=8) as executor:
 ```
 
 **Why Custom is Necessary**:
-- ✅ I/O-bound operations (ThreadPoolExecutor ideal)
-- ✅ Independent of GA logic
-- ✅ DEAP has zero support for this
+-  I/O-bound operations (ThreadPoolExecutor ideal)
+-  Independent of GA logic
+-  DEAP has zero support for this
 
 **Could DEAP Do This?**
 No - these are application-level concerns, not GA operations.
@@ -269,9 +269,9 @@ offspring = list(toolbox.map(toolbox.repair, offspring))
 ```
 
 **Analysis**:
-✅ **Technically possible with DEAP**  
-✅ **Would work for individual-level repairs**  
-❌ **Doesn't support our gene-level IGLS parallelization**  
+ **Technically possible with DEAP**  
+ **Would work for individual-level repairs**  
+ **Doesn't support our gene-level IGLS parallelization**  
 
 **Why We Don't Do This**:
 - Repair is already parallelized at gene level (better granularity)
@@ -291,15 +291,15 @@ No:
 ## Summary: Why Our Hybrid Approach is Optimal
 
 ### What We Use DEAP Native For:
-✅ **Fitness Evaluation** - Perfect fit, designed for this
+ **Fitness Evaluation** - Perfect fit, designed for this
 
 ### What We Use Custom Parallelization For:
-✅ **Population Initialization** - Happens before toolbox setup  
-✅ **IGLS Repair** - Gene-level parallelism with timeouts (DEAP can't do this)  
-✅ **Data Loading** - I/O-bound, pre-GA phase  
-✅ **Validation** - Pre-GA phase  
-✅ **Reporting** - Post-GA plotting  
-✅ **Export** - Post-GA file generation  
+ **Population Initialization** - Happens before toolbox setup  
+ **IGLS Repair** - Gene-level parallelism with timeouts (DEAP can't do this)  
+ **Data Loading** - I/O-bound, pre-GA phase  
+ **Validation** - Pre-GA phase  
+ **Reporting** - Post-GA plotting  
+ **Export** - Post-GA file generation  
 
 ---
 
@@ -367,56 +367,56 @@ No:
 ```
 Sequential: 60s
 DEAP Parallel (8 cores): 8-10s
-Speedup: 6-7.5x ✅ Excellent
+Speedup: 6-7.5x  Excellent
 ```
 
 ### IGLS Repair (Custom - Gene Level)
 ```
 Sequential: 30s
 Custom Parallel (8 cores): 4-7s
-Speedup: 4-8x ✅ Excellent
+Speedup: 4-8x  Excellent
 
 Hypothetical DEAP (Individual Level):
-Speedup: 1-2x (❌ Poor - can't parallelize within individuals)
+Speedup: 1-2x ( Poor - can't parallelize within individuals)
 ```
 
 ### Population Init (Custom - Before Toolbox)
 ```
 Sequential: 3-6s
 Custom Parallel (8 cores): 1-2s
-Speedup: 3-6x ✅ Excellent
+Speedup: 3-6x  Excellent
 
 Hypothetical DEAP:
-Not possible - toolbox doesn't exist yet ❌
+Not possible - toolbox doesn't exist yet 
 ```
 
 ### Data Loading (Custom - I/O Bound)
 ```
 Sequential: 1.5s
 Custom Parallel (ThreadPoolExecutor): 0.5s
-Speedup: 3x ✅ Excellent
+Speedup: 3x  Excellent
 
 Hypothetical DEAP:
-Not applicable - DEAP is CPU-focused, not I/O ❌
+Not applicable - DEAP is CPU-focused, not I/O 
 ```
 
 ---
 
 ## Recommendations
 
-### ✅ Keep Current Approach
+###  Keep Current Approach
 
 1. **Continue using DEAP native** for fitness evaluation
 2. **Continue using custom parallelization** for all other components
 3. **Don't force DEAP where it doesn't fit** - architectural clarity > consistency
 
-### 📚 Document the Rationale
+###  Document the Rationale
 
 1. Add comments explaining why DEAP native is used for fitness eval
 2. Add comments explaining why custom is used elsewhere
 3. Reference this document for architectural decisions
 
-### 🔬 Future Considerations
+###  Future Considerations
 
 If DEAP adds new features:
 - **Timeout support** → Could replace IGLS custom implementation
@@ -435,7 +435,7 @@ class GAScheduler:
         """Initialize DEAP toolbox with operators."""
         self.toolbox = base.Toolbox()
         
-        # ✅ USE DEAP NATIVE for fitness evaluation (perfect fit)
+        #  USE DEAP NATIVE for fitness evaluation (perfect fit)
         if self.pool is not None:
             self.toolbox.register("map", self.pool.map)
         
@@ -443,23 +443,23 @@ class GAScheduler:
     
     def _initialize_population(self):
         """Initialize population with parallel evaluation."""
-        # ❌ CUSTOM parallelization for population creation (pre-toolbox)
+        #  CUSTOM parallelization for population creation (pre-toolbox)
         self.population = self.toolbox.population(
             n=self.config.ga.pop_size,
             parallel=True  # Uses ProcessPoolExecutor internally
         )
         
-        # ✅ USE DEAP NATIVE for fitness evaluation
+        #  USE DEAP NATIVE for fitness evaluation
         fitness_values = list(self.toolbox.map(self.toolbox.evaluate, self.population))
     
     def evolve(self):
         """Evolution loop with hybrid parallelization."""
-        # ✅ USE DEAP NATIVE for fitness evaluation
+        #  USE DEAP NATIVE for fitness evaluation
         fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
         
-        # ❌ CUSTOM parallelization for IGLS repair (gene-level, timeouts)
+        #  CUSTOM parallelization for IGLS repair (gene-level, timeouts)
         if repair_needed:
             apply_exhaustive_search(individual, context, parallel=True)
 ```
 
-**Bottom Line**: We're already using DEAP native where it makes sense. Custom parallelization is necessary and superior for everything else. ✅
+**Bottom Line**: We're already using DEAP native where it makes sense. Custom parallelization is necessary and superior for everything else. 

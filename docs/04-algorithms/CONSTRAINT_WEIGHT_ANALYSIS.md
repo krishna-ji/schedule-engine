@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 Executive Summary
+##  Executive Summary
 
 **CRITICAL FINDING**: The `session_block_clustering_penalty` constraint is severely **over-weighted** and dominates the entire optimization process, preventing the GA from effectively reducing other critical violations.
 
@@ -19,7 +19,7 @@
 
 ---
 
-## 🔍 Detailed Constraint Breakdown
+##  Detailed Constraint Breakdown
 
 ### Generation-by-Generation Analysis
 
@@ -57,7 +57,7 @@
 
 ---
 
-## 🎯 Why Block Clustering is Overweighted
+##  Why Block Clustering is Overweighted
 
 ### 1. **Nature of the Constraint**
 
@@ -124,7 +124,7 @@ Block clustering = 73.6% of penalty!
 
 ---
 
-## 🔧 Recommended Weight Adjustments
+##  Recommended Weight Adjustments
 
 ### Strategy: **Tiered Constraint Priorities**
 
@@ -178,7 +178,7 @@ hard_constraints:
 
 ---
 
-## 📈 Expected Impact of Weight Changes
+##  Expected Impact of Weight Changes
 
 ### Scenario 1: Reduce Block Clustering to 0.5
 
@@ -212,7 +212,7 @@ soft_constraints:
 
 ---
 
-## 🧪 Recommended Testing Sequence
+##  Recommended Testing Sequence
 
 ### Test 1: **Conservative Reduction** (Low Risk)
 
@@ -276,7 +276,7 @@ soft_constraints:
 
 ---
 
-## 📋 Implementation Checklist
+##  Implementation Checklist
 
 ### Phase 1: Preparation (15 minutes)
 
@@ -318,7 +318,7 @@ soft_constraints:
 
 ---
 
-## 🎓 Understanding the Trade-off
+##  Understanding the Trade-off
 
 ### Current Situation (Weight = 2.0):
 
@@ -337,10 +337,10 @@ Priority Order (by penalty contribution):
 
 ```
 Priority Order (by penalty contribution):
-1. Group Overlap (~35%)         ← CRITICAL SAFETY ✅
+1. Group Overlap (~35%)         ← CRITICAL SAFETY 
 2. Block Clustering (~25%)      ← Quality preference
 3. Availability (~20%)          ← Important
-4. Instructor Conflict (~10%)   ← CRITICAL SAFETY ✅
+4. Instructor Conflict (~10%)   ← CRITICAL SAFETY 
 5. Room Type (~10%)
 ```
 
@@ -366,7 +366,7 @@ Soft Constraints (optimize after hard satisfied):
 
 ---
 
-## 💡 Additional Observations
+##  Additional Observations
 
 ### 1. **Block Clustering May Be Unrealistic**
 
@@ -405,45 +405,45 @@ repair:
 
 ---
 
-## 🎯 Final Recommendations
+##  Final Recommendations
 
 ### **IMMEDIATE (Before Next Run)**:
 
-1. ✅ **Reduce block clustering weight from 2.0 → 1.0**
+1.  **Reduce block clustering weight from 2.0 → 1.0**
    - Low risk, high impact
    - Should reduce group overlaps by 40-50%
    - Maintains some attention to block clustering
 
-2. ✅ **Increase critical safety weights**:
+2.  **Increase critical safety weights**:
    - Group overlap: 2.0 → 2.5 or 3.0
    - Instructor conflict: 2.0 → 2.5 or 3.0
    - Makes violations more "expensive" to the GA
 
-3. ✅ **Run data quality check first**:
+3.  **Run data quality check first**:
    - Fix duplicate enrollments
    - Clean any malformed data
 
 ### **SHORT-TERM (After Initial Results)**:
 
-4. 🔍 **Evaluate if block clustering should be soft constraint**
+4.  **Evaluate if block clustering should be soft constraint**
    - If overlaps still high (>500), move to soft
    - If overlaps low (<100), keep as hard but reduced weight
 
-5. 🔍 **Consider adaptive weighting**:
+5.  **Consider adaptive weighting**:
    - Start with low block clustering weight early generations
    - Increase gradually once safety constraints satisfied
    - Requires code implementation
 
 ### **LONG-TERM (Project Enhancement)**:
 
-6. 📚 **Implement constraint hierarchy system**:
+6.  **Implement constraint hierarchy system**:
    - Lexicographic ordering: satisfy critical first, then quality
    - Multi-objective with constraint layers
    - Requires significant code changes
 
 ---
 
-## 📊 Success Metrics (After Rebalancing)
+##  Success Metrics (After Rebalancing)
 
 | Constraint | Current | Target (Usable) | Target (Good) | Target (Excellent) |
 |------------|---------|-----------------|---------------|-------------------|
@@ -457,7 +457,7 @@ repair:
 
 ---
 
-## 📝 Update Tracking
+##  Update Tracking
 
 - **Created**: 2025-10-27
 - **Analysis Based On**: evaluation_20251027_083447 (150 gens, 10,064 final violations)

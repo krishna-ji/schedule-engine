@@ -1,7 +1,7 @@
 # UV Shortcuts Implementation Summary
 
 **Date:** November 19, 2025  
-**Status:** ✅ Complete with 35+ shortcuts mapped
+**Status:**  Complete with 35+ shortcuts mapped
 
 ## Overview
 
@@ -126,7 +126,7 @@ uv run refactor-csv     # CSV refactoring
 
 ## Testing Results
 
-✅ **Working Shortcuts:**
+ **Working Shortcuts:**
 - `uv run show-config` - Displays beautiful tables with Rich
 - Runtime mode shortcuts (baseline, repairs, heuristics, etc.)
 - `python main.py --list-modes` - Lists all 10 modes

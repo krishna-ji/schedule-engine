@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 All files from the original `for_report/` directory are preserved here:
 
@@ -16,7 +16,7 @@ All files from the original `for_report/` directory are preserved here:
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [Development ←](../06-development/)
 - [Performance Analysis](../05-performance/)

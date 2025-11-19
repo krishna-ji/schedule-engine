@@ -328,12 +328,12 @@ Experiments tracked in `output/manifest.json`:
 - **Archive manifest**: Commit `manifest.json` to git for reproducibility
 
 ## Never Do
-- ❌ Skip stage ordering (must follow: load → validate → feasibility → GA → decode → report)
-- ❌ Create output directory after GA runs (need it for logging)
-- ❌ Forget to close multiprocessing pool
-- ❌ Modify context between stages (should be immutable)
-- ❌ Hardcode paths (use parameters)
-- ❌ Skip error handling (catch and log all exceptions)
-- ❌ Run production experiments without ExperimentManager (lose tracking)
-- ❌ Forget to register experiment runs (breaks reproducibility)
-- ❌ Skip runtime mode validation (always validate killswitches)
+-  Skip stage ordering (must follow: load → validate → feasibility → GA → decode → report)
+-  Create output directory after GA runs (need it for logging)
+-  Forget to close multiprocessing pool
+-  Modify context between stages (should be immutable)
+-  Hardcode paths (use parameters)
+-  Skip error handling (catch and log all exceptions)
+-  Run production experiments without ExperimentManager (lose tracking)
+-  Forget to register experiment runs (breaks reproducibility)
+-  Skip runtime mode validation (always validate killswitches)

@@ -19,10 +19,10 @@
 - Each config file contains **ALL settings** (complete/standalone)
 - Config loader is simple - just loads the YAML file directly
 - **Benefits**:
-  - ✅ No merge confusion
-  - ✅ Worker processes load correct configs
-  - ✅ Same behavior whether using `--env` or `--config`
-  - ✅ Easy to understand and modify
+  -  No merge confusion
+  -  Worker processes load correct configs
+  -  Same behavior whether using `--env` or `--config`
+  -  Easy to understand and modify
 
 ## Config Files
 

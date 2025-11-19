@@ -476,7 +476,7 @@ def step(self, action: int):
 
 ### 10.3 Success Criteria
 
-✅ **Optimization successful if:**
+ **Optimization successful if:**
 - Total time reduced by >20%
 - No correctness regressions (unit tests pass)
 - Consistent performance (std dev <10% of mean)
@@ -552,12 +552,12 @@ memray flamegraph memray-*.bin
 
 After benchmarking:
 
-1. ✅ Identify bottleneck constraints (>10ms)
-2. ✅ Analyze complexity (see `01_COMPLEXITY_ANALYSIS.md`)
-3. ✅ Implement optimizations (see `02_OPTIMIZATION_STRATEGIES.md`)
-4. ✅ Re-benchmark to validate improvements
-5. ✅ Add unit tests to prevent regressions
-6. ✅ Update documentation with results
+1.  Identify bottleneck constraints (>10ms)
+2.  Analyze complexity (see `01_COMPLEXITY_ANALYSIS.md`)
+3.  Implement optimizations (see `02_OPTIMIZATION_STRATEGIES.md`)
+4.  Re-benchmark to validate improvements
+5.  Add unit tests to prevent regressions
+6.  Update documentation with results
 
 ---
 

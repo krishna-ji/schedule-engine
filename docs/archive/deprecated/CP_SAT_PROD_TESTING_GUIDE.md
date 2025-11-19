@@ -240,4 +240,4 @@ Get-ChildItem output/evaluation_*/run.log | ForEach-Object {
 
 ---
 
-**Ready to run!** 🚀 Start with the validation test, then launch production runs on VM.
+**Ready to run!**  Start with the validation test, then launch production runs on VM.

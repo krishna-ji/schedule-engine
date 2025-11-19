@@ -184,8 +184,8 @@ def run_all_checks(context, config):
 ```
 
 ## Never Do
-- ❌ Skip validation if config says `validate=False` (always validate inputs)
-- ❌ Modify context during validation (read-only)
-- ❌ Use hardcoded thresholds (get from config)
-- ❌ Raise exceptions in check functions (return status tuples)
-- ❌ Proceed with GA if critical checks fail (unless explicitly allowed)
+-  Skip validation if config says `validate=False` (always validate inputs)
+-  Modify context during validation (read-only)
+-  Use hardcoded thresholds (get from config)
+-  Raise exceptions in check functions (return status tuples)
+-  Proceed with GA if critical checks fail (unless explicitly allowed)

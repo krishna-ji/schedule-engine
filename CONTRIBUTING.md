@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to the Schedule Engine project!
 
-## 🚀 Development Setup
+##  Development Setup
 
 ### Prerequisites
 - Python 3.11+
@@ -20,7 +20,7 @@ cd schedule-engine
 python setup-uv
 ```
 
-## 📝 Code Standards
+##  Code Standards
 
 ### Python Style
 - **PEP 8 compliant** - Follow Python style guidelines
@@ -43,7 +43,7 @@ from src.config import get_config
 from src.core.types import Individual
 ```
 
-## 🧪 Testing
+##  Testing
 
 ### Run Tests
 ```bash
@@ -57,7 +57,7 @@ pytest --cov=src --cov-report=html test/
 pytest test/unit/test_config_loader.py
 ```
 
-## 📋 Commit Guidelines
+##  Commit Guidelines
 
 ### Format
 ```
@@ -78,7 +78,7 @@ fix(constraints): correct hypervolume calculation
 doc(readme): add runtime modes reference
 ```
 
-## 🔀 Pull Request Process
+##  Pull Request Process
 
 1. Fork repository
 2. Create feature branch: `git checkout -b feature/name`
@@ -87,7 +87,7 @@ doc(readme): add runtime modes reference
 5. Push to fork
 6. Open Pull Request
 
-## ❓ Questions?
+##  Questions?
 
 - Check existing issues on GitHub
 - Review documentation in `docs/`
@@ -95,4 +95,4 @@ doc(readme): add runtime modes reference
 
 ---
 
-**Thank you for contributing!** 🎉
+**Thank you for contributing!** 

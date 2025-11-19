@@ -1,6 +1,6 @@
 # Quick Start: Using the New Evaluation Metrics
 
-## 🚀 Immediate Use (No Setup Required)
+##  Immediate Use (No Setup Required)
 
 ### Run the Engine
 ```bash
@@ -11,7 +11,7 @@ That's it! All metrics are automatically calculated and plotted.
 
 ---
 
-## 📊 Where to Find Results
+##  Where to Find Results
 
 After the run completes, check:
 ```
@@ -34,7 +34,7 @@ output/evaluation_<timestamp>/
 
 ---
 
-## 📖 Understanding the Metrics
+##  Understanding the Metrics
 
 ### Hypervolume (Higher = Better)
 - **What it measures:** Quality of Pareto front (convergence + diversity combined)
@@ -58,7 +58,7 @@ output/evaluation_<timestamp>/
 
 ---
 
-## 📊 The Dashboard View
+##  The Dashboard View
 
 **`convergence_dashboard.pdf`** shows 6 key metrics in one view:
 1. **Top-Left:** Hard constraints (should decrease)
@@ -70,7 +70,7 @@ output/evaluation_<timestamp>/
 
 ---
 
-## 🎯 For Your Thesis
+##  For Your Thesis
 
 ### Which Metrics to Report?
 
@@ -111,7 +111,7 @@ improvement over the initial population (1250.34). Final spacing of
 
 ---
 
-## 🔬 For Research/Comparison
+##  For Research/Comparison
 
 ### Comparing Two Algorithms
 
@@ -173,7 +173,7 @@ Success Rate (HC=0): 90% (9/10 runs achieved feasibility)
 
 ---
 
-## ❓ Troubleshooting
+##  Troubleshooting
 
 ### "I don't see the new plots"
 Check:
@@ -202,7 +202,7 @@ Low feasibility (< 50%) suggests:
 
 ---
 
-## 🎓 Academic References
+##  Academic References
 
 When citing these metrics in your thesis:
 
@@ -220,7 +220,7 @@ When citing these metrics in your thesis:
 
 ---
 
-## 💡 Pro Tips
+##  Pro Tips
 
 1. **Always check the dashboard first** - `convergence_dashboard.pdf` gives you the full picture at a glance
 
@@ -234,7 +234,7 @@ When citing these metrics in your thesis:
 
 ---
 
-## 📧 Need Help?
+##  Need Help?
 
 - **Documentation:** See `docs/for_report/evaluation_metrics_comprehensive.md` for detailed explanations
 - **Code Examples:** Check docstrings in `src/metrics/` and `src/exporter/` modules
@@ -242,6 +242,6 @@ When citing these metrics in your thesis:
 
 ---
 
-## ✅ You're Ready!
+##  You're Ready!
 
 Just run `python main.py --env dev` and explore the new metrics in the output directory. No configuration needed!

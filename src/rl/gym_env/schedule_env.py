@@ -207,7 +207,7 @@ class ScheduleEnv(gym.Env):
         log_freq = 5 if self._total_steps_taken < 50 else 25
         if self.debug_logging and self._total_steps_taken % log_freq == 0:
             logger.info(
-                f"[ENV {self.env_rank}] \u2705 Step {self._total_steps_taken} - action={action}"
+                f"[ENV {self.env_rank}] Step {self._total_steps_taken} - action={action}"
             )
 
         # Convert numpy array to int (SB3 returns actions as arrays)

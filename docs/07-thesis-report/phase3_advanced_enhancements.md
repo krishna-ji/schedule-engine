@@ -6,12 +6,12 @@
 
 This document describes three advanced enhancements implemented to improve constraint satisfaction rates and solution quality in the university course scheduling genetic algorithm. These techniques represent sophisticated optimization strategies that extend beyond traditional GA operators.
 
-**Implementation Status**: ✅ Complete (October 2025)
+**Implementation Status**:  Complete (October 2025)
 
 **Risk Assessment**:
 - Population Restart: ⚠️ HIGH RISK - Can disrupt convergence
-- Violation Heatmap: ✅ SAFE - Pure observation, no side effects
-- Multi-Neighborhood Search: ✅ SAFE - Enhanced repair, backward compatible
+- Violation Heatmap:  SAFE - Pure observation, no side effects
+- Multi-Neighborhood Search:  SAFE - Enhanced repair, backward compatible
 
 ### 1. Population Restart Mechanism
 
@@ -151,7 +151,7 @@ violations = {
 - None - purely observational
 - Small JSON file size (~50KB for 100 generations)
 
-**Recommendation**: ✅ **Enabled by default**. No downsides, high diagnostic value.
+**Recommendation**:  **Enabled by default**. No downsides, high diagnostic value.
 
 #### Configuration
 
@@ -244,7 +244,7 @@ This ensures no loss of repair capability compared to baseline.
 - Combinatorial explosion risk if limits not enforced (mitigated by max_combinations)
 - May find valid but suboptimal moves (local search limitation)
 
-**Recommendation**: ✅ **Enabled by default**. Performance cost is acceptable (repair already selective), success rate improvement justifies overhead.
+**Recommendation**:  **Enabled by default**. Performance cost is acceptable (repair already selective), success rate improvement justifies overhead.
 
 #### Configuration
 

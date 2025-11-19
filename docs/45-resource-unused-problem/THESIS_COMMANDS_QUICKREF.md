@@ -1,10 +1,10 @@
-# 🎓 THESIS EXPERIMENTS - QUICK COMMAND REFERENCE
+#  THESIS EXPERIMENTS - QUICK COMMAND REFERENCE
 
 **Last Updated:** November 19, 2025
 
 ---
 
-## ✅ LOGICAL THESIS COMMANDS (NEW!)
+##  LOGICAL THESIS COMMANDS (NEW!)
 
 ### **Run Experiments (Short & Clear)**
 
@@ -37,7 +37,7 @@ uv run thesis-exp5-rl --env prod
 
 ---
 
-## 🧪 ABLATION STUDIES
+##  ABLATION STUDIES
 
 ```bash
 # Isolate specific components
@@ -49,7 +49,7 @@ uv run ablation-local-search --env prod       # Full with LNS
 
 ---
 
-## 🤖 RL TRAINING (For Experiment 5)
+##  RL TRAINING (For Experiment 5)
 
 ```bash
 # Train RL agent (100K timesteps recommended)
@@ -67,7 +67,7 @@ uv run validate-rl
 
 ---
 
-## 📊 RESULTS ANALYSIS
+##  RESULTS ANALYSIS
 
 ```bash
 # Compare all experiments
@@ -88,7 +88,7 @@ uv run analyze-diversity
 
 ---
 
-## 🔍 DIAGNOSTICS
+##  DIAGNOSTICS
 
 ```bash
 # GPU status check
@@ -127,7 +127,7 @@ uv run show-time
 
 ---
 
-## ⚡ BENCHMARKING
+##  BENCHMARKING
 
 ```bash
 # GPU benchmark
@@ -160,7 +160,7 @@ uv run git-squash
 
 ---
 
-## 🎯 RECOMMENDED WORKFLOW
+##  RECOMMENDED WORKFLOW
 
 ### **Phase 1: Quick Testing (30 minutes)**
 ```bash
@@ -211,19 +211,19 @@ uv run analyze-convergence
 
 ---
 
-## 📋 EXPERIMENT COMPARISON TABLE
+##  EXPERIMENT COMPARISON TABLE
 
 | Command | Experiment | Features | Expected Hard Violations | Quality |
 |---------|-----------|----------|-------------------------|---------|
-| `exp1` | Baseline | NSGA-II only | 20-50 | ⭐⭐ |
-| `exp2` | Repairs | + IGLS repairs | 5-15 | ⭐⭐⭐ |
-| `exp3` | Heuristics | + 19 heuristics (no LNS) | 8-15 | ⭐⭐⭐⭐ |
-| `exp4` | Local Search | + LNS local search | 0-5 | ⭐⭐⭐⭐⭐ |
-| `exp5` | RL-Guided | + RL adaptive selection | 0-3 | ⭐⭐⭐⭐⭐ |
+| `exp1` | Baseline | NSGA-II only | 20-50 |  |
+| `exp2` | Repairs | + IGLS repairs | 5-15 |  |
+| `exp3` | Heuristics | + 19 heuristics (no LNS) | 8-15 |  |
+| `exp4` | Local Search | + LNS local search | 0-5 |  |
+| `exp5` | RL-Guided | + RL adaptive selection | 0-3 |  |
 
 ---
 
-## 🚀 ONE-LINE FULL RUN
+##  ONE-LINE FULL RUN
 
 ```bash
 # Test everything first
@@ -235,7 +235,7 @@ uv run exp1 --env prod && uv run exp2 --env prod && uv run exp3 --env prod && uv
 
 ---
 
-## ❓ WHY THESE COMMANDS ARE BETTER
+##  WHY THESE COMMANDS ARE BETTER
 
 ### **Before (Confusing):**
 ```bash
@@ -252,16 +252,16 @@ uv run exp3 --env prod     # Experiment 3, production mode
 ```
 
 **Benefits:**
-- ✅ Clear experiment numbering (matches thesis)
-- ✅ Logical progression (each builds on previous)
-- ✅ Short commands (exp1, exp2, etc.)
-- ✅ Descriptive full names available (thesis-exp1-baseline)
-- ✅ Ablation study commands (isolate components)
-- ✅ Analysis commands (compare, plot, export)
+-  Clear experiment numbering (matches thesis)
+-  Logical progression (each builds on previous)
+-  Short commands (exp1, exp2, etc.)
+-  Descriptive full names available (thesis-exp1-baseline)
+-  Ablation study commands (isolate components)
+-  Analysis commands (compare, plot, export)
 
 ---
 
-## 🎓 FOR YOUR THESIS
+##  FOR YOUR THESIS
 
 **Use these commands in your thesis:**
 
@@ -279,7 +279,7 @@ and dataset (4,886 courses) for fair comparison.
 
 ---
 
-## 🔥 READY TO START!
+##  READY TO START!
 
 ```bash
 # Step 1: Verify system
@@ -295,4 +295,4 @@ uv run exp1 --env prod
 uv run compare-experiments
 ```
 
-**GO!** 🚀
+**GO!** 

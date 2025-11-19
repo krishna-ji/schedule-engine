@@ -10,7 +10,7 @@ Test run with `configs/test_repair_triggers.yaml`:
 - Periodic interval: 5 generations (SOFT)
 - Intensive interval: 10 generations (HARD)
 
-### Observed Behavior ✅
+### Observed Behavior 
 
 #### Stagnation-Triggered Repairs (SOFT)
 Successfully detected and triggered at:
@@ -27,14 +27,14 @@ Successfully triggered at:
 - **Gen 5**: Regular soft repair
 - **Gen 15**: Regular soft repair
 
-Console output: `🔄 Gen X: PERIODIC repair triggered (every 5 gens) - SOFT mode: selective, max_iterations=3, memetic=OFF`
+Console output: ` Gen X: PERIODIC repair triggered (every 5 gens) - SOFT mode: selective, max_iterations=3, memetic=OFF`
 
 #### Intensive Repairs (HARD)
 Successfully triggered at:
 - **Gen 10**: First intensive repair (every 10 gens)
 - **Gen 20**: Second intensive repair (every 10 gens)
 
-Console output: `🔥 Gen X: INTENSIVE REPAIR triggered (every 10 gens) - HARD mode: full scan, max_iterations=20, memetic=ON`
+Console output: ` Gen X: INTENSIVE REPAIR triggered (every 10 gens) - HARD mode: full scan, max_iterations=20, memetic=ON`
 
 ### Repair Effectiveness
 
@@ -59,7 +59,7 @@ Console output: `🔥 Gen X: INTENSIVE REPAIR triggered (every 10 gens) - HARD m
 - Repair triggers did NOT show dramatic improvements in this short test, but triggers **are firing correctly**
 
 ### Configuration Validation
-✅ All trigger types working as designed:
+ All trigger types working as designed:
 1. **Stagnation detection**: Window-based detection working
 2. **Periodic soft repair**: Firing at correct intervals
 3. **Intensive hard repair**: Firing at correct intervals with memetic mode
@@ -92,10 +92,10 @@ repair:
 
 ## Key Takeaways
 
-1. ✅ **Stagnation-triggered repair is WORKING** - Detects lack of progress and applies SOFT repair
-2. ✅ **Generation-triggered repair is WORKING** - Both periodic (SOFT) and intensive (HARD) fire correctly
-3. ✅ **Memetic mode activation** - Only enables during intensive repair (every 20 gens)
-4. ✅ **Console output** - Clear visual distinction between repair modes
+1.  **Stagnation-triggered repair is WORKING** - Detects lack of progress and applies SOFT repair
+2.  **Generation-triggered repair is WORKING** - Both periodic (SOFT) and intensive (HARD) fire correctly
+3.  **Memetic mode activation** - Only enables during intensive repair (every 20 gens)
+4.  **Console output** - Clear visual distinction between repair modes
 
 ### Recommendations
 

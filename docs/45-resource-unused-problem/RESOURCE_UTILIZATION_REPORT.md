@@ -4,7 +4,7 @@
 **System**: Remote VM  
 **Current Utilization**: ~5% (95% resources UNUSED)
 
-## 🔴 Critical Issue: Massive Resource Waste
+##  Critical Issue: Massive Resource Waste
 
 ### Current State
 ```
@@ -17,7 +17,7 @@ Memory: 11% usage → 89% WASTED (14/128 GB used)
 
 ---
 
-## 🎯 Where to "Fully Fuck the Code and System Together"
+##  Where to "Fully Fuck the Code and System Together"
 
 ### 1. **MULTIPROCESSING: Currently Neutered**
 
@@ -257,29 +257,29 @@ violation_count = violations.sum()  # 10x faster
 
 ---
 
-## 🚀 Complete Optimization Stack
+##  Complete Optimization Stack
 
 ### Phase 1: Quick Wins (30 mins)
-1. ✅ Set `num_workers: 16` in all configs
-2. ✅ Increase `pop_size: 800` in prod.yaml
-3. ✅ Increase RL `batch_size: 512`, `n_steps: 8192`
-4. ✅ Remove `cpu_count() - 1` → use `cpu_count()` everywhere
+1.  Set `num_workers: 16` in all configs
+2.  Increase `pop_size: 800` in prod.yaml
+3.  Increase RL `batch_size: 512`, `n_steps: 8192`
+4.  Remove `cpu_count() - 1` → use `cpu_count()` everywhere
 
 ### Phase 2: Aggressive (2 hours)
-5. ✅ Implement `BatchHeuristicExecutor`
-6. ✅ Vectorize constraint evaluation
-7. ✅ Add population caching with memmaps
-8. ✅ Parallelize IGLS repair completely
+5.  Implement `BatchHeuristicExecutor`
+6.  Vectorize constraint evaluation
+7.  Add population caching with memmaps
+8.  Parallelize IGLS repair completely
 
 ### Phase 3: Beast Mode (1 day)
-9. ✅ Implement `GPUConstraintEvaluator` with PyTorch
-10. ✅ Add parallel RL environments (`num_envs: 8`)
-11. ✅ Profile and optimize hotspots
-12. ✅ Implement distributed computing (if multiple VMs available)
+9.  Implement `GPUConstraintEvaluator` with PyTorch
+10.  Add parallel RL environments (`num_envs: 8`)
+11.  Profile and optimize hotspots
+12.  Implement distributed computing (if multiple VMs available)
 
 ---
 
-## 📊 Expected Results After Full Optimization
+##  Expected Results After Full Optimization
 
 ### Before (Current):
 ```
@@ -298,7 +298,7 @@ Memory: 40-60% → aggressive caching
 
 ---
 
-## 🔧 Implementation Priority
+##  Implementation Priority
 
 ### DO THIS NOW (Immediate 5-10x speedup):
 
@@ -350,11 +350,11 @@ num_workers = 16  # USE ALL THREADS
 uv run prod
 ```
 
-Watch your CPU go from 4% → 90%+ 🔥
+Watch your CPU go from 4% → 90%+ 
 
 ---
 
-## 🎯 Bottleneck Analysis
+##  Bottleneck Analysis
 
 ### Current Bottlenecks (in order):
 1. **Parallelization**: Only using 1-2 cores out of 16 (800% waste)
@@ -372,7 +372,7 @@ Watch your CPU go from 4% → 90%+ 🔥
 
 ---
 
-## 📈 Performance Projections
+##  Performance Projections
 
 ### Conservative Estimate (just config changes):
 - **Current**: 24-48h prod run, 4% CPU, 5% GPU
@@ -391,7 +391,7 @@ Watch your CPU go from 4% → 90%+ 🔥
 
 ---
 
-## 🔥 TL;DR - Make It Scream
+##  TL;DR - Make It Scream
 
 **Edit these 3 files NOW**:
 
@@ -416,7 +416,7 @@ uv run prod
 
 ---
 
-## 📞 Support
+##  Support
 
 If CPU still under 80% after these changes, you have deeper bottlenecks (likely I/O or GIL issues). Profile with:
 ```bash
@@ -432,4 +432,4 @@ p.sort_stats('cumulative').print_stats(50)
 
 This will show you exactly where the remaining bottlenecks are.
 
-**NOW GO MAKE THAT MACHINE WORK FOR ITS MONEY.** 🚀
+**NOW GO MAKE THAT MACHINE WORK FOR ITS MONEY.** 

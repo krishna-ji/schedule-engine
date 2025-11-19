@@ -37,7 +37,7 @@ runtime: ~5 min
 ```
 **Use for**: Quick smoke tests, debugging
 
-### prod_safe.yaml (✅ Recommended for VM)
+### prod_safe.yaml ( Recommended for VM)
 ```
 ngen: 250
 pop_size: 50
@@ -47,7 +47,7 @@ runtime: ~4-6 hours
 ```
 **Use for**: First production run, VM-friendly, balanced quality
 
-### prod_test.yaml (🔬 For Testing)
+### prod_test.yaml ( For Testing)
 ```
 ngen: 30
 pop_size: 100
@@ -57,7 +57,7 @@ runtime: ~30-60 min
 ```
 **Use for**: Test if your VM can handle 100 pop before long run
 
-### prod.yaml (🚀 Full Production)
+### prod.yaml ( Full Production)
 ```
 ngen: 1000
 pop_size: 100
@@ -140,16 +140,16 @@ Get-ChildItem output -Directory | Sort-Object LastWriteTime -Descending | Select
 
 1. **IGLS Triggers**
 ```
-🔥 Gen X: EXHAUSTIVE SEARCH triggered
-   ✅ Exhaustive search complete: N genes improved, total reduction: X, time: Ys
+ Gen X: EXHAUSTIVE SEARCH triggered
+    Exhaustive search complete: N genes improved, total reduction: X, time: Ys
 ```
 - Time should be < timeout (300s for prod_safe, 600s for prod)
 - If timing out: Reduce coverage or increase timeout
 
 2. **Stagnation Repair**
 ```
-🔄 Stagnation detected! Triggering GREEDY REPAIR
-   ✅ Greedy repair complete: ...
+ Stagnation detected! Triggering GREEDY REPAIR
+    Greedy repair complete: ...
 ```
 - Should trigger if stuck
 - If triggering too often (< cooldown): Increase patience
@@ -235,7 +235,7 @@ Start-Process "$latest/ScheduleCalendar.pdf"
 
 ## Summary: Can You Run in VM Now?
 
-✅ **Yes, with the right config:**
+ **Yes, with the right config:**
 
 1. **For immediate testing**: Use `test` (5 min)
 2. **For first production run**: Use `prod_safe.yaml` (4-6 hours)

@@ -6,17 +6,17 @@
 
 ## Key Benefits
 
-✅ **10-100x faster** than pip - parallel downloads and installs  
-✅ **No pip dependency** - standalone Rust binary  
-✅ **Better dependency resolution** - fewer conflicts  
-✅ **Drop-in replacement** - same commands as pip  
-✅ **Modern Python standard** - works with pyproject.toml  
-✅ **Global package cache** - saves disk space  
-✅ **Cross-platform** - Windows, Linux, macOS  
+ **10-100x faster** than pip - parallel downloads and installs  
+ **No pip dependency** - standalone Rust binary  
+ **Better dependency resolution** - fewer conflicts  
+ **Drop-in replacement** - same commands as pip  
+ **Modern Python standard** - works with pyproject.toml  
+ **Global package cache** - saves disk space  
+ **Cross-platform** - Windows, Linux, macOS  
 
 ## Migration Status
 
-✅ **Complete** - Full migration to UV completed on 2025-10-28
+ **Complete** - Full migration to UV completed on 2025-10-28
 
 ### What Changed
 

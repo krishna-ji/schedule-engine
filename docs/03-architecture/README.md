@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 ### Core Architecture
 - **overall-architecture.md** - High-level system design (coming soon)
@@ -16,7 +16,7 @@
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [User Guides ←](../02-user-guides/)
 - [Algorithms →](../04-algorithms/)

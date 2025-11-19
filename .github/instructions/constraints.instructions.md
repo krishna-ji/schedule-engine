@@ -145,9 +145,9 @@ for group_id in context.groups:
 ```
 
 ## Never Do
-- ❌ Modify `decoded_schedule` or `context` (read-only)
-- ❌ Use global variables or cached state across calls
-- ❌ Raise exceptions for violations (return penalty instead)
-- ❌ Return negative penalties
-- ❌ Access files or network resources
-- ❌ Use `print()` (use return values for reporting)
+-  Modify `decoded_schedule` or `context` (read-only)
+-  Use global variables or cached state across calls
+-  Raise exceptions for violations (return penalty instead)
+-  Return negative penalties
+-  Access files or network resources
+-  Use `print()` (use return values for reporting)

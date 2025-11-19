@@ -20,13 +20,13 @@
 **Q: Can we use NVIDIA GPU for both RL training and constraint checking?**
 
 **A:** 
-- **RL Training:** ✅ YES - GPU provides 3-5× speedup
+- **RL Training:**  YES - GPU provides 3-5× speedup
   - Implementation: Changed `device: auto` → `device: cuda` in configs/base.yaml
   - Framework: Stable-Baselines3 with PyTorch backend already GPU-ready
   - Expected: 22.5 hours → 6 hours for full curriculum training
   - Hardware: 8GB GPU sufficient (only needs 200-800 MB VRAM)
 
-- **Constraint Checking:** ❌ NO - GPU would be 2.4× slower
+- **Constraint Checking:**  NO - GPU would be 2.4× slower
   - Reason: Small, irregular, dictionary-based operations
   - Memory transfer overhead: 50ms vs 40ms CPU computation
   - Constraint checking is only 4% of RL training time
@@ -586,12 +586,12 @@ creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
 
 **YES!** Your understanding is correct:
 
-✅ **NSGA-II is a multi-objective algorithm** (not weighted sum)
-✅ **Weights `(-1.0, -1.0)` control direction** (both minimize)
-✅ **Magnitude of weights doesn't affect Pareto sorting**
-✅ **Priority is controlled by constraint weights**, not DEAP fitness weights
-✅ **Hard constraints naturally dominate** via scaling (soft_weight_factor)
-✅ **NSGA-II finds Pareto-optimal trade-offs** between objectives
+ **NSGA-II is a multi-objective algorithm** (not weighted sum)
+ **Weights `(-1.0, -1.0)` control direction** (both minimize)
+ **Magnitude of weights doesn't affect Pareto sorting**
+ **Priority is controlled by constraint weights**, not DEAP fitness weights
+ **Hard constraints naturally dominate** via scaling (soft_weight_factor)
+ **NSGA-II finds Pareto-optimal trade-offs** between objectives
 
 **Key Insight:** Your architecture is **well-designed**:
 - Hard constraints have high absolute values (3.0, 2.5, 2.0)
@@ -607,14 +607,14 @@ creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
 
 #### Individual Components
 
-**✅ NSGA-II (Metaheuristic):**
+** NSGA-II (Metaheuristic):**
 - Multi-objective optimization (hard + soft constraints)
 - Pareto-based selection (non-dominated sorting)
 - Crowding distance for diversity
 - Elitism preserves best solutions
 - **Your implementation**: GAScheduler in `src/core/ga_scheduler.py`
 
-**✅ RL (Hyperheuristic):**
+** RL (Hyperheuristic):**
 - Learns to select heuristic operators
 - State: 21 features (fitness, diversity, stagnation, etc.)
 - Action: 19 heuristic operators
@@ -809,11 +809,11 @@ for gen in range(num_generations):
 #### Summary: Recommendations
 
 **Current Architecture (Good):**
-✅ NSGA-II + RL operator selection
-✅ 19 heuristic operators in toolbox
-✅ Curriculum learning (3 stages)
-✅ Pareto-based multi-objective optimization
-✅ Hardcoded constraint weights (domain knowledge)
+ NSGA-II + RL operator selection
+ 19 heuristic operators in toolbox
+ Curriculum learning (3 stages)
+ Pareto-based multi-objective optimization
+ Hardcoded constraint weights (domain knowledge)
 
 **Suggested Enhancements (Better):**
 1. **Multi-objective reward** (Pareto-aware, not scalar)

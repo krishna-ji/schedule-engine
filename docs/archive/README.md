@@ -4,7 +4,7 @@
 
 ---
 
-## 📚 Contents
+##  Contents
 
 ### Deprecated Documentation
 - Old/superseded guides
@@ -35,7 +35,7 @@ Content here is **preserved for reference** but not actively maintained:
 
 ---
 
-## 🔗 Related Sections
+##  Related Sections
 
 - [AI Suggestions ←](../10-ai-suggestions/)
 - [Development](../06-development/)

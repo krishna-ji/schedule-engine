@@ -29,13 +29,13 @@ Your best approach is:
 
 ### 3. **What You Already Have vs Need**
 
-**Already Implemented** ✅:
+**Already Implemented** :
 - LNS repair (heuristic destroy-repair)
 - IGLS local search (greedy swaps)
 - Adaptive mutation/crossover
 - Conflict detection heuristics
 
-**Missing Heuristics** ❌:
+**Missing Heuristics** :
 - Construction heuristics (build schedule from scratch intelligently)
 - Perturbation heuristics (smart schedule shaking)
 - Diversity maintenance (prevent premature convergence)

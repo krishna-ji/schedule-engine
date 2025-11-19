@@ -4,7 +4,7 @@ Great question! Let me clarify the **RL training data flow** - it's different fr
 
 ## RL Training Data: The Key Difference
 
-### ❌ What You DON'T Need (Supervised Learning)
+###  What You DON'T Need (Supervised Learning)
 ```python
 # You DON'T need pre-collected data like this:
 training_data = {
@@ -14,7 +14,7 @@ training_data = {
 }
 ```
 
-### ✅ What You DO Need (Reinforcement Learning)
+###  What You DO Need (Reinforcement Learning)
 ```python
 # You ONLY need the environment (already built!)
 env = ScheduleEnv(
@@ -268,10 +268,10 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 import time
 
 def main():
-    print("🚀 Starting RL Training (No pre-training data needed!)")
+    print(" Starting RL Training (No pre-training data needed!)")
     
     # 1. Load scheduling problem
-    print("📚 Loading data...")
+    print(" Loading data...")
     qts, context = load_input_data("data")
     initial_pop = create_initial_population(context, pop_size=50)
     
@@ -284,7 +284,7 @@ def main():
     )
     
     # 3. Create agent (starts knowing nothing!)
-    print("🤖 Creating PPO agent...")
+    print(" Creating PPO agent...")
     agent = create_ppo_agent(
         env,
         verbose=1,
@@ -292,7 +292,7 @@ def main():
     )
     
     # 4. Train agent (generates data on-the-fly)
-    print("🎓 Training agent (100K steps, ~30 min)...")
+    print(" Training agent (100K steps, ~30 min)...")
     print("   Agent will explore, make mistakes, and learn!")
     start_time = time.time()
     
@@ -306,20 +306,20 @@ def main():
     )
     
     training_time = time.time() - start_time
-    print(f"✅ Training complete in {training_time/60:.1f} minutes")
+    print(f" Training complete in {training_time/60:.1f} minutes")
     
     # 5. Save final model
     model_path = "models/rl_agents/schedule_ppo_final.zip"
     agent.save(model_path)
-    print(f"💾 Model saved to {model_path} (size: ~10 MB)")
+    print(f" Model saved to {model_path} (size: ~10 MB)")
     
     # 6. Test trained agent
-    print("🧪 Testing trained agent...")
+    print(" Testing trained agent...")
     obs, _ = env.reset()
     action, _ = agent.predict(obs, deterministic=True)
     print(f"   Agent selected action: {action} (heuristic)")
     
-    print("\n📊 View training progress:")
+    print("\n View training progress:")
     print("   tensorboard --logdir logs/tensorboard")
 
 if __name__ == "__main__":
@@ -341,10 +341,10 @@ uv run python src/rl/training/train_script.py
 
 ## Key Takeaways
 
-1. **No pre-training data needed** ✅ - Agent generates data by interacting with environment
+1. **No pre-training data needed**  - Agent generates data by interacting with environment
 2. **Training data is temporary** - Stored in RAM, discarded after training
 3. **Only trained model is saved** - ~10-20 MB file with neural network weights
 4. **TensorBoard logs training progress** - Optional, for analysis
 5. **Checkpoints are safety nets** - Save intermediate models every 10K steps
 
-**Next step**: Implement the training script above and run your first training session! The agent will learn automatically by exploring your scheduling environment. 🚀
+**Next step**: Implement the training script above and run your first training session! The agent will learn automatically by exploring your scheduling environment. 

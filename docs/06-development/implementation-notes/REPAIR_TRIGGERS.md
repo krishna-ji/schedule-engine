@@ -67,9 +67,9 @@ The code dynamically modifies `repair_config` dictionary during `_evolve_generat
 
 #### Console Output
 Enhanced messages to clearly show which repair mode is active:
-- 🔥 Red: Intensive repair (HARD mode)
+-  Red: Intensive repair (HARD mode)
 - ⚠️ Yellow: Stagnation repair (SOFT mode)
-- 🔄 Cyan: Periodic repair (SOFT mode)
+-  Cyan: Periodic repair (SOFT mode)
 
 ### Testing
 Run `python test/test_adaptive_repair_config.py` to verify configuration loads correctly.

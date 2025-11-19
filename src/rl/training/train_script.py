@@ -244,9 +244,7 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
 def create_environment(args, context, env_rank: int = 0):
     """Create RL environment for training."""
 
-    logger.info(
-        f"[ENV {env_rank}] \ud83c\udfed Creating environment (this takes 30-60s per env)..."
-    )
+    logger.info(f"[ENV {env_rank}] Creating environment (this takes 30-60s per env)...")
 
     from src.ga.evaluator.fitness import evaluate as evaluate_fitness
     from src.ga.population import generate_course_group_aware_population
@@ -256,7 +254,7 @@ def create_environment(args, context, env_rank: int = 0):
     # Daemon processes cannot spawn child processes in Python
     # Solution: Always use sequential population generation in RL training
     logger.info(
-        f"[ENV {env_rank}] \ud83e\uddf1 Generating initial population ({args.population_size} individuals)..."
+        f"[ENV {env_rank}] Generating initial population ({args.population_size} individuals)..."
     )
     initial_population = generate_course_group_aware_population(
         n=args.population_size,
@@ -265,7 +263,7 @@ def create_environment(args, context, env_rank: int = 0):
     )
 
     logger.info(
-        f"[ENV {env_rank}] \ud83d\udccf Evaluating {len(initial_population)} individuals (this is the slow part)..."
+        f"[ENV {env_rank}] Evaluating {len(initial_population)} individuals (this is the slow part)..."
     )
     for idx, individual in enumerate(initial_population):
         if idx % 20 == 0:
@@ -282,7 +280,7 @@ def create_environment(args, context, env_rank: int = 0):
         individual.fitness.values = fitness
 
     logger.info(
-        f"[ENV {env_rank}] \u2705 Population initialized with {len(initial_population)} individuals"
+        f"[ENV {env_rank}] [OK] Population initialized with {len(initial_population)} individuals"
     )
 
     env = ScheduleEnv(
@@ -324,23 +322,23 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 
     logger.info(f"")
-    logger.info(f"\u2550" * 80)
-    logger.info(f"\ud83d\udea8 IMPORTANT: Creating {n_envs} parallel environments")
-    logger.info(f"\u2550" * 80)
+    logger.info(f"=" * 80)
+    logger.info(f"IMPORTANT: Creating {n_envs} parallel environments")
+    logger.info(f"=" * 80)
     logger.info(
         f"Environment type: {'SubprocVecEnv (true parallelism)' if use_subproc else 'DummyVecEnv (sequential)'}"
     )
     logger.info(f"Population size per env: {args.population_size}")
     logger.info(f"")
-    logger.info(f"\u23f3 EXPECTED TIME:")
+    logger.info(f"EXPECTED TIME:")
     logger.info(f"   - Each environment needs 30-60 seconds to initialize")
     logger.info(
         f"   - With {n_envs} envs running in parallel, expect 30-60 seconds total"
     )
     logger.info(f"   - You should see [ENV 0-{n_envs-1}] progress logs below")
     logger.info(f"")
-    logger.info(f"\ud83d\udc40 WATCH FOR: [ENV X] Creating environment logs...")
-    logger.info(f"\u2550" * 80)
+    logger.info(f"WATCH FOR: [ENV X] Creating environment logs...")
+    logger.info(f"=" * 80)
     logger.info(f"")
 
     def make_env(rank: int):

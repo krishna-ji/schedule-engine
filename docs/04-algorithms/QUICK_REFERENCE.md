@@ -1,4 +1,4 @@
-# 🎯 Quick Reference: Constraint Weight Issue
+#  Quick Reference: Constraint Weight Issue
 
 ## The Problem in One Sentence
 **Block clustering (quality preference) is weighted the same as safety constraints, but generates 7x more violations, causing the GA to optimize for "nice grouping" instead of "no double-bookings".**
@@ -59,7 +59,7 @@ hard_constraints:
 | **Group Overlaps** | 1,046 | 400-600 (50% ↓) | 100-300 (80% ↓) |
 | **Instructor Conflicts** | 250 | 100-150 (50% ↓) | 50-100 (70% ↓) |
 | **Block Clustering** | 7,408 | 8,000-9,000 (may ↑) | 10,000-12,000 (may ↑) |
-| **Usability** | ❌ Impossible | ⚠️ Usable | ✅ Good |
+| **Usability** |  Impossible | ⚠️ Usable |  Good |
 
 ---
 
@@ -81,7 +81,7 @@ Other:     7,240 (34%)
 
 **After aggressive fix**:
 ```
-Safety:    9,690 (45%) ← HIGHEST PRIORITY ✅
+Safety:    9,690 (45%) ← HIGHEST PRIORITY 
 Block:     3,704 (17%) ← Background concern
 Other:     8,240 (38%)
 ```
@@ -115,18 +115,18 @@ grep "Hard violations" output/evaluation_*/logger.txt | tail -1
 
 ## Success Criteria
 
-✅ **GOOD**: Group overlaps < 500, Instructor conflicts < 150  
-✅ **EXCELLENT**: Group overlaps < 200, Instructor conflicts < 100  
-✅ **PERFECT**: All critical constraints < 50
+ **GOOD**: Group overlaps < 500, Instructor conflicts < 150  
+ **EXCELLENT**: Group overlaps < 200, Instructor conflicts < 100  
+ **PERFECT**: All critical constraints < 50
 
 ---
 
 ## Full Documentation
 
-- 📄 `ANALYSIS_SUMMARY.md` - Overview and action plan
-- 📄 `CONSTRAINT_WEIGHT_ANALYSIS.md` - Deep technical analysis (500 lines)
-- 📄 `DETAILED_ANALYSIS_REPORT.md` - Complete GA run analysis (600 lines)
-- 📄 `IMMEDIATE_ACTION_PLAN.md` - Step-by-step implementation guide
+-  `ANALYSIS_SUMMARY.md` - Overview and action plan
+-  `CONSTRAINT_WEIGHT_ANALYSIS.md` - Deep technical analysis (500 lines)
+-  `DETAILED_ANALYSIS_REPORT.md` - Complete GA run analysis (600 lines)
+-  `IMMEDIATE_ACTION_PLAN.md` - Step-by-step implementation guide
 
 ---
 

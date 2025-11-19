@@ -55,15 +55,15 @@
 3. **hard_constraint_trend.pdf** → Did hard violations reach 0?
 
 **Good run indicators**:
-- ✅ Pareto front has solutions at (0, low_soft)
-- ✅ Hard violations trend reaches 0
-- ✅ Hypervolume increasing
-- ✅ Feasibility rate > 60%
+-  Pareto front has solutions at (0, low_soft)
+-  Hard violations trend reaches 0
+-  Hypervolume increasing
+-  Feasibility rate > 60%
 
 **Problem indicators**:
-- ❌ All solutions have hard > 5
-- ❌ Flat lines on all metrics after gen 100
-- ❌ Feasibility rate < 20%
+-  All solutions have hard > 5
+-  Flat lines on all metrics after gen 100
+-  Feasibility rate < 20%
 
 ---
 

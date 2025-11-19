@@ -70,10 +70,10 @@ You'll see LNS repair triggers with strategy info:
 ### What to Watch For
 
 **Good Signs:**
-- ✅ Heuristic success messages (fast repairs)
-- ✅ Low conflict counts after repair
-- ✅ Occasional CP escalation when heuristic fails
-- ✅ Pre-check skips for infeasible subproblems
+-  Heuristic success messages (fast repairs)
+-  Low conflict counts after repair
+-  Occasional CP escalation when heuristic fails
+-  Pre-check skips for infeasible subproblems
 
 **Warning Signs:**
 - ⚠️ All repairs failing (check input data quality)
@@ -290,4 +290,4 @@ Based on results, we can:
 4. **Trigger Timing**: If conflicts with IGLS, try `trigger_before_igls: true`
 5. **Add Diagnostics**: Enable more detailed logging for deep analysis
 
-**Ready to run!** 🚀
+**Ready to run!** 

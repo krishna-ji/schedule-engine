@@ -4,7 +4,7 @@
 
 ---
 
-## 📁 Documentation Files
+##  Documentation Files
 
 | File | Purpose | When to Use |
 |------|---------|-------------|
@@ -13,9 +13,9 @@
 
 ---
 
-## 🚀 Quick Start (5 Minutes)
+##  Quick Start (5 Minutes)
 
-**Status:** ✅ GPU acceleration is **already enabled** in `configs/base.yaml` (line 328)
+**Status:**  GPU acceleration is **already enabled** in `configs/base.yaml` (line 328)
 
 ### Step 1: Verify GPU
 ```powershell
@@ -31,10 +31,10 @@ uv run python scripts/diagnose_gpu.py
 uv run python -c "import torch; print(f'CUDA Available: {torch.cuda.is_available()}')"
 ```
 
-### Step 3: ~~Enable GPU in Config~~ Already Enabled ✅
+### Step 3: ~~Enable GPU in Config~~ Already Enabled 
 ~~Edit `configs/base.yaml` line 328:~~
 ```yaml
-device: cuda  # ✅ Already enabled (changed from "auto")
+device: cuda  #  Already enabled (changed from "auto")
 ```
 
 ### Step 4: Test Training
@@ -50,20 +50,20 @@ nvidia-smi -l 1
 
 ---
 
-## 📊 GPU Acceleration Summary
+##  GPU Acceleration Summary
 
-### ✅ Where GPU Helps (Recommended)
+###  Where GPU Helps (Recommended)
 
 | Component | Speedup | Effort | Status |
 |-----------|---------|--------|--------|
-| **RL Training** | **3-5×** | **1 line** | ✅ Already implemented |
+| **RL Training** | **3-5×** | **1 line** |  Already implemented |
 | Neural network forward pass | 4-6× | - | Built into PyTorch |
 | Neural network backprop | 3-4× | - | Built into PyTorch |
 | Batch processing | 2-3× | - | Built into Stable-Baselines3 |
 
 **Implementation:** Change `device: auto` → `device: cuda` in configs/base.yaml
 
-### ❌ Where GPU Doesn't Help (Not Recommended)
+###  Where GPU Doesn't Help (Not Recommended)
 
 | Component | Issue | Recommendation |
 |-----------|-------|----------------|
@@ -76,7 +76,7 @@ nvidia-smi -l 1
 
 ---
 
-## 🎯 Expected Performance
+##  Expected Performance
 
 ### Training Speedup
 
@@ -91,7 +91,7 @@ nvidia-smi -l 1
 - **Minimum GPU:** 4GB VRAM (enough for basic training)
 - **Recommended GPU:** 8GB VRAM (comfortable for all scenarios)
 - **Actual VRAM usage:** 200-800 MB typical, ~1 GB maximum
-- **Your GPU:** 8GB NVIDIA GPU ✅ Perfect for this workload
+- **Your GPU:** 8GB NVIDIA GPU  Perfect for this workload
 
 ---
 
@@ -132,7 +132,7 @@ nvidia-smi dmon -s pucvmet -d 1
 
 ---
 
-## 📖 Documentation Structure
+##  Documentation Structure
 
 ### Part 1: Feasibility Analysis
 **File:** GPU_ACCELERATION_GUIDE.md, Part 1  
@@ -196,7 +196,7 @@ nvidia-smi dmon -s pucvmet -d 1
 
 ---
 
-## ⚡ Quick Reference: Common Commands
+##  Quick Reference: Common Commands
 
 ### Verify Setup
 ```powershell
@@ -243,7 +243,7 @@ uv pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 ---
 
-## 🎓 Learning Path
+##  Learning Path
 
 ### For Quick Setup
 1. Read [QUICKSTART.md](QUICKSTART.md) (5 minutes)
@@ -267,7 +267,7 @@ uv pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 ---
 
-## 📈 Performance Insights
+##  Performance Insights
 
 ### Training Time Breakdown (CPU)
 ```
@@ -295,7 +295,7 @@ Total RL training time: 30% (3.3× speedup)
 
 ---
 
-## 🔗 Related Documentation
+##  Related Documentation
 
 ### In This Directory
 - **QUICKSTART.md** - 5-minute setup guide
@@ -313,7 +313,7 @@ Total RL training time: 30% (3.3× speedup)
 
 ---
 
-## ❓ FAQ
+##  FAQ
 
 ### Q: Do I need to change any code to use GPU?
 **A:** No! Just change one line in `configs/base.yaml`: `device: cuda`
@@ -338,7 +338,7 @@ Total RL training time: 30% (3.3× speedup)
 
 ---
 
-## 📝 Next Steps
+##  Next Steps
 
 1. **Run diagnostics:** `uv run python scripts/diagnose_gpu.py`
 2. **Enable GPU:** Edit `configs/base.yaml` → `device: cuda`
@@ -348,7 +348,7 @@ Total RL training time: 30% (3.3× speedup)
 
 ---
 
-## 📅 Document History
+##  Document History
 
 - **Created:** 2025-01-XX
 - **Author:** GitHub Copilot (Claude Sonnet 4.5)
@@ -357,7 +357,7 @@ Total RL training time: 30% (3.3× speedup)
 
 ---
 
-## 💡 Key Takeaway
+##  Key Takeaway
 
 **GPU acceleration is a 5-minute, 1-line change that provides 3-5× training speedup with zero downside.**
 

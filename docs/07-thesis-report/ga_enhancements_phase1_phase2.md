@@ -147,7 +147,7 @@ if self.stagnation_counter >= stagnation_window:
     self.hypermutation_countdown = 2  # Duration: 2 generations
     
     console.print(
-        f"⚡ Gen {gen}: HYPERMUTATION activated "
+        f" Gen {gen}: HYPERMUTATION activated "
         f"(mutpb: 0.3 → 0.8 for 2 gens)"
     )
 

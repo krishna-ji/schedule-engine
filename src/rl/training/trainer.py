@@ -239,11 +239,11 @@ class RLTrainer:
             batch_size = getattr(self.agent, "batch_size", 64)
             n_epochs = getattr(self.agent, "n_epochs", 10)
             logger.info(f"")
-            logger.info(f"═" * 60)
-            logger.info(f"🔍 PPO TRAINING DIAGNOSTICS")
-            logger.info(f"═" * 60)
+            logger.info(f"=" * 60)
+            logger.info(f"PPO TRAINING DIAGNOSTICS")
+            logger.info(f"=" * 60)
             logger.info(
-                f"Rollout buffer: {n_steps} steps/env × {self.n_envs} envs = {n_steps * self.n_envs} total steps"
+                f"Rollout buffer: {n_steps} steps/env x {self.n_envs} envs = {n_steps * self.n_envs} total steps"
             )
             logger.info(
                 f"PPO will collect {n_steps} steps from EACH of {self.n_envs} environments"
@@ -252,7 +252,7 @@ class RLTrainer:
                 f"Then train for {n_epochs} epochs with batch_size={batch_size}"
             )
             logger.info(f"")
-            logger.info(f"⏳ EXPECTED BEHAVIOR:")
+            logger.info(f"EXPECTED BEHAVIOR:")
             logger.info(
                 f"   1. Environments reset (you should see [ENV 0-{self.n_envs-1}] Reset logs)"
             )
@@ -265,10 +265,10 @@ class RLTrainer:
             logger.info(
                 f"If no environment logs appear within 1 minute, training is likely frozen."
             )
-            logger.info(f"═" * 60)
+            logger.info(f"=" * 60)
             logger.info(f"")
 
-        logger.info("🚀 Starting rollout collection now...")
+        logger.info("Starting rollout collection now...")
         import sys
 
         sys.stdout.flush()  # Force output to appear immediately

@@ -26,10 +26,10 @@ GitHub Copilot automatically loads the appropriate instruction file based on the
 
 ## Benefits of This Structure
 
-✅ **Focused Context**: Each instruction file contains only relevant information for that module
-✅ **Reduced Token Usage**: Copilot doesn't load unrelated instructions
-✅ **Easier Maintenance**: Update instructions for specific modules without affecting others
-✅ **Better Suggestions**: More targeted guidance = more accurate code suggestions
+ **Focused Context**: Each instruction file contains only relevant information for that module
+ **Reduced Token Usage**: Copilot doesn't load unrelated instructions
+ **Easier Maintenance**: Update instructions for specific modules without affecting others
+ **Better Suggestions**: More targeted guidance = more accurate code suggestions
 
 ## Adding New Instructions
 

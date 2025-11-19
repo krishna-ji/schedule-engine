@@ -30,9 +30,9 @@ time:
 ```
 
 **Benefits:**
-- ✅ No code changes needed to tune penalties
-- ✅ Environment-specific settings (test/dev/prod)
-- ✅ Easy to experiment with different penalty weights
+-  No code changes needed to tune penalties
+-  Environment-specific settings (test/dev/prod)
+-  Easy to experiment with different penalty weights
 
 ## 2. Constraint Function Updates
 
@@ -63,10 +63,10 @@ if course_type == "practical":
 ```
 
 **Key Features:**
-- ✅ Uses `session.course_type` to differentiate
-- ✅ Reads penalties from config (no hardcoded values)
-- ✅ Configurable excused isolated sessions
-- ✅ Heavy penalty for practical fragmentation
+-  Uses `session.course_type` to differentiate
+-  Reads penalties from config (no hardcoded values)
+-  Configurable excused isolated sessions
+-  Heavy penalty for practical fragmentation
 
 ## 3. Repair Heuristics Enhancements
 
@@ -102,15 +102,15 @@ else:
 ```
 
 **Benefits:**
-- ✅ Practical courses get special consolidation treatment
-- ✅ Theory courses maintain flexible multi-block optimization
-- ✅ Repair matches constraint evaluation logic
+-  Practical courses get special consolidation treatment
+-  Theory courses maintain flexible multi-block optimization
+-  Repair matches constraint evaluation logic
 
 ## 4. Testing
 
 ### Test Suite
 - File: `test/test_block_clustering_course_type.py`
-- Status: ✅ **All 8 tests passing**
+- Status:  **All 8 tests passing**
 
 **Test Coverage:**
 - Theory ideal blocks [3,3] → 0 penalty
@@ -131,12 +131,12 @@ else:
 3. **`docs/BLOCK_CLUSTERING_CONFIG.md`** - Configuration guide with examples
 
 ### Documentation Includes
-- ✅ Configuration reference
-- ✅ Theory vs practical rules
-- ✅ Penalty calculation examples
-- ✅ Environment-specific presets
-- ✅ Troubleshooting guide
-- ✅ Tuning best practices
+-  Configuration reference
+-  Theory vs practical rules
+-  Penalty calculation examples
+-  Environment-specific presets
+-  Troubleshooting guide
+-  Tuning best practices
 
 ## 6. Verification
 
@@ -157,7 +157,7 @@ Config loaded successfully!
 ```bash
 python test/test_block_clustering_course_type.py
 ```
-Result: **8 passed, 0 failed** ✅
+Result: **8 passed, 0 failed** 
 
 ## Implementation Summary
 
@@ -189,10 +189,10 @@ practical_fragmentation_penalty: 50
 
 ## Next Steps
 
-1. ✅ Run full test suite: `python main.py --env test`
-2. ✅ Verify constraints in `violation_report.txt`
-3. ✅ Check convergence in `logger_constraints.csv`
-4. ✅ Tune penalties based on actual schedule quality
+1.  Run full test suite: `python main.py --env test`
+2.  Verify constraints in `violation_report.txt`
+3.  Check convergence in `logger_constraints.csv`
+4.  Tune penalties based on actual schedule quality
 
 ## Benefits Achieved
 
@@ -226,4 +226,4 @@ practical_fragmentation_penalty: 50
 
 ---
 
-**Status**: ✅ **COMPLETE AND TESTED**
+**Status**:  **COMPLETE AND TESTED**

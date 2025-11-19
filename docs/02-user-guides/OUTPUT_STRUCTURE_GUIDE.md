@@ -5,23 +5,23 @@
 ```
 output/evaluation_<timestamp>/
 │
-├── 📄 run.log                      # Execution summary & configuration
-├── 📄 feasibility.log              # Pre-GA feasibility analysis
-├── 📄 violations.log               # Final schedule constraint violations
+├──  run.log                      # Execution summary & configuration
+├──  feasibility.log              # Pre-GA feasibility analysis
+├──  violations.log               # Final schedule constraint violations
 │
-├── 📊 schedule.json                # Final schedule (structured data)
-├── 📈 calendar.pdf                 # Visual calendar (color-coded)
-├── 📊 violation_heatmap.json       # Per-gene violation tracking
+├──  schedule.json                # Final schedule (structured data)
+├──  calendar.pdf                 # Visual calendar (color-coded)
+├──  violation_heatmap.json       # Per-gene violation tracking
 │
-├── 📁 data/                        # CSV data files
-│   └── 📊 metrics.csv              # Master metrics file
+├──  data/                        # CSV data files
+│   └──  metrics.csv              # Master metrics file
 │                                     - All generation data
 │                                     - Hard/soft constraints
 │                                     - Diversity, hypervolume, spacing
 │                                     - Repair statistics
 │                                     - Events
 │
-└── 📁 plots/                       # All visualizations (PDFs)
+└──  plots/                       # All visualizations (PDFs)
     ├── hard_trend.pdf
     ├── soft_trend.pdf
     ├── diversity.pdf
@@ -30,14 +30,14 @@ output/evaluation_<timestamp>/
     ├── spacing_trend.pdf
     ├── convergence_dashboard.pdf
     │
-    └── 📁 constraints/
-        ├── 📁 hard/
+    └──  constraints/
+        ├──  hard/
         │   ├── instructor_availability_trend.pdf
         │   ├── no_overlap_trend.pdf
         │   ├── ... (one per constraint)
         │   └── hard_summary.pdf
         │
-        └── 📁 soft/
+        └──  soft/
             ├── group_gaps_penalty_trend.pdf
             ├── instructor_workload_trend.pdf
             ├── ... (one per constraint)

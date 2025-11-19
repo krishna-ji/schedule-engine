@@ -19,21 +19,21 @@ configs/
 
 ## Benefits
 
-### ✅ **No Duplication**
+###  **No Duplication**
 - Common values defined once in `common.yaml`
 - Test/dev/prod only override what's different
 - Reduced config size: ~150 lines → ~30 lines per environment
 
-### ✅ **Clear Separation**
+###  **Clear Separation**
 - **Tunable parameters** (test/dev/prod): ngen, pop_size, weights, penalties
 - **Common configuration** (common.yaml): time settings, I/O paths, feature flags
 
-### ✅ **YAML as Source of Truth**
+###  **YAML as Source of Truth**
 - Removed hardcoded defaults from `config/models.py`
 - All values come from YAML files
 - Python models only provide validation (Field constraints)
 
-### ✅ **Easy Maintenance**
+###  **Easy Maintenance**
 - Change common settings in one place
 - Environment configs show only what's different
 - Clear what varies per environment
@@ -154,10 +154,10 @@ python main.py  # Loads common.yaml + prod.yaml
 
 All tests pass with new system:
 ```bash
-✅ Config loading test (dev)
-✅ Config loading test (prod)
-✅ Config loading test (test)
-✅ Block clustering tests (8/8 passed)
+ Config loading test (dev)
+ Config loading test (prod)
+ Config loading test (test)
+ Block clustering tests (8/8 passed)
 ```
 
 ## Migration Guide
@@ -223,6 +223,6 @@ time:
 
 ---
 
-**Status**: ✅ **Complete, Tested, and Documented**
-**Backward Compatibility**: ✅ **Preserved**
-**Tests**: ✅ **8/8 passing**
+**Status**:  **Complete, Tested, and Documented**
+**Backward Compatibility**:  **Preserved**
+**Tests**:  **8/8 passing**

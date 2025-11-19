@@ -13,8 +13,8 @@
 #### Tier 1: Exhaustive Search (Fixed Generations)
 **✓ Gen 3 Trigger**
 ```
-🔥 Gen 3: EXHAUSTIVE SEARCH triggered (steepest descent on top 30%)
-   ✅ Exhaustive search complete: 1049 genes improved, total reduction: 2587
+ Gen 3: EXHAUSTIVE SEARCH triggered (steepest descent on top 30%)
+    Exhaustive search complete: 1049 genes improved, total reduction: 2587
 ```
 - Population coverage: 30% (top 3 individuals)
 - Genes improved: 1049 (significant optimization)
@@ -23,8 +23,8 @@
 
 **✓ Gen 25 Trigger**
 ```
-🔥 Gen 25: EXHAUSTIVE SEARCH triggered (steepest descent on top 30%)
-   ✅ Exhaustive search complete: 90 genes improved, total reduction: 134, time: 72.1s
+ Gen 25: EXHAUSTIVE SEARCH triggered (steepest descent on top 30%)
+    Exhaustive search complete: 90 genes improved, total reduction: 134, time: 72.1s
 ```
 - Population coverage: 30% (top 3 individuals)
 - Genes improved: 90 (fewer than gen 3, indicating convergence)
@@ -81,8 +81,8 @@
 1. ✓ Config standardization complete
 2. ✓ IGLS triggers verified (gen 3, 25)
 3. ✓ Bug fixes applied
-4. ⏳ Add metrics tracking (igls_history in evolutionary_metrics.py)
-5. ⏳ Run longer dev/prod tests to observe stagnation repair
+4.  Add metrics tracking (igls_history in evolutionary_metrics.py)
+5.  Run longer dev/prod tests to observe stagnation repair
 
 ### Conclusion
 The IGLS system is **production-ready** and properly integrated:
