@@ -57,12 +57,49 @@ dev = [
 # ==============================================================================
 schedule-engine = "main:main"
 
-# Environment shortcuts
-prod = "main:main_prod"
-test = "main:main_test"
+# ==============================================================================
+# 🎓 THESIS EXPERIMENTS - Core Comparisons
+# ==============================================================================
+# Use these commands for your thesis experiments (logical progression)
+thesis-exp1-baseline = "main:main_baseline"           # Exp 1: Pure NSGA-II (baseline)
+thesis-exp2-repairs = "main:main_repairs"             # Exp 2: + IGLS repair system
+thesis-exp3-heuristics = "main:main_heuristics"       # Exp 3: + 19 heuristics (no local search)
+thesis-exp4-local-search = "main:main_roundrobin"     # Exp 4: + LNS local search (round-robin)
+thesis-exp5-rl = "main:main_rl"                       # Exp 5: + RL adaptive selection
+
+# Quick shortcuts (same as above, shorter names)
+exp1 = "main:main_baseline"
+exp2 = "main:main_repairs"
+exp3 = "main:main_heuristics"
+exp4 = "main:main_roundrobin"
+exp5 = "main:main_rl"
 
 # ==============================================================================
-# RUNTIME MODES (10 Progressive Modes)
+# 🔬 ABLATION STUDIES - Isolate Component Contributions
+# ==============================================================================
+# These help understand "which part contributes what"
+ablation-no-repairs = "main:main_baseline"            # Baseline (no repairs)
+ablation-repairs-only = "main:main_repairs"           # Only repairs (no heuristics)
+ablation-heuristics-no-ls = "main:main_heuristics"    # Heuristics without local search
+ablation-local-search = "main:main_full"              # Full with local search
+
+# ==============================================================================
+# ⚙️ ENVIRONMENT CONTROLS
+# ==============================================================================
+# Quick test runs (30 generations, ~5 minutes)
+test = "main:main_test"
+test-baseline = "main:main_baseline"  # Will use --env test
+test-repairs = "main:main_repairs"
+test-heuristics = "main:main_heuristics"
+
+# Production runs (2000 generations, 1.5-2.5 hours)
+prod = "main:main_prod"
+prod-baseline = "main:main_baseline"  # Will use --env prod
+prod-repairs = "main:main_repairs"
+prod-heuristics = "main:main_heuristics"
+
+# ==============================================================================
+# 🚀 ORIGINAL RUNTIME MODES (10 Progressive Modes)
 # ==============================================================================
 # Baseline & Core Modes (1-4)
 baseline = "main:main_baseline"          # Mode 1: Pure NSGA-II
@@ -81,44 +118,64 @@ hierarchical = "main:main_hierarchical"  # Mode 9: Hierarchical RL (two-level)
 multiagent = "main:main_multiagent"      # Mode 10: Rank-based multi-agent RL
 
 # ==============================================================================
-# RL TRAINING & MODEL MANAGEMENT
+# 🤖 RL TRAINING & MODEL MANAGEMENT
 # ==============================================================================
+# Training commands for Experiment 5 (RL-guided)
+train-rl = "src.rl.training.train_script:main"        # Train RL agent (100K timesteps)
+train-rl-quick = "src.rl.training.train_script:main"  # Quick training (10K timesteps)
+train-curriculum = "src.rl.training.curriculum:main"  # Curriculum learning
+select-checkpoint = "scripts.cli:select_checkpoint"   # Choose best checkpoint
+promote-model = "scripts.cli:promote_model"           # Promote to production
+validate-rl = "scripts.cli:generate_validation"       # Validate RL model
+
+# Legacy aliases
 train = "src.rl.training.train_script:main"
-train-curriculum = "src.rl.training.curriculum:main"
-select-checkpoint = "scripts.cli:select_checkpoint"
-promote-model = "scripts.cli:promote_model"
 generate-validation = "scripts.cli:generate_validation"
 
 # ==============================================================================
-# DIAGNOSTICS & SYSTEM CHECKS
+# 📊 RESULTS ANALYSIS & COMPARISON
+# ==============================================================================
+# Compare experiment results for thesis
+compare-experiments = "scripts.cli:compare_experiments"  # Compare all thesis experiments
+generate-thesis-plots = "scripts.cli:generate_plots"     # Generate thesis-ready plots
+export-thesis-data = "scripts.cli:export_thesis_data"    # Export metrics to CSV/LaTeX
+analyze-convergence = "scripts.cli:analyze_convergence"  # Convergence analysis
+analyze-diversity = "scripts.cli:analyze_diversity"      # Diversity metrics
+
+# ==============================================================================
+# 🔍 DIAGNOSTICS & SYSTEM CHECKS
 # ==============================================================================
 diagnose-gpu = "scripts.cli:diagnose_gpu"
+diagnose-system = "scripts.cli:diagnose_system"          # Full system check
 test-dashboard = "scripts.cli:test_dashboard"
 check-data = "scripts.cli:check_data"
 verify-config = "scripts.cli:verify_config"
 verify-enhancements = "scripts.cli:verify_enhancements"
 
 # ==============================================================================
-# BENCHMARKING & PERFORMANCE
+# ⚡ BENCHMARKING & PERFORMANCE
 # ==============================================================================
 benchmark-gpu = "scripts.cli:benchmark_gpu"
 benchmark-lns = "scripts.cli:benchmark_lns"
 benchmark-constraints = "scripts.cli:benchmark_constraints"
+benchmark-all = "scripts.cli:benchmark_all"              # Run all benchmarks
 
 # ==============================================================================
-# CONFIGURATION UTILITIES
+# ⚙️ CONFIGURATION UTILITIES
 # ==============================================================================
 show-config = "scripts.cli:show_config"      # All constraints
 show-repair = "scripts.cli:show_repair"       # Repair system config
 show-soft = "scripts.cli:show_soft"           # Soft constraints only
 show-time = "scripts.cli:show_time"           # Time system config
+list-experiments = "scripts.cli:list_experiments"        # List all available experiments
 
 # ==============================================================================
-# DEVELOPMENT UTILITIES
+# 🛠️ DEVELOPMENT UTILITIES
 # ==============================================================================
 tensorboard = "scripts.cli:tensorboard"       # Start TensorBoard server
 git-squash = "scripts.cli:git_squash"         # Interactive commit squashing
 refactor-csv = "scripts.cli:refactor_csv"     # CSV export refactoring
+clean-output = "scripts.cli:clean_output"     # Clean old output files
 
 [build-system]
 requires = ["hatchling"]
