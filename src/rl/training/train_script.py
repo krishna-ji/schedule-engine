@@ -232,7 +232,7 @@ def create_environment(args, context):
     # Detect if we're inside a daemon process (SubprocVecEnv worker)
     # Daemon processes cannot spawn child processes - use sequential
     is_daemon = multiprocessing.current_process().daemon
-    
+
     initial_population = generate_course_group_aware_population(
         n=args.population_size,
         context=context,
