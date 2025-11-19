@@ -110,30 +110,58 @@ def check_feasibility(
     # PERFORMANCE: Run all checks in parallel (3-5x speedup)
     # Build list of checks to run
     checks_to_run = []
-    
+
     if get_config().feasibility.checks["instructor_workload"]["enabled"]:
-        checks_to_run.append(("instructor_workload", _check_instructor_workload, (courses, instructors, qts)))
-    
-    if get_config().feasibility.checks["instructor_qualification_bottleneck"]["enabled"]:
-        checks_to_run.append(("qualification_bottleneck", _check_instructor_qualification_bottleneck, (courses, instructors, qts)))
-    
+        checks_to_run.append(
+            (
+                "instructor_workload",
+                _check_instructor_workload,
+                (courses, instructors, qts),
+            )
+        )
+
+    if get_config().feasibility.checks["instructor_qualification_bottleneck"][
+        "enabled"
+    ]:
+        checks_to_run.append(
+            (
+                "qualification_bottleneck",
+                _check_instructor_qualification_bottleneck,
+                (courses, instructors, qts),
+            )
+        )
+
     if get_config().feasibility.checks["room_capacity_bottleneck"]["enabled"]:
-        checks_to_run.append(("room_capacity", _check_room_capacity_bottleneck, (courses, rooms, groups, qts)))
-    
+        checks_to_run.append(
+            (
+                "room_capacity",
+                _check_room_capacity_bottleneck,
+                (courses, rooms, groups, qts),
+            )
+        )
+
     if get_config().feasibility.checks["room_feature_bottleneck"]["enabled"]:
-        checks_to_run.append(("room_feature", _check_room_feature_bottleneck, (courses, rooms, qts)))
-    
+        checks_to_run.append(
+            ("room_feature", _check_room_feature_bottleneck, (courses, rooms, qts))
+        )
+
     if get_config().feasibility.checks["group_pigeonhole"]["enabled"]:
-        checks_to_run.append(("group_pigeonhole", _check_group_pigeonhole, (courses, groups, total_operating_quanta)))
+        checks_to_run.append(
+            (
+                "group_pigeonhole",
+                _check_group_pigeonhole,
+                (courses, groups, total_operating_quanta),
+            )
+        )
 
     # Execute all checks concurrently
     results = []
     with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_check = {
-            executor.submit(check_func, *args): name 
+            executor.submit(check_func, *args): name
             for name, check_func, args in checks_to_run
         }
-        
+
         for future in as_completed(future_to_check):
             try:
                 result = future.result()
@@ -144,13 +172,15 @@ def check_feasibility(
                 check_name = future_to_check[future]
                 console.print(f"[red]Error in {check_name}: {e}[/red]")
                 # Create failed result
-                results.append(FeasibilityResult(
-                    check_name=check_name,
-                    passed=False,
-                    severity="critical",
-                    message=f"Check failed with error: {e}",
-                    details={}
-                ))
+                results.append(
+                    FeasibilityResult(
+                        check_name=check_name,
+                        passed=False,
+                        severity="critical",
+                        message=f"Check failed with error: {e}",
+                        details={},
+                    )
+                )
 
     # Determine overall feasibility
     critical_failures = [

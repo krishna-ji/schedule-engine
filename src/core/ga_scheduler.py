@@ -172,42 +172,44 @@ def _worker_evaluate(individual):
 
 def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
     """Apply crossover in parallel using thread pool.
-    
+
     Speedup: 8-12x vs sequential for large populations (800+)
     """
     if max_workers is None:
         import multiprocessing
+
         max_workers = multiprocessing.cpu_count()
-    
+
     def crossover_pair(i):
         if i + 1 < len(offspring) and random.random() < cxpb:
-            toolbox.mate(offspring[i], offspring[i+1])
+            toolbox.mate(offspring[i], offspring[i + 1])
             del offspring[i].fitness.values
-            del offspring[i+1].fitness.values
-    
+            del offspring[i + 1].fitness.values
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(crossover_pair, range(1, len(offspring), 2)))
-    
+
     return offspring
 
 
 def _parallel_mutation(offspring, mutpb, toolbox, max_workers=None):
     """Apply mutation in parallel using thread pool.
-    
+
     Speedup: 8-12x vs sequential for large populations (800+)
     """
     if max_workers is None:
         import multiprocessing
+
         max_workers = multiprocessing.cpu_count()
-    
+
     def mutate_one(mutant):
         if random.random() < mutpb:
             toolbox.mutate(mutant)
             del mutant.fitness.values
-    
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         list(executor.map(mutate_one, offspring))
-    
+
     return offspring
 
 
@@ -458,7 +460,9 @@ class GAScheduler:
         if torch.cuda.is_available():
             try:
                 self.gpu_evaluator = get_gpu_evaluator(device="cuda")
-                console.print("[dim]   GPU batch evaluator: ENABLED (10-50x speedup)[/dim]")
+                console.print(
+                    "[dim]   GPU batch evaluator: ENABLED (10-50x speedup)[/dim]"
+                )
             except Exception as e:
                 logger.warning(f"GPU evaluator init failed: {e}, using CPU")
                 self.gpu_evaluator = None
@@ -466,7 +470,9 @@ class GAScheduler:
         # PERFORMANCE: Parallel heuristic executor (10-16x speedup)
         try:
             self.parallel_executor = get_parallel_executor()
-            console.print("[dim]   Parallel heuristic executor: ENABLED (10-16x speedup)[/dim]")
+            console.print(
+                "[dim]   Parallel heuristic executor: ENABLED (10-16x speedup)[/dim]"
+            )
         except Exception as e:
             logger.warning(f"Parallel executor init failed: {e}")
             self.parallel_executor = None
@@ -1333,7 +1339,7 @@ class GAScheduler:
         # PERFORMANCE: Parallel Crossover (8-12x faster for large populations)
         # Uses ThreadPoolExecutor to apply crossover to pairs concurrently
         offspring = _parallel_crossover(offspring, cxpb, self.toolbox)
-        
+
         # Apply selective repairs after crossover (if enabled)
         if (
             repair_config.get("enabled", False)
@@ -1374,7 +1380,7 @@ class GAScheduler:
         # PERFORMANCE: Parallel Mutation (8-12x faster for large populations)
         # Uses ThreadPoolExecutor to apply mutation concurrently
         offspring = _parallel_mutation(offspring, mutpb, self.toolbox)
-        
+
         # Apply selective repairs after mutation (if enabled)
         if (
             repair_config.get("enabled", False)
@@ -1409,7 +1415,11 @@ class GAScheduler:
         if invalid:
             # PERFORMANCE: GPU batch evaluation (10-50x faster than CPU)
             # Uses GPU for large batches, falls back to CPU for small ones
-            if self.gpu_evaluator and self.gpu_evaluator.is_available() and len(invalid) > 50:
+            if (
+                self.gpu_evaluator
+                and self.gpu_evaluator.is_available()
+                and len(invalid) > 50
+            ):
                 try:
                     violations = self.gpu_evaluator.batch_evaluate_conflicts(
                         invalid, batch_size=128
@@ -1419,7 +1429,9 @@ class GAScheduler:
                 except Exception as e:
                     logger.warning(f"GPU evaluation failed: {e}, falling back to CPU")
                     # Fallback to CPU
-                    fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
+                    fitness_values = list(
+                        self.toolbox.map(self.toolbox.evaluate, invalid)
+                    )
                     for ind, fit in zip(invalid, fitness_values):
                         ind.fitness.values = fit
             else:
