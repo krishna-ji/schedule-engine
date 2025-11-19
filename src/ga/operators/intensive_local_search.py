@@ -154,8 +154,8 @@ def apply_exhaustive_search(
 
     improved_population = population.copy()
 
-    # Determine number of workers - USE ALL THREADS
-    num_workers = 16 if parallel else 1
+    # Determine number of workers - USE ALL AVAILABLE CORES
+    num_workers = multiprocessing.cpu_count() if parallel else 1
 
     for pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout
@@ -316,8 +316,8 @@ def apply_greedy_search(
 
     improved_population = population.copy()
 
-    # Determine number of workers - USE ALL THREADS
-    num_workers = 16 if parallel else 1
+    # Determine number of workers - USE ALL AVAILABLE CORES
+    num_workers = multiprocessing.cpu_count() if parallel else 1
 
     for pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout

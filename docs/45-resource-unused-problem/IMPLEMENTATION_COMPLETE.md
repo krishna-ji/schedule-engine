@@ -17,11 +17,11 @@
 
 ### 2. ✅ Code Optimizations (Python Files)
 
-**`src/ga/population.py` (line 137):**
-- ✅ Changed: `cpu_count() - 1` → `16` (use all threads)
+**`src/ga/population.py` (line 136):**
+- ✅ Changed: Uses `cpu_count()` dynamically (adapts to any system)
 
 **`src/ga/operators/intensive_local_search.py` (lines 158, 320):**
-- ✅ Changed: `cpu_count() - 1` → `16` (use all threads, 2 locations)
+- ✅ Changed: Uses `multiprocessing.cpu_count()` dynamically (2 locations)
 
 ### 3. ✅ New Performance Modules Created
 
@@ -142,12 +142,12 @@ grep "num_workers: 16" configs/prod.yaml
 ```
 
 ### Check Code Changes:
-```bash
-# Verify population.py
-grep "num_workers = 16" src/ga/population.py
+```powershell
+# Verify population.py uses cpu_count()
+Select-String "cpu_count\(\)" src/ga/population.py
 
-# Verify intensive_local_search.py
-grep "num_workers = 16" src/ga/operators/intensive_local_search.py
+# Verify intensive_local_search.py uses cpu_count()
+Select-String "cpu_count\(\)" src/ga/operators/intensive_local_search.py
 ```
 
 ### Test Run:
