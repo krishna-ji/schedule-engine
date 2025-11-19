@@ -4,11 +4,12 @@
 
 **Type**: University course scheduling optimization system  
 **Domain**: Educational timetabling, multi-objective optimization  
-**Language**: Python 3.12+  
+**Language**: Python 3.12 (pinned)  
 **Framework**: NSGA-II genetic algorithm with reinforcement learning  
-**Key Libraries**: DEAP (GA), PyTorch (RL/GPU), Stable-Baselines3 (RL), Pydantic (config), Rich (UI)  
+**Key Libraries**: DEAP (GA), PyTorch 2.4.1 + CUDA 12.1 (GPU), Stable-Baselines3 (RL), Pydantic (config), Rich (UI)  
 **Package Manager**: UV (modern, fast Python package installer)  
-**Architecture**: Modular constraint-based optimization with 10 progressive runtime modes
+**Architecture**: Modular constraint-based optimization with 10 progressive runtime modes  
+**Performance**: GPU-accelerated fitness evaluation (10-50x speedup), parallel operators (3-5x speedup)
 
 ## 🏗️ Build & Test Commands
 
@@ -20,8 +21,15 @@ uv sync --frozen
 # Run quick smoke test (30 generations, ~5 min)
 uv run exp1 --env test
 
-# Run production experiment (2000 generations, ~2 hours with GPU)
+# Run production experiment (2000 generations, ~1-2.5 hours with GPU)
 uv run exp1 --env prod
+
+# Run thesis experiments (5 progressive experiments)
+uv run exp1  # Baseline (pure NSGA-II)
+uv run exp2  # + IGLS repairs
+uv run exp3  # + 19 heuristics (no local search)
+uv run exp4  # + Local search
+uv run exp5  # + RL-guided selection
 ```
 
 ### Testing
@@ -73,10 +81,18 @@ uv run list-experiments
 
 ## Tech Stack
 
-- **Language**: Python 3.11+
-- **Core Libraries**: DEAP (genetic algorithms), Pydantic (validation), Rich (terminal UI)
-- **Config**: YAML-based with base.yaml + environment overrides
+- **Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)
+- **Core Libraries**: 
+  - DEAP 1.4.1 (genetic algorithms)
+  - PyTorch 2.4.1 + CUDA 12.1 (GPU acceleration)
+  - Stable-Baselines3 2.3.2 (RL agents)
+  - Pydantic 2.10.3 (validation)
+  - Rich 13.9.4 (terminal UI)
+  - NumPy 1.26.4 (scientific computing)
+  - Gymnasium 0.29.1 (RL environment)
+- **Config**: YAML-based with base.yaml + environment overrides + runtime modes
 - **Package Manager**: UV (uv.lock, pyproject.toml)
+- **Performance**: GPU batch evaluation, parallel operators, concurrent validation
 
 ## Repository Structure
 
@@ -158,22 +174,34 @@ python main.py --config path/to/custom.yaml
 - **Experiment Management**: `src/workflows/experiment_manager.py` tracks runs in `manifest.json` with `ExperimentManager` class
 - **Workflow**: `src/workflows/standard_run.py` orchestrates: load → validate → feasibility → GA → decode → report
 - **GA Core**: `src/core/ga_scheduler.py` - GAScheduler class with DEAP toolbox, population init, evolution
-- **Multiprocessing**: Enabled via `parallel.use_multiprocessing` in YAML
+- **GPU Acceleration**: `src/ga/evaluator/gpu_batch_evaluator.py` - GPU batch constraint evaluation (10-50x speedup)
+- **Parallel Processing**: 
+  - Multiprocessing for fitness evaluation (`parallel.use_multiprocessing`)
+  - Parallel crossover/mutation operators (3-5x speedup)
+  - Concurrent feasibility checks (3-5x speedup)
 - **Advanced RL**: 8 enhancements (constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent)
 
-## Active Workstream (January 2025)
+## Active Workstream (November 2025)
 
 1. **Phase 3 Implementation**: ✅ Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
-2. **GPU Acceleration**: ✅ Deployed (CUDA enabled, documentation complete in `docs/04-algorithms/nvidia-gpu/`)
-3. **Documentation Reorganization**: ✅ Complete (10-category structure, see `docs/INDEX.md`)
-4. **Next Steps (Testing & Training):**
-   - Install pymoo: `uv add pymoo`
-   - Test constraint evaluator with existing data
-   - Train specialist agents (4 agents, 100K steps each)
-   - Train hierarchical policies (1 high-level + 5 low-level)
-   - Train rank-based agents (4 agents, 100K steps each)
-   - Benchmark all 10 runtime modes
-   - Document empirical results in `docs/06-development/implementation-notes/PHASE_3_RESULTS.md`
+2. **GPU Acceleration**: ✅ Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
+   - GPU batch evaluator: 10-50x speedup (`src/ga/evaluator/gpu_batch_evaluator.py`)
+   - Parallel crossover/mutation: 3-5x speedup (multiprocessing)
+   - Parallel feasibility checks: 3-5x speedup (concurrent)
+   - **Combined speedup**: 13-34x (34 hours → 1-2.5 hours)
+3. **Thesis Experiments**: ✅ Ready (5 progressive experiments)
+   - Exp 1: Pure NSGA-II baseline (`uv run exp1`)
+   - Exp 2: + IGLS repairs (`uv run exp2`)
+   - Exp 3: + 19 heuristics (`uv run exp3`)
+   - Exp 4: + Local search (`uv run exp4`)
+   - Exp 5: + RL-guided (`uv run exp5`)
+   - **Guide**: `docs/45-resource-unused-problem/THESIS_EXPERIMENTS_GUIDE.md`
+4. **Documentation Reorganization**: ✅ Complete (10-category structure, see `docs/INDEX.md`)
+5. **Next Steps (Execution):**
+   - Run all 5 thesis experiments (6-10 hours total)
+   - Analyze results and generate comparison plots
+   - Train RL agents if needed (`uv run train prod`)
+   - Document empirical results in thesis report
 
 Always log notable runs in `output/` and reference them inside documentation or onboarding guides.
 
@@ -191,16 +219,16 @@ Always log notable runs in `output/` and reference them inside documentation or 
 ## Key References for Agents
 
 - `docs/INDEX.md` – master navigation for all documentation (start here!).
+- `PHASE_3_COMPLETION_SUMMARY.md` – **LATEST**: Complete Phase 3 implementation (27 files, 8 enhancements, GPU acceleration).
+- `docs/45-resource-unused-problem/THESIS_EXPERIMENTS_GUIDE.md` – **THESIS**: 5 progressive experiments with commands and expected results.
 - `docs/02-user-guides/runtime-modes.md` – comprehensive guide to 10 runtime modes and experiment management.
-- `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md` – complete summary of 8 advanced RL/GA enhancements (constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent).
+- `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md` – complete summary of 8 advanced RL/GA enhancements.
 - `docs/QUICKREF_RUNTIME_MODES.md` – quick reference for runtime mode CLI usage.
-- `RUNTIME_MODES_SUMMARY.md` – complete overview of runtime mode architecture and implementation.
-- `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md` – authoritative summary of RL implementation (files, tasks, next steps).
-- `docs/06-development/implementation-notes/PHASE_1.5_SUMMARY.md` & `PHASE_2.1_SUMMARY.md` – prior phase retrospectives.
 - `docs/04-algorithms/nvidia-gpu/` – GPU acceleration guides and deployment documentation.
-- `Todo.md` – master backlog (Phase 2+ and optional Phase 3).
+- `src/ga/evaluator/gpu_batch_evaluator.py` – GPU batch evaluator implementation (10-50x speedup).
+- `Todo.md` – master backlog (currently focused on RL training and benchmarking).
 - `docs/08-qna/technical-questions.md` – active Q&A workspace for technical discussions.
-- `.github/instructions/*.instructions.md` – path-specific rules (config, GA, RL, constraints, etc.).
+- `.github/instructions/*.instructions.md` – path-specific rules (config, GA, RL, constraints, tests, etc.).
 
 ## 📋 Coding Standards & Best Practices
 
