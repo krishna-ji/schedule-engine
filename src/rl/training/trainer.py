@@ -233,6 +233,46 @@ class RLTrainer:
         logger.info(f"Starting training for {total_timesteps:,} timesteps...")
         logger.info(f"TensorBoard run name: {tb_log_name}")
 
+        # DEBUG: Log rollout buffer info for PPO
+        if self.agent_type == "ppo":
+            n_steps = getattr(self.agent, "n_steps", 2048)
+            batch_size = getattr(self.agent, "batch_size", 64)
+            n_epochs = getattr(self.agent, "n_epochs", 10)
+            logger.info(f"")
+            logger.info(f"═" * 60)
+            logger.info(f"🔍 PPO TRAINING DIAGNOSTICS")
+            logger.info(f"═" * 60)
+            logger.info(
+                f"Rollout buffer: {n_steps} steps/env × {self.n_envs} envs = {n_steps * self.n_envs} total steps"
+            )
+            logger.info(
+                f"PPO will collect {n_steps} steps from EACH of {self.n_envs} environments"
+            )
+            logger.info(
+                f"Then train for {n_epochs} epochs with batch_size={batch_size}"
+            )
+            logger.info(f"")
+            logger.info(f"⏳ EXPECTED BEHAVIOR:")
+            logger.info(
+                f"   1. Environments reset (you should see [ENV 0-{self.n_envs-1}] Reset logs)"
+            )
+            logger.info(
+                f"   2. Collect {n_steps} steps from each env (watch for step logs)"
+            )
+            logger.info(f"   3. Policy update (progress bar increments)")
+            logger.info(f"   4. Repeat until {total_timesteps:,} total steps")
+            logger.info(f"")
+            logger.info(
+                f"If no environment logs appear within 1 minute, training is likely frozen."
+            )
+            logger.info(f"═" * 60)
+            logger.info(f"")
+
+        logger.info("🚀 Starting rollout collection now...")
+        import sys
+
+        sys.stdout.flush()  # Force output to appear immediately
+
         self.training_start_time = time.time()
 
         try:

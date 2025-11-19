@@ -115,6 +115,9 @@ class ScheduleEnv(gym.Env):
         self._fitness_evaluator: Optional[Callable] = None
         self._last_debug_step = -1
 
+        # Step counter for debug logging
+        self._total_steps_taken = 0
+
         self._debug_log(
             "Environment initialized (population=%s, max_steps=%s, max_generations=%s)",
             len(self.population),
@@ -149,6 +152,12 @@ class ScheduleEnv(gym.Env):
         self.episode_heuristic_counts = {}
         self.render_buffer = []
         self._last_debug_step = -1
+        self._total_steps_taken = 0
+
+        if self.debug_logging:
+            logger.info(
+                f"[ENV {self.env_rank}] Reset called (total steps so far: {getattr(self, '_total_steps_taken', 0)})"
+            )
 
         # Reset components
         self.state_encoder.reset()
@@ -190,6 +199,16 @@ class ScheduleEnv(gym.Env):
             (observation, reward, terminated, truncated, info)
         """
         step_start = time.perf_counter()
+
+        # Track total steps for debugging
+        self._total_steps_taken += 1
+
+        # Log FREQUENTLY at first to show it's working, then reduce frequency
+        log_freq = 5 if self._total_steps_taken < 50 else 25
+        if self.debug_logging and self._total_steps_taken % log_freq == 0:
+            logger.info(
+                f"[ENV {self.env_rank}] \u2705 Step {self._total_steps_taken} - action={action}"
+            )
 
         # Convert numpy array to int (SB3 returns actions as arrays)
         if isinstance(action, np.ndarray):

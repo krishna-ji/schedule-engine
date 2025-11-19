@@ -14,3 +14,7 @@ parallel:
 
 # GPU acceleration
 device: cuda # Force CUDA for production
+
+# Debug logging (verbose environment progress)
+debug_logging: true
+debug_log_interval: 25 # Log every 25 steps
