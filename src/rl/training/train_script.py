@@ -381,8 +381,6 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     logger.info(f"=" * 80)
     logger.info(f"")
 
-    import sys
-
     sys.stdout.flush()
 
     logger.info(f"Creating environment factories for {n_envs} workers...")
@@ -417,7 +415,6 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     )
     logger.info(f"THIS WILL TAKE 1-2 MINUTES WITH NO OUTPUT - PLEASE WAIT!")
 
-    import sys
     import time
 
     sys.stdout.flush()
@@ -640,8 +637,6 @@ def main() -> None:
         logger.info(
             "[DEBUG] About to call trainer.train() - this will start rollout collection"
         )
-
-        import sys
 
         sys.stdout.flush()
 

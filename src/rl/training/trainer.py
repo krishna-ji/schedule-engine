@@ -104,18 +104,23 @@ class RLTrainer:
         self.use_subproc = use_subproc
         self.debug_logging = debug_logging
 
-        # Determine device
-        if device == "auto":
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
+        # Determine device with graceful CUDA fallback
+        self.device = self._resolve_device(device)
 
         logger.info(f"Training device: {self.device}")
         if self.device == "cuda":
-            logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+            try:
+                logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+            except (AssertionError, RuntimeError) as exc:
+                logger.warning(
+                    "CUDA device name unavailable (%s); falling back to CPU.", exc
+                )
+                self.device = "cpu"
+                logger.info("Training device reset to cpu")
 
         # Load config
         config = get_config()
+        self.config = config
 
         # Set up directories
         self.save_dir = Path(save_dir or config.rl.training.checkpoint_dir)
@@ -206,7 +211,8 @@ class RLTrainer:
         """
         # Create agent if not exists
         if self.agent is None:
-            self.agent = self.create_agent()
+            override_kwargs = self._prepare_agent_overrides(total_timesteps)
+            self.agent = self.create_agent(**override_kwargs)
 
         # Inject rollout progress callback if debug logging requested
         if self.debug_logging:
@@ -475,6 +481,83 @@ class RLTrainer:
             "num_training_runs": len(self.training_history),
             "training_history": self.training_history,
         }
+
+    def _prepare_agent_overrides(
+        self, total_timesteps: Optional[int]
+    ) -> Dict[str, Any]:
+        """Auto-tune PPO rollout parameters for tiny smoke tests."""
+
+        if total_timesteps is None or total_timesteps <= 0 or self.agent_type != "ppo":
+            return {}
+
+        n_envs = max(1, self.n_envs)
+        base_n_steps = (
+            self.agent_kwargs.get("n_steps") or self.config.rl.agent.ppo.n_steps
+        )
+        base_batch_size = (
+            self.agent_kwargs.get("batch_size") or self.config.rl.agent.ppo.batch_size
+        )
+        rollout_target = base_n_steps * n_envs
+
+        if total_timesteps >= rollout_target:
+            return {}
+
+        per_env_budget = max(1, total_timesteps // n_envs)
+        adjusted_n_steps = max(1, min(base_n_steps, per_env_budget))
+        adjusted_rollout = adjusted_n_steps * n_envs
+
+        if adjusted_rollout == 0:
+            adjusted_rollout = max(1, total_timesteps)
+
+        batch_upper_bound = min(base_batch_size, adjusted_n_steps)
+        adjusted_batch_size = self._select_batch_size(
+            adjusted_rollout, batch_upper_bound
+        )
+
+        logger.warning(
+            "Requested %s timesteps but PPO rollout requires %s (n_steps=%s, envs=%s); "
+            "auto-adjusting to n_steps=%s, batch_size=%s so rollouts fit the smoke-test budget.",
+            f"{total_timesteps:,}",
+            f"{rollout_target:,}",
+            base_n_steps,
+            n_envs,
+            adjusted_n_steps,
+            adjusted_batch_size,
+        )
+
+        return {"n_steps": adjusted_n_steps, "batch_size": adjusted_batch_size}
+
+    @staticmethod
+    def _select_batch_size(rollout_size: int, upper_bound: int) -> int:
+        """Pick the largest divisor (>=32 when possible) that fits PPO constraints."""
+
+        if rollout_size <= 0:
+            return max(1, upper_bound)
+
+        min_candidate = 1 if rollout_size < 32 else 32
+        max_candidate = max(1, min(upper_bound, rollout_size))
+
+        for candidate in range(max_candidate, min_candidate - 1, -1):
+            if rollout_size % candidate == 0:
+                return candidate
+
+        return min_candidate if rollout_size % min_candidate == 0 else 1
+
+    def _resolve_device(self, requested_device: str) -> str:
+        """Return a valid torch device, falling back to CPU when CUDA is unavailable."""
+
+        normalized = (requested_device or "auto").lower()
+
+        if normalized == "auto":
+            return "cuda" if torch.cuda.is_available() else "cpu"
+
+        if normalized == "cuda" and not torch.cuda.is_available():
+            logger.warning(
+                "CUDA requested but no compatible GPU/driver detected; using CPU instead."
+            )
+            return "cpu"
+
+        return normalized
 
 
 def create_trainer(
