@@ -83,7 +83,7 @@ if validate:
     from src.validation import validate_input
     is_valid, warnings = validate_input(context)
     if not is_valid:
-        console.print("[yellow]⚠ Validation warnings:[/yellow]")
+        console.print("[yellow]Validation warnings:[/yellow]")
         for warning in warnings:
             console.print(f"  - {warning}")
 ```

@@ -123,12 +123,12 @@ def instructor_qualifications(
     # Warn about data issues (helps debugging)
     if missing_courses:
         print(
-            f"⚠ WARNING: {len(missing_courses)} course(s) missing from course_map: "
+            f"WARNING: {len(missing_courses)} course(s) missing from course_map: "
             f"{list(missing_courses)[:3]}{'...' if len(missing_courses) > 3 else ''}"
         )
     if empty_qualifications:
         print(
-            f"⚠ WARNING: {len(empty_qualifications)} course(s) have no qualified instructors: "
+            f"WARNING: {len(empty_qualifications)} course(s) have no qualified instructors: "
             f"{list(empty_qualifications)[:3]}{'...' if len(empty_qualifications) > 3 else ''}"
         )
 

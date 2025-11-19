@@ -279,7 +279,7 @@ class GALogger:
                     "\n[[!ok]]FEASIBLE SOLUTION FOUND (No hard constraint violations)\n"
                 )
             else:
-                f.write("\n⚠ INFEASIBLE SOLUTION (Hard constraints violated)\n")
+                f.write("\nINFEASIBLE SOLUTION (Hard constraints violated)\n")
 
             f.write("\n")
             f.write(

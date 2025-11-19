@@ -1728,7 +1728,7 @@ class GAScheduler:
                     )
                 else:
                     console.print(
-                        "[yellow]   ⚠ LNS-IGLS repair: no improvements found[/yellow]"
+                        "[yellow]   LNS-IGLS repair: no improvements found[/yellow]"
                     )
 
         # ========================================================================

@@ -45,7 +45,7 @@ def main():
     for name, config in [("test", test), ("dev", dev), ("prod", prod)]:
         keys = list(config.keys())
         num_keys = len(keys)
-        status = "✓ Minimal" if num_keys <= 5 else "⚠ Too many keys"
+        status = "✓ Minimal" if num_keys <= 5 else "Too many keys"
         table.add_row(name, str(keys), status)
 
     console.print(table)

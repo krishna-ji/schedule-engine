@@ -145,7 +145,7 @@ def run_command(cmd: str):
         return result.returncode
 
     except KeyboardInterrupt:
-        console.print("\n[yellow]⚠ Interrupted by user[/yellow]")
+        console.print("\n[yellow]Interrupted by user[/yellow]")
         return 130
     except Exception as e:
         console.print(f"\n[bold red]✗ Error:[/bold red] {e}")

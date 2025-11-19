@@ -92,7 +92,7 @@ def check_feasibility(
         is_feasible is True only if all critical checks pass
     """
     if not get_config().feasibility.enable_checks:
-        console.print("[yellow]⚠ Feasibility checks are disabled in config[/yellow]")
+        console.print("[yellow]Feasibility checks are disabled in config[/yellow]")
         return True, FeasibilityReport(
             is_feasible=True,
             results=[],
@@ -285,7 +285,7 @@ def _check_instructor_workload(
         )
     elif utilization_rate > 90:
         recommendations.append(
-            f"⚠ High utilization ({utilization_rate:.1f}%) - consider adding buffer capacity"
+            f"High utilization ({utilization_rate:.1f}%) - consider adding buffer capacity"
         )
 
     return FeasibilityResult(
@@ -522,7 +522,7 @@ def _check_room_capacity_bottleneck(
         recommendations.extend(
             [
                 "",
-                f"⚠ Largest single session has {largest_class_size} students but biggest room only holds {largest_room_capacity}",
+                f"Largest single session has {largest_class_size} students but biggest room only holds {largest_room_capacity}",
                 f"   Problem course: {largest_class_course.name} ({course_display})",
                 "   Note: This is the largest group size, not sum of all groups",
                 "Solutions:",
@@ -534,7 +534,7 @@ def _check_room_capacity_bottleneck(
 
     if passed and utilization > 85:
         recommendations.append(
-            f"⚠ High room utilization ({utilization:.1f}%) - may cause scheduling conflicts"
+            f"High room utilization ({utilization:.1f}%) - may cause scheduling conflicts"
         )
 
     return FeasibilityResult(
@@ -752,7 +752,7 @@ def _check_group_pigeonhole(
         )
     elif max_utilization > 85:
         recommendations.append(
-            f"⚠ Some groups have high utilization (>{max_utilization:.0f}%) - "
+            f"Some groups have high utilization (>{max_utilization:.0f}%) - "
             f"this leaves little room for scheduling flexibility"
         )
 
