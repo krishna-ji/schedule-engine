@@ -6,3 +6,15 @@ max_steps: 20
 population_size: 16
 eval_episodes: 1
 save_prefix: rl_agent_test
+
+# Parallel training - MINIMAL (for fast testing)
+parallel:
+  n_envs: 4 # Use only 4 envs for quick tests
+  use_subproc: true
+
+# Debug logging
+debug_logging: true
+debug_log_interval: 10
+
+# Device
+device: cuda # Use GPU if available

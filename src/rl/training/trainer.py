@@ -269,6 +269,12 @@ class RLTrainer:
             logger.info(f"")
 
         logger.info("Starting rollout collection now...")
+        logger.info(
+            "NOTE: First rollout collection may take 2-5 minutes (environments are working)"
+        )
+        logger.info(
+            "      Progress bar will update after first policy update completes"
+        )
         import sys
 
         sys.stdout.flush()  # Force output to appear immediately
@@ -276,6 +282,8 @@ class RLTrainer:
         self.training_start_time = time.time()
 
         try:
+            logger.info("Calling agent.learn() - entering SB3 training loop...")
+            sys.stdout.flush()
             self.agent.learn(
                 total_timesteps=total_timesteps,
                 callback=callback_list,

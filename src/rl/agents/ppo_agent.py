@@ -53,8 +53,24 @@ def create_ppo_agent(
     # Wrap environment in DummyVecEnv if not already vectorized (required by SB3)
     if isinstance(env, VecEnv):
         vec_env = env
+        n_envs = vec_env.num_envs
     else:
         vec_env = DummyVecEnv([lambda: env])
+        n_envs = 1
+
+    # VALIDATE: batch_size must evenly divide rollout buffer
+    rollout_buffer_size = n_steps * n_envs
+    if rollout_buffer_size % batch_size != 0:
+        valid_batch_sizes = [
+            d
+            for d in range(64, min(rollout_buffer_size + 1, 1025), 64)
+            if rollout_buffer_size % d == 0
+        ]
+        raise ValueError(
+            f"batch_size ({batch_size}) must evenly divide n_steps * n_envs ({n_steps} * {n_envs} = {rollout_buffer_size}). "
+            f"Current remainder: {rollout_buffer_size % batch_size}. "
+            f"Valid batch_sizes (multiples of 64): {valid_batch_sizes[:10]}"
+        )
 
     # Extract device from kwargs or use config (prevents duplicate parameter error)
     device = kwargs.pop("device", config.rl.agent.device)

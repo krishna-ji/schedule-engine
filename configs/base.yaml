@@ -356,12 +356,12 @@ rl:
     model_path: models/rl_agents/best_model.zip # Path to trained model
     device: cuda # Options: auto, cpu, cuda (CUDA enabled for 3-5x training speedup)
 
-    # PPO-specific hyperparameters
+    # PPO-specific hyperparameters (optimized for 8 parallel envs)
     ppo:
       learning_rate: 0.0003
-      n_steps: 8192
-      batch_size: 512
-      n_epochs: 20
+      n_steps: 512 # Reduced from 8192 - with 8 envs = 4096 total steps before update
+      batch_size: 256 # Reduced from 512 for better GPU memory usage
+      n_epochs: 10 # Reduced from 20 for faster iterations
       gamma: 0.99 # Discount factor
       gae_lambda: 0.95
       clip_range: 0.2

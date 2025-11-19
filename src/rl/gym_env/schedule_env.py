@@ -103,7 +103,14 @@ class ScheduleEnv(gym.Env):
         self.action_space = spaces.Discrete(n_actions)
 
         # Episode state
-        self.population: List[Individual] = initial_population.copy()
+        # CRITICAL: Deep copy individuals to avoid shared references across episodes!
+        # shallow copy() would share Individual objects = memory corruption
+        self.population: List[Individual] = [
+            self._clone_individual(ind) for ind in initial_population
+        ]
+        self._initial_population = [
+            self._clone_individual(ind) for ind in initial_population
+        ]  # Store for reset
         self.current_generation = 0
         self.current_step = 0
         self.generations_without_improvement = 0
@@ -164,8 +171,16 @@ class ScheduleEnv(gym.Env):
         self.reward_calculator.reset()
 
         # Re-initialize population (if provided in options)
+        # CRITICAL: Deep copy to avoid shared references!
         if options and "initial_population" in options:
-            self.population = options["initial_population"].copy()
+            self.population = [
+                self._clone_individual(ind) for ind in options["initial_population"]
+            ]
+        else:
+            # Reset to fresh copy of initial population
+            self.population = [
+                self._clone_individual(ind) for ind in self._initial_population
+            ]
 
         # Get initial observation
         observation = self.state_encoder.encode(

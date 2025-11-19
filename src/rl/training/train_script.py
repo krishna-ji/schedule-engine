@@ -262,22 +262,56 @@ def create_environment(args, context, env_rank: int = 0):
         parallel=False,  # MUST be False - we're already inside 16 parallel processes
     )
 
-    logger.info(
-        f"[ENV {env_rank}] Evaluating {len(initial_population)} individuals (this is the slow part)..."
+    logger.info(f"[ENV {env_rank}] Evaluating {len(initial_population)} individuals...")
+
+    # Try GPU batch evaluation for 10-50x speedup
+    use_gpu = args.device == "cuda" or (
+        args.device == "auto" and len(initial_population) >= 50
     )
-    for idx, individual in enumerate(initial_population):
-        if idx % 20 == 0:
-            logger.info(
-                f"[ENV {env_rank}]    ... evaluated {idx}/{len(initial_population)}"
+
+    if use_gpu:
+        try:
+            from src.ga.evaluator.gpu_batch_evaluator import get_gpu_evaluator
+
+            gpu_eval = get_gpu_evaluator(device=args.device)
+
+            if gpu_eval.is_available():
+                logger.info(
+                    f"[ENV {env_rank}] Using GPU batch evaluation (10-50x faster)..."
+                )
+                results = gpu_eval.evaluate_batch(
+                    population=initial_population,
+                    courses=context.courses,
+                    instructors=context.instructors,
+                    groups=context.groups,
+                    rooms=context.rooms,
+                )
+                for individual, fitness in zip(initial_population, results):
+                    individual.fitness.values = fitness
+                logger.info(f"[ENV {env_rank}] GPU batch evaluation complete")
+                use_gpu = True  # Success
+            else:
+                use_gpu = False
+        except Exception as e:
+            logger.warning(f"[ENV {env_rank}] GPU evaluation failed: {e}, using CPU")
+            use_gpu = False
+
+    if not use_gpu:
+        # Fallback to sequential CPU evaluation
+        logger.info(f"[ENV {env_rank}] Using sequential CPU evaluation (slow)...")
+        for idx, individual in enumerate(initial_population):
+            if idx % 20 == 0:
+                logger.info(
+                    f"[ENV {env_rank}]    ... evaluated {idx}/{len(initial_population)}"
+                )
+            fitness = evaluate_fitness(
+                individual,
+                courses=context.courses,
+                instructors=context.instructors,
+                groups=context.groups,
+                rooms=context.rooms,
             )
-        fitness = evaluate_fitness(
-            individual,
-            courses=context.courses,
-            instructors=context.instructors,
-            groups=context.groups,
-            rooms=context.rooms,
-        )
-        individual.fitness.values = fitness
+            individual.fitness.values = fitness
 
     logger.info(
         f"[ENV {env_rank}] [OK] Population initialized with {len(initial_population)} individuals"
@@ -333,19 +367,43 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     logger.info(f"EXPECTED TIME:")
     logger.info(f"   - Each environment needs 30-60 seconds to initialize")
     logger.info(
-        f"   - With {n_envs} envs running in parallel, expect 30-60 seconds total"
+        f"   - With {n_envs} envs running in parallel, expect 1-2 MINUTES total"
     )
-    logger.info(f"   - You should see [ENV 0-{n_envs-1}] progress logs below")
+    logger.info(
+        f"   - Total work: {n_envs} envs x {args.population_size} individuals = {n_envs * args.population_size} fitness evaluations"
+    )
     logger.info(f"")
-    logger.info(f"WATCH FOR: [ENV X] Creating environment logs...")
+    if use_subproc:
+        logger.info(f"WARNING: SubprocVecEnv worker logs won't appear in console!")
+        logger.info(f"   - Workers run in separate processes (no console output)")
+        logger.info(f"   - This will appear FROZEN for 1-2 minutes - BE PATIENT!")
+        logger.info(f"   - Check logs/training/*.log for worker activity")
     logger.info(f"=" * 80)
     logger.info(f"")
 
+    import sys
+
+    sys.stdout.flush()
+
+    logger.info(f"Creating environment factories for {n_envs} workers...")
+
     def make_env(rank: int):
-        """Create a single environment with unique seed."""
+        """Create a single environment with unique seed.
+
+        CRITICAL: Each worker gets its own copy of context to avoid:
+        - Pickling issues with shared references
+        - Race conditions from shared state
+        - Memory corruption in multiprocessing
+        """
 
         def _init():
-            env = create_environment(args, context, env_rank=rank)
+            # IMPORTANT: Create deep copy of context for this worker
+            # This prevents shared state issues in SubprocVecEnv
+            import copy
+
+            worker_context = copy.deepcopy(context)
+
+            env = create_environment(args, worker_context, env_rank=rank)
             if args.seed is not None:
                 env.reset(seed=args.seed + rank)
             return env
@@ -354,14 +412,35 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
 
     # Create environment factories
     env_fns = [make_env(i) for i in range(n_envs)]
+    logger.info(
+        f"Environment factories created. Now spawning {n_envs} worker processes..."
+    )
+    logger.info(f"THIS WILL TAKE 1-2 MINUTES WITH NO OUTPUT - PLEASE WAIT!")
+
+    import sys
+    import time
+
+    sys.stdout.flush()
+
+    start_time = time.time()
 
     # Create vectorized environment
     if use_subproc:
+        logger.info(
+            f"Calling SubprocVecEnv(start_method='spawn')... (workers initializing)"
+        )
+        sys.stdout.flush()
         vec_env = SubprocVecEnv(env_fns, start_method="spawn")
+        elapsed = time.time() - start_time
+        logger.info(f"SubprocVecEnv created in {elapsed:.1f}s")
     else:
         vec_env = DummyVecEnv(env_fns)
+        elapsed = time.time() - start_time
 
-    logger.info(f"[OK] Parallel environments ready ({n_envs} workers)")
+    logger.info(
+        f"[OK] Parallel environments ready ({n_envs} workers, took {elapsed:.1f}s)"
+    )
+    logger.info(f"Workers are initialized and ready for training!")
     return vec_env
 
 
@@ -559,16 +638,19 @@ def main() -> None:
         logger.info("=" * 60)
 
         logger.info(
-            "[DEBUG] About to call trainer.train() - you should see environment activity soon..."
+            "[DEBUG] About to call trainer.train() - this will start rollout collection"
         )
-        logger.info(
-            "[DEBUG] If no logs appear for 30s, training may be stuck in rollout collection"
-        )
+
+        import sys
+
+        sys.stdout.flush()
 
         trainer.train(
             total_timesteps=args.timesteps,
             progress_bar=True,
         )
+
+        logger.info("\n[OK] Training completed successfully!")
 
         if not args.no_eval and args.eval_episodes > 0:
             logger.info("\n" + "=" * 60)

@@ -7,9 +7,9 @@ population_size: 80
 eval_episodes: 10
 save_prefix: rl_agent_prod
 
-# Parallel training - FULL RESOURCE UTILIZATION
+# Parallel training - OPTIMIZED FOR STABILITY
 parallel:
-  n_envs: null # Auto-detect ALL available CPU cores
+  n_envs: 8 # Use 8 envs (was: null/32 - too many caused freeze)
   use_subproc: true # True parallelism (no GIL)
 
 # GPU acceleration
