@@ -96,7 +96,10 @@ class InputValidator:
                 self._validate_rooms,
             ]
 
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            import os
+
+            max_workers = os.cpu_count() or 4  # Auto-detect, fallback to 4
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
                     executor.submit(check): check.__name__
                     for check in independent_checks
@@ -116,7 +119,8 @@ class InputValidator:
                 self._validate_room_features_for_enrolled_courses,
             ]
 
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            max_workers = os.cpu_count() or 4  # Reuse from earlier
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
                     executor.submit(check): check.__name__
                     for check in relationship_checks

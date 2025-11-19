@@ -19,13 +19,15 @@ class ParallelHeuristicExecutor:
     true parallel execution across all CPU cores.
     """
 
-    def __init__(self, max_workers: int = 16, use_threads: bool = False):
+    def __init__(self, max_workers: int = None, use_threads: bool = False):
         """Initialize parallel executor.
 
         Args:
-            max_workers: Number of parallel workers (default: 16)
+            max_workers: Number of parallel workers (None = auto-detect all CPUs)
             use_threads: Use threads instead of processes (faster for I/O-bound)
         """
+        if max_workers is None:
+            max_workers = mp.cpu_count()
         self.max_workers = max_workers
         self.use_threads = use_threads
 
@@ -180,8 +182,12 @@ class ParallelHeuristicExecutor:
 _parallel_executor = None
 
 
-def get_parallel_executor(max_workers: int = 16) -> ParallelHeuristicExecutor:
-    """Get or create parallel executor singleton."""
+def get_parallel_executor(max_workers: int = None) -> ParallelHeuristicExecutor:
+    """Get or create parallel executor singleton.
+
+    Args:
+        max_workers: Number of workers (None = auto-detect all CPUs)
+    """
     global _parallel_executor
     if _parallel_executor is None:
         _parallel_executor = ParallelHeuristicExecutor(max_workers=max_workers)

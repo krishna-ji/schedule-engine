@@ -242,7 +242,7 @@ def run_benchmark(
     if verbose:
         print(f"Generating population (size={population_size})...")
     population = generate_course_group_aware_population(
-        n=population_size, context=context, parallel=False
+        n=population_size, context=context, parallel=True  # Use production settings
     )
 
     # Use first individual for benchmarking

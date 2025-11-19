@@ -6,6 +6,8 @@ This module implements the Large Neighborhood Search operator with IGLS
 
 from typing import List, Dict
 import logging
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import os
 
 from src.ga.sessiongene import SessionGene
 from src.ga.individual import create_individual
@@ -320,18 +322,91 @@ def apply_lns_to_population(
         return population
 
     new_population = list(population)  # Copy
+    num_to_repair = min(num_individuals, len(population))
 
-    for i in range(min(num_individuals, len(population))):
-        logger.info(f"LNS-IGLS: Repairing individual {i+1}/{num_individuals}")
-        new_population[i] = lns_igls_repair(
-            individual=population[i],
-            courses=courses,
-            instructors=instructors,
-            groups=groups,
-            rooms=rooms,
-            max_subproblem_size=max_subproblem_size,
-            igls_time_limit=igls_time_limit,
+    # Parallelize repair for 3-8x speedup (each repair takes ~5-30 seconds)
+    if num_to_repair >= 2:
+        max_workers = os.cpu_count() or 4
+        logger.info(
+            f"LNS-IGLS: Repairing {num_to_repair} individuals in parallel ({max_workers} workers)"
         )
+
+        # Prepare repair tasks
+        repair_tasks = [
+            (
+                i,
+                population[i],
+                courses,
+                instructors,
+                groups,
+                rooms,
+                max_subproblem_size,
+                igls_time_limit,
+            )
+            for i in range(num_to_repair)
+        ]
+
+        try:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all repair jobs
+                future_to_index = {
+                    executor.submit(
+                        lns_igls_repair,
+                        individual=task[1],
+                        courses=task[2],
+                        instructors=task[3],
+                        groups=task[4],
+                        rooms=task[5],
+                        max_subproblem_size=task[6],
+                        igls_time_limit=task[7],
+                    ): task[0]
+                    for task in repair_tasks
+                }
+
+                # Collect results as they complete
+                for future in as_completed(future_to_index):
+                    index = future_to_index[future]
+                    try:
+                        repaired_individual = future.result()
+                        new_population[index] = repaired_individual
+                        logger.info(
+                            f"LNS-IGLS: Completed repair {index+1}/{num_to_repair}"
+                        )
+                    except Exception as e:
+                        logger.error(f"LNS-IGLS: Repair {index+1} failed: {e}")
+                        # Keep original individual if repair fails
+
+        except Exception as e:
+            logger.warning(
+                f"Parallel LNS repair failed: {e}, falling back to sequential"
+            )
+            # Fallback to sequential
+            for i in range(num_to_repair):
+                logger.info(
+                    f"LNS-IGLS: Repairing individual {i+1}/{num_to_repair} (sequential fallback)"
+                )
+                new_population[i] = lns_igls_repair(
+                    individual=population[i],
+                    courses=courses,
+                    instructors=instructors,
+                    groups=groups,
+                    rooms=rooms,
+                    max_subproblem_size=max_subproblem_size,
+                    igls_time_limit=igls_time_limit,
+                )
+    else:
+        # Single individual - no need to parallelize
+        for i in range(num_to_repair):
+            logger.info(f"LNS-IGLS: Repairing individual {i+1}/{num_to_repair}")
+            new_population[i] = lns_igls_repair(
+                individual=population[i],
+                courses=courses,
+                instructors=instructors,
+                groups=groups,
+                rooms=rooms,
+                max_subproblem_size=max_subproblem_size,
+                igls_time_limit=igls_time_limit,
+            )
 
     return new_population
 

@@ -20,6 +20,8 @@ import gymnasium as gym
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import CallbackList, BaseCallback
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+import torch
 
 from src.rl.agents import create_ppo_agent, create_dqn_agent
 from src.config import get_config
@@ -48,22 +50,40 @@ class RLTrainer:
         save_dir: Optional[str] = None,
         tensorboard_log: Optional[str] = None,
         verbose: int = 1,
+        n_envs: int = 1,
+        use_subproc: bool = False,
+        device: str = "auto",
         **agent_kwargs,
     ):
         """
         Initialize trainer.
 
         Args:
-            env: Gymnasium environment (ScheduleEnv)
+            env: Gymnasium environment (ScheduleEnv) or env factory function
             agent_type: Agent type ("ppo" or "dqn")
             save_dir: Directory to save models
             tensorboard_log: TensorBoard log directory
             verbose: Verbosity level (0=none, 1=info, 2=debug)
+            n_envs: Number of parallel environments (1=no parallelization)
+            use_subproc: Use SubprocVecEnv for true parallelism (recommended for CPU-heavy)
+            device: PyTorch device ("auto", "cuda", "cpu")
             **agent_kwargs: Additional agent-specific arguments
         """
         self.env = env
         self.agent_type = agent_type.lower()
         self.verbose = verbose
+        self.n_envs = n_envs
+        self.use_subproc = use_subproc
+
+        # Determine device
+        if device == "auto":
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
+
+        logger.info(f"Training device: {self.device}")
+        if self.device == "cuda":
+            logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
 
         # Load config
         config = get_config()
@@ -100,6 +120,9 @@ class RLTrainer:
         """
         # Merge kwargs
         agent_kwargs = {**self.agent_kwargs, **override_kwargs}
+
+        # Add device to agent kwargs
+        agent_kwargs["device"] = self.device
 
         # Create agent based on type
         if self.agent_type == "ppo":

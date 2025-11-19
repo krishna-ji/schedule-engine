@@ -298,7 +298,10 @@ def generate_reports(
     completed_plots = []
     failed_plots = []
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    import os
+
+    max_workers = os.cpu_count() or 8  # Auto-detect, fallback to 8
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         future_to_plot = {
             executor.submit(_safe_plot_wrapper, plot_func, args, kwargs): plot_name

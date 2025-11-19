@@ -156,7 +156,10 @@ def check_feasibility(
 
     # Execute all checks concurrently
     results = []
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    import os
+
+    max_workers = os.cpu_count() or 5  # Auto-detect, fallback to 5
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_check = {
             executor.submit(check_func, *args): name
             for name, check_func, args in checks_to_run

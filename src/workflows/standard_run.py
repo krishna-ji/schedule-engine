@@ -522,7 +522,10 @@ def load_input_data(
     # PARALLEL LOADING SECTION
     # ========================================
     # Load JSON files concurrently (I/O-bound operations)
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    import os
+
+    max_workers = os.cpu_count() or 4  # Auto-detect, fallback to 4
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all loading tasks
         future_groups = executor.submit(
             load_groups, os.path.join(data_dir, "Groups.json"), qts
