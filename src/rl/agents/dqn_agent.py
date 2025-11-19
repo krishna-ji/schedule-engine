@@ -53,6 +53,9 @@ def create_dqn_agent(
     else:
         vec_env = DummyVecEnv([lambda: env])
 
+    # Extract device from kwargs or use config (prevents duplicate parameter error)
+    device = kwargs.pop("device", config.rl.agent.device)
+
     # Create DQN agent
     model = DQN(
         policy="MlpPolicy",
@@ -68,7 +71,7 @@ def create_dqn_agent(
         exploration_final_eps=dqn_config.exploration_final_eps,
         tensorboard_log=tensorboard_log or config.rl.training.tensorboard_log,
         verbose=verbose,
-        device=config.rl.agent.device,
+        device=device,
         **kwargs,
     )
 

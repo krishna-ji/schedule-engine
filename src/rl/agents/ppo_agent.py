@@ -56,6 +56,9 @@ def create_ppo_agent(
     else:
         vec_env = DummyVecEnv([lambda: env])
 
+    # Extract device from kwargs or use config (prevents duplicate parameter error)
+    device = kwargs.pop("device", config.rl.agent.device)
+
     # Create PPO agent
     model = PPO(
         policy="MlpPolicy",
@@ -72,7 +75,7 @@ def create_ppo_agent(
         max_grad_norm=ppo_config.max_grad_norm,
         tensorboard_log=tensorboard_log or config.rl.training.tensorboard_log,
         verbose=verbose,
-        device=config.rl.agent.device,
+        device=device,
         **kwargs,
     )
 

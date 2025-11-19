@@ -18,6 +18,20 @@ This file tracks bug fixes in the schedule engine codebase.
 
 **Result:** `uv sync` now resolves successfully and installs `torch==2.4.1+cu121` with CUDA support.
 
+## [2025-11-19] Fixed duplicate 'device' parameter in RL agent creation
+
+**Issue:** RL training failed with `TypeError: PPO() got multiple values for keyword argument 'device'` when creating agents.
+
+**Root Cause:** The `RLTrainer.create_agent()` method in `trainer.py` adds `device` to `agent_kwargs` dictionary (line 123), which then gets passed as `**agent_kwargs` to `create_ppo_agent()`. However, `create_ppo_agent()` explicitly set `device=config.rl.agent.device`, causing the same parameter to be passed twice - once in the `**kwargs` unpacking and once explicitly.
+
+**Fix:** Modified both `create_ppo_agent()` and `create_dqn_agent()` to extract `device` from `kwargs` using `kwargs.pop("device", config.rl.agent.device)` before passing `**kwargs` to the agent constructor. This ensures device is only set once, prioritizing the value from kwargs if provided, otherwise falling back to config.
+
+**Files Modified:**
+- `src/rl/agents/ppo_agent.py` - Extract device from kwargs before PPO constructor
+- `src/rl/agents/dqn_agent.py` - Extract device from kwargs before DQN constructor
+
+**Result:** Agent creation now handles device parameter correctly without duplication errors.
+
 ## [2025-11-19] Fixed double-wrapping of vectorized environments in RL training
 
 **Issue:** RL training failed with `ValueError: The environment is of type SubprocVecEnv, not a Gymnasium environment` when using parallel environments (`n_envs > 1`).
