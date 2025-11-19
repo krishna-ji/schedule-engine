@@ -2,298 +2,203 @@
 applyTo: "test/**/*.py"
 ---
 
-# Testing Instructions
+# Testing Guidelines for Schedule Engine
 
-## Overview
-All test files must be placed in the `test/` directory. Currently manual testing with small configurations, future automated testing with pytest.
+## ⚠️ PRIORITY: All tests go in `test/` directory (NOT in `src/`)
 
-## Test Organization
+## Test Structure & Organization
+
 ```
 test/
-├── test_constraints.py      # Constraint function tests
-├── test_ga_operators.py     # Crossover/mutation tests
-├── test_data_loading.py     # Encoder/decoder tests
-├── test_feasibility.py      # Validation tests
-└── fixtures/                # Test data files
-    ├── small_course.json
-    ├── small_groups.json
-    └── ...
+├── unit/                # Unit tests for individual components
+│   ├── test_config_loader.py
+│   ├── test_constraints.py
+│   ├── test_ga_operators.py
+│   └── ...
+├── integration/         # Integration tests for workflows
+│   ├── test_standard_workflow.py
+│   └── ...
+├── fixtures/            # Shared test data and fixtures
+│   ├── sample_courses.json
+│   └── ...
+└── conftest.py          # Shared pytest fixtures
 ```
 
-## Writing Tests
+## Testing Framework
 
-### Manual Testing (Current)
+We use **pytest** with these key conventions:
+
+### File Naming
+- Test files: `test_<module_name>.py`
+- Test functions: `test_<function_description>()`
+- Test classes: `Test<ComponentName>`
+
+### Required Test Practices
+
+#### 1. Use pytest fixtures for test data
 ```python
-# test/manual_test_constraints.py
-"""
-Manual test for constraint functions.
-Run: python test/manual_test_constraints.py
-"""
-
-from src.constraints.hard import no_group_overlap
-from src.entities.decoded_session import CourseSession
-# ... imports ...
-
-def test_no_overlap_basic():
-    """Test basic case: no conflicts."""
-    sessions = [
-        CourseSession(course=..., groups=["G1"], quanta=[1, 2]),
-        CourseSession(course=..., groups=["G2"], quanta=[1, 2]),
-    ]
-    context = create_test_context()
-    
-    penalty = no_group_overlap(sessions, context)
-    assert penalty == 0, f"Expected 0, got {penalty}"
-    print("✓ test_no_overlap_basic passed")
-
-def test_overlap_detected():
-    """Test overlap detection."""
-    sessions = [
-        CourseSession(course=..., groups=["G1"], quanta=[1, 2]),
-        CourseSession(course=..., groups=["G1"], quanta=[2, 3]),  # Overlap at quantum 2
-    ]
-    context = create_test_context()
-    
-    penalty = no_group_overlap(sessions, context)
-    assert penalty > 0, f"Expected penalty > 0, got {penalty}"
-    print("✓ test_overlap_detected passed")
-
-if __name__ == "__main__":
-    test_no_overlap_basic()
-    test_overlap_detected()
-    print("\n✓ All tests passed!")
-```
-
-### Automated Testing (Future - pytest)
-```python
-# test/test_constraints.py
-"""
-Automated constraint tests.
-Run: pytest test/test_constraints.py
-"""
-
 import pytest
-from src.constraints.hard import no_group_overlap
-# ... imports ...
+from src.entities.course import Course
 
 @pytest.fixture
-def test_context():
-    """Create test context for all tests."""
-    return create_test_context()
-
-def test_no_overlap_basic(test_context):
-    sessions = [...]  # Test data
-    assert no_group_overlap(sessions, test_context) == 0
-
-def test_overlap_detected(test_context):
-    sessions = [...]  # Test data with overlap
-    assert no_group_overlap(sessions, test_context) > 0
-
-@pytest.mark.parametrize("overlap_count,expected_penalty", [
-    (0, 0),
-    (1, 1),
-    (5, 5),
-])
-def test_overlap_scaling(test_context, overlap_count, expected_penalty):
-    sessions = create_overlap_sessions(overlap_count)
-    assert no_group_overlap(sessions, test_context) == expected_penalty
-```
-
-## Test Data Creation
-
-### Minimal Test Context
-```python
-def create_test_context():
-    """Create minimal context for testing."""
-    qts = QuantumTimeSystem()
-    
-    courses = {
-        "CS101": Course(
-            code="CS101",
-            name="Test Course",
-            L=3, T=0, P=0,
-            type="theory"
-        )
-    }
-    
-    groups = {
-        "G1": Group(
-            id="G1",
-            enrolled_courses=["CS101"],
-            available_quanta=list(range(72))
-        )
-    }
-    
-    instructors = {
-        "I1": Instructor(
-            id="I1",
-            name="Test Instructor",
-            qualifications=["CS101"],
-            available_quanta=list(range(72))
-        )
-    }
-    
-    rooms = {
-        "R1": Room(
-            id="R1",
-            capacity=50,
-            type="theory",
-            available_quanta=list(range(72))
-        )
-    }
-    
-    return SchedulingContext(
-        courses=courses,
-        groups=groups,
-        instructors=instructors,
-        rooms=rooms,
-        available_quanta=qts.get_all_operating_quanta(),
-        qts=qts
+def sample_course():
+    """Reusable test course."""
+    return Course(
+        course_id="CS101",
+        title="Intro to Programming",
+        credits=3,
+        lecture_hours=4,
     )
+
+def test_course_initialization(sample_course):
+    assert sample_course.course_id == "CS101"
+    assert sample_course.credits == 3
 ```
 
-### Test Fixture Files
-```json
-// test/fixtures/small_course.json
-[
-  {
-    "courseCode": "TEST101",
-    "courseName": "Test Course",
-    "L": 2,
-    "T": 0,
-    "P": 0,
-    "courseType": "theory"
-  }
-]
-```
-
-## Testing Strategies
-
-### Unit Tests
-- Test individual functions in isolation
-- Use minimal test data
-- Mock dependencies if needed
-- Fast execution (< 1s per test)
-
-### Integration Tests
-- Test component interactions (encoder → GA → decoder)
-- Use realistic test data
-- Slower execution acceptable (< 10s per test)
-
-### Smoke Tests
-- Quick sanity checks with `configs/test.yaml`
-- Run full pipeline with 10 generations, 4 population
-- Verify no crashes, output files created
-
-### Regression Tests
-- Save known-good outputs
-- Compare new runs against saved outputs
-- Detect unexpected changes
-
-## Testing Checklist
-
-### Before Committing
-- [ ] Run smoke test: `python main.py --env test`
-- [ ] Check for new warnings/errors
-- [ ] Verify output files generated
-- [ ] Review logger.txt for issues
-
-### Adding New Features
-- [ ] Write tests for new code
-- [ ] Test edge cases (empty inputs, max values, etc.)
-- [ ] Test error handling
-- [ ] Update test documentation
-
-### Constraint Testing
-- [ ] Test with 0 violations (should return 0)
-- [ ] Test with known violation count
-- [ ] Test with edge cases (empty schedule, single session)
-- [ ] Test with realistic data
-
-### Operator Testing
-- [ ] Test crossover preserves gene count
-- [ ] Test mutation stays within bounds
-- [ ] Test repair reduces violations
-- [ ] Test with different population sizes
-
-## Test Configuration
-
-### Use Test Config
-```yaml
-# configs/test.yaml - Optimized for fast testing
-ga:
-  ngen: 10              # Fast
-  pop_size: 4           # Minimal
-  
-feasibility:
-  enable_checks: false  # Skip for speed
-  
-parallel:
-  use_multiprocessing: false  # Easier debugging
-```
-
-## Debugging Tests
-
-### Print Debugging
+#### 2. Use descriptive test names
 ```python
-def test_my_function():
-    result = my_function()
-    print(f"DEBUG: result = {result}")  # Temporary debug
-    assert result == expected
+# Good ✅
+def test_fitness_evaluation_with_no_violations_returns_zero():
+    ...
+
+# Bad ❌
+def test_fitness():
+    ...
 ```
 
-### Rich Console in Tests
+#### 3. Follow AAA pattern (Arrange-Act-Assert)
 ```python
-from rich.console import Console
-console = Console()
-
-def test_my_function():
-    console.print("[cyan]Testing my_function...[/cyan]")
-    # ... test code ...
-    console.print("[green]✓ Test passed[/green]")
-```
-
-### Logging in Tests
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
-def test_my_function():
-    logger = logging.getLogger(__name__)
-    logger.debug("Starting test...")
-    # ... test code ...
-```
-
-## Performance Testing
-
-### Timing Tests
-```python
-import time
-
-def test_ga_speed():
-    start = time.time()
-    run_standard_workflow(pop_size=4, generations=10)
-    elapsed = time.time() - start
+def test_constraint_evaluation():
+    # Arrange - Setup test data
+    courses = [sample_course1, sample_course2]
+    schedule = create_test_schedule(courses)
     
-    assert elapsed < 30, f"Test took {elapsed}s, expected < 30s"
-    print(f"✓ Speed test passed ({elapsed:.1f}s)")
-```
-
-### Memory Testing
-```python
-import tracemalloc
-
-def test_memory_usage():
-    tracemalloc.start()
-    run_standard_workflow(...)
-    current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
+    # Act - Execute function being tested
+    violations = evaluate_constraints(schedule)
     
-    assert peak < 500 * 1024 * 1024, f"Peak memory {peak/1024/1024:.1f}MB"
-    print(f"✓ Memory test passed (peak: {peak/1024/1024:.1f}MB)")
+    # Assert - Verify expected outcome
+    assert violations == 0
 ```
+
+#### 4. Test edge cases explicitly
+```python
+@pytest.mark.parametrize("input,expected", [
+    ([], 0),           # Empty case
+    ([1], 1),          # Single element
+    ([1, 2, 3], 6),    # Normal case
+    ([0] * 1000, 0),   # Large input
+])
+def test_sum_with_edge_cases(input, expected):
+    assert sum(input) == expected
+```
+
+#### 5. Mock external dependencies
+```python
+from unittest.mock import Mock, patch
+
+@patch('src.ga.evaluator.fitness.get_config')
+def test_fitness_with_mocked_config(mock_config):
+    mock_config.return_value.ga.cxpb = 0.75
+    # Test code using config
+```
+
+## Test Coverage Requirements
+
+- **Minimum coverage**: 70% overall
+- **Critical modules** (constraints, ga/operators, config): 90%+
+- Run coverage: `pytest --cov=src --cov-report=html test/`
+
+## Testing Specific Components
+
+### GA Operators (crossover, mutation)
+- Test chromosome structure preservation
+- Test that offspring differ from parents
+- Test boundary cases (empty, single-element)
+
+### Constraints
+- Test with valid schedules (should return 0 violations)
+- Test with known violations (verify detection)
+- Test with edge cases (empty rooms, no instructors)
+
+### Config System
+- Test YAML parsing
+- Test inheritance (test.yaml overrides base.yaml)
+- Test validation (invalid values raise errors)
+
+### RL Components
+- Mock Gymnasium environment interactions
+- Test state encoding correctness
+- Test action mapping consistency
+
+## Performance Tests
+
+Mark slow tests with `@pytest.mark.slow`:
+```python
+@pytest.mark.slow
+def test_full_ga_evolution():
+    # Run 100 generations (takes ~30 seconds)
+    ...
+```
+
+Run fast tests only: `pytest -m "not slow"`
+
+## Integration Tests
+
+Integration tests should:
+- Use realistic test data (from `test/fixtures/`)
+- Test complete workflows (load → validate → GA → export)
+- Verify file outputs exist and are valid
+- Clean up generated files after test
+
+```python
+def test_complete_scheduling_workflow(tmp_path):
+    # tmp_path is pytest fixture for temporary directory
+    config_path = tmp_path / "config.yaml"
+    output_dir = tmp_path / "output"
+    
+    # Run workflow
+    result = run_scheduling_workflow(config_path, output_dir)
+    
+    # Verify outputs
+    assert (output_dir / "schedule.json").exists()
+    assert (output_dir / "calendar.pdf").exists()
+    assert result.hard_violations == 0
+```
+
+## When to Write Tests
+
+- **Before fixing a bug**: Write failing test first, then fix (TDD)
+- **When adding features**: Write tests alongside feature code
+- **When refactoring**: Ensure tests pass before and after
+
+## Test Maintenance
+
+- Keep tests fast (mock slow operations)
+- Keep tests independent (no shared state)
+- Update tests when requirements change
+- Remove tests for removed features
+
+## Required Before Each Commit
+
+- [ ] Run tests: `pytest test/unit/`
+- [ ] Check coverage: `pytest --cov=src test/`
+- [ ] Format code: `black src/ test/`
+- [ ] Lint code: `ruff check src/ test/`
+
+## Common Pitfalls to Avoid
+
+❌ **Don't test implementation details** (private methods)  
+❌ **Don't write flaky tests** (dependent on timing/randomness)  
+❌ **Don't skip test cleanup** (use fixtures with `yield`)  
+❌ **Don't test library code** (e.g., don't test DEAP internals)
+
+✅ **Do test public APIs**  
+✅ **Do test business logic**  
+✅ **Do test error handling**  
+✅ **Do test integration points**
 
 ## Never Do
+
 - ❌ Put test files outside `test/` directory
 - ❌ Commit failing tests
 - ❌ Skip testing after major changes

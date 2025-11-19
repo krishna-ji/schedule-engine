@@ -1,216 +1,299 @@
 ---
-applyTo: "src/config/**/*.py"
+applyTo: "configs/**/*.yaml"
 ---
 
-# Configuration System Instructions
+# Configuration File Guidelines for Schedule Engine
 
-## Overview
+## YAML Structure & Format
 
-YAML-based configuration with inheritance: `base.yaml` + environment overrides + runtime modes. Loaded via `src/config/loader.py`, validated by `src/config/models.py`.
+### Required Format
+- **Indentation**: 2 spaces (NOT tabs)
+- **Line length**: Max 100 characters
+- **Comments**: Use `#` for inline explanations
+- **Structure**: Hierarchical dictionary (key-value pairs)
 
-## Key Files
+### File Types
 
-- `src/config/models.py` - Pydantic models (Config, GAConfig, RepairConfig, etc.)
-- `src/config/runtime_mode.py` - RuntimeMode enum, ExperimentConfig, validation
-- `src/config/loader.py` - YAML loading with deep merge (base.yaml + env overrides + runtime modes)
-- `src/config/__init__.py` - Global config object + `init_config()`, `get_config()`
-- `configs/base.yaml` - Common settings (shared by all environments)
-- `configs/{test,prod}.yaml` - Environment-specific overrides only
-- `configs/{baseline,nsga,rl,hybrid}/*.yaml` - Runtime mode configurations with killswitches
+1. **Environment Configs** (`configs/test.yaml`, `configs/prod.yaml`)
+   - Inherit from `base.yaml`
+   - Only override what differs
+   - Keep minimal (environment-specific settings only)
 
-## Configuration Inheritance
+2. **Runtime Mode Configs** (`configs/{category}/{mode}.yaml`)
+   - Full standalone configs
+   - Document purpose in header comment
+   - Include killswitch states explicitly
 
-1. Loader reads `configs/base.yaml` (all common settings)
-2. If runtime mode specified: Loader reads mode config (e.g., `configs/rl/5-rl-guided.yaml`)
-3. Loader reads environment file (e.g., `configs/prod.yaml`)
-4. Deep merge: mode values override base, env values override mode
-5. Automatic validation: RuntimeMode.validate_config() checks killswitches
-6. Result: complete configuration with minimal duplication
+3. **Base Config** (`configs/base.yaml`)
+   - All common settings
+   - Shared across all environments
+   - Comprehensive documentation
 
-**Priority order**: env overrides → runtime mode → base.yaml (highest to lowest)
+## Configuration Principles
 
-**Note**: Training uses separate configs in `config-train/` with similar inheritance (base + profile overrides).
-
-## Runtime Modes
-
-6 progressive modes for systematic experimentation:
-- **Mode 1 (baseline)**: Pure NSGA-II, all killswitches OFF
-- **Mode 2 (repairs)**: NSGA-II + IGLS repairs only
-- **Mode 3 (heuristics)**: NSGA-II + repairs + 19 heuristic operators
-- **Mode 4 (full)**: Full GA (best non-RL configuration)
-- **Mode 5 (rl)**: RL-guided heuristic selection
-- **Mode 6 (roundrobin)**: Fixed round-robin heuristic rotation
-
-See `docs/02-user-guides/runtime-modes.md` for complete guide.
-
-## Killswitch Pattern
-
-Major features use master killswitches for easy toggling:
+### 1. Killswitch Pattern
+Every major feature has a master killswitch:
 
 ```yaml
-# Master killswitch example
-rl:
-  enabled: false  # Master switch - when false, all RL features disabled
-  mode: inference
-  agent:
-    type: ppo
-    # ... other settings ...
-
+# CORRECT ✅: Explicit killswitch
 repair:
-  enabled: true   # Master switch for repair system
-  mode: selective
-  # ... other settings ...
+  enabled: true  # Master killswitch
+  stagnation_repair:
+    enabled: true
+    patience: 8
 
-enhancements:
-  master_enabled: false  # Master switch for all enhancement features
-  memetic_mode: false
-  lns:
-    enabled: false
-  # ... other settings ...
+# WRONG ❌: Missing master switch
+repair:
+  stagnation_repair:
+    enabled: true  # Can't work if parent is disabled!
 ```
 
-**Killswitch validation** happens automatically in `RuntimeMode.validate_config()`.
+### 2. Null for Auto-Detection
+Use `null` for runtime auto-detection:
 
-## Rules
-
-### Accessing Configuration
-
-```python
-# Runtime access (anywhere in code)
-from src.config import get_config
-config = get_config()
-ngen = config.ga.ngen
-```
-
-### Adding New Settings
-
-1. Add field to appropriate Pydantic model in `src/config/models.py`
-2. Include default value with type annotation
-3. Add validation if needed (`@field_validator`)
-4. Add to `configs/base.yaml` (if common to all environments)
-5. Override in specific env files (if environment-specific)
-6. Update `Config.summary()` if user-facing
-
-### YAML File Structure
-
-- Use lowercase keys with underscores (e.g., `pop_size`, not `popSize`)
-- Group related settings under sections (ga, repair, parallel, etc.)
-- Include comments for non-obvious settings
-- **base.yaml**: Contains ALL common settings (used by all environments)
-- **Environment files**: Only override what differs (ngen, pop_size, parallel, repair triggers, etc.)
-- Keep test.yaml minimal (fast), prod.yaml comprehensive
-
-### Validation Rules
-
-- Use Pydantic Field constraints: `ge` (>=), `le` (<=), `gt` (>), `lt` (<)
-- Population size must be even (NSGA-II requirement)
-- Probabilities must be 0.0-1.0
-- File paths can be relative or absolute
-- Valid environments: "test", "prod"
-
-### Runtime Mode Usage
-
-```python
-# Load config with runtime mode
-from src.config.runtime_mode import RuntimeMode
-from src.config.loader import load_config
-
-config = load_config(runtime_mode=RuntimeMode.RL_GUIDED)
-# Automatic validation ensures killswitches are set correctly
-
-# CLI usage
-python main.py --mode rl --env test
-# or
-uv run rl  # Uses test env by default
-```
-
-### Adding New Killswitches
-
-When introducing experimental features:
-
-1. **Add master switch to base.yaml**:
 ```yaml
-my_feature:
-  enabled: false  # Master killswitch
-  setting1: value1
-  setting2: value2
+# CORRECT ✅: Let system detect CPU count
+parallel:
+  num_workers: null  # Auto-detect all available cores
+
+# WRONG ❌: Hardcoded value (not portable)
+parallel:
+  num_workers: 16  # Fails on systems with fewer cores
 ```
 
-2. **Create runtime mode config** (if needed):
+### 3. Environment Inheritance
+Environment files only override differences:
+
 ```yaml
-# configs/experimental/my-feature.yaml
-my_feature:
-  enabled: true  # Override for this mode
-  setting1: optimized_value
+# base.yaml
+ga:
+  ngen: 2000
+  pop_size: 200
+  cxpb: 0.75
+
+# test.yaml (only overrides)
+ga:
+  ngen: 30        # Override for quick testing
+  pop_size: 10    # Override
+  # cxpb inherited from base.yaml
 ```
 
-3. **Add validation to RuntimeMode**:
-```python
-# In src/config/runtime_mode.py
-if self == RuntimeMode.MY_FEATURE:
-    assert config_dict.get("my_feature", {}).get("enabled") is True
+### 4. Descriptive Comments
+```yaml
+# CORRECT ✅: Explain purpose and values
+repair:
+  enabled: true
+  stagnation_repair:
+    patience: 8  # Generations without improvement before repair
+    population_coverage: 0.4  # Repair top 40% of population
+
+# WRONG ❌: Missing context
+repair:
+  enabled: true
+  stagnation_repair:
+    patience: 8
+    population_coverage: 0.4
 ```
 
-4. **Check killswitch in code**:
-```python
-from src.config import get_config
+## Common Configuration Sections
 
-def my_function():
-    config = get_config()
-    if not config.my_feature.enabled:
-        return  # Feature disabled, skip
-    # ... feature implementation ...
-```
-
-### Never Do
-
-- ❌ Import `config.ga_params` or `config.constraints` (removed in refactor)
-- ❌ Hardcode configuration values in source files
-- ❌ Access config before `init_config()` called (main.py does this)
-- ❌ Modify config object at runtime (read-only after init)
-- ❌ Duplicate common settings in environment files (put in base.yaml)
-- ❌ Add features without master killswitches (always add `enabled: bool` field)
-- ❌ Skip runtime mode validation (always use `RuntimeMode.validate_config()`)
-- ❌ Hardcode mode-specific behavior (use config-driven approach)
-
-## Examples
-
-### Adding a New GA Parameter
-
-```python
-# In src/config/models.py
-class GAConfig(BaseModel):
-    # ... existing fields ...
-    tournament_size: int = Field(default=3, ge=2, le=10)
-```
-
-Then add to `configs/base.yaml`:
+### GA Parameters
 ```yaml
 ga:
-  # ... existing ...
-  tournament_size: 3
+  ngen: 2000                     # Total generations
+  pop_size: 200                  # Population size
+  cxpb: 0.75                     # Crossover probability
+  mutpb: 0.25                    # Mutation probability
+  elite_preservation: true       # Keep best solutions
+  elite_size: 0.1               # Top 10% preserved
+  use_adaptive_probabilities: false  # Fixed vs adaptive
+  population_strategy: hybrid    # random, smart, or hybrid
 ```
 
-### Custom Validator
-
-```python
-@field_validator("num_workers")
-@classmethod
-def validate_workers(cls, v):
-    if v is not None and v > os.cpu_count():
-        raise ValueError(f"num_workers ({v}) exceeds CPU count ({os.cpu_count()})")
-    return v
-```
-
-### GPU Configuration Example
-
+### Repair System
 ```yaml
-# configs/base.yaml
-rl:
-  device: cuda  # Enable GPU acceleration (auto, cuda, cpu)
-  agent:
-    type: ppo
-    model_path: models/rl_agents/best_model.zip
+repair:
+  enabled: true                  # Master killswitch
+  memetic_mode: false            # Elite local search
+  
+  stagnation_repair:
+    enabled: true
+    patience: 8                  # Gens without improvement
+    population_coverage: 0.4     # Repair top 40%
+    max_iterations: 15
+    timeout_seconds: 120
+    cooldown: 5                  # Gens before re-trigger
+  
+  selective_repair:
+    enabled: true
+    apply_probability: 0.4       # 40% chance per generation
+    apply_after_mutation: true
+    apply_after_crossover: true
 ```
 
-**Important**: GPU acceleration is enabled by default. See `docs/04-algorithms/nvidia-gpu/QUICKSTART.md` for setup.
+### Heuristics (19 operators)
+```yaml
+heuristics:
+  construction:
+    largest_degree_first:
+      enabled: true
+      priority: 1                # Lower = higher priority
+    most_constrained_first:
+      enabled: true
+      priority: 2
+  
+  perturbation:
+    random_swap:
+      enabled: true
+      priority: 1
+      swap_type: time            # Options: time, room, both
+      num_swaps: 1
+  
+  improvement:
+    kempe_chain:
+      enabled: true
+      priority: 1
+      max_iterations: 5
+```
+
+### RL Integration
+```yaml
+rl:
+  enabled: false                 # Master RL killswitch
+  mode: disabled                 # disabled, guided, specialists, etc.
+  model_path: models/rl_agents/best_model.zip
+  
+  state_encoder:
+    constraint_specific: true    # Detailed constraint state
+    history_window: 10           # Gens to track
+  
+  reward:
+    fitness_weight: 1.0
+    diversity_weight: 0.3
+    violation_penalty: -10.0
+```
+
+## Validation Rules
+
+### Required Before Commit
+1. **Syntax check**: `python -c "import yaml; yaml.safe_load(open('config.yaml'))"`
+2. **Schema validation**: `uv run verify-config`
+3. **Test run**: `uv run exp1 --env test --config path/to/config.yaml`
+
+### Common Errors to Avoid
+
+❌ **Tabs instead of spaces**
+```yaml
+repair:
+	enabled: true  # ERROR: tab character
+```
+
+✅ **Use 2 spaces**
+```yaml
+repair:
+  enabled: true
+```
+
+❌ **Inconsistent indentation**
+```yaml
+ga:
+  ngen: 2000
+    pop_size: 200  # ERROR: wrong indentation
+```
+
+✅ **Consistent 2-space indent**
+```yaml
+ga:
+  ngen: 2000
+  pop_size: 200
+```
+
+❌ **Missing quotes for special strings**
+```yaml
+time:
+  earliest_preferred_time: 08:00  # ERROR: treated as number
+```
+
+✅ **Quote time strings**
+```yaml
+time:
+  earliest_preferred_time: "08:00"
+```
+
+## Configuration Testing
+
+When creating new config:
+```bash
+# 1. Validate syntax
+uv run verify-config --config configs/new-config.yaml
+
+# 2. Quick test (30 gens)
+uv run exp1 --env test --config configs/new-config.yaml
+
+# 3. Verify experiment manifest
+cat output/experiment_manifest.json
+```
+
+## Documentation Requirements
+
+Each runtime mode config must have:
+1. **Header comment** explaining purpose
+2. **Killswitch states** explicitly set
+3. **Parameter explanations** for non-obvious values
+4. **Reference to docs** if complex (e.g., `See docs/02-user-guides/runtime-modes.md`)
+
+Example:
+```yaml
+# ============================================================================
+# RUNTIME MODE 3: NSGA-II + Repairs + Heuristics (No Local Search)
+# ============================================================================
+# Tests impact of 19 heuristics WITHOUT local search (LNS).
+# This isolates the contribution of heuristics alone.
+#
+# Expected results:
+# - Hard violations: 8-15 (good but not optimal)
+# - Improvement vs baseline: 70-80%
+#
+# See: docs/02-user-guides/runtime-modes.md#mode-3
+
+ga:
+  ngen: 2000
+  pop_size: 200
+  # ... rest of config
+```
+
+## When to Create New Config
+
+✅ **Do create** new config for:
+- New experimental mode
+- Thesis experiment configuration
+- Special hardware setup (GPU, large runners)
+
+❌ **Don't create** new config for:
+- One-off parameter tweaks (use CLI override instead)
+- Personal preferences (use environment configs)
+- Temporary debugging (modify test.yaml)
+
+## Config Hierarchy
+
+Priority order (highest to lowest):
+1. CLI arguments (`--ngen 100`)
+2. Custom config file (`--config path/to/config.yaml`)
+3. Environment config (`test.yaml`, `prod.yaml`)
+4. Base config (`base.yaml`)
+
+Example:
+```bash
+# Uses: CLI > custom > env > base
+uv run exp1 --env prod --config my-config.yaml --ngen 500
+# ngen=500 (CLI), other settings from my-config.yaml, then prod.yaml, then base.yaml
+```
+
+## Never Do
+
+- ❌ Use tabs instead of spaces
+- ❌ Hardcode system-specific values (use `null` for auto-detection)
+- ❌ Duplicate common settings in env files (put in base.yaml)
+- ❌ Add features without killswitches (`enabled: bool` field required)
+- ❌ Skip validation before committing (run `uv run verify-config`)
+- ❌ Commit configs without header comments explaining purpose

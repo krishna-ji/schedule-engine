@@ -1,8 +1,67 @@
-# Schedule Engine - Agent Guide
+# Schedule Engine - Copilot Agent Guide
 
-## Project Summary
+## 🎯 Project Overview
 
-University course scheduling engine using NSGA-II genetic algorithm with constraint-based optimization. Written in Python with DEAP, rich terminal UI, and YAML configuration.
+**Type**: University course scheduling optimization system  
+**Domain**: Educational timetabling, multi-objective optimization  
+**Language**: Python 3.12+  
+**Framework**: NSGA-II genetic algorithm with reinforcement learning  
+**Key Libraries**: DEAP (GA), PyTorch (RL/GPU), Stable-Baselines3 (RL), Pydantic (config), Rich (UI)  
+**Package Manager**: UV (modern, fast Python package installer)  
+**Architecture**: Modular constraint-based optimization with 10 progressive runtime modes
+
+## 🏗️ Build & Test Commands
+
+### Quick Setup
+```bash
+# Install dependencies (UV package manager)
+uv sync --frozen
+
+# Run quick smoke test (30 generations, ~5 min)
+uv run exp1 --env test
+
+# Run production experiment (2000 generations, ~2 hours with GPU)
+uv run exp1 --env prod
+```
+
+### Testing
+```bash
+# Run all unit tests
+pytest test/unit/
+
+# Run specific test file
+pytest test/unit/test_config_loader.py
+
+# Run with coverage
+pytest --cov=src --cov-report=html test/unit/
+```
+
+### Code Quality
+```bash
+# Format code (Black)
+black src/ test/
+
+# Lint (Ruff)
+ruff check src/ test/
+
+# Type checking (MyPy)
+mypy src/
+```
+
+### Validation Commands
+```bash
+# Verify configuration
+uv run verify-config
+
+# Check input data integrity
+uv run check-data
+
+# Diagnose GPU/system status
+uv run diagnose-system
+
+# List available experiments
+uv run list-experiments
+```
 
 ## Phase Roadmap & Status
 
@@ -143,15 +202,62 @@ Always log notable runs in `output/` and reference them inside documentation or 
 - `docs/08-qna/technical-questions.md` – active Q&A workspace for technical discussions.
 - `.github/instructions/*.instructions.md` – path-specific rules (config, GA, RL, constraints, etc.).
 
-## General Coding Standards
+## 📋 Coding Standards & Best Practices
 
-- **Python Style**: PEP 8 compliant
-- **Imports**: Standard lib → third-party → local (sorted alphabetically)
-- **Type Hints**: Use where beneficial
-- **Error Handling**: Informative error messages
-- **Logging**: Rich console for user-facing, logger for debugging
-- **Docstrings**: Required for all modules, classes, functions (NO separate .md files for code docs)
-- **Config Access**: `from src.config import get_config` (never import old `config.ga_params`)
+### Python Style Guidelines
+- **PEP 8 Compliant**: Line length 88 (Black default)
+- **Import Order**: Standard lib → third-party → local (sorted alphabetically)
+- **Type Hints**: Required for function signatures, use `from __future__ import annotations`
+- **Error Handling**: Raise informative exceptions with context
+- **Logging**: 
+  - Use `from src.utils.console_service import get_console` for user-facing output (Rich)
+  - Use `logging.getLogger(__name__)` for debugging
+- **Docstrings**: Google-style docstrings for all public APIs
+  - **NO separate .md files for code documentation** - docstrings only!
+- **Config Access**: 
+  - Always use `from src.config import get_config; config = get_config()`
+  - Never import deprecated `config.ga_params`
+
+### Code Organization
+```python
+# Standard lib imports
+import logging
+from pathlib import Path
+from typing import List, Dict, Optional
+
+# Third-party imports
+import numpy as np
+from deap import base, tools
+from rich.console import Console
+
+# Local imports
+from src.config import get_config
+from src.entities.course import Course
+from src.ga.sessiongene import SessionGene
+```
+
+### Naming Conventions
+- **Files**: `snake_case.py`
+- **Classes**: `PascalCase`
+- **Functions/Variables**: `snake_case`
+- **Constants**: `UPPER_SNAKE_CASE`
+- **Private**: Prefix with `_` (e.g., `_internal_helper()`)
+
+### Error Handling Pattern
+```python
+try:
+    result = risky_operation()
+except SpecificException as e:
+    logger.error(f"Operation failed: {e}", exc_info=True)
+    console.print(f"[red]Error:[/red] {e}")
+    raise
+```
+
+### Required Before Each Commit
+- Run `black src/ test/` - Auto-format code
+- Run `ruff check src/ test/` - Lint for issues
+- Run `pytest test/unit/` - Ensure tests pass
+- Verify config syntax if changed: `uv run verify-config`
 
 ## Documentation Policy
 
@@ -220,15 +326,43 @@ System design, component interactions, data flow:
 - Component relationships
 - Design patterns and principles
 
-## Commit Message Format
+## 📝 Commit Message Format
 
-Format: `<type>(<scope>): <summary>`
+**Format**: `<type>(<scope>): <summary>`
 
-Types: `feat`, `fix`, `refactor`, `test`, `doc`, `data`, `method`, `analysis`
+**Types**:
+- `feat`: New feature (e.g., `feat(rl): add hierarchical RL policy`)
+- `fix`: Bug fix (e.g., `fix(ga): correct fitness weight calculation`)
+- `refactor`: Code restructure (e.g., `refactor(config): simplify loader`)
+- `perf`: Performance improvement (e.g., `perf(gpu): add batch evaluator`)
+- `test`: Add/update tests (e.g., `test(constraints): add room capacity tests`)
+- `docs`: Documentation only (e.g., `docs(readme): update quickstart`)
+- `style`: Code style/formatting (e.g., `style(ga): apply black formatting`)
+- `chore`: Maintenance (e.g., `chore(deps): update deap to 1.4.1`)
 
-Use imperative mood, keep under 72 characters.
+**Guidelines**:
+- Use imperative mood ("add" not "added")
+- Keep summary under 72 characters
+- Include scope (module/file affected)
+- Add body for complex changes (after blank line)
 
-Example: `feat(config): simplify to base.yaml + 3 environments`
+**Examples**:
+```
+feat(gpu): integrate GPU batch evaluator for 10-50x speedup
+
+- Add GPUConstraintEvaluator class in ga/evaluator/
+- Update ga_scheduler to use GPU for batches >50
+- Fallback to CPU for small batches or GPU unavailable
+```
+
+```
+fix(constraints): correct instructor exclusivity calculation
+
+Room exclusivity was counting same-room conflicts incorrectly.
+Fixed by checking quantum overlap properly.
+
+Fixes #123
+```
 
 ## Path-Specific Instructions
 
