@@ -398,8 +398,8 @@ else:
 3. `src/rl/gym_env/schedule_env.py` - Fixed shallow copy bug (deep copy individuals)
 4. `src/rl/agents/ppo_agent.py` - Added batch_size validation
 5. `configs/base.yaml` - Fixed PPO n_steps (8192 → 512)
-6. `config-train/prod.yaml` - Reduced n_envs (32 → 8)
-7. `config-train/test.yaml` - Added n_envs=4 for fast testing
+6. `configs/training/prod.yaml` - Reduced n_envs (32 → 8)
+7. `configs/training/test.yaml` - Added n_envs=4 for fast testing
 
 ### Expected Behavior Now
 

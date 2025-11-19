@@ -21,7 +21,7 @@ The RL stack (environment, training, deployment, promotion) extends the GA sched
 
 ## Training (`src/rl/training/`)
 - CLIs (`train_script.py`, `generate_validation_set.py`, `select_best_checkpoint.py`) must support UV execution (`uv run train`, `uv run python ...`).
-- Training profiles in `config-train/` (test, med, prod) control curriculum stages and hyperparameters.
+- Training profiles in `configs/training/` (test, med, prod) control curriculum stages and hyperparameters.
 - Curriculum changes require YAML updates plus doc updates in `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`.
 - Callbacks should log to TensorBoard using the provided writer; do not create new logging sinks unless coordinated.
 - Always gate long-running operations behind `if __name__ == "__main__":` to keep modules import-safe.

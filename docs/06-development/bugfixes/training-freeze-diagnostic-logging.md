@@ -114,7 +114,7 @@ if self.debug_logging:
 ## Configuration Changes
 Enabled debug logging by default in production config:
 
-**`config-train/prod.yaml`:**
+**`configs/training/prod.yaml`:**
 ```yaml
 # Debug logging (verbose environment progress)
 debug_logging: true
@@ -125,7 +125,7 @@ debug_log_interval: 25 # Log every 25 steps
 1. `src/rl/training/train_script.py` - Environment creation logging
 2. `src/rl/training/trainer.py` - Training diagnostics
 3. `src/rl/gym_env/schedule_env.py` - Step and reset logging
-4. `config-train/prod.yaml` - Enable debug logging
+- `configs/training/prod.yaml` - Enable debug logging
 
 ## Expected Output
 With these changes, users now see (Windows-compatible ASCII):

@@ -147,7 +147,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=DEFAULT_PROFILE,
         choices=profiles,
-        help="Training profile defined in config-train/",
+        help="Training profile defined in configs/training/",
     )
 
     parser.add_argument(
@@ -496,7 +496,7 @@ def main() -> None:
                 logger.info("  - %s", name)
         else:
             logger.warning(
-                "No training profiles found. Add YAML files to config-train/."
+                "No training profiles found. Add YAML files to configs/training/."
             )
         return
 

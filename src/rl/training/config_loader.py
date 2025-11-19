@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterable
 import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-TRAIN_CONFIG_DIR = PROJECT_ROOT / "config-train"
+TRAIN_CONFIG_DIR = PROJECT_ROOT / "configs" / "training"
 BASE_CONFIG_PATH = TRAIN_CONFIG_DIR / "base.yaml"
 DEFAULT_PROFILE = "test"
 
@@ -27,11 +27,7 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
     """Recursively merge two dictionaries."""
     merged = dict(base)
     for key, value in override.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
             merged[key] = _deep_merge(merged[key], value)
         else:
             merged[key] = value
