@@ -265,22 +265,46 @@ main_test.__doc__ = "Entry point for test runs (uv run test)"
 
 # Runtime mode entry points (Modes 1-10)
 _MODE_MAPPING = {
-    "baseline": ("baseline", "Mode 1: Pure NSGA-II (uv run baseline)"),
-    "repairs": ("nsga-repairs", "Mode 2: NSGA-II + repairs (uv run repairs)"),
+    "baseline": (
+        RuntimeMode.BASELINE.value,
+        "Mode 1: Pure NSGA-II (uv run baseline)",
+    ),
+    "repairs": (
+        RuntimeMode.NSGA_REPAIRS.value,
+        "Mode 2: NSGA-II + repairs (uv run repairs)",
+    ),
     "heuristics": (
-        "nsga-heuristics",
+        RuntimeMode.NSGA_HEURISTICS.value,
         "Mode 3: NSGA-II + repairs + heuristics (uv run heuristics)",
     ),
-    "full": ("nsga-full", "Mode 4: Full GA (uv run full)"),
-    "rl": ("rl-guided", "Mode 5: RL-guided heuristics (uv run rl)"),
-    "roundrobin": ("roundrobin", "Mode 6: Round-robin (uv run roundrobin)"),
-    "specialists": ("rl-specialists", "Mode 7: RL specialists (uv run specialists)"),
-    "archive": ("archive-diversity", "Mode 8: Archive diversity (uv run archive)"),
+    "full": (
+        RuntimeMode.NSGA_FULL.value,
+        "Mode 4: Full GA (uv run full)",
+    ),
+    "rl": (
+        RuntimeMode.RL_GUIDED.value,
+        "Mode 5: RL-guided heuristics (uv run rl)",
+    ),
+    "roundrobin": (
+        RuntimeMode.ROUND_ROBIN.value,
+        "Mode 6: Round-robin (uv run roundrobin)",
+    ),
+    "specialists": (
+        RuntimeMode.RL_SPECIALISTS.value,
+        "Mode 7: RL specialists (uv run specialists)",
+    ),
+    "archive": (
+        RuntimeMode.ARCHIVE_DIVERSITY.value,
+        "Mode 8: Archive diversity (uv run archive)",
+    ),
     "hierarchical": (
-        "rl-hierarchical",
+        RuntimeMode.RL_HIERARCHICAL.value,
         "Mode 9: Hierarchical RL (uv run hierarchical)",
     ),
-    "multiagent": ("rl-multiagent", "Mode 10: Multi-agent RL (uv run multiagent)"),
+    "multiagent": (
+        RuntimeMode.RL_MULTIAGENT.value,
+        "Mode 10: Multi-agent RL (uv run multiagent)",
+    ),
 }
 
 # Generate entry points dynamically
