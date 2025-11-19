@@ -53,6 +53,12 @@ dev = [
 
 [project.scripts]
 # ==============================================================================
+#  INTERACTIVE LAUNCHER
+# ==============================================================================
+launcher = "scripts.interactive_launcher:main"        # Interactive menu with all commands
+run = "scripts.interactive_launcher:main"             # Alias for launcher
+
+# ==============================================================================
 # MAIN ENGINE ENTRY POINTS
 # ==============================================================================
 schedule-engine = "main:main"
@@ -84,7 +90,7 @@ ablation-heuristics-no-ls = "main:main_heuristics"    # Heuristics without local
 ablation-local-search = "main:main_full"              # Full with local search
 
 # ==============================================================================
-# ⚙️ ENVIRONMENT CONTROLS
+# ENVIRONMENT CONTROLS
 # ==============================================================================
 # Quick test runs (30 generations, ~5 minutes)
 test = "main:main_test"
@@ -161,7 +167,7 @@ benchmark-constraints = "scripts.cli:benchmark_constraints"
 benchmark-all = "scripts.cli:benchmark_all"              # Run all benchmarks
 
 # ==============================================================================
-# ⚙️ CONFIGURATION UTILITIES
+# CONFIGURATION UTILITIES
 # ==============================================================================
 show-config = "scripts.cli:show_config"      # All constraints
 show-repair = "scripts.cli:show_repair"       # Repair system config
@@ -170,7 +176,7 @@ show-time = "scripts.cli:show_time"           # Time system config
 list-experiments = "scripts.cli:list_experiments"        # List all available experiments
 
 # ==============================================================================
-# 🛠️ DEVELOPMENT UTILITIES
+# DEVELOPMENT UTILITIES
 # ==============================================================================
 tensorboard = "scripts.cli:tensorboard"       # Start TensorBoard server
 git-squash = "scripts.cli:git_squash"         # Interactive commit squashing

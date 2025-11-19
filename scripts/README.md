@@ -2,9 +2,33 @@
 
 Utility scripts for development, testing, training, and validation.
 
+---
+
+##  Interactive Launcher
+
+** The easiest way to run any command!**
+
+```bash
+uv run launcher    # Start interactive menu
+uv run run         # Shorter alias
+```
+
+**Features:**
+-  **Browse 50+ commands** in 10 organized categories
+-  **Descriptions + runtime estimates** for each command
+-  **Select by number** or type command name directly
+-  **Live command output** with colored formatting
+-  **Run multiple commands** in one session
+
+**Categories:** Thesis Experiments | Quick Tests | Production Runs | Runtime Modes | RL Training | Analysis | Diagnostics | Benchmarking | Configuration | Development
+
+**Full Guide:** [docs/QUICKREF_LAUNCHER.md](../docs/QUICKREF_LAUNCHER.md)
+
+---
+
 ##  Quick Start
 
-All scripts are accessible via **UV shortcuts** for easy execution:
+All scripts are also accessible via **UV shortcuts** for direct execution:
 
 ```bash
 # Diagnostics
@@ -131,7 +155,7 @@ python scripts/diagnostics/diagnose_gpu.py
 python scripts/diagnostics/test_dashboard_integration.py
 ```
 
-## 🛠️ Utilities
+## Utilities
 
 General-purpose helper scripts.
 
