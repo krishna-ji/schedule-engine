@@ -123,7 +123,7 @@ class ActionMapper:
             # Use shallow copy + list copy instead of deepcopy for 10-50x speedup
             individual_copy = copy.copy(individual)
             individual_copy[:] = individual[:]
-            if hasattr(individual, 'fitness') and hasattr(individual.fitness, 'values'):
+            if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):
                 individual_copy.fitness.values = individual.fitness.values
 
             import inspect
