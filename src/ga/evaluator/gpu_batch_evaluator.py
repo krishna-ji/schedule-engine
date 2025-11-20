@@ -213,6 +213,41 @@ class GPUConstraintEvaluator:
 
         return results
 
+    def evaluate_batch(
+        self,
+        population: List,
+        courses: List,
+        instructors: List,
+        groups: List,
+        rooms: List,
+    ) -> List[Tuple[float, float]]:
+        """Evaluate fitness for entire population using standard constraint system.
+
+        This method provides compatibility with the existing fitness evaluation
+        interface while leveraging GPU acceleration where possible.
+
+        Args:
+            population: List of individuals to evaluate
+            courses: Course entities
+            instructors: Instructor entities
+            groups: Group entities
+            rooms: Room entities
+
+        Returns:
+            List of fitness tuples (hard_penalty, soft_penalty) with negative values
+        """
+        # Import here to avoid circular dependency
+        from src.ga.evaluator.fitness import evaluate
+
+        # For now, fall back to CPU evaluation with proper constraint system
+        # TODO: Implement full GPU-accelerated constraint evaluation
+        fitness_values = []
+        for individual in population:
+            fitness = evaluate(individual, courses, instructors, groups, rooms)
+            fitness_values.append(fitness)
+
+        return fitness_values
+
     def is_available(self) -> bool:
         """Check if GPU evaluation is available."""
         return self.enabled
