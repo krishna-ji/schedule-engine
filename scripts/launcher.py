@@ -211,7 +211,11 @@ def main_interactive():
                 ("4", "train-rl --test", "Smoke test (10K steps, ~5-10 min)"),
                 ("5", "train-rl --med", "Medium run (50K steps, ~30-45 min)"),
                 ("6", "train-rl --prod", "Production (100K steps, ~1-2 hrs)"),
-                ("c", "train-rl --test --curriculum", "Curriculum learning (test profile)"),
+                (
+                    "c",
+                    "train-rl --test --curriculum",
+                    "Curriculum learning (test profile)",
+                ),
             ],
         ),
         # Utilities

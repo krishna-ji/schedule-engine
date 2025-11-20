@@ -620,7 +620,7 @@ def main() -> None:
             logger.info("[INFO] Curriculum learning: ENABLED")
             logger.info("[WARN] Curriculum learning not yet fully implemented!")
             logger.info("[INFO] Training will use standard approach for now.")
-        
+
         logger.info(
             "[DEBUG] About to call trainer.train() - this will start rollout collection"
         )
