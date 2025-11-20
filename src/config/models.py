@@ -11,7 +11,7 @@ class GAConfig(BaseModel):
     """Genetic Algorithm parameters"""
 
     ngen: int = Field(default=100, ge=1, le=10000)
-    pop_size: int = Field(default=8, ge=2, le=1000)
+    pop_size: int = Field(default=8, ge=2, le=10000)
     cxpb: float = Field(default=0.8, ge=0.0, le=1.0)
     mutpb: float = Field(default=0.3, ge=0.0, le=1.0)
     elite_preservation: bool = True
