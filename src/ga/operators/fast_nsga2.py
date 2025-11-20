@@ -20,7 +20,7 @@ def fast_nondominated_sort(population: List) -> List[List]:
     """
     if len(population) == 0:
         return []
-    
+
     # Use index-based tracking instead of using individuals as dict keys
     n = len(population)
     dominated_solutions = [[] for _ in range(n)]  # Indices dominated by each individual
