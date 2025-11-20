@@ -1,5 +1,5 @@
 """
-Hypervolume Indicator Calculation
+Hypervolume Indicator Calculation (pymoo-accelerated)
 
 The hypervolume indicator is the gold standard metric for multi-objective optimization.
 It measures the volume of objective space dominated by a Pareto front relative to a
@@ -9,16 +9,15 @@ Key properties:
 - Combines convergence and diversity into single metric
 - Monotonic: adding non-dominated solutions increases hypervolume
 - Reference point independent (for comparison)
-- Computationally expensive for large fronts
+- Fast computation using pymoo's optimized WFG algorithm (Cython backend)
 
-This implementation uses a custom hypervolume calculation since DEAP's tools.hypervolume()
-is actually a selector function (returns index of worst contributor), not a calculator.
-We implement the 2D case (hard + soft constraints) with O(n log n) complexity.
+Performance: pymoo's HV is 10-100x faster than pure Python implementations.
 """
 
 from typing import List, Tuple
 from deap import tools
 import numpy as np
+from pymoo.indicators.hv import HV
 
 
 def calculate_hypervolume(
@@ -92,33 +91,15 @@ def calculate_hypervolume(
         ref_hard = max(ref_hard, np.max(fitnesses[:, 0]) * 1.2 + 10.0)
         ref_soft = max(ref_soft, np.max(fitnesses[:, 1]) * 1.2 + 10.0)
 
-    # 2D Hypervolume Calculation (Sweep-Line Algorithm)
-    # Sort by first objective (hard constraints) in ascending order
-    sorted_indices = np.argsort(fitnesses[:, 0])
-    sorted_fitnesses = fitnesses[sorted_indices]
-
-    hypervolume = 0.0
-
-    # For each point, calculate the rectangle it contributes
-    # Rectangle extends from point to reference in both dimensions,
-    # but only counts area not covered by previous points
-    for i, point in enumerate(sorted_fitnesses):
-        obj1, obj2 = point
-
-        # Width: from current point to next point (or reference if last)
-        if i < len(sorted_fitnesses) - 1:
-            next_obj1 = sorted_fitnesses[i + 1, 0]
-        else:
-            next_obj1 = ref_hard
-
-        width = next_obj1 - obj1
-
-        # Height: from current point to reference
-        height = ref_soft - obj2
-
-        # Area contribution
-        if width > 0 and height > 0:
-            hypervolume += width * height
+    # Use pymoo's optimized hypervolume calculation (WFG algorithm, Cython backend)
+    # pymoo expects reference point as numpy array
+    ref_point_array = np.array([ref_hard, ref_soft])
+    
+    # Initialize HV indicator with reference point
+    hv_indicator = HV(ref_point=ref_point_array)
+    
+    # Calculate hypervolume (pymoo uses WFG algorithm for fast computation)
+    hypervolume = hv_indicator(fitnesses)
 
     return float(hypervolume)
 
