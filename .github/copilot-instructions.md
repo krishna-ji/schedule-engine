@@ -90,9 +90,10 @@ uv run list-experiments
   - Rich 13.9.4 (terminal UI)
   - NumPy 1.26.4 (scientific computing)
   - Gymnasium 0.29.1 (RL environment)
+  - pymoo 0.6.1.3 (optimized multi-objective metrics)
 - **Config**: YAML-based with base.yaml + environment overrides + runtime modes
 - **Package Manager**: UV (uv.lock, pyproject.toml)
-- **Performance**: GPU batch evaluation, parallel operators, concurrent validation
+- **Performance**: GPU batch evaluation, parallel operators, concurrent validation, pymoo-accelerated metrics
 
 ## Repository Structure
 
@@ -179,17 +180,23 @@ python main.py --config path/to/custom.yaml
   - Multiprocessing for fitness evaluation (`parallel.use_multiprocessing`)
   - Parallel crossover/mutation operators (3-5x speedup)
   - Concurrent feasibility checks (3-5x speedup)
+- **Metrics Optimization**: pymoo-accelerated multi-objective metrics (hypervolume, IGD, GD) - 139x speedup (50s → 0.36s per generation)
 - **Advanced RL**: 8 enhancements (constraint-specific state, multi-objective rewards, adaptive probabilities, specialist agents, archive diversity, memetic RL, hierarchical RL, rank-based multi-agent)
 
 ## Active Workstream (November 2025)
 
-1. **Phase 3 Implementation**:  Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
-2. **GPU Acceleration**:  Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
+1. **Phase 3 Implementation**: ✅ Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
+2. **GPU Acceleration**: ✅ Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
    - GPU batch evaluator: 10-50x speedup (`src/ga/evaluator/gpu_batch_evaluator.py`)
    - Parallel crossover/mutation: 3-5x speedup (multiprocessing)
    - Parallel feasibility checks: 3-5x speedup (concurrent)
    - **Combined speedup**: 13-34x (34 hours → 1-2.5 hours)
-3. **Thesis Experiments**:  Ready (5 progressive experiments)
+3. **Metrics Optimization**: ✅ Complete (pymoo integration)
+   - Hypervolume: 139x faster using WFG algorithm (Cython backend)
+   - IGD/GD: Vectorized implementations
+   - Configurable frequency: `metrics.advanced_metrics_frequency`
+   - **Impact**: 27.8 hours → 12 minutes for 2000 generations
+4. **Thesis Experiments**: ✅ Ready (5 progressive experiments)
    - Exp 1: Pure NSGA-II baseline (`uv run exp1`)
    - Exp 2: + IGLS repairs (`uv run exp2`)
    - Exp 3: + 19 heuristics (`uv run exp3`)

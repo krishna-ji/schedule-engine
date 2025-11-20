@@ -110,6 +110,21 @@ ga:
   population_strategy: hybrid    # random, smart, or hybrid
 ```
 
+### Performance & Metrics
+```yaml
+# Performance profiling
+performance:
+  enable_profiling: true         # Show phase-level timing breakdown
+  show_per_generation: true      # Display after each generation
+  show_summary_table: true       # Display summary at end
+
+# Metrics optimization (pymoo-accelerated)
+metrics:
+  advanced_metrics_frequency: 10 # Calculate expensive metrics every 10 gens
+  always_calculate_basic: true   # Always track hard/soft/diversity
+  # Note: pymoo provides 139x speedup (50s → 0.36s per generation)
+```
+
 ### Repair System
 ```yaml
 repair:

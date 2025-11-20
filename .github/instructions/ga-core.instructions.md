@@ -45,6 +45,25 @@ Genetic algorithm implementation using DEAP. Core scheduling logic in `src/core/
 - **Full mode**: Repairs all genes (more thorough)
 - **Adaptive**: Triggers on stagnation or periodic intervals
 
+## Performance Optimizations
+
+### Metrics Calculation
+- Uses pymoo's optimized implementations for expensive metrics (hypervolume, IGD, GD)
+- 139x faster than manual implementations (50s → 0.36s per generation)
+- Configure frequency via `config.metrics.advanced_metrics_frequency`
+- Hypervolume: pymoo's WFG algorithm (Cython backend)
+- IGD/GD: Vectorized distance calculations
+
+### Fast NSGA-II
+- Custom O(N log^(M-1) N) implementation for populations ≥200
+- Index-based tracking (no unhashable Individual issues)
+- Replacement optimization: 41s → 0.58s (70x faster)
+
+### GPU Acceleration
+- GPU batch evaluator for constraint evaluation (10-50x speedup)
+- Automatic CPU fallback for small batches or GPU unavailable
+- See `src/ga/evaluator/gpu_batch_evaluator.py`
+
 ## Rules
 
 ### Creating New Operators

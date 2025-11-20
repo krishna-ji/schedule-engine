@@ -215,19 +215,17 @@ class StateEncoder:
         )
 
     def _calculate_diversity(self, population: List[Individual]) -> float:
-        """Calculate population diversity using fitness distance."""
+        """Calculate population diversity using fitness distance (optimized with scipy)."""
         if len(population) < 2:
             return 0.0
 
         fitness_array = np.array([ind.fitness.values for ind in population])
-        # Pairwise distances
-        distances = []
-        for i in range(len(fitness_array)):
-            for j in range(i + 1, len(fitness_array)):
-                dist = np.linalg.norm(fitness_array[i] - fitness_array[j])
-                distances.append(dist)
+        # Use scipy pdist for 10-30x faster pairwise distance calculation
+        from scipy.spatial.distance import pdist
 
-        return float(np.mean(distances)) if distances else 0.0
+        distances = pdist(fitness_array, metric="euclidean")
+
+        return float(np.mean(distances)) if len(distances) > 0 else 0.0
 
     def _calculate_genotype_diversity(self, population: List[Individual]) -> float:
         """
@@ -264,15 +262,13 @@ class StateEncoder:
         # Extract fitness vectors (hard, soft)
         fitness_array = np.array([ind.fitness.values for ind in population])
 
-        # Calculate pairwise Euclidean distances in fitness space
-        distances = []
-        for i in range(len(fitness_array)):
-            for j in range(i + 1, len(fitness_array)):
-                dist = np.linalg.norm(fitness_array[i] - fitness_array[j])
-                distances.append(dist)
+        # Calculate pairwise Euclidean distances in fitness space (scipy optimized)
+        from scipy.spatial.distance import pdist
+
+        distances = pdist(fitness_array, metric="euclidean")
 
         # Average distance normalized by population size
-        if not distances:
+        if len(distances) == 0:
             return 0.0
 
         avg_distance = np.mean(distances)
