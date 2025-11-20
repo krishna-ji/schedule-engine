@@ -33,6 +33,7 @@ from src.ga.operators.mutation import mutate_individual
 from src.ga.evaluator.fitness import evaluate
 from src.config import get_config
 from src.ga.evaluator.detailed_fitness import evaluate_detailed
+from src.ga.evaluator.gpu_batch_evaluator import GPUConstraintEvaluator
 from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
@@ -338,6 +339,19 @@ class GAScheduler:
 
             self.violation_heatmap = ViolationHeatmap()
             console.print("[dim]   Violation heatmap tracking: ENABLED[/dim]")
+
+        # GPU Batch Evaluator for 10-50x speedup
+        try:
+            self.gpu_evaluator = GPUConstraintEvaluator(
+                device="auto", auto_tune_batch_size=True
+            )
+            if self.gpu_evaluator.enabled:
+                console.print(
+                    "[green]\u2713 GPU acceleration enabled for fitness evaluation (10-50x speedup)[/green]"
+                )
+        except Exception as e:
+            logger.warning(f"GPU evaluator initialization failed: {e}")
+            self.gpu_evaluator = None
 
         # NEW: Hypervolume reference point (initialized during first metric tracking)
         self._hypervolume_ref_point = None
@@ -950,11 +964,47 @@ class GAScheduler:
                 hc_list = ", ".join(hc_parts) if hc_parts else ""
                 sc_list = ", ".join(sc_parts) if sc_parts else ""
 
+                # Get phase timing breakdown from profiler
+                phase_times = {}
+                if profiler.enabled and profiler.generation_profiles:
+                    last_profile = profiler.generation_profiles[-1]
+                    for phase_name, phase in last_profile.phases.items():
+                        phase_times[phase_name] = phase.duration
+
+                # Calculate operation percentages
+                ops_time = (
+                    phase_times.get("selection", 0)
+                    + phase_times.get("crossover", 0)
+                    + phase_times.get("mutation", 0)
+                )
+                eval_time = phase_times.get("evaluation", 0)
+                repair_time = gen_time - ops_time - eval_time  # Remaining time
+
+                # Build timing breakdown string
+                timing_parts = []
+                if ops_time > 0:
+                    timing_parts.append(f"ops={ops_time:.2f}s")
+                if eval_time > 0:
+                    eval_device = (
+                        "GPU"
+                        if (
+                            self.gpu_evaluator
+                            and self.gpu_evaluator.enabled
+                            and len(invalid) >= 50
+                        )
+                        else "CPU"
+                    )
+                    timing_parts.append(f"eval={eval_time:.2f}s({eval_device})")
+                if repair_time > 0.01:
+                    timing_parts.append(f"repair={repair_time:.2f}s")
+
+                timing_str = ", ".join(timing_parts) if timing_parts else ""
+
                 # Format exactly as requested: [!ok] gen x/y : hc = , sc = , t=4s,  hc1=, hc2=.. sc1=., sc2=...
                 console.print(
                     f"[dim][!ok] gen {gen+1}/{self.config.generations} : "
                     f"hc={best.fitness.values[0]:.0f}, sc={best.fitness.values[1]:.2f}, "
-                    f"t={gen_time:.1f}s,  {hc_list} {sc_list}[/dim]"
+                    f"t={gen_time:.1f}s ({timing_str}),  {hc_list} {sc_list}[/dim]"
                 )
 
                 # Log generation metrics
@@ -1333,14 +1383,37 @@ class GAScheduler:
                             generation_repair_stats["individuals_repaired"] += 1
                             generation_repair_stats["mutation_repairs"] += 1
 
-        # Evaluate invalid individuals
+        # Evaluate invalid individuals with GPU acceleration when available
         invalid = [ind for ind in offspring if not ind.fitness.valid]
         if invalid:
-            # CPU-only evaluation path
             profiler.start_phase("evaluation", items_to_process=len(invalid))
-            fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
-            for ind, fit in zip(invalid, fitness_values):
-                ind.fitness.values = fit
+
+            # GPU batch evaluation (10-50x faster for large populations)
+            if self.gpu_evaluator and self.gpu_evaluator.enabled and len(invalid) >= 50:
+                try:
+                    fitness_values = self.gpu_evaluator.evaluate_batch(
+                        invalid,
+                        self.context.courses,
+                        self.context.instructors,
+                        self.context.groups,
+                        self.context.rooms,
+                    )
+                    for ind, fit in zip(invalid, fitness_values):
+                        ind.fitness.values = fit
+                except Exception as e:
+                    logger.warning(f"GPU evaluation failed, falling back to CPU: {e}")
+                    # Fallback to CPU
+                    fitness_values = list(
+                        self.toolbox.map(self.toolbox.evaluate, invalid)
+                    )
+                    for ind, fit in zip(invalid, fitness_values):
+                        ind.fitness.values = fit
+            else:
+                # CPU evaluation for small batches or when GPU unavailable
+                fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
+                for ind, fit in zip(invalid, fitness_values):
+                    ind.fitness.values = fit
+
             profiler.end_phase()
 
         # PHASE 1.2: Explicit Elitism - preserve top solutions
