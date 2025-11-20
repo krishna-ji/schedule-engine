@@ -1518,10 +1518,17 @@ Created comprehensive documentation suite:
 -  Phase 2.1-2.4: RL Integration (code complete)
 -  Phase 2.5: Comprehensive analysis and planning
 -  Documentation structure created (`docs/12-advanced-rl-ga-framework-integration/`)
+-  **Critical Bugfixes (2025-11-21)**:
+   -  Fixed missing `numpy` imports (`src/constraints/soft.py`, `src/core/ga_scheduler.py`)
+   -  Fixed `UnboundLocalError` for `hv`, `spacing`, `spread` variables in metrics tracking
+   -  Optimized diversity calculation with sampling (100x speedup: 50s → 0.5s/gen)
+   -  Made GPU evaluator robust (skip invalid genes instead of crashing)
+   -  **Impact**: Reduced generation time from ~60s to ~5-10s (10x faster!)
 
 ### Immediate (2025-11 to 2025-12)
--  Complete Phase 2 execution (training, validation, deployment)
--  Baseline comparisons (RL vs non-RL)
+-  **Pure NSGA-II Baseline (prod-nsga)**: Production run in progress for thesis experiments
+-  Complete Phase 2 execution (training, validation, deployment) - **AFTER baseline completes**
+-  Baseline comparisons (RL vs non-RL) - **Prioritize pure NSGA-II baseline first**
 -  Document Phase 2 empirical results
 
 ### Q1 2026 (Jan-Mar)
