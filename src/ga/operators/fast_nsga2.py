@@ -18,15 +18,16 @@ def fast_nondominated_sort(population: List) -> List[List]:
     Returns:
         List of fronts, where each front is a list of individuals
     """
+    if len(population) == 0:
+        return []
+    
     # Use index-based tracking instead of using individuals as dict keys
     n = len(population)
-    dominated_solutions = [
-        [] for _ in range(n)
-    ]  # List of dominated individuals per index
+    dominated_solutions = [[] for _ in range(n)]  # Indices dominated by each individual
     dominating_count = [0] * n  # Count of individuals dominating each individual
     fronts = [[]]
 
-    # Fast domination checking
+    # Fast domination checking - compare all pairs
     for i in range(n):
         for j in range(i + 1, n):
             # Check if i dominates j or vice versa
@@ -37,28 +38,38 @@ def fast_nondominated_sort(population: List) -> List[List]:
                 dominated_solutions[j].append(i)
                 dominating_count[i] += 1
 
-        # If no one dominates ind_i, it's in front 0
+    # Collect individuals in front 0 (not dominated by anyone)
+    for i in range(n):
         if dominating_count[i] == 0:
             population[i].fitness.rank = 0
             fronts[0].append(i)
 
     # Build subsequent fronts
-    front_index = 0
-    while fronts[front_index]:
+    current_front = 0
+    while fronts[current_front]:
         next_front = []
-        for i in fronts[front_index]:
+        for i in fronts[current_front]:
+            # For each individual dominated by i, decrease its domination count
             for j in dominated_solutions[i]:
                 dominating_count[j] -= 1
+                # If j is no longer dominated by anyone, add to next front
                 if dominating_count[j] == 0:
-                    population[j].fitness.rank = front_index + 1
+                    population[j].fitness.rank = current_front + 1
                     next_front.append(j)
 
-        front_index += 1
+        current_front += 1
         if next_front:
             fronts.append(next_front)
+        else:
+            break
 
     # Convert index-based fronts to individual-based fronts
     result_fronts = []
+    for front in fronts:
+        if front:  # Only include non-empty fronts
+            result_fronts.append([population[i] for i in front])
+
+    return result_fronts
     for front in fronts:
         if front:
             result_fronts.append([population[i] for i in front])
