@@ -252,7 +252,7 @@ def _create_mode_entry_point(mode: str, env: str = "prod"):
         # Preserve user arguments (e.g. --experiment name)
         # Filter out 'uv run' artifacts if present, though usually sys.argv[1:] is enough
         user_args = sys.argv[1:]
-        
+
         # Construct new argv: script + forced args + user args
         sys.argv = ["main.py", "--mode", mode, "--env", env] + user_args
         sys.exit(main() or 0)
