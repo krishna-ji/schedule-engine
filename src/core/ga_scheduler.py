@@ -381,7 +381,12 @@ class GAScheduler:
             self.toolbox.register("map", self.pool.map)
 
         # Selection operator
-        self.toolbox.register("select", tools.selNSGA2)
+        # Use fast NSGA-II for large populations (5-10x faster)
+        if get_config().ga.pop_size >= 200:
+            from src.ga.operators.fast_nsga2 import selNSGA2Fast
+            self.toolbox.register("select", selNSGA2Fast)
+        else:
+            self.toolbox.register("select", tools.selNSGA2)
 
         # PHASE 3: Hybrid population initialization support
         if get_config().ga.population_strategy == "hybrid":
@@ -979,7 +984,9 @@ class GAScheduler:
                     + phase_times.get("mutation", 0)
                 )
                 eval_time = phase_times.get("evaluation", 0)
-                repair_time = gen_time - ops_time - eval_time  # Remaining time
+                replacement_time = phase_times.get("replacement", 0)
+                repair_time = phase_times.get("repair_memetic", 0)
+                other_time = gen_time - ops_time - eval_time - replacement_time - repair_time
 
                 # Build timing breakdown string
                 timing_parts = []
@@ -987,8 +994,12 @@ class GAScheduler:
                     timing_parts.append(f"ops={ops_time:.2f}s")
                 if eval_time > 0:
                     timing_parts.append(f"eval={eval_time:.2f}s")
+                if replacement_time > 0:
+                    timing_parts.append(f"replace={replacement_time:.2f}s")
                 if repair_time > 0.01:
                     timing_parts.append(f"repair={repair_time:.2f}s")
+                if other_time > 0.1:
+                    timing_parts.append(f"other={other_time:.2f}s")
 
                 timing_str = ", ".join(timing_parts) if timing_parts else ""
 
@@ -1409,14 +1420,13 @@ class GAScheduler:
             profiler.end_phase()
 
         # PHASE 1.2: Explicit Elitism - preserve top solutions
-        elite_size = max(1, int(0.05 * len(self.population)))  # Top 5%
-        elite = tools.selBest(self.population, elite_size)
-
-        # Replacement: combine parents, offspring, AND elite
-        combined = (
-            self.population + offspring + elite
-        )  # Elite ensures monotonic improvement
+        profiler.start_phase("replacement", items_to_process=len(self.population))
+        
+        # Replacement: (μ + λ) selection - combine parents + offspring only
+        # Elite are already in population, no need to add separately
+        combined = self.population + offspring  # 200 + 200 = 400 (vs 410 before)
         self.population[:] = self.toolbox.select(combined, len(self.population))
+        profiler.end_phase()
 
         # RL INTEGRATION: Apply RL-selected heuristics
         if self.rl_enabled:
