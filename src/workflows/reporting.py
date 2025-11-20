@@ -11,6 +11,7 @@ Expected speedup: 5-10x on multi-core systems.
 from typing import List, Dict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+from src.utils.system_info import get_cpu_count
 from src.entities.decoded_session import CourseSession
 from src.entities.course import Course
 from src.encoder.quantum_time_system import QuantumTimeSystem
@@ -300,7 +301,7 @@ def generate_reports(
 
     import os
 
-    max_workers = os.cpu_count() or 8  # Auto-detect, fallback to 8
+    max_workers = get_cpu_count()  # Auto-detect all cores
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         future_to_plot = {

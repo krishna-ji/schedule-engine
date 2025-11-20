@@ -6,7 +6,7 @@ achieving 10-16x speedup by fully utilizing all CPU cores.
 
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from typing import List, Callable, Any
-import multiprocessing as mp
+from src.utils.system_info import get_cpu_count
 import logging
 import random
 from src.utils.parallel_worker import init_worker, get_worker_context
@@ -29,7 +29,7 @@ class ParallelHeuristicExecutor:
             use_threads: Use threads instead of processes (faster for I/O-bound)
         """
         if max_workers is None:
-            max_workers = mp.cpu_count()
+            max_workers = get_cpu_count()
         self.max_workers = max_workers
         self.use_threads = use_threads
 
@@ -94,12 +94,12 @@ class ParallelHeuristicExecutor:
             executor_kwargs["initargs"] = (data_dir, random.randint(0, 10000))
 
         try:
-            # Process in parallel
+            # Process in parallel with order preservation
             with ExecutorClass(**executor_kwargs) as executor:
+                # If using processes, DO NOT pass context (it's loaded in worker)
+                submit_context = context if self.use_threads else None
+
                 # Submit all chunks
-                # If using processes, DO NOT pass context (it's loaded in worker)
-                submit_context = context if self.use_threads else None
-
                 futures = [
                     executor.submit(
                         self._apply_to_chunk, heuristic_func, chunk, submit_context
@@ -107,53 +107,20 @@ class ParallelHeuristicExecutor:
                     for chunk in chunks
                 ]
 
-                # Collect results as they complete
+                # Collect results IN ORDER (not as_completed which scrambles order)
                 results = []
-                for future in as_completed(futures):
+                for i, future in enumerate(futures):
                     try:
-                        results.extend(future.result())
+                        # Add timeout to prevent hanging (60 seconds per chunk)
+                        chunk_results = future.result(timeout=60)
+                        results.extend(chunk_results)
                     except Exception as e:
-                        logger.error(f"Heuristic chunk failed: {e}")
-                        # Use original individuals for failed chunks
-                        # Find which chunk failed (inefficient but robust)
-                        # Actually we can't easily map back without tracking indices
-                        # But we can just re-run sequentially for this chunk?
-                        # For now, just return empty or handle gracefully
-                        pass
-
-            # Flatten results (if order doesn't matter, or we need to sort)
-            # Since as_completed returns in random order, we should probably use map or track indices
-            # But apply_parallel usually implies order preservation?
-            # The original code used as_completed and extended results, which scrambles order!
-            # That might be another bug.
-            # Let's fix order preservation too.
-
-            # Re-submit with map to preserve order
-            with ExecutorClass(**executor_kwargs) as executor:
-                # If using processes, DO NOT pass context (it's loaded in worker)
-                submit_context = context if self.use_threads else None
-
-                # We need a wrapper to pass multiple args to map
-                # Or use submit and wait in order
-                futures = [
-                    executor.submit(
-                        self._apply_to_chunk, heuristic_func, chunk, submit_context
-                    )
-                    for chunk in chunks
-                ]
-
-                results = []
-                for future in futures:  # Wait in order
-                    try:
-                        results.extend(future.result())
-                    except Exception as e:
-                        logger.error(f"Heuristic chunk failed: {e}")
+                        logger.error(f"Heuristic chunk {i} failed: {e}")
                         # Fallback: process chunk sequentially
-                        # We need to find which chunk corresponds to this future
-                        # Since we iterate futures in order, we can find the chunk
-                        chunk_idx = futures.index(future)
-                        chunk = chunks[chunk_idx]
-                        results.extend([heuristic_func(ind, context) for ind in chunk])
+                        # Use enumerate index to directly access chunk (O(1) instead of O(n))
+                        results.extend(
+                            [heuristic_func(ind, context) for ind in chunks[i]]
+                        )
 
             return results
 

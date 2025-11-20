@@ -1,7 +1,7 @@
 from typing import List, Tuple
 import random
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import cpu_count
+from src.utils.system_info import get_cpu_count
 
 from src.ga.sessiongene import SessionGene
 from src.ga.individual import create_individual
@@ -144,7 +144,7 @@ def generate_course_group_aware_population(
         print(f"Found {len(course_group_pairs)} course-group pairs to schedule")
 
     # Determine parallelization strategy - USE ALL AVAILABLE CORES
-    num_workers = cpu_count() if parallel else 1
+    num_workers = get_cpu_count() if parallel else 1
 
     # For small populations or debugging, use sequential generation
     if n < 10 or not parallel or num_workers == 1:

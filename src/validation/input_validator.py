@@ -7,6 +7,7 @@ Fails fast with clear error messages to prevent cryptic runtime failures.
 
 from typing import List
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from src.utils.system_info import get_cpu_count
 from src.core.types import SchedulingContext
 from src.exceptions import DataValidationError
 from src.utils.console_service import get_console
@@ -96,9 +97,9 @@ class InputValidator:
                 self._validate_rooms,
             ]
 
-            import os
+            from src.utils.system_info import get_cpu_count
 
-            max_workers = os.cpu_count() or 4  # Auto-detect, fallback to 4
+            max_workers = get_cpu_count()  # Auto-detect all cores
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
                     executor.submit(check): check.__name__
@@ -119,7 +120,7 @@ class InputValidator:
                 self._validate_room_features_for_enrolled_courses,
             ]
 
-            max_workers = os.cpu_count() or 4  # Reuse from earlier
+            max_workers = get_cpu_count()  # Reuse from earlier
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
                     executor.submit(check): check.__name__

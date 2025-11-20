@@ -9,6 +9,7 @@ import os
 import random
 from datetime import datetime
 from typing import Dict, Optional
+from src.utils.system_info import get_cpu_count
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -524,7 +525,7 @@ def load_input_data(
     # Load JSON files concurrently (I/O-bound operations)
     import os
 
-    max_workers = os.cpu_count() or 4  # Auto-detect, fallback to 4
+    max_workers = get_cpu_count()  # Auto-detect all cores
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all loading tasks
         future_groups = executor.submit(

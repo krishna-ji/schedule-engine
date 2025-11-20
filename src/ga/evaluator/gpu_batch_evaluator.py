@@ -20,31 +20,60 @@ class GPUConstraintEvaluator:
     Particularly effective for large populations (500+) where CPU becomes bottleneck.
     """
 
-    def __init__(self, device="cuda"):
+    def __init__(self, device="cuda", auto_tune_batch_size=True):
         """Initialize GPU evaluator.
 
         Args:
             device: 'cuda', 'cpu', or 'auto' (auto-detect GPU)
+            auto_tune_batch_size: Automatically detect optimal batch size
         """
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.device = torch.device(device)
         self.enabled = self.device.type == "cuda"
+        self.optimal_batch_size = None
 
         if self.enabled:
-            logger.info(f"✓ GPU Evaluator initialized: {torch.cuda.get_device_name(0)}")
+            gpu_name = torch.cuda.get_device_name(0)
+            gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory // (
+                1024**3
+            )
+            logger.info(f"✓ GPU Evaluator initialized: {gpu_name} ({gpu_memory_gb}GB)")
+
+            if auto_tune_batch_size:
+                self.optimal_batch_size = self._auto_tune_batch_size(gpu_memory_gb)
+                logger.info(f"  Optimal batch size: {self.optimal_batch_size}")
         else:
             logger.info("GPU Evaluator disabled (no CUDA available)")
 
+    def _auto_tune_batch_size(self, gpu_memory_gb: int) -> int:
+        """Automatically determine optimal batch size based on GPU memory.
+
+        Args:
+            gpu_memory_gb: GPU memory in gigabytes
+
+        Returns:
+            Recommended batch size
+        """
+        # Conservative estimates to avoid OOM
+        if gpu_memory_gb >= 12:
+            return 256
+        elif gpu_memory_gb >= 8:
+            return 128
+        elif gpu_memory_gb >= 4:
+            return 64
+        else:
+            return 32
+
     def batch_evaluate_conflicts(
-        self, population: List[List[SessionGene]], batch_size: int = 128
+        self, population: List[List[SessionGene]], batch_size: int = None
     ) -> List[Tuple[int, int]]:
         """Evaluate constraints for entire population on GPU.
 
         Args:
             population: List of individuals (each is List[SessionGene])
-            batch_size: Number to process simultaneously (default: 128)
+            batch_size: Number to process simultaneously (None = use auto-tuned)
 
         Returns:
             List of (hard_violations, soft_violations) tuples
@@ -52,6 +81,10 @@ class GPUConstraintEvaluator:
         if not self.enabled:
             # Fallback to CPU (should not happen if properly configured)
             return [(0, 0) for _ in population]
+
+        # Use auto-tuned batch size if available and not specified
+        if batch_size is None:
+            batch_size = self.optimal_batch_size or 128
 
         results = []
 
@@ -86,10 +119,8 @@ class GPUConstraintEvaluator:
 
         max_genes = max(len(ind) for ind in batch)
 
-        # Create tensor: [batch_size, max_genes, features]
-        tensor = torch.zeros(
-            (len(batch), max_genes, 5), device=self.device, dtype=torch.long
-        )
+        # Create tensor on CPU first (faster than many small GPU allocations)
+        tensor = torch.zeros((len(batch), max_genes, 5), dtype=torch.long)  # CPU tensor
 
         for i, individual in enumerate(batch):
             for j, gene in enumerate(individual):
@@ -103,7 +134,8 @@ class GPUConstraintEvaluator:
                 tensor[i, j, 3] = len(gene.group_ids)  # Number of groups
                 tensor[i, j, 4] = len(gene.quanta)  # Duration
 
-        return tensor
+        # Single batch transfer to GPU (much faster than creating on GPU directly)
+        return tensor.to(self.device, non_blocking=True)
 
     def _evaluate_batch_gpu(self, batch_tensor: torch.Tensor) -> List[Tuple[int, int]]:
         """Vectorized constraint checking on GPU.
@@ -190,9 +222,13 @@ class GPUConstraintEvaluator:
 _gpu_evaluator = None
 
 
-def get_gpu_evaluator(device="auto") -> GPUConstraintEvaluator:
+def get_gpu_evaluator(
+    device="auto", auto_tune_batch_size=True
+) -> GPUConstraintEvaluator:
     """Get or create GPU evaluator singleton."""
     global _gpu_evaluator
     if _gpu_evaluator is None:
-        _gpu_evaluator = GPUConstraintEvaluator(device=device)
+        _gpu_evaluator = GPUConstraintEvaluator(
+            device=device, auto_tune_batch_size=auto_tune_batch_size
+        )
     return _gpu_evaluator

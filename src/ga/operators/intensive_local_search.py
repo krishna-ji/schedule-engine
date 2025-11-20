@@ -45,6 +45,7 @@ from copy import deepcopy
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
+from src.utils.system_info import get_cpu_count
 from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
 from src.ga.operators.local_search import optimize_gene_greedy, optimize_gene_exhaustive
@@ -155,7 +156,7 @@ def apply_exhaustive_search(
     improved_population = population.copy()
 
     # Determine number of workers - USE ALL AVAILABLE CORES
-    num_workers = multiprocessing.cpu_count() if parallel else 1
+    num_workers = get_cpu_count() if parallel else 1
 
     for pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout
@@ -165,9 +166,9 @@ def apply_exhaustive_search(
             break
 
         # Deep copy to avoid modifying original
-        improved_ind = deepcopy(original_ind)
+        candidate_ind = deepcopy(original_ind)
 
-        if parallel and num_workers > 1:
+        # Greedy gene-level optimization (parallel)tion (parallel)
             # PARALLEL: Optimize all genes concurrently
             gene_tasks = [
                 (
@@ -317,7 +318,7 @@ def apply_greedy_search(
     improved_population = population.copy()
 
     # Determine number of workers - USE ALL AVAILABLE CORES
-    num_workers = multiprocessing.cpu_count() if parallel else 1
+    num_workers = get_cpu_count() if parallel else 1
 
     for pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout

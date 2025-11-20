@@ -30,6 +30,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import box
 
+from src.utils.system_info import get_cpu_count
 from src.entities.course import Course
 from src.entities.instructor import Instructor
 from src.entities.room import Room
@@ -156,9 +157,9 @@ def check_feasibility(
 
     # Execute all checks concurrently
     results = []
-    import os
+    from src.utils.system_info import get_cpu_count
 
-    max_workers = os.cpu_count() or 5  # Auto-detect, fallback to 5
+    max_workers = get_cpu_count()  # Auto-detect all cores
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_check = {
             executor.submit(check_func, *args): name

@@ -7,7 +7,7 @@ This module implements the Large Neighborhood Search operator with IGLS
 from typing import List, Dict, Optional
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import os
+from src.utils.system_info import get_cpu_count
 import random
 
 from src.ga.sessiongene import SessionGene
@@ -344,7 +344,7 @@ def apply_lns_to_population(
 
     # Parallelize repair for 3-8x speedup (each repair takes ~5-30 seconds)
     if num_to_repair >= 2:
-        max_workers = os.cpu_count() or 4
+        max_workers = get_cpu_count()
         logger.info(
             f"LNS-IGLS: Repairing {num_to_repair} individuals in parallel ({max_workers} workers)"
         )

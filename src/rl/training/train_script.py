@@ -234,7 +234,7 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
     if args.n_envs is None:
         import os
 
-        args.n_envs = os.cpu_count() or 8  # Fallback to 8 if detection fails
+        args.n_envs = get_cpu_count()  # Auto-detect all cores
         logger.info(f"Auto-detected {args.n_envs} CPU cores for parallel training")
 
     # Device setting: always CPU-only execution (warn if profile requested GPU)

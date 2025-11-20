@@ -28,7 +28,7 @@ from src.ga.course_group_pairs import generate_course_group_pairs
 from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.core.types import SchedulingContext
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import cpu_count
+from src.utils.system_info import get_cpu_count
 
 
 def generate_hybrid_population(n: int, context: SchedulingContext) -> List:

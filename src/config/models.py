@@ -36,6 +36,29 @@ class ParallelConfig(BaseModel):
     num_workers: Optional[int] = Field(default=None, ge=1, le=64)
 
 
+class GPUConfig(BaseModel):
+    """GPU acceleration configuration"""
+
+    enabled: bool = Field(default=False, description="Enable GPU acceleration")
+    device: Literal["auto", "cuda", "cpu"] = Field(
+        default="auto", description="Device selection: auto, cuda, or cpu"
+    )
+    batch_size: int = Field(
+        default=128, ge=8, le=1024, description="GPU batch size for evaluation"
+    )
+    min_population_for_gpu: int = Field(
+        default=100,
+        ge=1,
+        description="Minimum population size to use GPU (smaller uses CPU)",
+    )
+    fallback_to_cpu: bool = Field(
+        default=True, description="Fall back to CPU if GPU fails"
+    )
+    auto_tune_batch_size: bool = Field(
+        default=True, description="Automatically tune batch size for GPU memory"
+    )
+
+
 class ExhaustiveSearchConfig(BaseModel):
     """Exhaustive local search configuration (fixed generations)"""
 
@@ -659,6 +682,7 @@ class Config(BaseModel):
 
     ga: GAConfig = Field(default_factory=GAConfig)
     parallel: ParallelConfig = Field(default_factory=ParallelConfig)
+    gpu: GPUConfig = Field(default_factory=GPUConfig)
     repair: RepairConfig = Field(default_factory=RepairConfig)
     lns: LNSConfig = Field(default_factory=LNSConfig)
     hard_constraints: HardConstraintsConfig = Field(
@@ -700,6 +724,7 @@ class Config(BaseModel):
         """Human-readable configuration summary"""
         parallel_mode = "enabled" if self.parallel.use_multiprocessing else "disabled"
         parallel_workers = self.parallel.num_workers or "auto"
+        gpu_mode = "enabled" if self.gpu.enabled else "disabled"
         repair_mode = "enabled" if self.repair.enabled else "disabled"
         feasibility_mode = "enabled" if self.feasibility.enable_checks else "disabled"
 
@@ -707,6 +732,7 @@ class Config(BaseModel):
   [dim]profile:[/dim] {self.name} ({self.environment})
   [dim]genetic algorithm:[/dim] {self.ga.ngen} gen x {self.ga.pop_size} pop | cx={self.ga.cxpb} mut={self.ga.mutpb}
   [dim]parallelization:[/dim] {parallel_mode} ({parallel_workers} workers)
+  [dim]gpu acceleration:[/dim] {gpu_mode} (batch={self.gpu.batch_size})
   [dim]repair heuristics:[/dim] {repair_mode} (max {self.repair.max_iterations} iterations)
   [dim]feasibility checks:[/dim] {feasibility_mode}
   [dim]data:[/dim] {self.io.data_dir}/ to {self.io.output_dir}/
