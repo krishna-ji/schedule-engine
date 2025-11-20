@@ -309,9 +309,20 @@ _MODE_MAPPING = {
 
 # Generate entry points dynamically
 for func_name, (mode_value, doc) in _MODE_MAPPING.items():
-    entry_point = _create_mode_entry_point(mode_value)
+    # Default (Prod)
+    entry_point = _create_mode_entry_point(mode_value, env="prod")
     entry_point.__doc__ = doc
     globals()[f"main_{func_name}"] = entry_point
+
+    # Explicit Prod
+    entry_point_prod = _create_mode_entry_point(mode_value, env="prod")
+    entry_point_prod.__doc__ = f"{doc} (Prod)"
+    globals()[f"main_{func_name}_prod"] = entry_point_prod
+
+    # Explicit Test
+    entry_point_test = _create_mode_entry_point(mode_value, env="test")
+    entry_point_test.__doc__ = f"{doc} (Test)"
+    globals()[f"main_{func_name}_test"] = entry_point_test
 
 
 if __name__ == "__main__":

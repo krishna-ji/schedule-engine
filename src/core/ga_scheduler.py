@@ -24,7 +24,8 @@ from rich.progress import (
 from rich.table import Table
 from rich.live import Live
 from rich.text import Text
-from concurrent.futures import ThreadPoolExecutor
+
+# from concurrent.futures import ThreadPoolExecutor  # Removed: GIL limits CPU parallelism
 
 from src.ga.population import generate_course_group_aware_population
 from src.ga.operators.crossover import crossover_course_group_aware
@@ -164,49 +165,39 @@ def _worker_evaluate(individual):
 
 
 # ============================================================================
-# Parallel Genetic Operators (PERFORMANCE OPTIMIZATION)
+# Genetic Operators (Sequential to avoid GIL thrashing)
 # ============================================================================
 
 
 def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
-    """Apply crossover in parallel using thread pool.
-
-    Speedup: 8-12x vs sequential for large populations (800+)
     """
-    if max_workers is None:
-        import multiprocessing
+    Apply crossover sequentially.
 
-        max_workers = multiprocessing.cpu_count()
-
-    def crossover_pair(i):
-        if i + 1 < len(offspring) and random.random() < cxpb:
+    NOTE: ThreadPoolExecutor removed because Python's GIL prevents true parallelism
+    for CPU-bound tasks like crossover. Multiprocessing overhead (pickling)
+    often outweighs benefits for simple operators. Sequential is faster and safer.
+    """
+    # Iterate in steps of 2: (0,1), (2,3), etc.
+    for i in range(0, len(offspring) - 1, 2):
+        if random.random() < cxpb:
             toolbox.mate(offspring[i], offspring[i + 1])
             del offspring[i].fitness.values
             del offspring[i + 1].fitness.values
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        list(executor.map(crossover_pair, range(1, len(offspring), 2)))
 
     return offspring
 
 
 def _parallel_mutation(offspring, mutpb, toolbox, max_workers=None):
-    """Apply mutation in parallel using thread pool.
-
-    Speedup: 8-12x vs sequential for large populations (800+)
     """
-    if max_workers is None:
-        import multiprocessing
+    Apply mutation sequentially.
 
-        max_workers = multiprocessing.cpu_count()
-
-    def mutate_one(mutant):
+    NOTE: ThreadPoolExecutor removed because Python's GIL prevents true parallelism
+    for CPU-bound tasks. Sequential execution avoids context switching overhead.
+    """
+    for mutant in offspring:
         if random.random() < mutpb:
             toolbox.mutate(mutant)
             del mutant.fitness.values
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        list(executor.map(mutate_one, offspring))
 
     return offspring
 
