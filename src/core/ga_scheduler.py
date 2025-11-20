@@ -621,7 +621,9 @@ class GAScheduler:
                 rl_config = get_config().rl
                 if rl_config.logging.log_heuristic_usage:
                     action_info = self.rl_action_mapper.get_action_info(action_id)
-                    action_name = action_info.name if action_info else f"action_{action_id}"
+                    action_name = (
+                        action_info.name if action_info else f"action_{action_id}"
+                    )
                     logger.debug(
                         f"Gen {gen}: RL applied '{action_name}' "
                         f"(modified {len(modified_individuals)} individuals)"
