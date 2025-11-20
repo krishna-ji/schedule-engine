@@ -384,6 +384,7 @@ class GAScheduler:
         # Use fast NSGA-II for large populations (5-10x faster)
         if get_config().ga.pop_size >= 200:
             from src.ga.operators.fast_nsga2 import selNSGA2Fast
+
             self.toolbox.register("select", selNSGA2Fast)
         else:
             self.toolbox.register("select", tools.selNSGA2)
@@ -986,7 +987,9 @@ class GAScheduler:
                 eval_time = phase_times.get("evaluation", 0)
                 replacement_time = phase_times.get("replacement", 0)
                 repair_time = phase_times.get("repair_memetic", 0)
-                other_time = gen_time - ops_time - eval_time - replacement_time - repair_time
+                other_time = (
+                    gen_time - ops_time - eval_time - replacement_time - repair_time
+                )
 
                 # Build timing breakdown string
                 timing_parts = []
@@ -1421,7 +1424,7 @@ class GAScheduler:
 
         # PHASE 1.2: Explicit Elitism - preserve top solutions
         profiler.start_phase("replacement", items_to_process=len(self.population))
-        
+
         # Replacement: (μ + λ) selection - combine parents + offspring only
         # Elite are already in population, no need to add separately
         combined = self.population + offspring  # 200 + 200 = 400 (vs 410 before)
