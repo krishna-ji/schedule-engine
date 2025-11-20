@@ -778,6 +778,7 @@ class GAScheduler:
     def _run_evolution(self):
         """Internal evolution loop implementation."""
         gen_times = []
+        profiler = get_profiler()
 
         # Create elapsed/remaining time bar (shows above progress bar)
         time_bar = Progress(
