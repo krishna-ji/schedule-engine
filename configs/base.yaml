@@ -42,6 +42,14 @@ performance:
   show_per_generation: true # Display timing after each generation
   show_summary_table: true # Display summary table at end
 
+# Metrics Configuration (Performance Optimization)
+metrics:
+  # Calculate expensive metrics (hypervolume, IGD, spread) every N generations
+  # Set to 1 for every generation (slow), 10 for every 10th (recommended), 50 for minimal
+  advanced_metrics_frequency: 10 # Only calculate hypervolume/IGD/spread every 10 gens
+  # Always calculate basic metrics (hard/soft violations, diversity) every generation
+  always_calculate_basic: true
+
 # GA Settings (common - ngen/pop_size overridden per environment)
 ga:
   cxpb: 0.75

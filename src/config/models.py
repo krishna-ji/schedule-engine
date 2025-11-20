@@ -50,6 +50,20 @@ class PerformanceConfig(BaseModel):
     )
 
 
+class MetricsConfig(BaseModel):
+    """Metrics calculation configuration (performance optimization)"""
+
+    advanced_metrics_frequency: int = Field(
+        default=10,
+        ge=1,
+        description="Calculate expensive metrics (hypervolume, IGD, spread) every N generations",
+    )
+    always_calculate_basic: bool = Field(
+        default=True,
+        description="Always calculate basic metrics (hard/soft violations, diversity)",
+    )
+
+
 class GPUConfig(BaseModel):
     """GPU acceleration configuration"""
 
@@ -697,6 +711,7 @@ class Config(BaseModel):
     ga: GAConfig = Field(default_factory=GAConfig)
     parallel: ParallelConfig = Field(default_factory=ParallelConfig)
     performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
+    metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     gpu: GPUConfig = Field(default_factory=GPUConfig)
     repair: RepairConfig = Field(default_factory=RepairConfig)
     lns: LNSConfig = Field(default_factory=LNSConfig)

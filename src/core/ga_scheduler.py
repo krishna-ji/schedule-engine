@@ -987,8 +987,14 @@ class GAScheduler:
                 eval_time = phase_times.get("evaluation", 0)
                 replacement_time = phase_times.get("replacement", 0)
                 repair_time = phase_times.get("repair_memetic", 0)
+                metrics_time = phase_times.get("metrics", 0)
                 other_time = (
-                    gen_time - ops_time - eval_time - replacement_time - repair_time
+                    gen_time
+                    - ops_time
+                    - eval_time
+                    - replacement_time
+                    - repair_time
+                    - metrics_time
                 )
 
                 # Build timing breakdown string
@@ -999,6 +1005,8 @@ class GAScheduler:
                     timing_parts.append(f"eval={eval_time:.2f}s")
                 if replacement_time > 0:
                     timing_parts.append(f"replace={replacement_time:.2f}s")
+                if metrics_time > 0.1:
+                    timing_parts.append(f"metrics={metrics_time:.2f}s")
                 if repair_time > 0.01:
                     timing_parts.append(f"repair={repair_time:.2f}s")
                 if other_time > 0.1:
@@ -1695,7 +1703,9 @@ class GAScheduler:
         self.metrics.repair_stats.append(generation_repair_stats)
 
         # Track metrics (also logs to constraint logger)
+        profiler.start_phase("metrics", items_to_process=len(self.population))
         self._track_metrics(gen, event_tracker)
+        profiler.end_phase()
 
         # End profiler generation and display breakdown
         profiler.end_generation()
@@ -1737,6 +1747,7 @@ class GAScheduler:
     def _track_metrics(self, gen: int, event_tracker=None):
         """
         Record metrics for current generation.
+        OPTIMIZED: Skip expensive metrics on non-tracked generations.
 
         Args:
             gen: Generation number (-1 for initial population, 0+ for evolved generations)
@@ -1755,7 +1766,18 @@ class GAScheduler:
         )
         from src.metrics.convergence import calculate_constraint_satisfaction_rate
 
-        # Basic metrics
+        # Determine if this is a tracked generation for expensive metrics
+        metrics_config = get_config().metrics
+        advanced_freq = metrics_config.advanced_metrics_frequency
+        # Always track: initial pop (-1), gen 0, last gen, or every Nth generation
+        is_tracked_gen = (
+            gen == -1
+            or gen == 0
+            or gen == self.config.generations - 1
+            or gen % advanced_freq == 0
+        )
+
+        # ALWAYS calculate basic metrics (fast, essential for progress tracking)
         self.metrics.hard_violations.append(
             min(ind.fitness.values[0] for ind in self.population)
         )
@@ -1765,50 +1787,85 @@ class GAScheduler:
         diversity = average_pairwise_diversity(self.population)
         self.metrics.diversity.append(diversity)
 
-        # Phase 1: Essential multi-objective metrics
-        # Calculate hypervolume (use consistent reference point)
-        if gen == 0 or gen == -1:
-            # First generation: establish reference point
-            self._hypervolume_ref_point = get_hypervolume_reference_point(
-                self.population, margin=0.1
-            )
+        # CONDITIONAL: Calculate expensive multi-objective metrics
+        if is_tracked_gen:
+            # Phase 1: Essential multi-objective metrics
+            # Calculate hypervolume (use consistent reference point)
+            if gen == 0 or gen == -1:
+                # First generation: establish reference point
+                self._hypervolume_ref_point = get_hypervolume_reference_point(
+                    self.population, margin=0.1
+                )
 
-        hv = calculate_hypervolume(self.population, self._hypervolume_ref_point)
-        self.metrics.hypervolume.append(hv)
+            hv = calculate_hypervolume(self.population, self._hypervolume_ref_point)
+            self.metrics.hypervolume.append(hv)
 
-        # Calculate spacing (Pareto front uniformity)
-        spacing = calculate_spacing(self.population)
-        self.metrics.spacing.append(spacing)
+            # Calculate spacing (Pareto front uniformity)
+            spacing = calculate_spacing(self.population)
+            self.metrics.spacing.append(spacing)
 
-        # Count Pareto front size
-        pf_size = get_pareto_front_size(self.population)
-        self.metrics.pareto_front_size.append(pf_size)
+            # Count Pareto front size
+            pf_size = get_pareto_front_size(self.population)
+            self.metrics.pareto_front_size.append(pf_size)
 
-        # Calculate feasibility rate
-        feas_rate = calculate_constraint_satisfaction_rate(self.population)
-        self.metrics.feasibility_rate.append(feas_rate)
+            # Calculate feasibility rate
+            feas_rate = calculate_constraint_satisfaction_rate(self.population)
+            self.metrics.feasibility_rate.append(feas_rate)
 
-        # Phase 2: Advanced metrics (IGD, Spread)
-        # IGD requires reference front - use initial population as reference
-        if gen == -1 or gen == 0:
-            # Store initial Pareto front as reference
-            pareto_front = tools.sortNondominated(
-                self.population, len(self.population), first_front_only=True
-            )[0]
-            self.metrics.reference_front = [ind for ind in pareto_front]
+            # Phase 2: Advanced metrics (IGD, Spread)
+            # IGD requires reference front - use initial population as reference
+            if gen == -1 or gen == 0:
+                # Store initial Pareto front as reference
+                pareto_front = tools.sortNondominated(
+                    self.population, len(self.population), first_front_only=True
+                )[0]
+                self.metrics.reference_front = [ind for ind in pareto_front]
 
-        # Calculate IGD if reference front exists
-        if self.metrics.reference_front:
-            igd = calculate_inverted_generational_distance(
-                self.population, self.metrics.reference_front
-            )
-            self.metrics.igd.append(igd)
+            # Calculate IGD if reference front exists
+            if self.metrics.reference_front:
+                igd = calculate_inverted_generational_distance(
+                    self.population, self.metrics.reference_front
+                )
+                self.metrics.igd.append(igd)
+            else:
+                self.metrics.igd.append(0.0)
+
+            # Calculate spread
+            spread = calculate_spread(self.population)
+            self.metrics.spread.append(spread)
         else:
-            self.metrics.igd.append(0.0)
+            # Skip expensive metrics, use placeholder values (reuse last known value)
+            if self.metrics.hypervolume:
+                self.metrics.hypervolume.append(self.metrics.hypervolume[-1])
+            else:
+                self.metrics.hypervolume.append(0.0)
 
-        # Calculate spread
-        spread = calculate_spread(self.population)
-        self.metrics.spread.append(spread)
+            if self.metrics.spacing:
+                self.metrics.spacing.append(self.metrics.spacing[-1])
+            else:
+                self.metrics.spacing.append(0.0)
+
+            if self.metrics.pareto_front_size:
+                self.metrics.pareto_front_size.append(
+                    self.metrics.pareto_front_size[-1]
+                )
+            else:
+                self.metrics.pareto_front_size.append(0)
+
+            if self.metrics.feasibility_rate:
+                self.metrics.feasibility_rate.append(self.metrics.feasibility_rate[-1])
+            else:
+                self.metrics.feasibility_rate.append(0.0)
+
+            if self.metrics.igd:
+                self.metrics.igd.append(self.metrics.igd[-1])
+            else:
+                self.metrics.igd.append(0.0)
+
+            if self.metrics.spread:
+                self.metrics.spread.append(self.metrics.spread[-1])
+            else:
+                self.metrics.spread.append(0.0)
 
         # Detailed constraint breakdown
         best = tools.selBest(self.population, 1)[0]
