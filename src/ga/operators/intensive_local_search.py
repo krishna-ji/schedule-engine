@@ -166,9 +166,9 @@ def apply_exhaustive_search(
             break
 
         # Deep copy to avoid modifying original
-        candidate_ind = deepcopy(original_ind)
+        improved_ind = deepcopy(original_ind)
 
-        # Greedy gene-level optimization (parallel)tion (parallel)
+        if parallel and num_workers > 1:
             # PARALLEL: Optimize all genes concurrently
             gene_tasks = [
                 (
