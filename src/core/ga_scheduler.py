@@ -986,16 +986,7 @@ class GAScheduler:
                 if ops_time > 0:
                     timing_parts.append(f"ops={ops_time:.2f}s")
                 if eval_time > 0:
-                    eval_device = (
-                        "GPU"
-                        if (
-                            self.gpu_evaluator
-                            and self.gpu_evaluator.enabled
-                            and len(invalid) >= 50
-                        )
-                        else "CPU"
-                    )
-                    timing_parts.append(f"eval={eval_time:.2f}s({eval_device})")
+                    timing_parts.append(f"eval={eval_time:.2f}s")
                 if repair_time > 0.01:
                     timing_parts.append(f"repair={repair_time:.2f}s")
 
