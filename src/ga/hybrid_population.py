@@ -27,6 +27,8 @@ from src.ga.population import generate_course_group_aware_population
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.core.types import SchedulingContext
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import cpu_count
 
 
 def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
@@ -79,21 +81,38 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
         context.courses, context.groups, hierarchy, silent=True
     )
 
+    # Determine parallelization strategy
+    num_workers = cpu_count()
+    use_parallel = num_workers > 1 and n >= 10
+
     # Generate greedy individuals (25%)
-    for i in range(greedy_count):
-        individual = _greedy_construction(context, pair_tuples)
-        if individual:
-            population.append(create_individual(individual))
+    if use_parallel:
+        greedy_tasks = [(context, pair_tuples) for _ in range(greedy_count)]
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            results = list(executor.map(_greedy_construction_wrapper, greedy_tasks))
+        population.extend([ind for ind in results if ind is not None])
+    else:
+        for i in range(greedy_count):
+            individual = _greedy_construction(context, pair_tuples)
+            if individual:
+                population.append(create_individual(individual))
 
     # Generate smart constraint-aware individuals (50%)
+    # Note: generate_course_group_aware_population handles its own parallelization
     smart_population = generate_course_group_aware_population(smart_count, context)
     population.extend(smart_population)
 
     # Generate random individuals (25%)
-    for i in range(random_count):
-        individual = _random_construction(context, pair_tuples)
-        if individual:
-            population.append(create_individual(individual))
+    if use_parallel:
+        random_tasks = [(context, pair_tuples) for _ in range(random_count)]
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            results = list(executor.map(_random_construction_wrapper, random_tasks))
+        population.extend([ind for ind in results if ind is not None])
+    else:
+        for i in range(random_count):
+            individual = _random_construction(context, pair_tuples)
+            if individual:
+                population.append(create_individual(individual))
 
     # Ensure we have exactly n individuals
     while len(population) < n:
@@ -382,3 +401,21 @@ def _random_gene(
         room_id=room_id,
         quanta=quanta,
     )
+
+
+def _greedy_construction_wrapper(args):
+    """Wrapper for parallel greedy construction."""
+    context, pair_tuples = args
+    individual = _greedy_construction(context, pair_tuples)
+    if individual:
+        return create_individual(individual)
+    return None
+
+
+def _random_construction_wrapper(args):
+    """Wrapper for parallel random construction."""
+    context, pair_tuples = args
+    individual = _random_construction(context, pair_tuples)
+    if individual:
+        return create_individual(individual)
+    return None
