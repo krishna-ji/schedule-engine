@@ -50,9 +50,9 @@ from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.ga.operators.repair_wrappers import repair_operator
 
 
-# ============================================================================
+# ================
 # 1. INSTRUCTOR AVAILABILITY REPAIR (Priority 1)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -197,9 +197,9 @@ def _find_instructor_available_slot(
     return None  # No valid slot found
 
 
-# ============================================================================
+# ================
 # Helper Functions
-# ============================================================================
+# ================
 
 
 def _find_available_slot_smart(
@@ -456,9 +456,9 @@ def _find_available_slot(
     return None  # No valid slot found
 
 
-# ============================================================================
+# ================
 # 2. GROUP OVERLAP REPAIRS (Priority 2: ~58 violations)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -554,9 +554,9 @@ def repair_group_overlaps(
     return fixes
 
 
-# ============================================================================
+# ================
 # 3. ROOM CONFLICT REPAIRS (Priority 3: ~35 violations)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -806,9 +806,9 @@ def _room_matches_requirements(room, course) -> bool:
     return False
 
 
-# ============================================================================
+# ================
 # 4. INSTRUCTOR CONFLICT REPAIRS (Priority 4)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -901,9 +901,9 @@ def repair_instructor_conflicts(
     return fixes
 
 
-# ============================================================================
+# ================
 # 5. INSTRUCTOR QUALIFICATION REPAIRS (Priority 5)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -978,9 +978,9 @@ def repair_instructor_qualifications(
     return fixes
 
 
-# ============================================================================
+# ================
 # 6. ROOM TYPE MISMATCH REPAIRS (Priority 6)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -1247,9 +1247,9 @@ def _try_time_shift_for_better_room(
     return False  # Could not find suitable time-room combination
 
 
-# ============================================================================
+# ================
 # 7. SESSION BLOCK CLUSTERING REPAIR (Priority 7 - Soft Constraint)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -1841,9 +1841,9 @@ def _is_quantum_free_for_gene(
     return True
 
 
-# ============================================================================
+# ================
 # 8. INCOMPLETE/EXTRA SESSIONS REPAIRS (Priority 8 - Complex)
-# ============================================================================
+# ================
 
 
 @repair_operator(
@@ -2018,9 +2018,9 @@ def _create_session_gene_for_course_group(
     return None  # Could not create valid gene
 
 
-# ============================================================================
+# ================
 # HELPER FUNCTIONS
-# ============================================================================
+# ================
 
 
 def _build_occupied_quanta_map(
@@ -2059,9 +2059,9 @@ def _build_occupied_quanta_map(
     return occupied
 
 
-# ============================================================================
+# ================
 # ORCHESTRATION: Apply repairs in priority order
-# ============================================================================
+# ================
 
 
 def repair_individual(
@@ -2188,9 +2188,9 @@ def repair_individual(
     return stats
 
 
-# ============================================================================
+# ================
 # UNIFIED REPAIR INTERFACE WITH SELECTIVE MODE
-# ============================================================================
+# ================
 
 
 def repair_individual_unified(
@@ -2340,9 +2340,9 @@ def _apply_multi_neighborhood_repair(
     return stats
 
 
-# ============================================================================
+# ================
 # MULTI-NEIGHBORHOOD LOCAL SEARCH (Phase 3 Enhancement)
-# ============================================================================
+# ================
 
 
 def repair_multi_neighborhood(

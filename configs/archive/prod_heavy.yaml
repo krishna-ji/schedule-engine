@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # HEAVY PRODUCTION - CPU/RAM STRESS TEST
-# ============================================================================
+# ================
 # Designed for 128GB RAM + High Core Count CPUs.
 # Maximizes parallel efficiency by increasing population size.
 

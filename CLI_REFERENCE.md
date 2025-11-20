@@ -62,7 +62,8 @@ uv run train-rl --med
 # Production (100K steps, ~1-2 hours)
 uv run train-rl --prod
 
-# With curriculum learning (auto-enabled in config)
+# With curriculum learning (staged difficulty - NOT YET FULLY IMPLEMENTED)
+uv run train-rl --test --curriculum
 uv run train-rl --prod --curriculum
 ```
 

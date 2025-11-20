@@ -70,9 +70,9 @@ def _worker_evaluate(individual):
     )
 
 
-# ============================================================================
+# ================
 # Genetic Operators (Sequential to avoid GIL thrashing)
-# ============================================================================
+# ================
 
 
 def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
@@ -1509,14 +1509,14 @@ class GAScheduler:
         )
         generation_repair_stats["total_fixes"] = max(category_total, phase_total)
 
-        # ========================================================================
+        # ============
         # NEW: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
-        # ========================================================================
+        # ============
         # Three-tier repair strategy with priority resolution:
         #   Tier 1: Exhaustive search (fixed generations: 3, 25)
         #   Tier 2: Greedy full search (stagnation-triggered)
         #   Tier 3: Selective probabilistic (post-mutation cleanup)
-        # ========================================================================
+        # ============
 
         repair_triggered = None  # Track which repair was applied
         igls_metrics = {}
@@ -1609,13 +1609,13 @@ class GAScheduler:
                 self.metrics.igls_history = []
             self.metrics.igls_history.append(igls_metrics)
 
-        # ========================================================================
+        # ============
         # END: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
-        # ========================================================================
+        # ============
 
-        # ========================================================================
+        # ============
         # LNS-IGLS REPAIR SYSTEM
-        # ========================================================================
+        # ============
         # Apply LNS-IGLS repair to best individuals when triggered
         lns_config = get_config().lns
         if lns_config.enabled:
@@ -1697,9 +1697,9 @@ class GAScheduler:
                         "[yellow]   LNS-IGLS repair: no improvements found[/yellow]"
                     )
 
-        # ========================================================================
+        # ============
         # END: LNS-IGLS REPAIR SYSTEM
-        # ========================================================================
+        # ============
 
         # Store generation repair stats
         self.metrics.repair_stats.append(generation_repair_stats)

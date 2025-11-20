@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # RUNTIME MODE 4: NSGA-II + Repairs + Heuristics + Local Search
-# ============================================================================
+# ================
 # Full GA with repairs, heuristics, and LNS-IGLS local search.
 # This is the "best GA" configuration without RL.
 

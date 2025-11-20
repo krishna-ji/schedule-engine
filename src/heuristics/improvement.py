@@ -46,9 +46,9 @@ from src.heuristics.utils import (
 )
 
 
-# ============================================================================
+# ================
 # KEMPE CHAIN (Graph coloring move for conflict resolution)
-# ============================================================================
+# ================
 
 
 @improvement_heuristic(
@@ -134,9 +134,9 @@ def kempe_chain(
     return improvements
 
 
-# ============================================================================
+# ================
 # EJECTION CHAIN (Advanced local search with cascading moves)
-# ============================================================================
+# ================
 
 
 @improvement_heuristic(
@@ -221,9 +221,9 @@ def ejection_chain(
     return improvements
 
 
-# ============================================================================
+# ================
 # VARIABLE DEPTH SEARCH (Multi-move lookahead optimization)
-# ============================================================================
+# ================
 
 
 @improvement_heuristic(
@@ -332,9 +332,9 @@ def variable_depth_search(
     return improvements
 
 
-# ============================================================================
+# ================
 # HELPER FUNCTIONS
-# ============================================================================
+# ================
 
 
 def _find_conflict_pairs(

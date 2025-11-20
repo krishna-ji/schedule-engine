@@ -52,20 +52,20 @@ dev = [
 ]
 
 [project.scripts]
-# ==============================================================================
+# ==================
 # UNIFIED CLI LAUNCHER
 # Convention: Main commands (0-9) = numbers, Helpers (a-z) = letters
 # Usage: uv run <command> --<profile>
 # Profiles: --test (smoke), --med (medium), --prod (full)
-# ==============================================================================
+# ==================
 
 # Interactive launcher (TUI menu)
 launcher = "scripts.launcher:main_interactive"
 run = "scripts.launcher:main_interactive"
 
-# ==============================================================================
+# ==================
 # MAIN COMMANDS (0-9): GA & RL Experiments
-# ==============================================================================
+# ==================
 
 # Command 0: Pure NSGA-II Baseline (Mode 1)
 nsga = "scripts.launcher:main_nsga"                   # uv run nsga --test/med/prod
@@ -81,9 +81,9 @@ test-nsga = "main:main_baseline_test"
 prod-nsga = "main:main_baseline_prod"                 
 train-rl-legacy = "src.rl.training.train_script:main" # Direct RL script
 
-# ==============================================================================
+# ==================
 # HELPER COMMANDS (a-z): Utilities & Diagnostics
-# ==============================================================================
+# ==================
 
 diagnose = "scripts.launcher:main_diagnose"           # uv run diagnose
 clean = "scripts.launcher:main_clean"                 # uv run clean  

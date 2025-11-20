@@ -54,17 +54,17 @@ class ConstraintMetadata:
     enabled_by_default: bool = True
 
 
-# ============================================================================
+# ================
 # GLOBAL REGISTRIES
-# ============================================================================
+# ================
 
 _HARD_CONSTRAINTS: Dict[str, ConstraintMetadata] = {}
 _SOFT_CONSTRAINTS: Dict[str, ConstraintMetadata] = {}
 
 
-# ============================================================================
+# ================
 # DECORATOR FUNCTIONS
-# ============================================================================
+# ================
 
 
 def hard_constraint(
@@ -179,9 +179,9 @@ def soft_constraint(
     return decorator
 
 
-# ============================================================================
+# ================
 # REGISTRY ACCESS FUNCTIONS
-# ============================================================================
+# ================
 
 
 def get_all_hard_constraints() -> Dict[str, ConstraintMetadata]:
@@ -286,9 +286,9 @@ def get_all_constraint_names() -> Dict[str, List[str]]:
     }
 
 
-# ============================================================================
+# ================
 # CONFIGURATION GENERATION HELPERS
-# ============================================================================
+# ================
 
 
 def get_constraints_needing_courses() -> List[str]:
@@ -339,9 +339,9 @@ def generate_constraint_config_template() -> Dict[str, Any]:
     return config
 
 
-# ============================================================================
+# ================
 # VALIDATION FUNCTIONS
-# ============================================================================
+# ================
 
 
 def validate_constraint_exists(name: str) -> bool:

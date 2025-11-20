@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # RUNTIME MODE 1: Pure NSGA-II Only (Baseline)
-# ============================================================================
+# ================
 # Minimal GA with no repairs, no heuristics, no enhancements.
 # Use this as the baseline for comparing all other modes.
 

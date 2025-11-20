@@ -143,6 +143,13 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--curriculum",
+        action="store_true",
+        default=False,
+        help="Enable curriculum learning (progressive difficulty stages)",
+    )
+
+    parser.add_argument(
         "--profile",
         type=str,
         default=DEFAULT_PROFILE,
@@ -217,6 +224,7 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
     args.seed = pick("seed")
     args.debug_logging = pick("debug_logging", False)
     args.debug_log_interval = pick("debug_log_interval", 25)
+    args.curriculum = pick("curriculum", False)
     if args.debug_log_interval is None:
         args.debug_log_interval = 25
     args.debug_log_interval = max(1, int(args.debug_log_interval))
@@ -608,6 +616,11 @@ def main() -> None:
         logger.info("STEP 4: Train Agent")
         logger.info("=" * 60)
 
+        if args.curriculum:
+            logger.info("[INFO] Curriculum learning: ENABLED")
+            logger.info("[WARN] Curriculum learning not yet fully implemented!")
+            logger.info("[INFO] Training will use standard approach for now.")
+        
         logger.info(
             "[DEBUG] About to call trainer.train() - this will start rollout collection"
         )

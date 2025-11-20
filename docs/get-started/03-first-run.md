@@ -106,9 +106,9 @@ cat report.txt
 
 Example report:
 ```
-============================================================
+
 Schedule Engine - Experiment Report
-============================================================
+
 
 Experiment: evaluation_20251120_123418
 Environment: test

@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # BASE CONFIGURATION - Shared Settings
-# ============================================================================
+# ================
 # All common settings shared across environments.
 # Environment-specific configs (prod/notprod/test) only override what differs.
 

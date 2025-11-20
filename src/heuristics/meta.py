@@ -40,9 +40,9 @@ from src.heuristics import perturbation
 from src.heuristics import improvement
 
 
-# ============================================================================
+# ================
 # VARIABLE NEIGHBORHOOD DESCENT (Systematic neighborhood exploration)
-# ============================================================================
+# ================
 
 
 @meta_heuristic(
@@ -112,9 +112,9 @@ def variable_neighborhood_descent(
     return total_improvements
 
 
-# ============================================================================
+# ================
 # ITERATED LOCAL SEARCH (Perturbation + local search cycles)
-# ============================================================================
+# ================
 
 
 @meta_heuristic(
@@ -192,9 +192,9 @@ def iterated_local_search(
     return improvements
 
 
-# ============================================================================
+# ================
 # ADAPTIVE LARGE NEIGHBORHOOD SEARCH (Dynamic destroy-repair)
-# ============================================================================
+# ================
 
 
 @meta_heuristic(
@@ -297,9 +297,9 @@ def adaptive_large_neighborhood(
     return improvements
 
 
-# ============================================================================
+# ================
 # GUIDED LOCAL SEARCH (Penalty-based guidance)
-# ============================================================================
+# ================
 
 
 @meta_heuristic(
@@ -385,9 +385,9 @@ def guided_local_search(
     return improvements
 
 
-# ============================================================================
+# ================
 # HELPER FUNCTIONS
-# ============================================================================
+# ================
 
 
 def _simple_fitness(individual: List[SessionGene], context: SchedulingContext) -> float:

@@ -37,9 +37,9 @@ from src.ga.operators.repair import (
 )
 
 
-# ============================================================================
+# ================
 # SELECTIVE REPAIR WRAPPER - Main Entry Point
-# ============================================================================
+# ================
 
 
 def repair_individual_selective(
@@ -181,9 +181,9 @@ def _get_selective_repair_function(repair_name: str):
     return selective_repairs.get(repair_name)
 
 
-# ============================================================================
+# ================
 # SELECTIVE REPAIR FUNCTIONS
-# ============================================================================
+# ================
 
 
 def repair_instructor_availability_selective(

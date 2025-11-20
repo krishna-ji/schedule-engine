@@ -5,9 +5,9 @@ Defines magic numbers, default values, and configuration constants
 used throughout the codebase for better maintainability.
 """
 
-# ============================================================================
+# ================
 # GENETIC ALGORITHM DEFAULTS
-# ============================================================================
+# ================
 
 # Fitness weights for multi-objective optimization
 # Both objectives are minimized: (hard_violations, soft_penalties)
@@ -25,9 +25,9 @@ HYBRID_SMART_RATIO = 0.50
 HYBRID_RANDOM_RATIO = 0.25
 
 
-# ============================================================================
+# ================
 # TIME SYSTEM CONSTANTS
-# ============================================================================
+# ================
 
 # Quantum duration in minutes
 DEFAULT_QUANTUM_MINUTES = 60
@@ -43,9 +43,9 @@ MAX_SESSION_COALESCENCE_DEFAULT = 3  # Max quanta per continuous session
 MAX_SESSIONS_PER_DAY_DEFAULT = 4
 
 
-# ============================================================================
+# ================
 # CONSTRAINT WEIGHTS (defaults if not in config)
-# ============================================================================
+# ================
 
 # Hard constraint default weights
 HARD_CONSTRAINT_WEIGHT_HIGH = 3.0
@@ -61,9 +61,9 @@ SOFT_CONSTRAINT_WEIGHT_LOW = 1.0
 SOFT_WEIGHT_FACTOR = 0.01
 
 
-# ============================================================================
+# ================
 # REPAIR SYSTEM DEFAULTS
-# ============================================================================
+# ================
 
 # Exhaustive search
 EXHAUSTIVE_SEARCH_GENERATIONS = [3, 25]
@@ -83,9 +83,9 @@ STAGNATION_COOLDOWN = 3  # Generations between triggers
 SELECTIVE_REPAIR_PROBABILITY = 0.3  # 30% of offspring
 
 
-# ============================================================================
+# ================
 # RL TRAINING DEFAULTS
-# ============================================================================
+# ================
 
 # TensorBoard
 TENSORBOARD_PORT = 6006
@@ -104,9 +104,9 @@ CHECKPOINT_DIR = "models/rl_agents/checkpoints"
 CHECKPOINT_INTERVAL = 10_000
 
 
-# ============================================================================
+# ================
 # OUTPUT & REPORTING
-# ============================================================================
+# ================
 
 # Directory names
 OUTPUT_BASE_DIR = "output"
@@ -121,9 +121,9 @@ PLOT_DPI = 300
 PLOT_FIGSIZE = (12, 8)
 
 
-# ============================================================================
+# ================
 # VALIDATION & FEASIBILITY
-# ============================================================================
+# ================
 
 # Tolerance margins
 FEASIBILITY_TOLERANCE = 0.02  # 2% margin for capacity checks
@@ -134,9 +134,9 @@ SEVERITY_WARNING = "warning"
 SEVERITY_INFO = "info"
 
 
-# ============================================================================
+# ================
 # MULTIPROCESSING
-# ============================================================================
+# ================
 
 # Worker defaults
 DEFAULT_WORKER_COUNT = None  # None = CPU count
@@ -144,9 +144,9 @@ MIN_WORKERS = 1
 MAX_WORKERS = 64
 
 
-# ============================================================================
+# ================
 # DISPLAY & UI
-# ============================================================================
+# ================
 
 # Console formatting
 CONSOLE_WIDTH = 80
@@ -164,9 +164,9 @@ COLOR_INFO = "cyan"
 COLOR_DIM = "dim"
 
 
-# ============================================================================
+# ================
 # RUNTIME MODES
-# ============================================================================
+# ================
 
 # Mode categories
 MODE_CATEGORY_BASELINE = "baseline"
@@ -178,9 +178,9 @@ MODE_CATEGORY_HYBRID = "hybrid"
 TOTAL_RUNTIME_MODES = 10
 
 
-# ============================================================================
+# ================
 # FILE PATHS (relative to project root)
-# ============================================================================
+# ================
 
 # Configuration
 CONFIGS_DIR = "configs"

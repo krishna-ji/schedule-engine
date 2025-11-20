@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # RUNTIME MODE 3B: NSGA-II + Repairs + Heuristics (No Local Search)
-# ============================================================================
+# ================
 # GA with repairs + 19 heuristics but WITHOUT LNS local search.
 # Tests heuristic effectiveness without the LNS enhancement.
 # Good for isolating heuristic-only contribution vs local search contribution.

@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # RUNTIME MODE 2: NSGA-II + IGLS Repairs
-# ============================================================================
+# ================
 # GA with repair system (IGLS) but no advanced heuristics.
 # Tests effectiveness of repair system alone.
 

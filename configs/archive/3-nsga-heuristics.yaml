@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # RUNTIME MODE 3: NSGA-II + Repairs + Small Heuristics
-# ============================================================================
+# ================
 # GA with repairs + Phase 1.5 heuristic toolbox (19 operators).
 # Tests effectiveness of heuristic operators without advanced enhancements.
 

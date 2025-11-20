@@ -47,9 +47,9 @@ from src.heuristics.utils import (
 )
 
 
-# ============================================================================
+# ================
 # RANDOM SWAP (Exchange time/room between two sessions)
-# ============================================================================
+# ================
 
 
 @perturbation_heuristic(
@@ -131,9 +131,9 @@ def random_swap(
     return swaps_performed
 
 
-# ============================================================================
+# ================
 # TEMPORAL SHIFT (Move session to different time slot)
-# ============================================================================
+# ================
 
 
 @perturbation_heuristic(
@@ -198,9 +198,9 @@ def temporal_shift(
     return shifts_performed
 
 
-# ============================================================================
+# ================
 # ROOM SHUFFLE (Reassign rooms to compatible sessions)
-# ============================================================================
+# ================
 
 
 @perturbation_heuristic(
@@ -270,9 +270,9 @@ def room_shuffle(
     return reassignments
 
 
-# ============================================================================
+# ================
 # INSTRUCTOR REASSIGN (Change instructor to qualified alternative)
-# ============================================================================
+# ================
 
 
 @perturbation_heuristic(
@@ -354,9 +354,9 @@ def instructor_reassign(
     return reassignments
 
 
-# ============================================================================
+# ================
 # MULTI-PERTURBATION (Chain multiple perturbation operators)
-# ============================================================================
+# ================
 
 
 @perturbation_heuristic(

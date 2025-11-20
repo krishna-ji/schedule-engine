@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # TEST CONFIGURATION - Smoke Test
-# ============================================================================
+# ================
 # Fast smoke test for validation - minimal generations.
 # Expected runtime: 5-10 minutes.
 # This config inherits all settings from base.yaml.

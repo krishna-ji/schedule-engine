@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # PROD LIGHT CONFIGURATION - Lighter version of Prod
-# ============================================================================
+# ================
 # Inherits from base.yaml, copies prod settings but with reduced iterations.
 
 name: "Production Light"

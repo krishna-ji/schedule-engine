@@ -37,9 +37,9 @@ from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.heuristics.registry import construction_heuristic
 
 
-# ============================================================================
+# ================
 # LARGEST DEGREE FIRST (Schedule most conflicting courses first)
-# ============================================================================
+# ================
 
 
 @construction_heuristic(
@@ -139,9 +139,9 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
     return individual
 
 
-# ============================================================================
+# ================
 # MOST CONSTRAINED FIRST (Schedule sessions with fewest options first)
-# ============================================================================
+# ================
 
 
 @construction_heuristic(
@@ -253,9 +253,9 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
     return individual
 
 
-# ============================================================================
+# ================
 # EARLIEST DEADLINE FIRST (Prioritize by scheduling urgency)
-# ============================================================================
+# ================
 
 
 @construction_heuristic(
@@ -349,9 +349,9 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
     return individual
 
 
-# ============================================================================
+# ================
 # HELPER FUNCTIONS
-# ============================================================================
+# ================
 
 
 def _calculate_conflict_degrees(context: SchedulingContext) -> Dict[str, int]:

@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # RUNTIME MODE 6: NSGA-II + Round-Robin Heuristic Selection
-# ============================================================================
+# ================
 # Full GA with round-robin heuristic selection (no RL).
 # Cycles through all enabled heuristics in fixed order.
 

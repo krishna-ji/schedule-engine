@@ -1,6 +1,6 @@
-# ============================================================================
+# ================
 # PROD CONFIGURATION - Best Possible Settings (No Constraints)
-# ============================================================================
+# ================
 # Maximum quality production run - use best hardware available.
 # Expected runtime: 24-48 hours on 16+ cores, 32+ GB RAM.
 # This config inherits all settings from base.yaml.

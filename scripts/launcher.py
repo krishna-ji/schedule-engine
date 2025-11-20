@@ -119,8 +119,11 @@ def main_train_rl():
     # Build argv for RL training
     sys.argv = ["train_script.py", "--profile", profile, "--agent", "ppo"]
 
-    # Map profile to timesteps (if not using curriculum)
-    if not args.curriculum:
+    # Add curriculum flag if requested
+    if args.curriculum:
+        sys.argv.append("--curriculum")
+    else:
+        # Map profile to timesteps (if not using curriculum)
         timestep_map = {"test": 10000, "med": 50000, "prod": 100000}
         sys.argv.extend(["--timesteps", str(timestep_map[profile])])
 
@@ -208,6 +211,7 @@ def main_interactive():
                 ("4", "train-rl --test", "Smoke test (10K steps, ~5-10 min)"),
                 ("5", "train-rl --med", "Medium run (50K steps, ~30-45 min)"),
                 ("6", "train-rl --prod", "Production (100K steps, ~1-2 hrs)"),
+                ("c", "train-rl --test --curriculum", "Curriculum learning (test profile)"),
             ],
         ),
         # Utilities

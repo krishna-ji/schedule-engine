@@ -259,9 +259,9 @@ Each runtime mode config must have:
 
 Example:
 ```yaml
-# ============================================================================
+# ================
 # RUNTIME MODE 3: NSGA-II + Repairs + Heuristics (No Local Search)
-# ============================================================================
+# ================
 # Tests impact of 19 heuristics WITHOUT local search (LNS).
 # This isolates the contribution of heuristics alone.
 #

@@ -66,9 +66,9 @@ class HeuristicMetadata:
     modifies_individual: bool = False
 
 
-# ============================================================================
+# ================
 # GLOBAL HEURISTIC REGISTRIES (by category)
-# ============================================================================
+# ================
 
 _CONSTRUCTION_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 _PERTURBATION_HEURISTICS: Dict[str, HeuristicMetadata] = {}
@@ -89,9 +89,9 @@ def _get_registry(category: HeuristicCategory) -> Dict[str, HeuristicMetadata]:
     return registries[category]
 
 
-# ============================================================================
+# ================
 # DECORATOR FUNCTIONS
-# ============================================================================
+# ================
 
 
 def _heuristic_decorator(category: HeuristicCategory):
@@ -147,9 +147,9 @@ diversity_heuristic = _heuristic_decorator(HeuristicCategory.DIVERSITY)
 meta_heuristic = _heuristic_decorator(HeuristicCategory.META)
 
 
-# ============================================================================
+# ================
 # REGISTRY ACCESS FUNCTIONS
-# ============================================================================
+# ================
 
 
 def get_all_heuristics() -> Dict[str, HeuristicMetadata]:
@@ -300,9 +300,9 @@ def list_all_heuristics() -> None:
         console.print(table)
 
 
-# ============================================================================
+# ================
 # STATISTICS TRACKING
-# ============================================================================
+# ================
 
 
 def get_heuristic_statistics_template() -> Dict[str, int]:
