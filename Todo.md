@@ -1524,6 +1524,13 @@ Created comprehensive documentation suite:
    -  Optimized diversity calculation with sampling (100x speedup: 50s → 0.5s/gen)
    -  Made GPU evaluator robust (skip invalid genes instead of crashing)
    -  **Impact**: Reduced generation time from ~60s to ~5-10s (10x faster!)
+-  **Unified CLI Launcher (2025-11-21)**:
+   -  Created `scripts/launcher.py` with profile-based routing
+   -  Clean command convention: Main (0-9), Helpers (a-z)
+   -  Profile hierarchy: test < med < prod (DRY principle)
+   -  User documentation: `CLI_REFERENCE.md`
+   -  Developer instructions: `.github/instructions/cli.instructions.md`
+   -  Backward compatibility maintained for legacy commands
 
 ### Immediate (2025-11 to 2025-12)
 -  **Pure NSGA-II Baseline (prod-nsga)**: Production run in progress for thesis experiments

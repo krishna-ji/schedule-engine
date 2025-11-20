@@ -53,49 +53,47 @@ dev = [
 
 [project.scripts]
 # ==============================================================================
-#  INTERACTIVE LAUNCHER
+# UNIFIED CLI LAUNCHER
+# Convention: Main commands (0-9) = numbers, Helpers (a-z) = letters
+# Usage: uv run <command> --<profile>
+# Profiles: --test (smoke), --med (medium), --prod (full)
 # ==============================================================================
-launcher = "scripts.interactive_launcher:main"        # Interactive menu with all commands
-run = "scripts.interactive_launcher:main"             # Alias for launcher
+
+# Interactive launcher (TUI menu)
+launcher = "scripts.launcher:main_interactive"
+run = "scripts.launcher:main_interactive"
 
 # ==============================================================================
-#  1. RL GUIDED HYPERHEURISTIC (Mode 5)
+# MAIN COMMANDS (0-9): GA & RL Experiments
 # ==============================================================================
-train-rl = "src.rl.training.train_script:main"        # Train RL agent
-train-curriculum = "src.rl.training.curriculum:main"  # Curriculum learning
-test-rl = "main:main_rl_test"                         # Test RL-guided (30 gens)
-prod-rl = "main:main_rl_prod"                         # Prod RL-guided (2000 gens)
+
+# Command 0: Pure NSGA-II Baseline (Mode 1)
+nsga = "scripts.launcher:main_nsga"                   # uv run nsga --test/med/prod
+baseline = "scripts.launcher:main_nsga"               # Alias
+
+# Command 5: RL Training
+train-rl = "scripts.launcher:main_train_rl"           # uv run train-rl --test/med/prod
+
+# Legacy entry points (backward compatibility)
+test = "main:main_test"                               # uv run test
+prod = "main:main_prod"                               # uv run prod
+test-nsga = "main:main_baseline_test"                 
+prod-nsga = "main:main_baseline_prod"                 
+train-rl-legacy = "src.rl.training.train_script:main" # Direct RL script
 
 # ==============================================================================
-#  2. NSGA-II ONLY (Mode 1 - Baseline)
+# HELPER COMMANDS (a-z): Utilities & Diagnostics
 # ==============================================================================
-test-nsga = "main:main_baseline_test"                 # Test Pure NSGA-II
-prod-nsga = "main:main_baseline_prod"                 # Prod Pure NSGA-II
 
-# ==============================================================================
-#  3. NSGA-II + REPAIR (Mode 2)
-# ==============================================================================
-test-repair = "main:main_repairs_test"                # Test NSGA + Repairs
-prod-repair = "main:main_repairs_prod"                # Prod NSGA + Repairs
+diagnose = "scripts.launcher:main_diagnose"           # uv run diagnose
+clean = "scripts.launcher:main_clean"                 # uv run clean  
+list-experiments = "scripts.launcher:main_list"       # uv run list-experiments
 
-# ==============================================================================
-#  4. NSGA-II + REPAIR + LOCAL SEARCH (Mode 4 - Full)
-# ==============================================================================
-test-ls = "main:main_full_test"                       # Test Full (Repairs + Heuristics + LNS)
-prod-ls = "main:main_full_prod"                       # Prod Full (Repairs + Heuristics + LNS)
-
-# ==============================================================================
-#  5. ROUND ROBIN HEURISTICS (Mode 6)
-# ==============================================================================
-test-roundrobin = "main:main_roundrobin_test"         # Test Round Robin
-prod-roundrobin = "main:main_roundrobin_prod"         # Prod Round Robin
-
-# ==============================================================================
-#  DIAGNOSTICS & UTILITIES
-# ==============================================================================
-diagnose-system = "scripts.cli:diagnose_system"       # Full system check
-clean-output = "scripts.cli:clean_output"             # Clean old output files
-list-experiments = "scripts.cli:list_experiments"     # List all available experiments
+# Utility scripts (accessed via cli.py registry)
+diagnose-gpu = "scripts.cli:diagnose_gpu"
+benchmark-gpu = "scripts.cli:benchmark_gpu"
+verify-config = "scripts.cli:verify_config"
+check-data = "scripts.cli:check_data"
 
 [[tool.uv.index]]
 name = "pytorch-cu121"

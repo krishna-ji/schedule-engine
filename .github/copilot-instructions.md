@@ -18,13 +18,31 @@
 # Install dependencies (UV package manager)
 uv sync --frozen
 
-# Run quick smoke test (30 generations, ~5 min)
-uv run exp1 --env test
+# Verify setup
+uv run diagnose
+```
 
-# Run production experiment (2000 generations, ~1-2.5 hours with GPU)
-uv run exp1 --env prod
+### Unified CLI Launcher (Recommended)
+```bash
+# NSGA-II Experiments (Main Command 0)
+uv run nsga --test      # Smoke test (30 gens, ~2 min)
+uv run nsga --med       # Medium (200 gens, ~30 min)
+uv run nsga --prod      # Production (2000 gens, ~3-5 hours)
 
-# Run thesis experiments (5 progressive experiments)
+# RL Training (Main Command 5)
+uv run train-rl --test  # Smoke test (10K steps, ~5-10 min)
+uv run train-rl --med   # Medium (50K steps, ~30-45 min)
+uv run train-rl --prod  # Production (100K steps, ~1-2 hours)
+
+# Helper Commands
+uv run diagnose         # Check GPU/system status
+uv run clean            # Clean output directory
+uv run list-experiments # Show experiment history
+```
+
+### Legacy Commands (Backward Compatible)
+```bash
+# Old-style experiment commands still work:
 uv run exp1  # Baseline (pure NSGA-II)
 uv run exp2  # + IGLS repairs
 uv run exp3  # + 19 heuristics (no local search)
@@ -56,19 +74,20 @@ ruff check src/ test/
 mypy src/
 ```
 
-### Validation Commands
+### Helper Commands
 ```bash
-# Verify configuration
-uv run verify-config
-
-# Check input data integrity
-uv run check-data
-
 # Diagnose GPU/system status
-uv run diagnose-system
+uv run diagnose
 
-# List available experiments
+# Clean old outputs
+uv run clean
+
+# List experiment history
 uv run list-experiments
+
+# Legacy commands (still supported)
+uv run verify-config
+uv run check-data
 ```
 
 ## Phase Roadmap & Status
@@ -142,35 +161,83 @@ Runtime mode configs support automatic killswitch validation.
 
 ## Running the Engine
 
+### Unified CLI (Recommended)
 ```bash
-# UV commands (recommended)
-uv run test      # Smoke test (30 gens, ~5-10 min)
-uv run prod      # Best quality (2000 gens, ~24-48 hours)
+# Main Commands (0-9)
+uv run nsga --test       # NSGA-II smoke test (30 gens, ~2 min)
+uv run nsga --med        # NSGA-II medium (200 gens, ~30 min)
+uv run nsga --prod       # NSGA-II production (2000 gens, ~3-5 hours)
 
-# Runtime mode shortcuts (UV)
+uv run train-rl --test   # RL training smoke test (10K steps, ~5-10 min)
+uv run train-rl --med    # RL training medium (50K steps, ~30-45 min)
+uv run train-rl --prod   # RL training production (100K steps, ~1-2 hours)
+
+# Helper Commands (a-z)
+uv run diagnose          # Check GPU/system/config
+uv run clean             # Remove old outputs
+uv run list-experiments  # Show experiment history
+
+# Custom options
+uv run nsga --prod --name "my-experiment"
+uv run train-rl --med --curriculum
+```
+
+### Legacy Commands (Backward Compatible)
+```bash
+# Old-style shortcuts still work:
 uv run baseline      # Mode 1: Pure NSGA-II baseline
 uv run repairs       # Mode 2: NSGA-II + IGLS repairs
 uv run heuristics    # Mode 3: NSGA-II + repairs + 19 heuristics
 uv run full          # Mode 4: Full GA (best non-RL)
 uv run rl            # Mode 5: RL-guided heuristic selection
-uv run roundrobin    # Mode 6: Fixed round-robin rotation
-uv run specialists   # Mode 7: RL with specialist agents
-uv run archive       # Mode 8: Archive-based diversity
-uv run hierarchical  # Mode 9: Hierarchical RL (two-level)
-uv run multiagent    # Mode 10: Rank-based multi-agent RL
 
-# Or Python directly
+# Python direct invocation:
 python main.py --env test
-python main.py --env prod
 python main.py --mode baseline --env test
-python main.py --list-modes
-python main.py --compare
 python main.py --config path/to/custom.yaml
 ```
 
+### Profile Hierarchy (DRY Principle)
+```
+base.yaml (common settings)
+  ↓
+test.yaml (30 gens, 10 pop) - smoke test
+  ↓
+med.yaml (200 gens, 100 pop) - medium validation
+  ↓
+prod.yaml (2000 gens, 500 pop) - full production
+```
+
+## CLI Convention (November 2025)
+
+**Philosophy**: Clean, unified CLI with profile-based experiments.
+
+**Command Structure**:
+- **Main Commands (0-9)**: Primary experiments (NSGA-II, RL training)
+- **Helper Commands (a-z)**: Utilities (diagnose, clean, list)
+- **Profiles**: `--test` (smoke), `--med` (medium), `--prod` (full)
+
+**Key Files**:
+- `scripts/launcher.py` - Unified CLI launcher with profile routing
+- `CLI_REFERENCE.md` - Complete CLI documentation
+- `pyproject.toml` - Script definitions in `[project.scripts]`
+
+**Quick Examples**:
+```bash
+# Smoke tests (local development)
+uv run nsga --test       # 2 min
+uv run train-rl --test   # 5-10 min
+
+# Production runs (VM deployment)
+uv run nsga --prod       # 3-5 hours
+uv run train-rl --prod   # 1-2 hours
+```
+
+**DRY Principle**: Configs inherit hierarchically (base → test → med → prod).
+
 ## Architecture
 
-- **Entry Point**: `main.py` with `main()` + environment-specific entry functions (`main_prod()`, `main_test()`)
+- **Entry Point**: `scripts/launcher.py` (unified CLI) → `main.py` (GA) or `src/rl/training/train_script.py` (RL)
 - **Runtime Modes**: 10 progressive modes (baseline → repairs → heuristics → full → RL-guided → round-robin → specialists → archive → hierarchical → multiagent) via `--mode` flag
 - **Experiment Management**: `src/workflows/experiment_manager.py` tracks runs in `manifest.json` with `ExperimentManager` class
 - **Workflow**: `src/workflows/standard_run.py` orchestrates: load → validate → feasibility → GA → decode → report
@@ -225,12 +292,12 @@ Always log notable runs in `output/` and reference them inside documentation or 
 
 ## Key References for Agents
 
-- `docs/INDEX.md` – master navigation for all documentation (start here!).
+- **`CLI_REFERENCE.md`** – **START HERE**: Quick reference for unified CLI launcher system with profiles.
+- `docs/INDEX.md` – master navigation for all documentation.
 - `PHASE_3_COMPLETION_SUMMARY.md` – **LATEST**: Complete Phase 3 implementation (27 files, 8 enhancements, GPU acceleration).
 - `docs/45-resource-unused-problem/THESIS_EXPERIMENTS_GUIDE.md` – **THESIS**: 5 progressive experiments with commands and expected results.
 - `docs/02-user-guides/runtime-modes.md` – comprehensive guide to 10 runtime modes and experiment management.
-- `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md` – complete summary of 8 advanced RL/GA enhancements.
-- `docs/QUICKREF_RUNTIME_MODES.md` – quick reference for runtime mode CLI usage.
+- `scripts/launcher.py` – unified CLI launcher implementation with profile support.
 - `docs/04-algorithms/nvidia-gpu/` – GPU acceleration guides and deployment documentation.
 - `src/ga/evaluator/gpu_batch_evaluator.py` – GPU batch evaluator implementation (10-50x speedup).
 - `Todo.md` – master backlog (currently focused on RL training and benchmarking).
@@ -403,6 +470,7 @@ Fixes #123
 
 Detailed module-specific instructions in `.github/instructions/`:
 
+- `cli.instructions.md` - CLI launcher system & command conventions
 - `config.instructions.md` - Configuration system
 - `ga-core.instructions.md` - GA operators & scheduler
 - `constraints.instructions.md` - Constraint functions
