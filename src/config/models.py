@@ -36,6 +36,20 @@ class ParallelConfig(BaseModel):
     num_workers: Optional[int] = Field(default=None, ge=1, le=64)
 
 
+class PerformanceConfig(BaseModel):
+    """Performance profiling configuration"""
+
+    enable_profiling: bool = Field(
+        default=True, description="Enable detailed performance profiling"
+    )
+    show_per_generation: bool = Field(
+        default=True, description="Show timing breakdown after each generation"
+    )
+    show_summary_table: bool = Field(
+        default=True, description="Show summary table at end of evolution"
+    )
+
+
 class GPUConfig(BaseModel):
     """GPU acceleration configuration"""
 
@@ -682,6 +696,7 @@ class Config(BaseModel):
 
     ga: GAConfig = Field(default_factory=GAConfig)
     parallel: ParallelConfig = Field(default_factory=ParallelConfig)
+    performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
     gpu: GPUConfig = Field(default_factory=GPUConfig)
     repair: RepairConfig = Field(default_factory=RepairConfig)
     lns: LNSConfig = Field(default_factory=LNSConfig)

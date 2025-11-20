@@ -82,7 +82,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
     )
 
     # Determine parallelization strategy
-    num_workers = cpu_count()
+    num_workers = get_cpu_count()
     use_parallel = num_workers > 1 and n >= 10
 
     # Generate greedy individuals (25%)

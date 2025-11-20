@@ -39,6 +39,7 @@ from src.workflows.reporting import generate_reports
 from src.utils.logger import GALogger
 from src.utils.constraint_logger import ConstraintLogger
 from src.utils.console_service import get_console
+from src.utils.performance_profiler import init_profiler, cleanup_profiler
 
 console = get_console()
 
@@ -392,6 +393,18 @@ def run_standard_workflow(
 
     logger.start_run()  # Mark start time
 
+    # Initialize performance profiler if enabled
+    profiling_enabled = (
+        getattr(config.performance, "enable_profiling", False)
+        if hasattr(config, "performance")
+        else False
+    )
+    if profiling_enabled:
+        init_profiler(enabled=True, console=console)
+        console.print(
+            "[dim]  performance profiling: [green]enabled[/green] (micro-breakdown per generation)[/dim]"
+        )
+
     scheduler = GAScheduler(
         ga_config,
         context,
@@ -405,6 +418,14 @@ def run_standard_workflow(
     scheduler.setup_toolbox()
     scheduler.initialize_population()
     scheduler.evolve()
+
+    # Cleanup profiler and show summary
+    if (
+        profiling_enabled
+        and hasattr(config.performance, "show_summary_table")
+        and config.performance.show_summary_table
+    ):
+        cleanup_profiler()
 
     # ═══════════════════════════════════════════════════════════════
     # SOLUTION DECODING

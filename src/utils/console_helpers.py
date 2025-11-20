@@ -1,4 +1,3 @@
-"""
 """Console output helpers for standardized messaging.
 
 Provides consistent formatting for success, warning, error, and info messages

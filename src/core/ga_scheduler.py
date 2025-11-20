@@ -38,6 +38,7 @@ from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
 from src.heuristics.parallel_executor import get_parallel_executor
 from src.utils.parallel_worker import get_worker_context
+from src.utils.performance_profiler import get_profiler
 
 console = get_console()
 logger = logging.getLogger(__name__)
@@ -1230,6 +1231,9 @@ class GAScheduler:
                 repair_config["memetic_mode"] = base_memetic
 
         # PHASE 1.3: Get adaptive probabilities based on search progress
+        profiler = get_profiler()
+        profiler.start_generation(gen)
+
         cxpb, mutpb = self._get_adaptive_probabilities(gen)
 
         # ENHANCEMENT: Override mutation probability if hypermutation is active
@@ -1246,12 +1250,16 @@ class GAScheduler:
                 )
 
         # Selection
+        profiler.start_phase("selection", items_to_process=len(self.population))
         offspring = self.toolbox.select(self.population, len(self.population))
         offspring = list(map(self.toolbox.clone, offspring))
+        profiler.end_phase()
 
         # PERFORMANCE: Parallel Crossover (8-12x faster for large populations)
         # Uses ThreadPoolExecutor to apply crossover to pairs concurrently
+        profiler.start_phase("crossover", items_to_process=len(offspring) // 2)
         offspring = _parallel_crossover(offspring, cxpb, self.toolbox)
+        profiler.end_phase()
 
         # Apply selective repairs after crossover (if enabled)
         if (
@@ -1292,7 +1300,9 @@ class GAScheduler:
 
         # PERFORMANCE: Parallel Mutation (8-12x faster for large populations)
         # Uses ThreadPoolExecutor to apply mutation concurrently
+        profiler.start_phase("mutation", items_to_process=len(offspring))
         offspring = _parallel_mutation(offspring, mutpb, self.toolbox)
+        profiler.end_phase()
 
         # Apply selective repairs after mutation (if enabled)
         if (
@@ -1327,9 +1337,11 @@ class GAScheduler:
         invalid = [ind for ind in offspring if not ind.fitness.valid]
         if invalid:
             # CPU-only evaluation path
+            profiler.start_phase("evaluation", items_to_process=len(invalid))
             fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
             for ind, fit in zip(invalid, fitness_values):
                 ind.fitness.values = fit
+            profiler.end_phase()
 
         # PHASE 1.2: Explicit Elitism - preserve top solutions
         elite_size = max(1, int(0.05 * len(self.population)))  # Top 5%
@@ -1361,6 +1373,7 @@ class GAScheduler:
             elite_count = max(1, int(elite_percentage * len(self.population)))
             elite_individuals = tools.selBest(self.population, elite_count)
 
+            profiler.start_phase("repair_memetic", items_to_process=elite_count)
             for individual in elite_individuals:
                 stats = repair_individual_unified(
                     individual,
@@ -1388,6 +1401,7 @@ class GAScheduler:
             )
             for ind, fit in zip(elite_individuals, fitness_values):
                 ind.fitness.values = fit
+            profiler.end_phase()
 
         # Finalize generation repair totals
         # Sum category fixes (after key mapping) plus phase-specific counts
@@ -1604,6 +1618,9 @@ class GAScheduler:
 
         # Track metrics (also logs to constraint logger)
         self._track_metrics(gen, event_tracker)
+
+        # End profiler generation and display breakdown
+        profiler.end_generation()
 
     def _get_adaptive_probabilities(self, gen: int) -> tuple[float, float]:
         """
