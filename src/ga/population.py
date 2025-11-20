@@ -9,6 +9,7 @@ from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
+from src.utils.parallel_worker import init_worker, get_worker_context
 
 console = get_console()
 
@@ -18,12 +19,22 @@ def _create_single_individual_wrapper(args):
     Wrapper function for parallel individual creation.
 
     Args:
-        args: Tuple of (individual_idx, course_group_pairs, context, silent)
+        args: Tuple of (individual_idx, course_group_pairs, silent)
+        Note: context is retrieved from worker global state to avoid pickling.
 
     Returns:
         Individual (list of SessionGenes) or None if creation failed
     """
-    individual_idx, course_group_pairs, context, silent = args
+    individual_idx, course_group_pairs, silent = args
+
+    # Get context from worker global state
+    try:
+        worker_data = get_worker_context()
+        context = worker_data["context"]
+    except RuntimeError:
+        # Fallback if not running in worker (should not happen in parallel mode)
+        # But if someone calls this directly...
+        return None
 
     genes = []
     used_quanta = set()
@@ -177,10 +188,25 @@ def generate_course_group_aware_population(
         # PARALLEL: Generate individuals concurrently
         population = []
 
-        # Prepare tasks for parallel execution
-        tasks = [(idx, course_group_pairs, context, silent) for idx in range(n)]
+        # Get data_dir from context config or default
+        data_dir = "data"
+        if (
+            context.config
+            and hasattr(context.config, "io")
+            and hasattr(context.config.io, "data_dir")
+        ):
+            data_dir = context.config.io.data_dir
 
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        # Prepare tasks for parallel execution - DO NOT pass context
+        tasks = [(idx, course_group_pairs, silent) for idx in range(n)]
+
+        # Use initializer to load data in workers
+        # This avoids pickling the large context object
+        with ProcessPoolExecutor(
+            max_workers=num_workers,
+            initializer=init_worker,
+            initargs=(data_dir, random.randint(0, 10000)),
+        ) as executor:
             # Generate all individuals in parallel
             results = list(executor.map(_create_single_individual_wrapper, tasks))
 

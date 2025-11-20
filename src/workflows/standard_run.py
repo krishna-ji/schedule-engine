@@ -214,13 +214,13 @@ def run_standard_workflow(
 
     if config.parallel.use_multiprocessing:
         import multiprocessing
-        from src.core.ga_scheduler import _worker_init
+        from src.utils.parallel_worker import init_worker
 
         # Create pool with worker initialization
         # Workers load data from JSON files (no pickling of complex objects!)
         pool = multiprocessing.Pool(
             processes=config.parallel.num_workers,
-            initializer=_worker_init,
+            initializer=init_worker,
             initargs=(data_dir, seed),
         )
         console.print(f"[cyan][!info] parallel mode:[/cyan] {pool._processes} workers")

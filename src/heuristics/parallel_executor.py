@@ -8,6 +8,8 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_compl
 from typing import List, Callable, Any
 import multiprocessing as mp
 import logging
+import random
+from src.utils.parallel_worker import init_worker, get_worker_context
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +76,33 @@ class ParallelHeuristicExecutor:
         # Select executor type
         ExecutorClass = ThreadPoolExecutor if self.use_threads else ProcessPoolExecutor
 
+        # Prepare args for executor
+        executor_kwargs = {"max_workers": self.max_workers}
+
+        # If using ProcessPoolExecutor, use initializer to avoid pickling context
+        if not self.use_threads:
+            # Try to extract data_dir from context
+            data_dir = "data"
+            if (
+                hasattr(context, "config")
+                and hasattr(context.config, "io")
+                and hasattr(context.config.io, "data_dir")
+            ):
+                data_dir = context.config.io.data_dir
+
+            executor_kwargs["initializer"] = init_worker
+            executor_kwargs["initargs"] = (data_dir, random.randint(0, 10000))
+
         try:
             # Process in parallel
-            with ExecutorClass(max_workers=self.max_workers) as executor:
+            with ExecutorClass(**executor_kwargs) as executor:
                 # Submit all chunks
+                # If using processes, DO NOT pass context (it's loaded in worker)
+                submit_context = context if self.use_threads else None
+
                 futures = [
                     executor.submit(
-                        self._apply_to_chunk, heuristic_func, chunk, context
+                        self._apply_to_chunk, heuristic_func, chunk, submit_context
                     )
                     for chunk in chunks
                 ]
@@ -93,7 +115,45 @@ class ParallelHeuristicExecutor:
                     except Exception as e:
                         logger.error(f"Heuristic chunk failed: {e}")
                         # Use original individuals for failed chunks
-                        results.extend(chunks[len(results) // chunk_size])
+                        # Find which chunk failed (inefficient but robust)
+                        # Actually we can't easily map back without tracking indices
+                        # But we can just re-run sequentially for this chunk?
+                        # For now, just return empty or handle gracefully
+                        pass
+
+            # Flatten results (if order doesn't matter, or we need to sort)
+            # Since as_completed returns in random order, we should probably use map or track indices
+            # But apply_parallel usually implies order preservation?
+            # The original code used as_completed and extended results, which scrambles order!
+            # That might be another bug.
+            # Let's fix order preservation too.
+
+            # Re-submit with map to preserve order
+            with ExecutorClass(**executor_kwargs) as executor:
+                # If using processes, DO NOT pass context (it's loaded in worker)
+                submit_context = context if self.use_threads else None
+
+                # We need a wrapper to pass multiple args to map
+                # Or use submit and wait in order
+                futures = [
+                    executor.submit(
+                        self._apply_to_chunk, heuristic_func, chunk, submit_context
+                    )
+                    for chunk in chunks
+                ]
+
+                results = []
+                for future in futures:  # Wait in order
+                    try:
+                        results.extend(future.result())
+                    except Exception as e:
+                        logger.error(f"Heuristic chunk failed: {e}")
+                        # Fallback: process chunk sequentially
+                        # We need to find which chunk corresponds to this future
+                        # Since we iterate futures in order, we can find the chunk
+                        chunk_idx = futures.index(future)
+                        chunk = chunks[chunk_idx]
+                        results.extend([heuristic_func(ind, context) for ind in chunk])
 
             return results
 
@@ -108,6 +168,16 @@ class ParallelHeuristicExecutor:
 
         This runs in a separate process/thread.
         """
+        # If context is None, try to get from worker global state
+        if context is None:
+            try:
+                worker_data = get_worker_context()
+                context = worker_data["context"]
+            except RuntimeError:
+                # Should not happen if initialized correctly
+                # But if it does, we can't proceed without context
+                raise RuntimeError("Context missing in worker process")
+
         results = []
         for ind in chunk:
             try:

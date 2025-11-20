@@ -122,8 +122,12 @@ def main():
 
         if sys.stdin and sys.stdin.isatty():
             try:
-                raw = input("Experiment name (optional): ").strip()
-                exp_name = raw if raw else None
+                raw = timed_input(
+                    "Experiment name (optional): ",
+                    timeout=10,
+                    default="noname_provided",
+                )
+                exp_name = raw.strip() if raw else None
             except Exception:
                 exp_name = None
         else:
@@ -228,6 +232,58 @@ def main():
             f"[dim]Experiment logged: {experiment_run.run_id} ({runtime_mode.display_name})[/dim]"
         )
         console.print()
+
+
+def timed_input(prompt, timeout=10, default=None):
+    """
+    Read input with a timeout.
+    Supports Windows (msvcrt) and Unix (select).
+    """
+    import sys
+    import time
+
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+
+    if sys.platform == "win32":
+        import msvcrt
+
+        start_time = time.time()
+        input_chars = []
+        while True:
+            if msvcrt.kbhit():
+                char = msvcrt.getwch()
+                if char == "\r" or char == "\n":
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                    return "".join(input_chars)
+                elif char == "\b" or ord(char) == 8:
+                    if input_chars:
+                        input_chars.pop()
+                        sys.stdout.write("\b \b")
+                        sys.stdout.flush()
+                elif ord(char) == 3:  # Ctrl+C
+                    raise KeyboardInterrupt
+                else:
+                    input_chars.append(char)
+                    sys.stdout.write(char)
+                    sys.stdout.flush()
+
+            if time.time() - start_time > timeout:
+                sys.stdout.write(f"\nTimeout! Using default: {default}\n")
+                sys.stdout.flush()
+                return default
+            time.sleep(0.05)
+    else:
+        import select
+
+        rlist, _, _ = select.select([sys.stdin], [], [], timeout)
+        if rlist:
+            return sys.stdin.readline().strip()
+        else:
+            sys.stdout.write(f"\nTimeout! Using default: {default}\n")
+            sys.stdout.flush()
+            return default
 
 
 def _create_env_entry_point(env: str):

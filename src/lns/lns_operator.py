@@ -4,10 +4,11 @@ This module implements the Large Neighborhood Search operator with IGLS
 (Iterated Guided Local Search) as the repair strategy.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
+import random
 
 from src.ga.sessiongene import SessionGene
 from src.ga.individual import create_individual
@@ -26,6 +27,7 @@ from src.lns.diagnostics import (
     build_conflict_graph,
     expand_neighborhood_bfs,
 )
+from src.utils.parallel_worker import init_worker, get_worker_context
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -88,10 +90,10 @@ def reset_lns_stats():
 
 def lns_igls_repair(
     individual: List[SessionGene],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
+    courses: Optional[Dict[tuple, Course]] = None,
+    instructors: Optional[Dict[str, Instructor]] = None,
+    groups: Optional[Dict[str, Group]] = None,
+    rooms: Optional[Dict[str, Room]] = None,
     max_subproblem_size: int = 20,
     min_subproblem_size: int = 4,
     expand_hops: int = 0,
@@ -114,7 +116,7 @@ def lns_igls_repair(
 
     Args:
         individual: GA individual to repair
-        courses, instructors, groups, rooms: Entity dictionaries
+        courses, instructors, groups, rooms: Entity dictionaries (Optional if in worker)
         max_subproblem_size: Maximum sessions to repair at once
         min_subproblem_size: Minimum sessions (skip if below)
         expand_hops: Expand neighborhood N hops in conflict graph (0=disabled)
@@ -125,6 +127,20 @@ def lns_igls_repair(
     Returns:
         Repaired individual if successful, original otherwise
     """
+    # If context is missing, try to get from worker global state
+    if courses is None:
+        try:
+            worker_data = get_worker_context()
+            courses = worker_data["courses"]
+            instructors = worker_data["instructors"]
+            groups = worker_data["groups"]
+            rooms = worker_data["rooms"]
+        except RuntimeError:
+            # Should not happen if initialized correctly
+            # But if it does, we can't proceed without context
+            logger.error("Context missing in LNS repair worker")
+            return individual
+
     import time
 
     start_time = time.time()
@@ -301,6 +317,7 @@ def apply_lns_to_population(
     num_individuals: int = 1,
     max_subproblem_size: int = 20,
     igls_time_limit: float = 5.0,
+    data_dir: str = "data",  # Added data_dir
 ) -> List[List[SessionGene]]:
     """
     Apply LNS-IGLS repair to the best individuals in a population.
@@ -314,6 +331,7 @@ def apply_lns_to_population(
         num_individuals: Number of best individuals to repair
         max_subproblem_size: Maximum subproblem size
         igls_time_limit: IGLS time limit
+        data_dir: Directory containing input JSON files (for worker init)
 
     Returns:
         Population with repaired individuals
@@ -331,15 +349,15 @@ def apply_lns_to_population(
             f"LNS-IGLS: Repairing {num_to_repair} individuals in parallel ({max_workers} workers)"
         )
 
-        # Prepare repair tasks
+        # Prepare repair tasks - DO NOT pass context
         repair_tasks = [
             (
                 i,
                 population[i],
-                courses,
-                instructors,
-                groups,
-                rooms,
+                None,  # courses
+                None,  # instructors
+                None,  # groups
+                None,  # rooms
                 max_subproblem_size,
                 igls_time_limit,
             )
@@ -347,7 +365,11 @@ def apply_lns_to_population(
         ]
 
         try:
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            with ProcessPoolExecutor(
+                max_workers=max_workers,
+                initializer=init_worker,
+                initargs=(data_dir, random.randint(0, 10000)),
+            ) as executor:
                 # Submit all repair jobs
                 future_to_index = {
                     executor.submit(

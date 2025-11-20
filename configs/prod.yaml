@@ -12,7 +12,7 @@ description: "Maximum quality production run (2000 gens, 200 pop, 24-48h runtime
 # GA Settings - PROD: Maximum generations and population
 ga:
   ngen: 2000
-  pop_size: 4000
+  pop_size: 500
 
 # Parallel Processing - Maximum parallelization
 parallel:

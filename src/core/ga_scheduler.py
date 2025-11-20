@@ -37,108 +37,10 @@ from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
 from src.heuristics.parallel_executor import get_parallel_executor
+from src.utils.parallel_worker import get_worker_context
 
 console = get_console()
 logger = logging.getLogger(__name__)
-
-
-# ============================================================================
-# Worker Initialization for Multiprocessing
-# ============================================================================
-# Module-level worker context (set once per worker process)
-_WORKER_CONTEXT = None
-
-
-def _worker_init(data_dir: str, seed: int):
-    """
-    Initialize worker process by loading data from JSON files.
-
-    This function is called once when each worker process starts.
-    It sets up DEAP creator types and loads scheduling context from disk.
-
-    This approach avoids pickling complex objects - workers just read the
-    same JSON files that the main process read.
-
-    Args:
-        data_dir: Directory containing input JSON files
-        seed: Random seed for reproducibility
-
-    Fixes:
-        - Bug #1: No pickling overhead (workers load from disk once)
-        - Bug #2: Random seed propagation (seed set in each worker)
-        - Bug #4: Creator types missing (types created in each worker)
-    """
-    global _WORKER_CONTEXT
-    import os
-    import sys
-    from io import StringIO
-    from deap import creator, base
-    from src.encoder.input_encoder import (
-        load_courses,
-        load_groups,
-        load_instructors,
-        load_rooms,
-        link_courses_and_groups,
-        link_courses_and_instructors,
-    )
-    from src.encoder.quantum_time_system import QuantumTimeSystem
-
-    # Set up DEAP creator types (required for Windows spawn)
-    if not hasattr(creator, "FitnessMulti"):
-        # Use two-objective minimization: hard penalties, soft penalties
-        # Both objectives are minimized equally in terms of direction; relative
-        # importance is controlled via constraint weights and soft_weight_factor
-        # in configuration, not by magnitudes here.
-        creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -1.0))
-    if not hasattr(creator, "Individual"):
-        creator.create("Individual", list, fitness=creator.FitnessMulti)
-
-    # Set environment variable to indicate we're in a worker process
-    # This allows other modules to suppress warnings
-    os.environ["_GA_WORKER_PROCESS"] = "1"
-
-    # Suppress all print output from data loading (workers should be silent)
-    old_stdout = sys.stdout
-    sys.stdout = StringIO()
-
-    try:
-        # Load data from JSON files (same as main process)
-        qts = QuantumTimeSystem()
-        groups = load_groups(os.path.join(data_dir, "Groups.json"), qts)
-
-        # Get enrolled course codes
-        enrolled_course_codes = set()
-        for group in groups.values():
-            enrolled_course_codes.update(group.enrolled_courses)
-
-        # Load and filter courses
-        all_courses = load_courses(os.path.join(data_dir, "Course.json"))
-        courses = {
-            key: course
-            for key, course in all_courses.items()
-            if key[0] in enrolled_course_codes
-        }
-
-        instructors = load_instructors(os.path.join(data_dir, "Instructors.json"), qts)
-        rooms = load_rooms(os.path.join(data_dir, "Rooms.json"), qts)
-
-        # Link relationships (suppress output)
-        link_courses_and_groups(courses, groups)
-        link_courses_and_instructors(courses, instructors)
-    finally:
-        # Restore stdout
-        sys.stdout = old_stdout
-
-    # Store scheduling context in module-level variable
-    _WORKER_CONTEXT = {
-        "courses": courses,
-        "instructors": instructors,
-        "groups": groups,
-        "rooms": rooms,
-    }
-
-    # Propagate random seed to worker
-    random.seed(seed)
 
 
 def _worker_evaluate(individual):
@@ -146,7 +48,7 @@ def _worker_evaluate(individual):
     Evaluate individual using worker-local context.
 
     This function is called for each evaluation. It retrieves the
-    scheduling context from module-level state (set once in _worker_init)
+    scheduling context from module-level state (set once in init_worker)
     instead of pickling it every time.
 
     Args:
@@ -155,12 +57,13 @@ def _worker_evaluate(individual):
     Returns:
         Tuple of (hard_violations, soft_penalty)
     """
+    context = get_worker_context()
     return evaluate(
         individual,
-        _WORKER_CONTEXT["courses"],
-        _WORKER_CONTEXT["instructors"],
-        _WORKER_CONTEXT["groups"],
-        _WORKER_CONTEXT["rooms"],
+        context["courses"],
+        context["instructors"],
+        context["groups"],
+        context["rooms"],
     )
 
 
@@ -542,7 +445,7 @@ class GAScheduler:
         try:
             # Import RL components (lazy import to avoid dependency issues)
             from src.rl.gym_env.state_encoder import StateEncoder
-            from src.rl.gym_env.action_mapper import ActionMapper
+            from src.rl.gym_env.action_space import ActionMapper
             from src.rl.hybrid.hybrid_controller import HybridController
             from src.rl.deployment.model_loader import ModelLoader
             from src.rl.deployment.inference import RLInference
@@ -558,9 +461,9 @@ class GAScheduler:
             console.print("   [green][!ok][/green] StateEncoder initialized")
 
             # Initialize action mapper
-            self.rl_action_mapper = ActionMapper(context=self.context)
+            self.rl_action_mapper = ActionMapper(use_config=True)
             console.print(
-                f"   [green][!ok][/green] ActionMapper initialized ({len(self.rl_action_mapper.valid_actions)} actions)"
+                f"   [green][!ok][/green] ActionMapper initialized ({self.rl_action_mapper.n_actions} actions)"
             )
 
             # Load trained model
@@ -652,7 +555,7 @@ class GAScheduler:
         )
 
         # Get valid actions for current state
-        valid_actions = self.rl_action_mapper.get_valid_actions()
+        valid_actions = self.rl_action_mapper.enabled_actions
 
         # Select action using RL controller (with fallback)
         action_id = self.rl_controller.select_action(
@@ -697,11 +600,14 @@ class GAScheduler:
                 best_ind = tools.selBest(self.population, 1)[0]
 
                 # Apply action and get modified individual(s)
-                modified_individuals = self.rl_action_mapper.apply_action(
-                    action_id=action_id,
+                modified_ind, success = self.rl_action_mapper.apply_action(
+                    action=action_id,
+                    individual=best_ind,
+                    context=self.context,
                     population=self.population,
-                    best_individual=best_ind,
+                    generation=gen,
                 )
+                modified_individuals = [modified_ind] if success else []
 
             # Evaluate modified individuals
             if modified_individuals:
@@ -714,7 +620,8 @@ class GAScheduler:
                 # Log action application (optional)
                 rl_config = get_config().rl
                 if rl_config.logging.log_heuristic_usage:
-                    action_name = self.rl_action_mapper.get_action_name(action_id)
+                    action_info = self.rl_action_mapper.get_action_info(action_id)
+                    action_name = action_info.name if action_info else f"action_{action_id}"
                     logger.debug(
                         f"Gen {gen}: RL applied '{action_name}' "
                         f"(modified {len(modified_individuals)} individuals)"
@@ -1974,6 +1881,7 @@ class GAScheduler:
         Should only trigger as last resort after prolonged stagnation.
 
         Strategy:
+
         1. Sort population by fitness (worst first)
         2. Keep best X% (elite preservation)
         3. Generate new X% with hybrid strategy
