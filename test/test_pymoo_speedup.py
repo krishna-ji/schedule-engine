@@ -1,6 +1,7 @@
 """
 Quick benchmark: pymoo vs manual implementations for metrics calculation
 """
+
 import time
 import numpy as np
 from deap import creator, base
@@ -8,6 +9,7 @@ from deap import creator, base
 # Setup DEAP individual type
 creator.create("FitnessMin", base.Fitness, weights=(-1.0, -0.01))
 creator.create("Individual", list, fitness=creator.FitnessMin)
+
 
 # Create fake population
 def create_fake_population(size=500):
@@ -18,6 +20,7 @@ def create_fake_population(size=500):
         ind.fitness.values = (np.random.randint(0, 50), np.random.uniform(0, 500))
         population.append(ind)
     return population
+
 
 print("Creating test population (500 individuals)...")
 population = create_fake_population(500)
@@ -56,6 +59,7 @@ hv = calculate_hypervolume(population, ref_point=(100, 1000))
 igd = calculate_inverted_generational_distance(population, reference_front)
 gd = calculate_generational_distance(population, reference_front)
 from src.metrics.pareto_metrics import calculate_spacing, calculate_spread
+
 spacing = calculate_spacing(population)
 spread = calculate_spread(population)
 duration = time.perf_counter() - start

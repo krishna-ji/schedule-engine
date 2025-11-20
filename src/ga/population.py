@@ -594,7 +594,9 @@ def assign_conflict_free_quanta(
         return []
 
     # Filter out already used quanta
-    free_quanta = [q for q in available_quanta if q not in used_quanta]
+    # Optimized with set for O(1) lookup
+    used_set = set(used_quanta)
+    free_quanta = [q for q in available_quanta if q not in used_set]
 
     if len(free_quanta) < quanta_needed:
         # If not enough free quanta, fall back to all available

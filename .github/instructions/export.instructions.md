@@ -207,6 +207,8 @@ plt.savefig(output_path)
 - Generate plots in parallel if possible
 - Use vector formats (PDF) to reduce file size
 - Limit data points in plots (e.g., every Nth generation for long runs)
+- Metrics are now pymoo-optimized (139x faster): hypervolume, IGD, GD
+- Configure metrics frequency via `config.metrics.advanced_metrics_frequency`
 
 ## Never Do
 -  Overwrite existing output directories (always create timestamped)

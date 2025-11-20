@@ -247,6 +247,24 @@ generate_reports(...)
 - Report GA convergence speed
 - Save timing data to logger
 
+### Profiling Phases
+The PerformanceProfiler tracks these phases per generation:
+- **selection**: Parent selection from population
+- **crossover**: Crossover operator application
+- **mutation**: Mutation operator application  
+- **evaluation**: Fitness evaluation (GPU or CPU)
+- **replacement**: NSGA-II replacement (fast implementation)
+- **metrics**: Multi-objective metrics (pymoo-optimized)
+- **repair_memetic**: Optional memetic repair on elite
+
+Timing displayed as: `ops=3.74s, eval=2.07s, replace=0.58s, metrics=0.36s`
+
+### Optimization Tips
+- Metrics: Set `advanced_metrics_frequency: 10` for 10x speedup
+- GPU: Enable for populations >100 (`gpu.enabled: true`)
+- Replacement: Automatically uses fast NSGA-II for pop ≥200
+- Parallel: Set `num_workers: null` for auto-detection
+
 ## Experiment Management
 
 ### ExperimentManager
