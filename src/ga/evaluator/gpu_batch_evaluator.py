@@ -373,9 +373,14 @@ class GPUConstraintEvaluator:
             for j, gene in enumerate(individual):
                 if j >= max_genes:
                     break
+                
+                # Handle case where gene might be a tuple (shouldn't happen, but be defensive)
+                if not hasattr(gene, 'course_id'):
+                    logger.warning(f"Gene at index {j} is not a SessionGene object: {type(gene)}")
+                    continue
 
                 # Store group IDs for this gene
-                individual_groups.append(set(gene.group_ids))
+                individual_groups.append(set(gene.group_ids) if hasattr(gene, 'group_ids') else set())
 
                 # Basic features
                 tensor[i, j, FEAT_TIME_START] = gene.quanta[0] if gene.quanta else 0

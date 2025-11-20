@@ -18,43 +18,50 @@ def fast_nondominated_sort(population: List) -> List[List]:
     Returns:
         List of fronts, where each front is a list of individuals
     """
-    # Initialize data structures
-    dominated_solutions = {ind: [] for ind in population}
-    dominating_count = {ind: 0 for ind in population}
+    # Use index-based tracking instead of using individuals as dict keys
+    n = len(population)
+    dominated_solutions = [[] for _ in range(n)]  # List of dominated individuals per index
+    dominating_count = [0] * n  # Count of individuals dominating each individual
     fronts = [[]]
 
     # Fast domination checking
-    for i, ind_i in enumerate(population):
-        for ind_j in population[i + 1 :]:
+    for i in range(n):
+        for j in range(i + 1, n):
             # Check if i dominates j or vice versa
-            if dominates(ind_i, ind_j):
-                dominated_solutions[ind_i].append(ind_j)
-                dominating_count[ind_j] += 1
-            elif dominates(ind_j, ind_i):
-                dominated_solutions[ind_j].append(ind_i)
-                dominating_count[ind_i] += 1
+            if dominates(population[i], population[j]):
+                dominated_solutions[i].append(j)
+                dominating_count[j] += 1
+            elif dominates(population[j], population[i]):
+                dominated_solutions[j].append(i)
+                dominating_count[i] += 1
 
         # If no one dominates ind_i, it's in front 0
-        if dominating_count[ind_i] == 0:
-            ind_i.fitness.rank = 0
-            fronts[0].append(ind_i)
+        if dominating_count[i] == 0:
+            population[i].fitness.rank = 0
+            fronts[0].append(i)
 
     # Build subsequent fronts
     front_index = 0
     while fronts[front_index]:
         next_front = []
-        for ind_i in fronts[front_index]:
-            for ind_j in dominated_solutions[ind_i]:
-                dominating_count[ind_j] -= 1
-                if dominating_count[ind_j] == 0:
-                    ind_j.fitness.rank = front_index + 1
-                    next_front.append(ind_j)
+        for i in fronts[front_index]:
+            for j in dominated_solutions[i]:
+                dominating_count[j] -= 1
+                if dominating_count[j] == 0:
+                    population[j].fitness.rank = front_index + 1
+                    next_front.append(j)
 
         front_index += 1
         if next_front:
             fronts.append(next_front)
 
-    return fronts[:-1] if not fronts[-1] else fronts
+    # Convert index-based fronts to individual-based fronts
+    result_fronts = []
+    for front in fronts:
+        if front:
+            result_fronts.append([population[i] for i in front])
+    
+    return result_fronts
 
 
 def dominates(ind1, ind2) -> bool:
