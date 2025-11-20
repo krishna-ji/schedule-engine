@@ -12,7 +12,7 @@ description: "Maximum quality production run (2000 gens, 200 pop, 24-48h runtime
 # GA Settings - PROD: Maximum generations and population
 ga:
   ngen: 2000
-  pop_size: 800
+  pop_size: 4000
 
 # Parallel Processing - Maximum parallelization
 parallel:
@@ -21,7 +21,7 @@ parallel:
 
 # LNS-IGLS Repair - ENABLED for Production
 lns:
-  enabled: true
+  # enabled: true  <-- Controlled by Runtime Mode
   trigger_interval: 100 # Every 100 generations
   stagnation_threshold: 10 # After 10 gens of stagnation (aggressive)
   force_trigger_generations: [6] # Early validation trigger (confirms LNS works before long run)
@@ -37,7 +37,7 @@ lns:
 # IGLS Exhaustive Search - Production triggers (NO overlap with LNS intervals)
 repair:
   exhaustive_search:
-    enabled: true
+    # enabled: true  <-- Controlled by Runtime Mode
     generations: [3, 30, 150, 250, 350, 450, 550, 650, 750, 850, 950]
     population_coverage: 0.15 # Top 15% (15 individuals)
     max_neighborhood_size: 120

@@ -70,8 +70,28 @@ def load_config(
             print(f"[!ERR] Runtime mode config not found: {mode_path}")
             sys.exit(1)
         with open(mode_path) as f:
-            override_dict = yaml.safe_load(f) or {}
-        merged = _deep_merge(base_dict, override_dict)
+            mode_dict = yaml.safe_load(f) or {}
+        
+        # Merge Base + Mode
+        merged = _deep_merge(base_dict, mode_dict)
+
+        # Merge Environment Config (if exists) ON TOP
+        # This allows prod.yaml to scale up population/generations while keeping mode constraints
+        environment = os.getenv("ENVIRONMENT", "test")
+        env_path = Path(f"configs/{environment}.yaml")
+        if env_path.exists():
+            with open(env_path) as f:
+                env_dict = yaml.safe_load(f) or {}
+            merged = _deep_merge(merged, env_dict)
+            if not os.environ.get("_GA_WORKER_PROCESS"):
+                print(
+                    f"Loading runtime mode: {runtime_mode.display_name} + {environment}.yaml"
+                )
+        else:
+            if not os.environ.get("_GA_WORKER_PROCESS"):
+                print(
+                    f"Loading runtime mode: {runtime_mode.display_name} ({mode_path}, merged with base.yaml)"
+                )
 
         # Validate config matches runtime mode constraints
         try:
@@ -80,10 +100,6 @@ def load_config(
             print(f"[!ERR] Config validation failed for mode {runtime_mode.value}: {e}")
             sys.exit(1)
 
-        if not os.environ.get("_GA_WORKER_PROCESS"):
-            print(
-                f"Loading runtime mode: {runtime_mode.display_name} ({mode_path}, merged with base.yaml)"
-            )
         return Config(**merged)
 
     # Priority 2: Explicit path
