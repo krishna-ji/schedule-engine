@@ -12,6 +12,7 @@ from pathlib import Path
 from deap import base, tools
 import random
 import time
+import numpy as np
 from rich.progress import (
     Progress,
     SpinnerColumn,
