@@ -80,9 +80,10 @@ def load_config(
             print(f"[!ERR] Config validation failed for mode {runtime_mode.value}: {e}")
             sys.exit(1)
 
-        print(
-            f"Loading runtime mode: {runtime_mode.display_name} ({mode_path}, merged with base.yaml)"
-        )
+        if not os.environ.get("_GA_WORKER_PROCESS"):
+            print(
+                f"Loading runtime mode: {runtime_mode.display_name} ({mode_path}, merged with base.yaml)"
+            )
         return Config(**merged)
 
     # Priority 2: Explicit path
@@ -93,7 +94,8 @@ def load_config(
         with open(config_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        print(f"Loading config: {config_path} (merged with base.yaml)")
+        if not os.environ.get("_GA_WORKER_PROCESS"):
+            print(f"Loading config: {config_path} (merged with base.yaml)")
         return Config(**merged)
 
     # Priority 3: Environment variable
@@ -105,9 +107,10 @@ def load_config(
         with open(env_config) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        print(
-            f"Loading config from SCHEDULE_CONFIG: {env_config} (merged with base.yaml)"
-        )
+        if not os.environ.get("_GA_WORKER_PROCESS"):
+            print(
+                f"Loading config from SCHEDULE_CONFIG: {env_config} (merged with base.yaml)"
+            )
         return Config(**merged)
 
     # Priority 4: Environment-specific config
@@ -117,7 +120,8 @@ def load_config(
         with open(env_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        print(f"Loading config: configs/{environment}.yaml (merged with base.yaml)")
+        if not os.environ.get("_GA_WORKER_PROCESS"):
+            print(f"Loading config: configs/{environment}.yaml (merged with base.yaml)")
         return Config(**merged)
 
     # Priority 5: Default test config
@@ -126,7 +130,8 @@ def load_config(
         with open(default_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        print("Loading config: configs/test.yaml (default, merged with base.yaml)")
+        if not os.environ.get("_GA_WORKER_PROCESS"):
+            print("Loading config: configs/test.yaml (default, merged with base.yaml)")
         return Config(**merged)
 
     # Priority 6: Built-in defaults only

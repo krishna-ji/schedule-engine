@@ -20,32 +20,75 @@ console = Console()
 # Flat list of ALL commands (category, command, description, runtime)
 ALL_COMMANDS: List[Tuple[str, str, str, str]] = [
     # Thesis Experiments
-    (" Thesis", "exp1", "Pure NSGA-II baseline", "30m test / 1-2h prod"),
-    (" Thesis", "exp2", "+ IGLS repair system", "35m test / 1.5-2.5h prod"),
-    (" Thesis", "exp3", "+ 19 heuristics (no LS)", "40m test / 2-3h prod"),
-    (" Thesis", "exp4", "+ LNS local search", "45m test / 2.5-3.5h prod"),
-    (" Thesis", "exp5", "+ RL adaptive selection", "50m test / 3-4h prod"),
-    # Quick Tests
-    (" Test", "test", "Smoke test (30 gens)", "~5 min"),
-    (" Test", "test-baseline", "Test Mode 1: Pure NSGA-II", "~5 min"),
-    (" Test", "test-repairs", "Test Mode 2: + Repairs", "~6 min"),
-    (" Test", "test-heuristics", "Test Mode 3: + Heuristics", "~7 min"),
-    # Production Runs
-    (" Prod", "prod", "Full production (2000 gens)", "1.5-2.5h GPU"),
-    (" Prod", "prod-baseline", "Prod Mode 1: Pure NSGA-II", "1-2h"),
-    (" Prod", "prod-repairs", "Prod Mode 2: + Repairs", "1.5-2.5h"),
-    (" Prod", "prod-heuristics", "Prod Mode 3: + Heuristics", "2-3h"),
-    # Runtime Modes
-    (" Mode", "baseline", "Mode 1: Pure NSGA-II", "Baseline"),
-    (" Mode", "repairs", "Mode 2: + IGLS repairs", "Repair sys"),
-    (" Mode", "heuristics", "Mode 3: + 19 heuristics", "Heuristics"),
-    (" Mode", "full", "Mode 4: Full GA (best non-RL)", "Complete"),
-    (" Mode", "rl", "Mode 5: RL-guided selection", "RL adaptive"),
-    (" Mode", "roundrobin", "Mode 6: Fixed round-robin", "Fixed"),
-    (" Mode", "specialists", "Mode 7: RL specialist agents", "Specialists"),
-    (" Mode", "archive", "Mode 8: Archive diversity", "Diversity"),
-    (" Mode", "hierarchical", "Mode 9: Hierarchical RL", "2-level RL"),
-    (" Mode", "multiagent", "Mode 10: Multi-agent RL", "Multi-agent"),
+    (
+        " Thesis",
+        "thesis-exp1-baseline",
+        "Exp 1: Pure NSGA-II baseline",
+        "30m test / 1-2h prod",
+    ),
+    (
+        " Thesis",
+        "thesis-exp2-repairs",
+        "Exp 2: + IGLS repair system",
+        "35m test / 1.5-2.5h prod",
+    ),
+    (
+        " Thesis",
+        "thesis-exp3-heuristics",
+        "Exp 3: + 19 heuristics (no LS)",
+        "40m test / 2-3h prod",
+    ),
+    (
+        " Thesis",
+        "thesis-exp4-local-search",
+        "Exp 4: + LNS local search",
+        "45m test / 2.5-3.5h prod",
+    ),
+    (
+        " Thesis",
+        "thesis-exp5-rl",
+        "Exp 5: + RL adaptive selection",
+        "50m test / 3-4h prod",
+    ),
+    # Ablation Studies
+    (" Ablation", "ablation-no-repairs", "Baseline (no repairs)", "Baseline"),
+    (
+        " Ablation",
+        "ablation-repairs-only",
+        "Only repairs (no heuristics)",
+        "Repairs only",
+    ),
+    (
+        " Ablation",
+        "ablation-heuristics-no-ls",
+        "Heuristics without local search",
+        "No LS",
+    ),
+    (" Ablation", "ablation-local-search", "Full with local search", "Full"),
+    # Environment Controls - Test
+    (" Test", "run-test-smoke", "Quick smoke test (30 gens)", "~5 min"),
+    (" Test", "run-test-baseline", "Test Mode 1: Pure NSGA-II", "~5 min"),
+    (" Test", "run-test-repairs", "Test Mode 2: + Repairs", "~6 min"),
+    (" Test", "run-test-heuristics", "Test Mode 3: + Heuristics", "~7 min"),
+    (" Test", "run-test-full", "Test Mode 4: Full GA", "~8 min"),
+    (" Test", "run-test-rl", "Test Mode 5: RL Guided", "~10 min"),
+    # Environment Controls - Production
+    (" Prod", "run-prod-full", "Full production (2000 gens)", "1.5-2.5h GPU"),
+    (" Prod", "run-prod-baseline", "Prod Mode 1: Pure NSGA-II", "1-2h"),
+    (" Prod", "run-prod-repairs", "Prod Mode 2: + Repairs", "1.5-2.5h"),
+    (" Prod", "run-prod-heuristics", "Prod Mode 3: + Heuristics", "2-3h"),
+    (" Prod", "run-prod-rl", "Prod Mode 5: RL Guided", "3-4h"),
+    # Runtime Modes (Explicit)
+    (" Mode", "run-mode-1-baseline", "Mode 1: Pure NSGA-II", "Baseline"),
+    (" Mode", "run-mode-2-repairs", "Mode 2: + IGLS repairs", "Repair sys"),
+    (" Mode", "run-mode-3-heuristics", "Mode 3: + 19 heuristics", "Heuristics"),
+    (" Mode", "run-mode-4-full", "Mode 4: Full GA (best non-RL)", "Complete"),
+    (" Mode", "run-mode-5-rl-guided", "Mode 5: RL-guided selection", "RL adaptive"),
+    (" Mode", "run-mode-6-roundrobin", "Mode 6: Fixed round-robin", "Fixed"),
+    (" Mode", "run-mode-7-specialists", "Mode 7: RL specialist agents", "Specialists"),
+    (" Mode", "run-mode-8-archive", "Mode 8: Archive diversity", "Diversity"),
+    (" Mode", "run-mode-9-hierarchical", "Mode 9: Hierarchical RL", "2-level RL"),
+    (" Mode", "run-mode-10-multiagent", "Mode 10: Multi-agent RL", "Multi-agent"),
     # RL Training
     (" RL", "train-rl", "Train RL agent (100K steps)", "2-4h GPU"),
     (" RL", "train-rl-quick", "Quick training (10K steps)", "15-30 min"),
@@ -72,15 +115,16 @@ ALL_COMMANDS: List[Tuple[str, str, str, str]] = [
     (" Bench", "benchmark-lns", "LNS benchmark", "LNS perf"),
     (" Bench", "benchmark-constraints", "Constraint benchmark", "Constraint"),
     # Configuration
-    ("Config", "show-config", "Show all configuration", "Full config"),
-    ("Config", "show-repair", "Show repair config", "Repair"),
-    ("Config", "show-soft", "Show soft constraints", "Soft"),
-    ("Config", "show-time", "Show time system", "Time"),
-    ("Config", "list-experiments", "List all experiments", "Manifest"),
+    (" Config", "show-config", "Show all configuration", "Full config"),
+    (" Config", "show-repair", "Show repair config", "Repair"),
+    (" Config", "show-soft", "Show soft constraints", "Soft"),
+    (" Config", "show-time", "Show time system", "Time"),
+    (" Config", "list-experiments", "List all experiments", "Manifest"),
     # Development
-    ("Dev", "tensorboard", "Start TensorBoard", "Visualization"),
-    ("Dev", "git-squash", "Interactive squashing", "Git cleanup"),
-    ("Dev", "clean-output", "Clean old outputs", "Disk cleanup"),
+    (" Dev", "tensorboard", "Start TensorBoard", "Visualization"),
+    (" Dev", "git-squash", "Interactive squashing", "Git cleanup"),
+    (" Dev", "refactor-csv", "Refactor CSV exports", "Refactor"),
+    (" Dev", "clean-output", "Clean old outputs", "Disk cleanup"),
 ]
 
 

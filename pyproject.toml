@@ -183,6 +183,39 @@ git-squash = "scripts.cli:git_squash"         # Interactive commit squashing
 refactor-csv = "scripts.cli:refactor_csv"     # CSV export refactoring
 clean-output = "scripts.cli:clean_output"     # Clean old output files
 
+# ==============================================================================
+#  RUNTIME MODE ALIASES (Longer, self-clarified names)
+# ==============================================================================
+run-mode-1-baseline = "main:main_baseline"           # Mode 1: Pure NSGA-II (baseline)
+run-mode-2-repairs = "main:main_repairs"             # Mode 2: NSGA-II + IGLS repairs
+run-mode-3-heuristics = "main:main_heuristics"       # Mode 3: NSGA-II + repairs + 19 heuristics
+run-mode-4-full = "main:main_full"                   # Mode 4: Full GA (best non-RL)
+run-mode-5-rl-guided = "main:main_rl"                # Mode 5: RL-guided heuristic selection
+run-mode-6-roundrobin = "main:main_roundrobin"       # Mode 6: Fixed round-robin rotation
+run-mode-7-specialists = "main:main_specialists"     # Mode 7: RL with specialist agents
+run-mode-8-archive = "main:main_archive"             # Mode 8: Archive-based diversity
+run-mode-9-hierarchical = "main:main_hierarchical"   # Mode 9: Hierarchical RL (two-level)
+run-mode-10-multiagent = "main:main_multiagent"      # Mode 10: Rank-based multi-agent RL
+
+# ==============================================================================
+#  TESTING COMMANDS
+# ==============================================================================
+run-test-smoke = "main:main_test"                    # Quick smoke test (30 gens)
+run-test-baseline = "main:main_baseline"             # Test baseline mode
+run-test-repairs = "main:main_repairs"               # Test repairs mode
+run-test-heuristics = "main:main_heuristics"         # Test heuristics mode
+run-test-full = "main:main_full"                     # Test full mode
+run-test-rl = "main:main_rl"                         # Test RL mode
+
+# ==============================================================================
+#  PRODUCTION COMMANDS
+# ==============================================================================
+run-prod-full = "main:main_prod"                     # Full production run (2000 gens)
+run-prod-baseline = "main:main_baseline"             # Prod baseline mode
+run-prod-repairs = "main:main_repairs"               # Prod repairs mode
+run-prod-heuristics = "main:main_heuristics"         # Prod heuristics mode
+run-prod-rl = "main:main_rl"                         # Prod RL mode
+
 [[tool.uv.index]]
 name = "pytorch-cu121"
 url = "https://download.pytorch.org/whl/cu121"

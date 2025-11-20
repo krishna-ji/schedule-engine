@@ -1,0 +1,54 @@
+# ============================================================================
+# PROD LIGHT CONFIGURATION - Lighter version of Prod
+# ============================================================================
+# Inherits from base.yaml, copies prod settings but with reduced iterations.
+
+name: "Production Light"
+environment: prod
+description: "Lighter production run (200 gens, 200 pop)"
+
+# GA Settings - Reduced for lighter run
+ga:
+  ngen: 200
+  pop_size: 200
+
+# Parallel Processing - Maximum parallelization
+parallel:
+  use_multiprocessing: true
+  num_workers: null # Auto-detect: uses all available CPU cores
+
+# LNS-IGLS Repair - ENABLED for Production
+lns:
+  enabled: true
+  trigger_interval: 50 # More frequent for shorter run
+  stagnation_threshold: 10
+  force_trigger_generations: [6]
+  trigger_before_igls: false
+  max_subproblem_size: 30
+  min_subproblem_size: 6
+  expand_neighborhood_hops: 1
+  igls_max_iterations: 500 # Reduced
+  igls_time_limit: 500.0
+  apply_to_best_n: 3
+  enable_diagnostics: true
+
+# IGLS Exhaustive Search - Adjusted for 200 generations
+repair:
+  exhaustive_search:
+    enabled: true
+    generations: [3, 50, 100, 150]
+    population_coverage: 0.15
+    max_neighborhood_size: 120
+    timeout_seconds: 1000
+
+  stagnation_repair:
+    patience: 15
+    min_generation: 20
+    population_coverage: 0.2
+    max_iterations: 15
+    timeout_seconds: 180
+    cooldown: 8
+
+  selective_repair:
+    apply_probability: 0.3
+    apply_after_crossover: false
