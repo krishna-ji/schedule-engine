@@ -1787,6 +1787,11 @@ class GAScheduler:
         diversity = average_pairwise_diversity(self.population)
         self.metrics.diversity.append(diversity)
 
+        # Initialize variables that will be used in constraint logging
+        hv = 0.0
+        spacing = 0.0
+        spread = 0.0
+
         # CONDITIONAL: Calculate expensive multi-objective metrics
         if is_tracked_gen:
             # Phase 1: Essential multi-objective metrics
@@ -1836,13 +1841,17 @@ class GAScheduler:
         else:
             # Skip expensive metrics, use placeholder values (reuse last known value)
             if self.metrics.hypervolume:
-                self.metrics.hypervolume.append(self.metrics.hypervolume[-1])
+                hv = self.metrics.hypervolume[-1]
+                self.metrics.hypervolume.append(hv)
             else:
+                hv = 0.0
                 self.metrics.hypervolume.append(0.0)
 
             if self.metrics.spacing:
-                self.metrics.spacing.append(self.metrics.spacing[-1])
+                spacing = self.metrics.spacing[-1]
+                self.metrics.spacing.append(spacing)
             else:
+                spacing = 0.0
                 self.metrics.spacing.append(0.0)
 
             if self.metrics.pareto_front_size:
@@ -1863,8 +1872,10 @@ class GAScheduler:
                 self.metrics.igd.append(0.0)
 
             if self.metrics.spread:
-                self.metrics.spread.append(self.metrics.spread[-1])
+                spread = self.metrics.spread[-1]
+                self.metrics.spread.append(spread)
             else:
+                spread = 0.0
                 self.metrics.spread.append(0.0)
 
         # Detailed constraint breakdown
