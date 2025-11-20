@@ -370,15 +370,28 @@ class GPUConstraintEvaluator:
 
         for i, individual in enumerate(batch):
             individual_groups = []
+
+            # Validate individual is iterable and contains genes
+            if not hasattr(individual, "__iter__"):
+                logger.error(f"Batch[{i}] is not iterable: type={type(individual)}")
+                raise ValueError(f"Individual at batch[{i}] is not iterable")
+
             for j, gene in enumerate(individual):
                 if j >= max_genes:
                     break
 
-                # Handle case where gene might be a tuple (shouldn't happen, but be defensive)
+                # Defensive check: Ensure gene is a SessionGene object
+                # DEAP individuals are lists of SessionGenes, but validate to prevent crashes
                 if not hasattr(gene, "course_id"):
-                    logger.warning(
-                        f"Gene at index {j} is not a SessionGene object: {type(gene)}"
+                    # Detailed error for debugging
+                    logger.error(
+                        f"Invalid gene at batch[{i}][{j}]: "
+                        f"type={type(gene)}, "
+                        f"has_course_id={hasattr(gene, 'course_id')}, "
+                        f"repr={repr(gene)[:100]}"
                     )
+                    # Skip this gene and continue (defensive programming)
+                    # This allows partial encoding rather than full failure
                     continue
 
                 # Store group IDs for this gene
