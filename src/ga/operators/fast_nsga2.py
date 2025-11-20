@@ -20,7 +20,9 @@ def fast_nondominated_sort(population: List) -> List[List]:
     """
     # Use index-based tracking instead of using individuals as dict keys
     n = len(population)
-    dominated_solutions = [[] for _ in range(n)]  # List of dominated individuals per index
+    dominated_solutions = [
+        [] for _ in range(n)
+    ]  # List of dominated individuals per index
     dominating_count = [0] * n  # Count of individuals dominating each individual
     fronts = [[]]
 
@@ -60,7 +62,7 @@ def fast_nondominated_sort(population: List) -> List[List]:
     for front in fronts:
         if front:
             result_fronts.append([population[i] for i in front])
-    
+
     return result_fronts
 
 
