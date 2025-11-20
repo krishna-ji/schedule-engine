@@ -101,7 +101,7 @@ def create_ppo_agent(
 def load_ppo_agent(
     model_path: str,
     env: Optional[gym.Env] = None,
-    device: str = "auto",
+    device: str = "cpu",
 ) -> PPO:
     """
     Load trained PPO agent from checkpoint.
@@ -109,7 +109,7 @@ def load_ppo_agent(
     Args:
         model_path: Path to saved model (.zip)
         env: Environment to use (optional)
-        device: Device to load model on
+        device: Device to load model on (CPU-only)
 
     Returns:
         Loaded PPO agent

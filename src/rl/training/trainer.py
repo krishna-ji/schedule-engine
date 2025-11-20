@@ -21,7 +21,6 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import CallbackList, BaseCallback
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
-import torch
 
 from src.rl.agents import create_ppo_agent, create_dqn_agent
 from src.config import get_config
@@ -78,7 +77,7 @@ class RLTrainer:
         verbose: int = 1,
         n_envs: int = 1,
         use_subproc: bool = False,
-        device: str = "auto",
+        device: str = "cpu",
         debug_logging: bool = False,
         **agent_kwargs,
     ):
@@ -93,7 +92,7 @@ class RLTrainer:
             verbose: Verbosity level (0=none, 1=info, 2=debug)
             n_envs: Number of parallel environments (1=no parallelization)
             use_subproc: Use SubprocVecEnv for true parallelism (recommended for CPU-heavy)
-            device: PyTorch device ("auto", "cuda", "cpu")
+            device: PyTorch device (CPU-only)
             debug_logging: Enable detailed progress logging
             **agent_kwargs: Additional agent-specific arguments
         """
@@ -104,19 +103,10 @@ class RLTrainer:
         self.use_subproc = use_subproc
         self.debug_logging = debug_logging
 
-        # Determine device with graceful CUDA fallback
+        # Device is forced to CPU for compatibility with CPU-only environments
         self.device = self._resolve_device(device)
 
         logger.info(f"Training device: {self.device}")
-        if self.device == "cuda":
-            try:
-                logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
-            except (AssertionError, RuntimeError) as exc:
-                logger.warning(
-                    "CUDA device name unavailable (%s); falling back to CPU.", exc
-                )
-                self.device = "cpu"
-                logger.info("Training device reset to cpu")
 
         # Load config
         config = get_config()
@@ -544,20 +534,15 @@ class RLTrainer:
         return min_candidate if rollout_size % min_candidate == 0 else 1
 
     def _resolve_device(self, requested_device: str) -> str:
-        """Return a valid torch device, falling back to CPU when CUDA is unavailable."""
+        """Always return CPU device, warning if GPU was requested."""
 
-        normalized = (requested_device or "auto").lower()
-
-        if normalized == "auto":
-            return "cuda" if torch.cuda.is_available() else "cpu"
-
-        if normalized == "cuda" and not torch.cuda.is_available():
+        normalized = (requested_device or "cpu").lower()
+        if normalized != "cpu":
             logger.warning(
-                "CUDA requested but no compatible GPU/driver detected; using CPU instead."
+                "GPU execution is disabled in this build; forcing CPU device (requested '%s').",
+                normalized,
             )
-            return "cpu"
-
-        return normalized
+        return "cpu"
 
 
 def create_trainer(

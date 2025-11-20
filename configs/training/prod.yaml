@@ -12,8 +12,8 @@ parallel:
   n_envs: 8 # Use 8 envs (was: null/32 - too many caused freeze)
   use_subproc: true # True parallelism (no GIL)
 
-# GPU acceleration
-device: cuda # Force CUDA for production
+# Device
+device: cpu # CPU-only execution
 
 # Debug logging (verbose environment progress)
 debug_logging: true

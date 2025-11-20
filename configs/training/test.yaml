@@ -17,4 +17,4 @@ debug_logging: true
 debug_log_interval: 10
 
 # Device
-device: cuda # Use GPU if available
+device: cpu # CPU-only execution

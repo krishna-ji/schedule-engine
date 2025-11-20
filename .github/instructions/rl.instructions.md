@@ -25,7 +25,7 @@ The RL stack (environment, training, deployment, promotion) extends the GA sched
 - Curriculum changes require YAML updates plus doc updates in `docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`.
 - Callbacks should log to TensorBoard using the provided writer; do not create new logging sinks unless coordinated.
 - Always gate long-running operations behind `if __name__ == "__main__":` to keep modules import-safe.
-- GPU acceleration is enabled by default (`device: cuda` in configs/base.yaml); see `docs/04-algorithms/nvidia-gpu/` for details.
+- Execution now runs CPU-only (`device: cpu` in configs/base.yaml); GPU paths are disabled to simplify deployment.
 
 ## Deployment & Promotion (`src/rl/deployment/`, `scripts/promote_model_to_prod.py`)
 - Use `ModelLoader` for all SB3 model loading; no direct `PPO.load()` calls elsewhere.

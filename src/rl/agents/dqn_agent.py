@@ -81,7 +81,7 @@ def create_dqn_agent(
 def load_dqn_agent(
     model_path: str,
     env: Optional[gym.Env] = None,
-    device: str = "auto",
+    device: str = "cpu",
 ) -> DQN:
     """
     Load trained DQN agent from checkpoint.
@@ -89,7 +89,7 @@ def load_dqn_agent(
     Args:
         model_path: Path to saved model (.zip)
         env: Environment to use (optional)
-        device: Device to load model on
+        device: Device to load model on (CPU-only)
 
     Returns:
         Loaded DQN agent

@@ -571,7 +571,7 @@ class RLAgentConfig(BaseModel):
 
     type: Literal["ppo", "dqn", "random"] = "ppo"
     model_path: str = "models/rl_agents/best_model.zip"
-    device: Literal["auto", "cpu", "cuda"] = "auto"
+    device: Literal["cpu"] = "cpu"
     ppo: RLPPOConfig = Field(default_factory=RLPPOConfig)
     dqn: RLDQNConfig = Field(default_factory=RLDQNConfig)
 

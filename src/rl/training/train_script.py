@@ -237,8 +237,14 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
         args.n_envs = os.cpu_count() or 8  # Fallback to 8 if detection fails
         logger.info(f"Auto-detected {args.n_envs} CPU cores for parallel training")
 
-    # Device setting (NEW)
-    args.device = profile.get("device", "auto")
+    # Device setting: always CPU-only execution (warn if profile requested GPU)
+    requested_device = str(profile.get("device", "cpu")).lower()
+    if requested_device != "cpu":
+        logger.warning(
+            "Profile requested device '%s' but GPU execution is disabled; forcing CPU.",
+            requested_device,
+        )
+    args.device = "cpu"
 
 
 def create_environment(args, context, env_rank: int = 0):
@@ -264,54 +270,22 @@ def create_environment(args, context, env_rank: int = 0):
 
     logger.info(f"[ENV {env_rank}] Evaluating {len(initial_population)} individuals...")
 
-    # Try GPU batch evaluation for 10-50x speedup
-    use_gpu = args.device == "cuda" or (
-        args.device == "auto" and len(initial_population) >= 50
+    logger.info(
+        f"[ENV {env_rank}] Evaluating population on CPU ({len(initial_population)} individuals)..."
     )
-
-    if use_gpu:
-        try:
-            from src.ga.evaluator.gpu_batch_evaluator import get_gpu_evaluator
-
-            gpu_eval = get_gpu_evaluator(device=args.device)
-
-            if gpu_eval.is_available():
-                logger.info(
-                    f"[ENV {env_rank}] Using GPU batch evaluation (10-50x faster)..."
-                )
-                results = gpu_eval.evaluate_batch(
-                    population=initial_population,
-                    courses=context.courses,
-                    instructors=context.instructors,
-                    groups=context.groups,
-                    rooms=context.rooms,
-                )
-                for individual, fitness in zip(initial_population, results):
-                    individual.fitness.values = fitness
-                logger.info(f"[ENV {env_rank}] GPU batch evaluation complete")
-                use_gpu = True  # Success
-            else:
-                use_gpu = False
-        except Exception as e:
-            logger.warning(f"[ENV {env_rank}] GPU evaluation failed: {e}, using CPU")
-            use_gpu = False
-
-    if not use_gpu:
-        # Fallback to sequential CPU evaluation
-        logger.info(f"[ENV {env_rank}] Using sequential CPU evaluation (slow)...")
-        for idx, individual in enumerate(initial_population):
-            if idx % 20 == 0:
-                logger.info(
-                    f"[ENV {env_rank}]    ... evaluated {idx}/{len(initial_population)}"
-                )
-            fitness = evaluate_fitness(
-                individual,
-                courses=context.courses,
-                instructors=context.instructors,
-                groups=context.groups,
-                rooms=context.rooms,
+    for idx, individual in enumerate(initial_population):
+        if idx % 20 == 0:
+            logger.info(
+                f"[ENV {env_rank}]    ... evaluated {idx}/{len(initial_population)}"
             )
-            individual.fitness.values = fitness
+        fitness = evaluate_fitness(
+            individual,
+            courses=context.courses,
+            instructors=context.instructors,
+            groups=context.groups,
+            rooms=context.rooms,
+        )
+        individual.fitness.values = fitness
 
     logger.info(
         f"[ENV {env_rank}] [OK] Population initialized with {len(initial_population)} individuals"

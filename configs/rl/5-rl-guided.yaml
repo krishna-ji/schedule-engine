@@ -223,7 +223,7 @@ rl:
   agent:
     type: ppo # Trained PPO agent
     model_path: models/rl_agents/best_model.zip
-    device: cuda # Use GPU for inference (faster)
+    device: cpu # CPU-only inference
 
   inference:
     batch_prediction: false

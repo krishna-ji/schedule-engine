@@ -7,7 +7,7 @@ Features:
 - Model caching to avoid repeated loads (<100ms target)
 - Version management and validation
 - Model metadata tracking
-- Automatic device placement (CPU/CUDA)
+- CPU-only device placement for consistent execution
 """
 
 from typing import Optional, Dict, Any
@@ -35,7 +35,7 @@ class ModelLoader:
         self,
         model_dir: str = "models/rl_agents",
         cache_models: bool = True,
-        device: str = "auto",
+        device: str = "cpu",
     ):
         """
         Initialize model loader.
@@ -43,11 +43,11 @@ class ModelLoader:
         Args:
             model_dir: Directory containing trained models
             cache_models: Enable model caching
-            device: Device for model inference (auto, cpu, cuda)
+            device: Device for model inference (CPU-only)
         """
         self.model_dir = Path(model_dir)
         self.cache_models = cache_models
-        self.device = device
+        self.device = self._normalize_device(device)
 
         # Model cache: {model_path: (model, load_time, metadata)}
         self._cache: Dict[str, tuple] = {}
@@ -58,8 +58,19 @@ class ModelLoader:
         self.total_load_time = 0.0
 
         logger.info(
-            f"Initialized ModelLoader (cache_models={cache_models}, device={device})"
+            f"Initialized ModelLoader (cache_models={cache_models}, device={self.device})"
         )
+
+    def _normalize_device(self, requested: str) -> str:
+        """Force CPU device regardless of requested value."""
+
+        normalized = (requested or "cpu").lower()
+        if normalized != "cpu":
+            logger.warning(
+                "GPU inference is disabled; forcing CPU device (requested '%s').",
+                normalized,
+            )
+        return "cpu"
 
     def load_model(
         self,

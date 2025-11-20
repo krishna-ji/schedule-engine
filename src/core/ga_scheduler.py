@@ -12,7 +12,6 @@ from pathlib import Path
 from deap import base, tools
 import random
 import time
-import torch
 from rich.progress import (
     Progress,
     SpinnerColumn,
@@ -36,7 +35,6 @@ from src.ga.evaluator.detailed_fitness import evaluate_detailed
 from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
-from src.ga.evaluator.gpu_batch_evaluator import get_gpu_evaluator
 from src.heuristics.parallel_executor import get_parallel_executor
 
 console = get_console()
@@ -454,18 +452,6 @@ class GAScheduler:
         self.rl_controller = None
         self.rl_state_encoder = None
         self.rl_action_mapper = None
-
-        # PERFORMANCE: GPU batch evaluator (10-50x speedup)
-        self.gpu_evaluator = None
-        if torch.cuda.is_available():
-            try:
-                self.gpu_evaluator = get_gpu_evaluator(device="cuda")
-                console.print(
-                    "[dim]   GPU batch evaluator: ENABLED (10-50x speedup)[/dim]"
-                )
-            except Exception as e:
-                logger.warning(f"GPU evaluator init failed: {e}, using CPU")
-                self.gpu_evaluator = None
 
         # PERFORMANCE: Parallel heuristic executor (10-16x speedup)
         try:
@@ -1440,32 +1426,10 @@ class GAScheduler:
         # Evaluate invalid individuals
         invalid = [ind for ind in offspring if not ind.fitness.valid]
         if invalid:
-            # PERFORMANCE: GPU batch evaluation (10-50x faster than CPU)
-            # Uses GPU for large batches, falls back to CPU for small ones
-            if (
-                self.gpu_evaluator
-                and self.gpu_evaluator.is_available()
-                and len(invalid) > 50
-            ):
-                try:
-                    violations = self.gpu_evaluator.batch_evaluate_conflicts(
-                        invalid, batch_size=128
-                    )
-                    for ind, (hard, soft) in zip(invalid, violations):
-                        ind.fitness.values = (-hard, -soft * 0.01)
-                except Exception as e:
-                    logger.warning(f"GPU evaluation failed: {e}, falling back to CPU")
-                    # Fallback to CPU
-                    fitness_values = list(
-                        self.toolbox.map(self.toolbox.evaluate, invalid)
-                    )
-                    for ind, fit in zip(invalid, fitness_values):
-                        ind.fitness.values = fit
-            else:
-                # Use CPU parallel evaluation for small batches or if GPU unavailable
-                fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
-                for ind, fit in zip(invalid, fitness_values):
-                    ind.fitness.values = fit
+            # CPU-only evaluation path
+            fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
+            for ind, fit in zip(invalid, fitness_values):
+                ind.fitness.values = fit
 
         # PHASE 1.2: Explicit Elitism - preserve top solutions
         elite_size = max(1, int(0.05 * len(self.population)))  # Top 5%

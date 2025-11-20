@@ -5,7 +5,7 @@ Provides fast model loading and inference for production use:
 - Model loading from checkpoints (<100ms)
 - Fast inference (<10ms per prediction)
 - Version management and model registry
-- Device selection (CPU/GPU)
+- CPU-only device selection
 - Atomic config updates and rollback
 """
 

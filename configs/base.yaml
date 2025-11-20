@@ -354,7 +354,7 @@ rl:
   agent:
     type: ppo # Options: ppo, dqn, random
     model_path: models/rl_agents/best_model.zip # Path to trained model
-    device: cuda # Options: auto, cpu, cuda (CUDA enabled for 3-5x training speedup)
+    device: cpu # CPU-only execution (GPU disabled)
 
     # PPO-specific hyperparameters (optimized for 8 parallel envs)
     ppo:
