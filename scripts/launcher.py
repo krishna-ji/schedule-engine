@@ -131,6 +131,7 @@ def main_train_rl():
 def main_diagnose():
     """System diagnostics."""
     from scripts.diagnostics.diagnose_gpu import main as diagnose_gpu
+
     diagnose_gpu()
 
 
@@ -138,7 +139,7 @@ def main_clean():
     """Clean output directory."""
     import shutil
     from pathlib import Path
-    
+
     output_dir = Path("output")
     if output_dir.exists():
         console.print(f"[yellow]Cleaning {output_dir}...[/yellow]")
@@ -156,30 +157,30 @@ def main_list():
     from pathlib import Path
     import json
     from rich.table import Table
-    
+
     manifest_path = Path("output/experiment_manifest.json")
-    
+
     if not manifest_path.exists():
         console.print("[yellow]No experiments found[/yellow]")
         return
-    
+
     with open(manifest_path) as f:
         manifest = json.load(f)
-    
+
     table = Table(title="Experiments")
     table.add_column("Timestamp", style="cyan")
     table.add_column("Name", style="green")
     table.add_column("Mode", style="yellow")
     table.add_column("Best Fitness", style="magenta")
-    
+
     for exp in manifest.get("experiments", []):
         table.add_row(
             exp.get("timestamp", ""),
             exp.get("name", ""),
             exp.get("mode", ""),
-            str(exp.get("best_fitness", ""))
+            str(exp.get("best_fitness", "")),
         )
-    
+
     console.print(table)
 
 
@@ -189,32 +190,43 @@ def main_interactive():
     from rich.table import Table
     from rich.panel import Panel
     import subprocess
-    
+
     commands = [
         # NSGA-II Experiments
-        ("nsga", [
-            ("1", "nsga --test", "Smoke test (30 gens, ~2 min)"),
-            ("2", "nsga --med", "Medium run (200 gens, ~30 min)"),
-            ("3", "nsga --prod", "Production (2000 gens, ~3-5 hrs)"),
-        ]),
+        (
+            "nsga",
+            [
+                ("1", "nsga --test", "Smoke test (30 gens, ~2 min)"),
+                ("2", "nsga --med", "Medium run (200 gens, ~30 min)"),
+                ("3", "nsga --prod", "Production (2000 gens, ~3-5 hrs)"),
+            ],
+        ),
         # RL Training
-        ("rl", [
-            ("4", "train-rl --test", "Smoke test (10K steps, ~5-10 min)"),
-            ("5", "train-rl --med", "Medium run (50K steps, ~30-45 min)"),
-            ("6", "train-rl --prod", "Production (100K steps, ~1-2 hrs)"),
-        ]),
+        (
+            "rl",
+            [
+                ("4", "train-rl --test", "Smoke test (10K steps, ~5-10 min)"),
+                ("5", "train-rl --med", "Medium run (50K steps, ~30-45 min)"),
+                ("6", "train-rl --prod", "Production (100K steps, ~1-2 hrs)"),
+            ],
+        ),
         # Utilities
-        ("misc", [
-            ("7", "diagnose", "System diagnostics"),
-            ("8", "clean", "Clean output directory"),
-            ("9", "list-experiments", "List experiment history"),
-        ]),
+        (
+            "misc",
+            [
+                ("7", "diagnose", "System diagnostics"),
+                ("8", "clean", "Clean output directory"),
+                ("9", "list-experiments", "List experiment history"),
+            ],
+        ),
     ]
-    
+
     while True:
         console.clear()
-        console.print("\n[bold cyan]Schedule Engine - Interactive Launcher[/bold cyan]\n")
-        
+        console.print(
+            "\n[bold cyan]Schedule Engine - Interactive Launcher[/bold cyan]\n"
+        )
+
         for category, cmds in commands:
             # Category header
             if category == "nsga":
@@ -223,26 +235,28 @@ def main_interactive():
                 console.print("\n[bold magenta]RL Training[/bold magenta]")
             elif category == "misc":
                 console.print("\n[bold magenta]Utilities[/bold magenta]")
-            
+
             # Commands in category
             for num, cmd, desc in cmds:
-                console.print(f"  [yellow]{num}.[/yellow] [green]uv run {cmd:22}[/green]  [dim]{desc}[/dim]")
-        
+                console.print(
+                    f"  [yellow]{num}.[/yellow] [green]uv run {cmd:22}[/green]  [dim]{desc}[/dim]"
+                )
+
         console.print("\n  [yellow]q.[/yellow] [dim]Exit[/dim]")
         console.print()
-        
+
         choice = Prompt.ask("[cyan]Select[/cyan]", default="q").strip().lower()
-        
+
         if choice == "q":
             console.print("[yellow]Goodbye![/yellow]")
             break
-        
+
         # Flatten commands for lookup
         all_cmds = {}
         for _, cmds in commands:
             for num, cmd, _ in cmds:
                 all_cmds[num] = cmd
-        
+
         if choice in all_cmds:
             cmd = all_cmds[choice]
             console.print(f"\n[green]Running: uv run {cmd}[/green]\n")
