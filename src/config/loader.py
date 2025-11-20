@@ -71,7 +71,7 @@ def load_config(
             sys.exit(1)
         with open(mode_path) as f:
             mode_dict = yaml.safe_load(f) or {}
-        
+
         # Merge Base + Mode
         merged = _deep_merge(base_dict, mode_dict)
 
