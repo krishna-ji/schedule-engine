@@ -27,14 +27,14 @@ def main():
         print(f"TensorBoard will start but may show empty dashboards")
 
     port = 6006
-    print("=" * 60)
+
     print("TENSORBOARD - RL Training Dashboard")
-    print("=" * 60)
+
     print(f"Log directory: {log_dir.absolute()}")
     print(f"Port: {port}")
     print(f"URL: http://localhost:{port}/")
     print("\nPress Ctrl+C to stop TensorBoard")
-    print("=" * 60)
+
     print()
 
     try:

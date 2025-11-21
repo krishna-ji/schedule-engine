@@ -17,9 +17,9 @@ from src.metrics.diversity import individual_distance, average_pairwise_diversit
 from src.ga.sessiongene import SessionGene
 from src.rl.gym_env.state_encoder import StateEncoder
 
-print("=" * 80)
+
 print("PERFORMANCE OPTIMIZATION BENCHMARK")
-print("=" * 80)
+
 
 # Test 1: Spacing calculation (scipy.pdist optimization)
 print("\n1. SPACING CALCULATION (scipy.pdist)")
@@ -138,7 +138,7 @@ for q_size, b_size in test_cases:
 
 print("\n" + "=" * 80)
 print("BENCHMARK COMPLETE")
-print("=" * 80)
+
 print("\nSUMMARY:")
 print("✓ Spacing: scipy.pdist (3-110ms for 100-500 individuals)")
 print("✓ Diversity: Vectorized (46-595ms for 50-200 individuals)")

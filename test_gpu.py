@@ -3,9 +3,9 @@
 
 import torch
 
-print("=" * 60)
+
 print("GPU/CUDA Detection Test")
-print("=" * 60)
+
 
 print(f"\nPyTorch version: {torch.__version__}")
 print(f"CUDA available: {torch.cuda.is_available()}")

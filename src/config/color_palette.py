@@ -55,7 +55,6 @@ PARETO_COLORS = {
 
 if __name__ == "__main__":
     print("Schedule Engine Color Palette")
-    print("=" * 50)
     print("\nMain Colors:")
     for name, color in COLORS.items():
         print(f"  {name:20s}: {color}")

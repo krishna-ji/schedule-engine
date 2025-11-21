@@ -36,7 +36,6 @@ def run_baseline_benchmark(output_dir: Path) -> Dict[str, Any]:
     """
     print("\n" + "=" * 80)
     print("BASELINE GA BENCHMARK (without LNS-CP)")
-    print("=" * 80)
 
     # Load test config and ensure LNS is disabled
     config = load_config(environment="test")
@@ -85,7 +84,7 @@ def run_baseline_benchmark(output_dir: Path) -> Dict[str, Any]:
 
         print("\n" + "=" * 80)
         print("BASELINE RESULTS")
-        print("=" * 80)
+
         print(f"Runtime: {elapsed/60:.2f} minutes")
         print(f"Final Hard Violations: {results['hard_violations']:.0f}")
         print(f"Final Soft Penalties: {results['soft_penalties']:.2f}")
@@ -114,7 +113,6 @@ def run_lns_cp_benchmark(output_dir: Path) -> Dict[str, Any]:
     """
     print("\n" + "=" * 80)
     print("LNS-CP HYBRID BENCHMARK (with LNS-CP)")
-    print("=" * 80)
 
     # Load test config and enable LNS
     config = load_config(environment="test")
@@ -189,7 +187,7 @@ def run_lns_cp_benchmark(output_dir: Path) -> Dict[str, Any]:
 
         print("\n" + "=" * 80)
         print("LNS-CP RESULTS")
-        print("=" * 80)
+
         print(f"Runtime: {elapsed/60:.2f} minutes")
         print(f"Final Hard Violations: {results['hard_violations']:.0f}")
         print(f"Final Soft Penalties: {results['soft_penalties']:.2f}")
@@ -224,7 +222,6 @@ def compare_results(baseline_path: Path, lns_cp_path: Path, output_dir: Path):
     """
     print("\n" + "=" * 80)
     print("COMPARISON REPORT")
-    print("=" * 80)
 
     # Load results
     with open(baseline_path) as f:
