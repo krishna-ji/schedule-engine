@@ -18,6 +18,7 @@ from src.core.types import Individual, SchedulingContext
 from src.rl.gym_env.state_encoder import StateEncoder
 from src.rl.gym_env.action_space import ActionMapper
 from src.rl.gym_env.reward_calculator import RewardCalculator
+from src.utils.performance_profiler import PerformanceProfiler
 
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ class ScheduleEnv(gym.Env):
         max_steps_per_episode: int = 20,
         render_mode: Optional[str] = None,
         fast_evaluation: bool = True,
-        debug_logging: bool = False,
+        debug_logging: bool = True,
         env_rank: int = 0,
         debug_log_interval: int = 25,
     ):
@@ -92,6 +93,9 @@ class ScheduleEnv(gym.Env):
         self.reward_calculator = RewardCalculator(
             fitness_weight=1.0, diversity_weight=0.1, time_weight=0.01
         )
+
+        # Initialize profiler (enabled when debug logging is on)
+        self.profiler = PerformanceProfiler(enabled=debug_logging)
 
         # Define spaces
         obs_dim = self.state_encoder.observation_dim
@@ -214,6 +218,7 @@ class ScheduleEnv(gym.Env):
             (observation, reward, terminated, truncated, info)
         """
         step_start = time.perf_counter()
+        self.profiler.start_generation(self.current_step)
 
         # Track total steps for debugging
         self._total_steps_taken += 1
@@ -281,6 +286,10 @@ class ScheduleEnv(gym.Env):
             prev_soft,
         )
 
+        # Phase 2: Apply heuristic action (main computational work)
+        self.profiler.start_phase(
+            f"apply_{action_label}", items_to_process=len(self.population)
+        )
         modified_individual, success = self.action_mapper.apply_action(
             action,
             working_individual,
@@ -288,6 +297,7 @@ class ScheduleEnv(gym.Env):
             population=self.population,
             generation=self.current_generation,
         )
+        self.profiler.end_phase()
 
         self._debug_log("Action %s success=%s", action_label, success)
 
@@ -300,12 +310,19 @@ class ScheduleEnv(gym.Env):
         evaluated_candidate: Optional[Individual] = None
 
         if success:
-            # Convert plain list to DEAP Individual if needed (for diversity operators)
+            # Phase 4: Ensure DEAP individual format
+            self.profiler.start_phase("ensure_deap_individual")
             candidate = self._ensure_deap_individual(candidate)
-            # Ensure mutated individual keeps a valid fitness tuple for downstream consumers
+            self.profiler.end_phase()
+
+            # Phase 5: Evaluate fitness
+            self.profiler.start_phase("evaluate_fitness")
             success = self._ensure_individual_fitness(candidate, action_label)
+            self.profiler.end_phase()
 
         if success:
+            # Phase 6: Update population
+            self.profiler.start_phase("update_population", len(self.population))
             evaluated_candidate = self._clone_individual(candidate)
             # Replace worst individual with modified copy
             worst_idx = max(
@@ -314,19 +331,24 @@ class ScheduleEnv(gym.Env):
             )
             self.population[worst_idx] = self._clone_individual(evaluated_candidate)
             result_individual = self._clone_individual(evaluated_candidate)
+            self.profiler.end_phase()
         else:
             result_individual = prev_individual
 
-        # Calculate population metrics
+        # Phase 7: Calculate diversity metrics
+        self.profiler.start_phase("calculate_diversity", len(self.population))
         population_diversity = self.state_encoder._calculate_diversity(self.population)
+        self.profiler.end_phase()
 
-        # Calculate reward
+        # Phase 8: Calculate reward
+        self.profiler.start_phase("calculate_reward")
         reward, _ = self.reward_calculator.calculate_reward(
             prev_individual,
             result_individual,
             population_diversity,
             self.current_generation,
         )
+        self.profiler.end_phase()
 
         # Update progress
         current_best_fitness = self._get_best_fitness()
@@ -355,18 +377,31 @@ class ScheduleEnv(gym.Env):
         self.current_generation += 1
         self.current_step += 1
 
-        # Get new observation
+        # Phase 9: Encode new state
+        self.profiler.start_phase("encode_observation", len(self.population))
         observation = self.state_encoder.encode(
             self.population,
             self.current_generation,
             self.generations_without_improvement,
         )
+        self.profiler.end_phase()
 
         # Check termination conditions
         terminated = self._is_terminated()
         truncated = self._is_truncated()
 
         info = self._get_info()
+
+        # End profiling and add breakdown to info
+        self.profiler.end_generation()
+        if self.debug_logging and hasattr(self.profiler, "generation_profiles"):
+            if self.profiler.generation_profiles:
+                last_profile = self.profiler.generation_profiles[-1]
+                info["profile"] = last_profile.get_summary()
+
+        # Print profiling summary at episode end
+        if (terminated or truncated) and self.debug_logging:
+            self.print_profiling_summary()
 
         return observation, reward, terminated, truncated, info
 
@@ -438,9 +473,19 @@ class ScheduleEnv(gym.Env):
             return
 
         self._last_debug_step = self.current_step
+
+        # Get profiling breakdown if available
+        profile_str = ""
+        if (
+            hasattr(self.profiler, "generation_profiles")
+            and self.profiler.generation_profiles
+        ):
+            last_profile = self.profiler.generation_profiles[-1]
+            profile_str = f"\n         ⏱️  {last_profile.get_summary()}"
+
         self._debug_log(
             "Step summary: action=%s reward=%.4f success=%s best=%.2f diversity=%.4f "
-            "stagnation=%s duration=%.2f ms %s",
+            "stagnation=%s duration=%.2f ms %s%s",
             action_label,
             reward,
             success,
@@ -449,6 +494,7 @@ class ScheduleEnv(gym.Env):
             self.generations_without_improvement,
             duration_ms,
             improvement_note,
+            profile_str,
         )
 
     def render(self) -> Optional[str]:
@@ -560,6 +606,27 @@ class ScheduleEnv(gym.Env):
             cloned.fitness.values = individual.fitness.values
 
         return cloned
+
+    def get_profiling_summary(self) -> Dict[str, Any]:
+        """
+        Get comprehensive profiling statistics for this environment.
+
+        Returns:
+            Dictionary with profiling statistics per phase
+        """
+        if not hasattr(self.profiler, "get_statistics"):
+            return {}
+
+        return self.profiler.get_statistics()
+
+    def print_profiling_summary(self):
+        """Print profiling summary table at end of episode."""
+        if not self.debug_logging:
+            return
+
+        if hasattr(self.profiler, "print_summary_table"):
+            logger.info(f"[ENV {self.env_rank}] Episode profiling summary:")
+            self.profiler.print_summary_table()
 
 
 def create_schedule_env(
