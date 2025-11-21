@@ -33,7 +33,7 @@
         ".pytest_cache/": true,
         "logs/": true,
         ".data": true,
-        // "**/*.md": true,
+        "**/*.md": true,
         // "docs/": true,
         // "data/bin/": true,
     },

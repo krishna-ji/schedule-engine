@@ -23,10 +23,10 @@ from src.rl.training.config_loader import (
     list_training_profiles,
     load_training_config,
 )
-from src.utils.logging_config import get_logger
+from src.utils.structured_logger import StructuredLogger, setup_logging
 from src.workflows.standard_run import load_input_data
 
-logger = get_logger(__name__)
+logger = StructuredLogger.get_logger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -447,42 +447,21 @@ def main() -> None:
 
     args = parse_args()
 
-    # Setup detailed logging to file
-    import logging
-    from pathlib import Path
-
+    # Setup structured logging with file output and clean console
     log_dir = Path("logs/training")
     log_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = log_dir / f"train_{timestamp}.log"
 
-    # Get root logger and clear any existing handlers to prevent duplicates
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    root_logger.setLevel(logging.DEBUG)
-
-    # Configure file handler for detailed logging
-    file_handler = logging.FileHandler(log_file, mode="w")
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(
-        logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-    )
-
-    # Configure Rich console handler for INFO+ only (coordinates with tqdm)
-    console_handler = RichHandler(
-        level=logging.INFO,
+    # Initialize structured logging system
+    console_level = "DEBUG" if args.debug_logging else "INFO"
+    setup_logging(
+        log_file=log_file,
+        console_level=console_level,
+        file_level="DEBUG",
         show_time=False,
         show_path=False,
-        markup=False,
-        rich_tracebacks=True,
     )
-
-    # Add handlers to root logger
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
 
     logger.info(f"Logging to: {log_file}")
 

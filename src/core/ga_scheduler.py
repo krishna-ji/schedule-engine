@@ -6,7 +6,6 @@ Extracted from monolithic main.py for better testability and separation of conce
 """
 
 from typing import List, Dict, Optional
-import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from deap import base, tools
@@ -41,9 +40,10 @@ from src.utils.console_service import get_console
 from src.heuristics.parallel_executor import get_parallel_executor
 from src.utils.parallel_worker import get_worker_context
 from src.utils.performance_profiler import get_profiler
+from src.utils.structured_logger import StructuredLogger
 
 console = get_console()
-logger = logging.getLogger(__name__)
+logger = StructuredLogger.get_logger(__name__)
 
 
 def _worker_evaluate(individual):

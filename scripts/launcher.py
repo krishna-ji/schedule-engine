@@ -288,13 +288,13 @@ def main_interactive():
             console.print(f"\n[green]Running: uv run {cmd}[/green]\n")
             subprocess.run(["uv", "run"] + cmd.split(), check=False)
             try:
-                input("\n[dim]Press Enter to continue...[/dim]")
+                input("\nPress Enter to continue...")
             except KeyboardInterrupt:
                 console.print("\n[yellow]Interrupted - returning to menu[/yellow]")
         else:
             console.print(f"[red]Invalid choice: {choice}[/red]")
             try:
-                input("\n[dim]Press Enter to continue...[/dim]")
+                input("\nPress Enter to continue...")
             except KeyboardInterrupt:
                 console.print("\n[yellow]Returning to menu[/yellow]")
 
