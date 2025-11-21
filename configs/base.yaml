@@ -285,7 +285,6 @@ heuristics:
       enabled: true # Fixed: Individual-level operation for RL compatibility
       priority: 3
       niche_radius: 0.3
-      select_count: 10
     adaptive_diversity_maintenance:
       enabled: true # Fixed: QuantumTimeSystem API + individual-level operation
       priority: 4
