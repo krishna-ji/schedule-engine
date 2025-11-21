@@ -53,7 +53,7 @@ uv run nsga --prod --name "my-experiment"
 #### Command 5: RL Training
 
 ```bash
-# Smoke test (10K steps, ~5-10 min)
+# Smoke test (500 steps, ~2-3 min, single env)
 uv run train-rl --test
 
 # Medium (50K steps, ~30-45 min)
@@ -74,9 +74,9 @@ uv run train-rl --prod --curriculum
 - Logs to TensorBoard (`logs/tensorboard/`)
 
 **Profile Mapping:**
-- `--test`: 10,000 timesteps (3 curriculum stages)
-- `--med`: 50,000 timesteps
-- `--prod`: 100,000 timesteps
+- `--test`: 500 timesteps, 1 env (quick smoke test)
+- `--med`: 50,000 timesteps, 4 envs
+- `--prod`: 100,000 timesteps, 8 envs
 
 ---
 
@@ -137,11 +137,11 @@ uv run list-experiments
 
 ### RL Training
 
-| Command | Profile | Timesteps | Time | Use Case |
-|---------|---------|-----------|------|----------|
-| `train-rl --test` | test | 10K | ~5-10 min | Verify RL works |
-| `train-rl --med` | med | 50K | ~30-45 min | Medium training |
-| `train-rl --prod` | prod | 100K | ~1-2 hrs | Full training |
+| Command | Profile | Timesteps | Envs | Time | Use Case |
+|---------|---------|-----------|------|------|----------|
+| `train-rl --test` | test | 500 | 1 | ~2-3 min | Quick smoke test |
+| `train-rl --med` | med | 50K | 4 | ~30-45 min | Medium training |
+| `train-rl --prod` | prod | 100K | 8 | ~1-2 hrs | Full training |
 
 ### Utilities
 

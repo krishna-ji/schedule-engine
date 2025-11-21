@@ -1,16 +1,16 @@
 # Smoke profile for quick validation (≈5 minutes)
 profile: test
 timesteps: 500
-max_generations: 40
+max_generations: 30 # Reduced from 40
 max_steps: 20
-population_size: 16
+population_size: 10 # Reduced from 16 (less work per env)
 eval_episodes: 1
 save_prefix: rl_agent_test
 
-# Parallel training - MINIMAL (for fast testing)
+# Parallel training - SINGLE ENV for test (no parallelism overhead)
 parallel:
-  n_envs: 4 # Use only 4 envs for quick tests
-  use_subproc: true
+  n_envs: 1 # Changed from 4 - single env for quick test!
+  use_subproc: false # No need for subproc with 1 env
 
 # Debug logging
 debug_logging: true

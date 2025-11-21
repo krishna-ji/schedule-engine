@@ -124,7 +124,7 @@ def main_train_rl():
         sys.argv.append("--curriculum")
     else:
         # Map profile to timesteps (if not using curriculum)
-        timestep_map = {"test": 10000, "med": 50000, "prod": 100000}
+        timestep_map = {"test": 500, "med": 50000, "prod": 100000}
         sys.argv.extend(["--timesteps", str(timestep_map[profile])])
 
     sys.exit(rl_main() or 0)
@@ -208,7 +208,7 @@ def main_interactive():
         (
             "rl",
             [
-                ("4", "train-rl --test", "Smoke test (10K steps, ~5-10 min)"),
+                ("4", "train-rl --test", "Smoke test (500 steps, ~2-3 min)"),
                 ("5", "train-rl --med", "Medium run (50K steps, ~30-45 min)"),
                 ("6", "train-rl --prod", "Production (100K steps, ~1-2 hrs)"),
                 (
