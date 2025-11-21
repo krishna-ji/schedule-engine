@@ -54,7 +54,7 @@ dev = [
 [project.scripts]
 # ==================
 # UNIFIED CLI LAUNCHER
-# Convention: Main commands (0-9) = numbers, Helpers (a-z) = letters
+# Convention: Main commands (0-99+) = numbers, Helpers (a-z) = letters
 # Usage: uv run <command> --<profile>
 # Profiles: --test (smoke), --med (medium), --prod (full)
 # ==================
@@ -64,7 +64,7 @@ launcher = "scripts.launcher:main_interactive"
 run = "scripts.launcher:main_interactive"
 
 # ==================
-# MAIN COMMANDS (0-9): GA & RL Experiments
+# MAIN COMMANDS (0-99+): GA & RL Experiments
 # ==================
 
 # Command 0: Pure NSGA-II Baseline (Mode 1)
