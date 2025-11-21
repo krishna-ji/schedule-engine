@@ -94,8 +94,8 @@ class ScheduleEnv(gym.Env):
             fitness_weight=1.0, diversity_weight=0.1, time_weight=0.01
         )
 
-        # Initialize profiler (enabled when debug logging is on)
-        self.profiler = PerformanceProfiler(enabled=debug_logging)
+        # Initialize profiler (enabled when debug logging is on, but not verbose to avoid progress bar interference)
+        self.profiler = PerformanceProfiler(enabled=debug_logging, verbose=False)
 
         # Define spaces
         obs_dim = self.state_encoder.observation_dim

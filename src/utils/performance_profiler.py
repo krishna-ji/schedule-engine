@@ -76,15 +76,22 @@ class PerformanceProfiler:
     - Micro-breakdown per generation
     """
 
-    def __init__(self, enabled: bool = True, console: Optional[Console] = None):
+    def __init__(
+        self,
+        enabled: bool = True,
+        console: Optional[Console] = None,
+        verbose: bool = False,
+    ):
         """
         Initialize profiler.
 
         Args:
             enabled: Whether profiling is enabled
             console: Rich console for output (optional)
+            verbose: Show per-generation micro-breakdown (can interfere with progress bars)
         """
         self.enabled = enabled
+        self.verbose = verbose
         self.console = console or Console()
         self.current_generation: Optional[int] = None
         self.current_phase: Optional[PhaseProfile] = None
@@ -109,8 +116,9 @@ class PerformanceProfiler:
 
         profile = self.generation_profiles[-1]
 
-        # Display micro-breakdown
-        self._display_generation_profile(profile)
+        # Display micro-breakdown only if verbose mode enabled
+        if self.verbose:
+            self._display_generation_profile(profile)
 
         self.current_generation = None
 
@@ -300,10 +308,21 @@ def get_profiler() -> PerformanceProfiler:
     return _global_profiler
 
 
-def init_profiler(enabled: bool = True, console: Optional[Console] = None):
-    """Initialize global profiler."""
+def init_profiler(
+    enabled: bool = True, console: Optional[Console] = None, verbose: bool = False
+):
+    """
+    Initialize global profiler.
+
+    Args:
+        enabled: Whether profiling is enabled
+        console: Rich console for output
+        verbose: Show per-generation micro-breakdown (disable during training to avoid progress bar interference)
+    """
     global _global_profiler
-    _global_profiler = PerformanceProfiler(enabled=enabled, console=console)
+    _global_profiler = PerformanceProfiler(
+        enabled=enabled, console=console, verbose=verbose
+    )
     return _global_profiler
 
 
