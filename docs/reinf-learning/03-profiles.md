@@ -9,7 +9,7 @@ Three preconfigured profiles for different use cases and compute budgets.
 | **Purpose** | Smoke test | Experiments | **Thesis** |
 | **Timesteps** | 500 | 100,000 | **300,000** |
 | **Time** | ~2-3 min | ~30-45 min | **~1-2 hours** |
-| **Envs** | 1 | 4 | **8** |
+| **Envs** | 1 | Auto (≤8) | **Auto (all cores)** |
 | **Pop Size** | 10 | 50 | **80** |
 | **Generations** | 30 | 120 | **200** |
 | **Max Steps** | 20 | 60 | **80** |
@@ -107,7 +107,7 @@ eval_episodes: 10
 save_prefix: rl_agent_prod
 
 parallel:
-  n_envs: 8           # Maximum stable parallelism
+  n_envs: null        # Auto-detect all CPU cores (e.g., 16 cores → 16 envs)
   use_subproc: true   # True parallelism (bypass GIL)
 
 debug_logging: true
@@ -228,8 +228,8 @@ Runtime flags (--timesteps, --agent, etc.)
 - **Network**: None
 
 ### Prod Profile
-- **RAM**: ~8-16 GB (8 parallel envs)
-- **CPU**: 8 cores utilized (8 envs)
+- **RAM**: ~16-32 GB (auto-detected cores, e.g., 16 envs)
+- **CPU**: All cores utilized (16 on your system)
 - **GPU**: Not used (CPU-only RL)
 - **Disk**: ~2 GB logs + 15 MB model
 - **Network**: None (TensorBoard optional)

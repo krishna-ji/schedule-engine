@@ -240,10 +240,21 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
 
     # Auto-detect CPU count if n_envs is None/null
     if args.n_envs is None:
-        import os
+        from src.utils.system_info import get_cpu_count
 
-        args.n_envs = get_cpu_count()  # Auto-detect all cores
-        logger.info(f"Auto-detected {args.n_envs} CPU cores for parallel training")
+        detected_cores = get_cpu_count()  # Auto-detect all cores
+
+        # Apply profile-specific caps for stability
+        if args.profile == "test":
+            args.n_envs = 1  # Test: always 1 env (fast startup)
+        elif args.profile == "med":
+            args.n_envs = min(detected_cores, 8)  # Med: cap at 8 for stability
+        else:
+            args.n_envs = detected_cores  # Prod/custom: use all cores
+
+        logger.info(
+            f"Auto-detected {detected_cores} CPU cores, using {args.n_envs} parallel environments (profile: {args.profile})"
+        )
 
     # Device setting: always CPU-only execution (warn if profile requested GPU)
     requested_device = str(profile.get("device", "cpu")).lower()

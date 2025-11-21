@@ -6,3 +6,8 @@ max_steps: 60
 population_size: 50
 eval_episodes: 5
 save_prefix: rl_agent_med
+
+# Parallel training - AUTO-DETECT (capped at 8 for stability)
+parallel:
+  n_envs: null # null = auto-detect (will cap at min(cpu_count, 8))
+  use_subproc: true

@@ -7,9 +7,9 @@ population_size: 80
 eval_episodes: 10
 save_prefix: rl_agent_prod
 
-# Parallel training - OPTIMIZED FOR STABILITY
+# Parallel training - AUTO-DETECT MAXIMUM CPU CORES
 parallel:
-  n_envs: 8 # Use 8 envs (was: null/32 - too many caused freeze)
+  n_envs: null # null = auto-detect all CPU cores (e.g., 16 cores → 16 envs)
   use_subproc: true # True parallelism (no GIL)
 
 # Device
