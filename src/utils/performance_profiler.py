@@ -205,7 +205,7 @@ class PerformanceProfiler:
         else:
             color = "dim"
 
-        self.console.print(f"[{color}]    ⏱️  {breakdown}[/{color}]")
+        self.console.print(f"[{color}]      {breakdown}[/{color}]")
 
     def get_statistics(self) -> Dict:
         """

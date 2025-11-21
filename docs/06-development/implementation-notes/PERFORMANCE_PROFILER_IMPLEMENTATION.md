@@ -21,7 +21,7 @@ Adds **detailed performance profiling** to show **micro-level breakdown** of wha
 **Per-Generation Breakdown** (appears after each generation):
 ```
 [!ok] gen 37/2000 : hc=3566, sc=5004.80, t=97.8s
-    ⏱️  evaluation=35.2s(200items/s) | repair_memetic=28.5s(35items/s) | 
+      evaluation=35.2s(200items/s) | repair_memetic=28.5s(35items/s) | 
         crossover=18.3s(545items/s) | mutation=12.1s(826items/s) | 
         selection=3.7s(2702items/s)
 ```
@@ -128,7 +128,7 @@ uv run prod-nsga
 
 **Before optimization:**
 ```
-⏱️  evaluation=85.2s(117items/s) | crossover=5.3s | mutation=4.1s
+  evaluation=85.2s(117items/s) | crossover=5.3s | mutation=4.1s
 ```
 → Evaluation is 85.2/94.6 = **90% of time**!
 
@@ -136,7 +136,7 @@ uv run prod-nsga
 
 **After optimization:**
 ```
-⏱️  evaluation=8.5s(1176items/s) | crossover=5.3s | mutation=4.1s
+  evaluation=8.5s(1176items/s) | crossover=5.3s | mutation=4.1s
 ```
 → Evaluation now 8.5/18.9 = **45% of time**, **10x speedup**!
 
