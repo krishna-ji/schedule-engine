@@ -481,7 +481,7 @@ class ScheduleEnv(gym.Env):
             and self.profiler.generation_profiles
         ):
             last_profile = self.profiler.generation_profiles[-1]
-            profile_str = f"\n         ⏱️  {last_profile.get_summary()}"
+            profile_str = f"\n           {last_profile.get_summary()}"
 
         self._debug_log(
             "Step summary: action=%s reward=%.4f success=%s best=%.2f diversity=%.4f "
