@@ -52,9 +52,9 @@ def main():
 
     setup_logging(
         log_file=log_file,
-        console_level="INFO",
+        console_level="DEBUG",
         file_level="DEBUG",
-        show_time=False,
+        show_time=True,
         show_path=False,
     )
 

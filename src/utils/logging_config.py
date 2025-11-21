@@ -47,7 +47,7 @@ class ColoredFormatter(logging.Formatter):
 
 
 def setup_logging(
-    level: str = "INFO", log_file: Optional[Path] = None, verbose: bool = False
+    level: str = "DEBUG", log_file: Optional[Path] = None, verbose: bool = False
 ) -> logging.Logger:
     """
     Configure logging for the application.

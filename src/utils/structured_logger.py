@@ -78,9 +78,9 @@ class StructuredLogger:
     def setup(
         cls,
         log_file: Optional[Path] = None,
-        console_level: str = "INFO",
+        console_level: str = "DEBUG",
         file_level: str = "DEBUG",
-        show_time: bool = False,
+        show_time: bool = True,
         show_path: bool = False,
     ) -> None:
         """
@@ -307,7 +307,7 @@ def get_logger(name: str = "schedule_engine") -> StructuredLogger:
 
 def setup_logging(
     log_file: Optional[Path] = None,
-    console_level: str = "INFO",
+    console_level: str = "DEBUG",
     file_level: str = "DEBUG",
     **kwargs,
 ) -> None:

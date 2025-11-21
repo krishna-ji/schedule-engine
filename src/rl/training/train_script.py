@@ -454,12 +454,12 @@ def main() -> None:
     log_file = log_dir / f"train_{timestamp}.log"
 
     # Initialize structured logging system
-    console_level = "DEBUG" if args.debug_logging else "INFO"
+    console_level = "DEBUG"
     setup_logging(
         log_file=log_file,
         console_level=console_level,
         file_level="DEBUG",
-        show_time=False,
+        show_time=True,
         show_path=False,
     )
 
