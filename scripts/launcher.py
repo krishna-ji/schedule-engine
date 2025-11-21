@@ -138,6 +138,16 @@ def main_diagnose():
     diagnose_gpu()
 
 
+def main_test_gpu():
+    """Quick GPU/CUDA detection test."""
+    import subprocess
+    import sys
+
+    console.print("[cyan]Testing GPU/CUDA availability...[/cyan]\n")
+    result = subprocess.run([sys.executable, "test_gpu.py"], check=False)
+    sys.exit(result.returncode)
+
+
 def main_clean():
     """Clean output directory."""
     import shutil
@@ -223,8 +233,9 @@ def main_interactive():
             "misc",
             [
                 ("7", "diagnose", "System diagnostics"),
-                ("8", "clean", "Clean output directory"),
-                ("9", "list-experiments", "List experiment history"),
+                ("8", "test-gpu", "Test GPU/CUDA detection"),
+                ("9", "clean", "Clean output directory"),
+                ("0", "list-experiments", "List experiment history"),
             ],
         ),
     ]
@@ -269,10 +280,16 @@ def main_interactive():
             cmd = all_cmds[choice]
             console.print(f"\n[green]Running: uv run {cmd}[/green]\n")
             subprocess.run(["uv", "run"] + cmd.split(), check=False)
-            input("\n[dim]Press Enter to continue...[/dim]")
+            try:
+                input("\n[dim]Press Enter to continue...[/dim]")
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Interrupted - returning to menu[/yellow]")
         else:
             console.print(f"[red]Invalid choice: {choice}[/red]")
-            input("\n[dim]Press Enter to continue...[/dim]")
+            try:
+                input("\n[dim]Press Enter to continue...[/dim]")
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Returning to menu[/yellow]")
 
 
 if __name__ == "__main__":
@@ -283,6 +300,8 @@ if __name__ == "__main__":
         main_nsga()
     elif "train" in script_name and "rl" in script_name:
         main_train_rl()
+    elif "test-gpu" in script_name or "test_gpu" in script_name:
+        main_test_gpu()
     elif "diagnose" in script_name:
         main_diagnose()
     elif "clean" in script_name:
