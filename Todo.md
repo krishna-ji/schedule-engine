@@ -1,4 +1,4 @@
-# RL-Based Hyper-Heuristic Implementation TODO
+# RL-Based Hyper-Heuristic Implementation TODO List
 
 **Project**: Evolving Schedule Engine from Pure GA to RL-Powered Hyper-Heuristic
 **Date Created**: 2025-11-14
