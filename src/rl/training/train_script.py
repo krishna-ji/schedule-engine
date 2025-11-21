@@ -256,14 +256,22 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
             f"Auto-detected {detected_cores} CPU cores, using {args.n_envs} parallel environments (profile: {args.profile})"
         )
 
-    # Device setting: always CPU-only execution (warn if profile requested GPU)
-    requested_device = str(profile.get("device", "cpu")).lower()
-    if requested_device != "cpu":
-        logger.warning(
-            "Profile requested device '%s' but GPU execution is disabled; forcing CPU.",
-            requested_device,
-        )
-    args.device = "cpu"
+    # Device setting: respect user's choice, auto-detect if 'auto'
+    requested_device = str(profile.get("device", "auto")).lower()
+
+    if requested_device == "auto":
+        # Auto-detect best available device
+        import torch
+
+        if torch.cuda.is_available():
+            args.device = "cuda"
+            logger.info(f"Auto-detected CUDA GPU: {torch.cuda.get_device_name(0)}")
+        else:
+            args.device = "cpu"
+            logger.info("No CUDA GPU detected, using CPU")
+    else:
+        args.device = requested_device
+        logger.info(f"Using device: {args.device}")
 
 
 def create_environment(args, context, env_rank: int = 0):

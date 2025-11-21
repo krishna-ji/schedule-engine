@@ -22,5 +22,5 @@ parallel:
   n_envs: null # Auto-detect all available CPU cores (null = use all)
   use_subproc: true # Use SubprocVecEnv for true parallelism
 
-# PyTorch/GPU settings (NEW)
-device: cpu # CPU-only execution
+# PyTorch/GPU settings
+device: auto # Auto-detect (cuda if available, else cpu)

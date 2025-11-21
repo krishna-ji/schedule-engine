@@ -17,4 +17,4 @@ debug_logging: true
 debug_log_interval: 10
 
 # Device
-device: cpu # CPU-only execution
+device: auto # Auto-detect GPU (cuda if available, else cpu)

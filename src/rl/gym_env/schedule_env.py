@@ -89,7 +89,7 @@ class ScheduleEnv(gym.Env):
         self.state_encoder = StateEncoder(
             max_generations=max_generations, history_size=10
         )
-        self.action_mapper = ActionMapper(use_config=True)
+        self.action_mapper = ActionMapper(use_config=True, timeout_seconds=30.0)
         self.reward_calculator = RewardCalculator(
             fitness_weight=1.0, diversity_weight=0.1, time_weight=0.01
         )

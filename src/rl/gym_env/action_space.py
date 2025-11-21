@@ -5,11 +5,15 @@ Maps discrete action indices to heuristic function calls.
 Action space: 20 discrete actions (19 heuristics + 1 no-op)
 """
 
+import signal
+import logging
 from typing import Callable, List, Tuple, Optional
 from dataclasses import dataclass
 
 from src.heuristics import get_enabled_heuristics
 from src.core.types import Individual, SchedulingContext
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,14 +42,16 @@ class ActionMapper:
     - Heuristic execution with context
     """
 
-    def __init__(self, use_config: bool = True):
+    def __init__(self, use_config: bool = True, timeout_seconds: float = 30.0):
         """
         Initialize action mapper.
 
         Args:
             use_config: Whether to respect config killswitches
+            timeout_seconds: Maximum time for any single heuristic execution (default: 30s)
         """
         self.use_config = use_config
+        self.timeout_seconds = timeout_seconds
         self.actions: List[ActionInfo] = []
         self._build_action_space()
 
@@ -190,7 +196,13 @@ class ActionMapper:
 
             # Standard single-individual heuristics (individual, context)
             else:
-                result = action_info.function(individual_copy, context)
+                # Apply timeout protection
+                result = self._execute_with_timeout(
+                    action_info.function, individual_copy, context, action_info.name
+                )
+                if result is None:  # Timeout occurred
+                    return individual, False
+
                 # Handle in-place modification heuristics (return int improvement count)
                 if action_info.modifies_individual and isinstance(result, int):
                     modified = individual_copy
@@ -212,6 +224,54 @@ class ActionMapper:
             # Heuristic failed - return original
             logger.error(f"Action {action_info.name} failed: {e}", exc_info=True)
             return individual, False
+
+    def _timeout_handler(self, signum, frame):
+        """Signal handler for timeout."""
+        raise TimeoutError("Heuristic execution timed out")
+
+    def _execute_with_timeout(self, func, *args, action_name: str = "unknown"):
+        """
+        Execute function with timeout protection.
+
+        Args:
+            func: Function to execute
+            *args: Arguments to pass to function
+            action_name: Name of action for logging
+
+        Returns:
+            Function result or None if timeout
+        """
+        # Note: signal.alarm only works in main thread on Unix
+        # For Windows/threads, we rely on the TimeoutError catch in apply_action
+        import platform
+
+        if platform.system() != "Windows" and self.timeout_seconds > 0:
+            try:
+                # Set up timeout alarm (Unix only)
+                old_handler = signal.signal(signal.SIGALRM, self._timeout_handler)
+                signal.alarm(int(self.timeout_seconds))
+
+                try:
+                    result = func(*args)
+                    return result
+                finally:
+                    # Cancel alarm and restore handler
+                    signal.alarm(0)
+                    signal.signal(signal.SIGALRM, old_handler)
+
+            except TimeoutError:
+                logger.warning(
+                    f"Action {action_name} timed out after {self.timeout_seconds}s"
+                )
+                return None
+        else:
+            # Windows or no timeout - execute directly
+            # Long-running operations will still block but user can Ctrl+C
+            try:
+                return func(*args)
+            except Exception as e:
+                logger.error(f"Action {action_name} failed: {e}")
+                return None
 
     def _validate_result(self, result) -> bool:
         """
@@ -283,14 +343,17 @@ class ActionMapper:
         return "\n".join(lines)
 
 
-def create_action_mapper(use_config: bool = True) -> ActionMapper:
+def create_action_mapper(
+    use_config: bool = True, timeout_seconds: float = 30.0
+) -> ActionMapper:
     """
     Factory function to create action mapper.
 
     Args:
         use_config: Whether to respect configuration killswitches
+        timeout_seconds: Maximum time for any single heuristic execution
 
     Returns:
         Configured ActionMapper instance
     """
-    return ActionMapper(use_config=use_config)
+    return ActionMapper(use_config=use_config, timeout_seconds=timeout_seconds)

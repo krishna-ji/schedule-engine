@@ -534,15 +534,41 @@ class RLTrainer:
         return min_candidate if rollout_size % min_candidate == 0 else 1
 
     def _resolve_device(self, requested_device: str) -> str:
-        """Always return CPU device, warning if GPU was requested."""
+        """
+        Resolve device string with proper GPU detection.
 
-        normalized = (requested_device or "cpu").lower()
-        if normalized != "cpu":
-            logger.warning(
-                "GPU execution is disabled in this build; forcing CPU device (requested '%s').",
-                normalized,
-            )
-        return "cpu"
+        Args:
+            requested_device: Device string ("cpu", "cuda", "cuda:0", "auto")
+
+        Returns:
+            Resolved device string
+        """
+        import torch
+
+        normalized = (requested_device or "auto").lower()
+
+        if normalized == "auto":
+            # Auto-detect best device
+            if torch.cuda.is_available():
+                device = "cuda"
+                logger.info(
+                    f"Auto-detected CUDA device: {torch.cuda.get_device_name(0)}"
+                )
+            else:
+                device = "cpu"
+                logger.info("No CUDA device available, using CPU")
+        elif normalized.startswith("cuda"):
+            # Validate CUDA device
+            if torch.cuda.is_available():
+                device = normalized
+                logger.info(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
+            else:
+                logger.warning("CUDA requested but not available, falling back to CPU")
+                device = "cpu"
+        else:
+            device = "cpu"
+
+        return device
 
 
 def create_trainer(
