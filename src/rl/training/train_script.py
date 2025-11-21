@@ -524,10 +524,18 @@ def main() -> None:
 
         _, context = load_input_data(args.data_dir)
 
-        logger.info("Loaded %d courses", len(context.courses))
-        logger.info("Loaded %d instructors", len(context.instructors))
-        logger.info("Loaded %d rooms", len(context.rooms))
-        logger.info("Loaded %d groups", len(context.groups))
+        # Right-align counts for consistent formatting
+        max_count = max(
+            len(context.courses),
+            len(context.instructors),
+            len(context.rooms),
+            len(context.groups),
+        )
+        count_width = len(str(max_count))
+        logger.info("Loaded %*d courses", count_width, len(context.courses))
+        logger.info("Loaded %*d instructors", count_width, len(context.instructors))
+        logger.info("Loaded %*d rooms", count_width, len(context.rooms))
+        logger.info("Loaded %*d groups", count_width, len(context.groups))
 
         logger.info("\n" + "=" * 60)
         logger.info("STEP 2: Create RL Environment")
@@ -627,7 +635,7 @@ def main() -> None:
 
         trainer.train(
             total_timesteps=args.timesteps,
-            progress_bar=True,
+            progress_bar=False,
         )
 
         logger.info("\n[OK] Training completed successfully!")

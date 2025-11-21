@@ -156,11 +156,24 @@ def run_standard_workflow(
         qts, context = load_input_data(data_dir, config=config)
         progress.update(task, completed=5)
 
-    console.print(f"  [dim]courses:[/dim] {len(context.courses)}")
-    console.print(f"  [dim]groups:[/dim] {len(context.groups)}")
-    console.print(f"  [dim]instructors:[/dim] {len(context.instructors)}")
-    console.print(f"  [dim]rooms:[/dim] {len(context.rooms)}")
-    console.print(f"  [dim]quanta:[/dim] {len(context.available_quanta)}")
+    # Right-align counts for consistent formatting
+    max_count = max(
+        len(context.courses),
+        len(context.groups),
+        len(context.instructors),
+        len(context.rooms),
+        len(context.available_quanta),
+    )
+    count_width = len(str(max_count))
+    console.print(f"  [dim]courses:[/dim] {len(context.courses):>{count_width}}")
+    console.print(f"  [dim]groups:[/dim] {len(context.groups):>{count_width}}")
+    console.print(
+        f"  [dim]instructors:[/dim] {len(context.instructors):>{count_width}}"
+    )
+    console.print(f"  [dim]rooms:[/dim] {len(context.rooms):>{count_width}}")
+    console.print(
+        f"  [dim]quanta:[/dim] {len(context.available_quanta):>{count_width}}"
+    )
     console.print()
 
     # ═══════════════════════════════════════════════════════════════
