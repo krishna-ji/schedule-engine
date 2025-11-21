@@ -5,19 +5,24 @@ applyTo: "src/constraints/**/*.py"
 # Constraints Instructions
 
 ## Overview
-Constraint evaluation functions for hard (must-satisfy) and soft (prefer-satisfy) rules. Hard constraints in `src/constraints/hard.py`, soft in `src/constraints/soft.py`.
+Constraint predicates for CSP formulation: hard constraints (feasibility requirements, must evaluate to 0) and soft constraints (preference penalties, minimize total). Hard constraints in `src/constraints/hard.py`, soft in `src/constraints/soft.py`.
 
-## Constraint Function Signature
+## Constraint Predicate Signature
 ```python
-def constraint_name(decoded_schedule: List[CourseSession], context: SchedulingContext) -> int:
+def constraint_name(
+    decoded_schedule: List[CourseSession],  # Phenotype (decoded chromosome)
+    context: SchedulingContext               # Static problem data (entities, time system)
+) -> int:
     """
-    Evaluate constraint violations.
+    Evaluate constraint violations over decoded phenotype.
     
     Returns:
-        int: Penalty score (0 = satisfied, >0 = violated)
+        int: Violation count (hard) or penalty score (soft)
+             - Hard: 0 = feasible, >0 = infeasible (count of conflicts)
+             - Soft: 0 = ideal, >0 = suboptimal (weighted penalty sum)
     """
     penalty = 0
-    # ... evaluation logic ...
+    # Constraint evaluation logic: iterate sessions, check predicates, accumulate violations
     return penalty
 ```
 

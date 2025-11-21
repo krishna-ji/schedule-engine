@@ -1,0 +1,134 @@
+name: CI - Test & Lint
+
+on:
+    push:
+        branches: [main, dev-*, feature/*]
+    pull_request:
+        branches: [main, dev-*]
+
+jobs:
+    test:
+        name: Test (Python ${{ matrix.python-version }})
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                python-version: ["3.12"]
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install UV package manager
+              uses: astral-sh/setup-uv@v2
+              with:
+                  version: "latest"
+
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ matrix.python-version }}
+
+            - name: Install dependencies
+              run: |
+                  uv sync --frozen
+
+            - name: Run unit tests with coverage
+              run: |
+                  uv run pytest test/unit/ --cov=src --cov-report=xml --cov-report=term-missing -v
+
+            - name: Upload coverage to Codecov
+              uses: codecov/codecov-action@v4
+              with:
+                  file: ./coverage.xml
+                  fail_ci_if_error: false
+
+    lint:
+        name: Lint & Format Check
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install UV package manager
+              uses: astral-sh/setup-uv@v2
+
+            - name: Set up Python 3.12
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install dependencies
+              run: |
+                  uv sync --frozen
+
+            - name: Check code formatting (Black)
+              run: |
+                  uv run black --check src/ test/
+
+            - name: Run linter (Ruff)
+              run: |
+                  uv run ruff check src/ test/
+
+            - name: Type check (MyPy)
+              run: |
+                  uv run mypy src/ --ignore-missing-imports
+
+    config-validation:
+        name: Validate Configuration Files
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install UV package manager
+              uses: astral-sh/setup-uv@v2
+
+            - name: Set up Python 3.12
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install dependencies
+              run: |
+                  uv sync --frozen
+
+            - name: Validate YAML configs
+              run: |
+                  python -c "import yaml; import glob; [yaml.safe_load(open(f)) for f in glob.glob('configs/**/*.yaml', recursive=True)]"
+
+            - name: Verify config schema
+              run: |
+                  uv run python -c "from src.config import get_config; get_config()"
+
+    smoke-test:
+        name: Smoke Test (NSGA-II 30 gens)
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install UV package manager
+              uses: astral-sh/setup-uv@v2
+
+            - name: Set up Python 3.12
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install dependencies
+              run: |
+                  uv sync --frozen
+
+            - name: Run smoke test
+              run: |
+                  uv run nsga --test --name "ci-smoke-test"
+              timeout-minutes: 5
+
+            - name: Check output artifacts
+              run: |
+                  ls -lh output/
+                  test -f output/experiment_manifest.json || exit 1

@@ -4,13 +4,14 @@ applyTo: "configs/**/*.yaml"
 
 # Configuration File Guidelines for Schedule Engine
 
-## YAML Structure & Format
+## YAML Schema & Serialization
 
-### Required Format
-- **Indentation**: 2 spaces (NOT tabs)
-- **Line length**: Max 100 characters
-- **Comments**: Use `#` for inline explanations
-- **Structure**: Hierarchical dictionary (key-value pairs)
+### Structural Requirements
+- **Indentation**: 2-space nesting (YAML spec-compliant, no tab characters)
+- **Line length**: 100 chars max (prevents horizontal scroll in diffs)
+- **Comments**: Use `#` for semantic annotations (explain *why*, not *what*)
+- **Schema**: Nested mappings validated against Pydantic `BaseModel` subclasses in `src/config/models.py`
+- **Type safety**: All leaf values strongly typed (int, float, bool, str, null) - no ambiguous YAML types
 
 ### File Types
 

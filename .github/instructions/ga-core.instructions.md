@@ -29,9 +29,11 @@ Genetic algorithm implementation using DEAP. Core scheduling logic in `src/core/
 ## Genetic Operators
 
 ### Crossover (`src/ga/operators/crossover.py`)
-- `crossover_course_group_aware()` - Preserves course-group relationships
-- Requires course-group pairs to align across population
-- Can trigger repair if `repair.apply_after_crossover=True`
+- **Operator**: `crossover_course_group_aware()` - Two-point crossover with semantic alignment constraint
+- **Invariant**: Preserves course-group enrollment relationships (no orphaned genes, no duplicate sessions)
+- **Population alignment**: Requires homogeneous chromosome length (all individuals encode same course-group pairs)
+- **Post-operator repair**: Optional IGLS repair triggered if `repair.apply_after_crossover=True` (repairs constraint violations introduced by crossover)
+- **Probability**: Configurable via `ga.cxpb` (default 0.75)
 
 ### Mutation (`src/ga/operators/mutation.py`)
 - `mutate_individual()` - Randomly changes time slot, instructor, or room
