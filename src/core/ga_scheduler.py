@@ -854,13 +854,17 @@ class GAScheduler:
             self.context.rooms,
         )
 
-        # Build hard constraint labels (3 per row)
+        # Build hard constraint labels (3 per row) using deterministic order
         hard_items = []
-        hc_counter = 1
-        for name in hard_details.keys():
+        for name in self.hard_constraint_names:
             clean_name = name.replace("_", " ")
-            hard_items.append(f"hc{hc_counter}={clean_name}")
-            hc_counter += 1
+            code = self.hard_constraint_codes.get(name, f"hc{len(hard_items)+1}")
+            hard_items.append(f"{code}={clean_name}")
+
+        for name in hard_details.keys():
+            if name not in self.hard_constraint_codes:
+                clean_name = name.replace("_", " ")
+                hard_items.append(f"{name[:4]}={clean_name}")
 
         # Display hard constraints 3 per row
         for i in range(0, len(hard_items), 3):
@@ -876,11 +880,15 @@ class GAScheduler:
 
         # Build soft constraint labels (3 per row)
         soft_items = []
-        sc_counter = 1
-        for name in soft_details.keys():
+        for name in self.soft_constraint_names:
             clean_name = name.replace("_", " ")
-            soft_items.append(f"sc{sc_counter}={clean_name}")
-            sc_counter += 1
+            code = self.soft_constraint_codes.get(name, f"sc{len(soft_items)+1}")
+            soft_items.append(f"{code}={clean_name}")
+
+        for name in soft_details.keys():
+            if name not in self.soft_constraint_codes:
+                clean_name = name.replace("_", " ")
+                soft_items.append(f"{name[:4]}={clean_name}")
 
         # Display soft constraints 3 per row
         for i in range(0, len(soft_items), 3):

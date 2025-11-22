@@ -8,11 +8,14 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     """
     Performs constraint-aware mutation on a single gene.
 
-    CRITICAL: Course and Group are NEVER mutated!
-    Only mutates: Instructor, Room, Time slots
+    CRITICAL: Course, Group, and Duration are NEVER mutated!
+    Only mutates: Instructor, Room, Time slots (when, not how long)
 
     This preserves the fundamental (course, group) enrollment structure
-    and prevents incomplete_or_extra_sessions violations.
+    and maintains course duration requirements (num_quanta = course.quanta_per_week).
+
+    Architecture: Uses SessionGene's contiguous representation (start_quanta + num_quanta)
+    introduced in Nov 2025 to structurally enforce session continuity.
     """
     # Get course info for constraint-aware mutation
     # Look up using tuple key (course_id, course_type)
@@ -84,10 +87,16 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
     """
     Intelligently mutate time quanta while PRESERVING quanta count.
 
-    CRITICAL: Number of quanta MUST stay the same to avoid
-    incomplete_or_extra_sessions violations!
+    CRITICAL: Number of quanta MUST stay the same to maintain course requirements!
+    Duration (num_quanta) is fixed by course.quanta_per_week and should never change.
 
     Only changes WHEN the session happens, not HOW LONG it is.
+
+    Returns:
+        List[int]: New quanta list (will be converted to start_quanta + num_quanta)
+
+    Note: Uses SessionGene's contiguous representation (start_quanta + num_quanta)
+          introduced in Nov 2025 architecture update.
     """
     # CRITICAL: Preserve the exact number of quanta (NEVER modify)
     # For theory classes, num_quanta is 1-2 (per split block)
