@@ -213,7 +213,7 @@ def _generate_neighborhood(
     if not course:
         return neighbors
 
-    duration = len(gene.quanta)
+    duration = gene.num_quanta
 
     # 1. Generate TIME neighbors (shift time slots)
     time_neighbors = _generate_time_neighbors(gene, duration, context)
@@ -246,17 +246,22 @@ def _generate_time_neighbors(
         new_quanta = available_quanta[start_idx : start_idx + duration]
 
         # Skip if same as current
-        if new_quanta == gene.quanta:
+        if new_quanta == gene.get_quanta_list():
             continue
 
         # Create time neighbor (same room, instructor)
+        from src.ga.quanta_converter import quanta_list_to_contiguous
+
+        start_q, num_q = quanta_list_to_contiguous(new_quanta)
+
         neighbor = SessionGene(
             course_id=gene.course_id,
             course_type=gene.course_type,
             group_ids=gene.group_ids,
             instructor_id=gene.instructor_id,
             room_id=gene.room_id,
-            quanta=new_quanta,
+            start_quanta=start_q,
+            num_quanta=num_q,
         )
         neighbors.append(neighbor)
 
@@ -288,7 +293,8 @@ def _generate_room_neighbors(
             group_ids=gene.group_ids,
             instructor_id=gene.instructor_id,
             room_id=room.room_id,
-            quanta=gene.quanta,
+            start_quanta=gene.start_quanta,
+            num_quanta=gene.num_quanta,
         )
         neighbors.append(neighbor)
 
@@ -386,7 +392,7 @@ def _count_gene_violations(
     # Check instructor availability
     instructor = context.instructors.get(gene.instructor_id)
     if instructor:
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             if q not in instructor.available_quanta:
                 violations += 1
 
@@ -413,11 +419,11 @@ def _has_group_overlap(gene1: SessionGene, gene2: SessionGene) -> bool:
     if not common_groups:
         return False
 
-    # Check for time overlap
-    quanta1 = set(gene1.quanta)
-    quanta2 = set(gene2.quanta)
-
-    return bool(quanta1 & quanta2)
+    # Check for time overlap using efficient range comparison
+    # Two ranges overlap if: start1 < end2 AND start2 < end1
+    return (
+        gene1.start_quanta < gene2.end_quanta and gene2.start_quanta < gene1.end_quanta
+    )
 
 
 def _has_room_conflict(gene1: SessionGene, gene2: SessionGene) -> bool:
@@ -425,10 +431,10 @@ def _has_room_conflict(gene1: SessionGene, gene2: SessionGene) -> bool:
     if gene1.room_id != gene2.room_id:
         return False
 
-    quanta1 = set(gene1.quanta)
-    quanta2 = set(gene2.quanta)
-
-    return bool(quanta1 & quanta2)
+    # Check for time overlap using efficient range comparison
+    return (
+        gene1.start_quanta < gene2.end_quanta and gene2.start_quanta < gene1.end_quanta
+    )
 
 
 def _has_instructor_conflict(gene1: SessionGene, gene2: SessionGene) -> bool:
@@ -436,10 +442,10 @@ def _has_instructor_conflict(gene1: SessionGene, gene2: SessionGene) -> bool:
     if gene1.instructor_id != gene2.instructor_id:
         return False
 
-    quanta1 = set(gene1.quanta)
-    quanta2 = set(gene2.quanta)
-
-    return bool(quanta1 & quanta2)
+    # Check for time overlap using efficient range comparison
+    return (
+        gene1.start_quanta < gene2.end_quanta and gene2.start_quanta < gene1.end_quanta
+    )
 
 
 if __name__ == "__main__":

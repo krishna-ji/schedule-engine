@@ -180,7 +180,7 @@ def _greedy_construction(
             individual.append(gene)
 
             # Mark resources as used
-            for quantum in gene.quanta:
+            for quantum in range(gene.start_quanta, gene.end_quanta):
                 for gid in gene.group_ids:
                     group_schedule[(gid, quantum)] = True
                 room_usage[(gene.room_id, quantum)] = True
@@ -289,14 +289,19 @@ def _find_feasible_assignment(
         if not instructor_id:
             continue
 
-        # Success! Create gene
+        # Success! Create gene with contiguous quanta
+        from src.ga.quanta_converter import quanta_list_to_contiguous
+
+        start_q, num_q = quanta_list_to_contiguous(sorted(candidate_quanta))
+
         return SessionGene(
             course_id=course_key[0],
             course_type=course_key[1],
             instructor_id=instructor_id,
             group_ids=sorted(group_ids),
             room_id=room_id,
-            quanta=sorted(candidate_quanta),
+            start_quanta=start_q,
+            num_quanta=num_q,
         )
 
     # Fallback to random if no feasible found
@@ -393,13 +398,19 @@ def _random_gene(
     else:
         instructor_id = "INST1"
 
+    # Convert quanta list to contiguous representation
+    from src.ga.quanta_converter import quanta_list_to_contiguous
+
+    start_q, num_q = quanta_list_to_contiguous(quanta)
+
     return SessionGene(
         course_id=course_key[0],
         course_type=course_key[1],
         instructor_id=instructor_id,
         group_ids=sorted(group_ids),
         room_id=room_id,
-        quanta=quanta,
+        start_quanta=start_q,
+        num_quanta=num_q,
     )
 
 

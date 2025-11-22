@@ -1,20 +1,17 @@
-I am bothered much by Session Block Clustering problem by GA. I want you to help me solve it. 
+CREATE SESSIONS BY: THEORY CLASSES AS L+T COMBINED
+PRACTICAL CLASSES AS P ONLY
 
-I want array of quanta_id represetning multiple sessions for that course block . 
-How can i utilize it or should i employ other techniques to enfore the session continuity within a single seesion quantas. 
-e.g. a 5 load subject single session must be (x, x+1) and (y,y+1)  and (z)
-multiple sessions can be there be but : wihtin a single session : the ssubsession must be continuous.
-for theory subject:
+The other mutation operators and every oterh ones: do not change the sessions created:
+and the gene structure is : 
+with : start_quanta and num_quanta for each session.
 
-if course block has odd number of load requirement: then one of the session will have 1 quanta, and all other session will have 2 quanta each. [Those quana must be continuous, the quanta inside a single session must be continuous]
+This ensures that: loads are complete.
+and as we also have ensured on initialization that : scheduling practical one shot:, and theory as (LT+) if odd 1 isolated slot, if even then all blocks of 2. 
 
-if the course block has even number of load requirement: then all sessions will have 2 quanta each.
+When eval soft constraints;
+- For theory classes: consider L+T combined for clustering penalties
+- For practical classes: no fragmentation penalties (as they are always contiguous)
 
-for practical subjects:
-the load (P) must be scheduled in continuous quanta. 
-
-How can i implement this logic in algorithmic based intializer? without having to design hard constraint / soft constraint for this enforcement. 
-
-
-Make a full plan for migration? what is the best way possible? such that the session continutiy is not to be optimized by ga. and rather enforced auto by intializer?
-create a report inside docs/plans/subsession_continuity_enforcement.md
+and the crossover mutation operators do not change those values of length of sessions, can change the start quanta :
+there are some issues left, i know find and fix:
+so the loads are always correctly ensured via intialization logic 

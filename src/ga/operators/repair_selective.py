@@ -215,13 +215,16 @@ def repair_instructor_availability_selective(
             continue
 
         # Check if current quanta violate instructor availability
-        needs_repair = any(q not in instructor.available_quanta for q in gene.quanta)
+        needs_repair = any(
+            q not in instructor.available_quanta
+            for q in range(gene.start_quanta, gene.end_quanta)
+        )
 
         if not needs_repair:
             continue
 
         # Find valid replacement slot
-        required_duration = len(gene.quanta)
+        required_duration = gene.num_quanta
         new_quanta = _find_instructor_available_slot(
             individual,
             gene,
@@ -231,7 +234,9 @@ def repair_instructor_availability_selective(
         )
 
         if new_quanta:
-            gene.quanta = new_quanta
+            from src.ga.quanta_converter import quanta_list_to_contiguous
+
+            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
             fixes += 1
 
     return fixes
@@ -258,7 +263,7 @@ def repair_group_overlaps_selective(
     # Build group schedule map for entire individual (needed for conflict detection)
     group_schedule = defaultdict(lambda: defaultdict(list))
     for idx, gene in enumerate(individual):
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             for group_id in gene.group_ids:
                 group_schedule[group_id][q].append(idx)
 
@@ -271,7 +276,7 @@ def repair_group_overlaps_selective(
 
         # Check if this gene has group overlaps
         has_overlap = False
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             for group_id in gene.group_ids:
                 if len(group_schedule[group_id][q]) > 1:
                     has_overlap = True
@@ -295,7 +300,7 @@ def repair_group_overlaps_selective(
         new_quanta = _find_available_slot(
             individual,
             gene,
-            len(gene.quanta),
+            gene.num_quanta,
             instructor,
             room,
             groups,
@@ -304,7 +309,9 @@ def repair_group_overlaps_selective(
 
         if new_quanta:
             # Update gene and rebuild schedule map
-            gene.quanta = new_quanta
+            from src.ga.quanta_converter import quanta_list_to_contiguous
+
+            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
             fixes += 1
 
             # Rebuild schedule map for this group
@@ -312,7 +319,7 @@ def repair_group_overlaps_selective(
                 group_schedule[group_id] = defaultdict(list)
 
             for i, g in enumerate(individual):
-                for q in g.quanta:
+                for q in range(g.start_quanta, g.end_quanta):
                     for group_id in g.group_ids:
                         group_schedule[group_id][q].append(i)
 
@@ -332,7 +339,7 @@ def repair_room_conflicts_selective(
     # Build room schedule map
     room_schedule = defaultdict(lambda: defaultdict(list))
     for idx, gene in enumerate(individual):
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             room_schedule[gene.room_id][q].append(idx)
 
     # Repair only violated genes
@@ -343,7 +350,10 @@ def repair_room_conflicts_selective(
         gene = individual[idx]
 
         # Check if room conflict exists
-        has_conflict = any(len(room_schedule[gene.room_id][q]) > 1 for q in gene.quanta)
+        has_conflict = any(
+            len(room_schedule[gene.room_id][q]) > 1
+            for q in range(gene.start_quanta, gene.end_quanta)
+        )
 
         if not has_conflict:
             continue
@@ -361,7 +371,7 @@ def repair_room_conflicts_selective(
         new_quanta = _find_available_slot(
             individual,
             gene,
-            len(gene.quanta),
+            gene.num_quanta,
             instructor,
             room,
             groups,
@@ -369,13 +379,15 @@ def repair_room_conflicts_selective(
         )
 
         if new_quanta:
-            gene.quanta = new_quanta
+            from src.ga.quanta_converter import quanta_list_to_contiguous
+
+            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
             fixes += 1
 
             # Rebuild room schedule map
             room_schedule = defaultdict(lambda: defaultdict(list))
             for i, g in enumerate(individual):
-                for q in g.quanta:
+                for q in range(g.start_quanta, g.end_quanta):
                     room_schedule[g.room_id][q].append(i)
 
     return fixes
@@ -394,7 +406,7 @@ def repair_instructor_conflicts_selective(
     # Build instructor schedule map
     instructor_schedule = defaultdict(lambda: defaultdict(list))
     for idx, gene in enumerate(individual):
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             instructor_schedule[gene.instructor_id][q].append(idx)
 
     # Repair only violated genes
@@ -406,7 +418,8 @@ def repair_instructor_conflicts_selective(
 
         # Check if instructor conflict exists
         has_conflict = any(
-            len(instructor_schedule[gene.instructor_id][q]) > 1 for q in gene.quanta
+            len(instructor_schedule[gene.instructor_id][q]) > 1
+            for q in range(gene.start_quanta, gene.end_quanta)
         )
 
         if not has_conflict:
@@ -425,7 +438,7 @@ def repair_instructor_conflicts_selective(
         new_quanta = _find_available_slot(
             individual,
             gene,
-            len(gene.quanta),
+            gene.num_quanta,
             instructor,
             room,
             groups,
@@ -433,13 +446,15 @@ def repair_instructor_conflicts_selective(
         )
 
         if new_quanta:
-            gene.quanta = new_quanta
+            from src.ga.quanta_converter import quanta_list_to_contiguous
+
+            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
             fixes += 1
 
             # Rebuild instructor schedule map
             instructor_schedule = defaultdict(lambda: defaultdict(list))
             for i, g in enumerate(individual):
-                for q in g.quanta:
+                for q in range(g.start_quanta, g.end_quanta):
                     instructor_schedule[g.instructor_id][q].append(i)
 
     return fixes

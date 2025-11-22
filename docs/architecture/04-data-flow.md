@@ -159,8 +159,8 @@ sequenceDiagram
     Encoder-->>Entities: Room objects
     
     Entities->>Linker: Cross-reference entities
-    Linker->>Linker: Link courses ↔ groups
-    Linker->>Linker: Link courses ↔ instructors
+    Linker->>Linker: Link courses  groups
+    Linker->>Linker: Link courses  instructors
     Linker-->>Entities: Updated relationships
     
     Entities->>TimeSystem: Initialize time system

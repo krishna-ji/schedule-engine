@@ -29,6 +29,9 @@ class Course:
     enrolled_group_ids: List[str]
     qualified_instructor_ids: List[str]
     course_type: str = "theory"  # Default to theory
+    L: int = 0  # Lecture hours (for theory type)
+    T: int = 0  # Tutorial hours (for theory type)
+    P: int = 0  # Practical hours (for practical type)
 
     def __post_init__(self):
         """Validate course data after initialization."""

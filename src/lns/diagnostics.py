@@ -73,13 +73,18 @@ class SubproblemDiagnostics:
 
             for fixed_session in self.partial_schedule:
                 if fixed_session.instructor_id == session.instructor_id:
-                    occupied_instructor.update(fixed_session.quanta)
+                    # Add all quanta in the contiguous block to occupied set
+                    occupied_instructor.update(
+                        range(fixed_session.start_quanta, fixed_session.end_quanta)
+                    )
                 for gid in session.group_ids:
                     if gid in fixed_session.group_ids:
-                        occupied_groups[gid].update(fixed_session.quanta)
+                        occupied_groups[gid].update(
+                            range(fixed_session.start_quanta, fixed_session.end_quanta)
+                        )
 
             # Available quanta (sessions can be non-contiguous across the week)
-            session_duration = len(session.quanta)
+            session_duration = session.num_quanta
 
             # Filter out occupied quanta
             available_quanta = common_quanta - occupied_instructor
@@ -254,9 +259,14 @@ def build_conflict_graph(
     # Add edges for temporal overlaps (same time quanta)
     for i in range(len(individual)):
         for j in range(i + 1, len(individual)):
-            quanta_i = set(individual[i].quanta)
-            quanta_j = set(individual[j].quanta)
-            if quanta_i & quanta_j:  # Overlap
+            # Check if contiguous blocks overlap
+            gene_i = individual[i]
+            gene_j = individual[j]
+            # Two ranges overlap if: start_i < end_j AND start_j < end_i
+            if (
+                gene_i.start_quanta < gene_j.end_quanta
+                and gene_j.start_quanta < gene_i.end_quanta
+            ):
                 adjacency[i].add(j)
                 adjacency[j].add(i)
 

@@ -105,7 +105,7 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
             print()
 
         print(f"\n{'='*60}")
-        print("⚠️  ACTION REQUIRED")
+        print("️  ACTION REQUIRED")
         print(f"{'='*60}")
         print("These duplicates will cause group overlap violations!")
         print("Each duplicate creates additional scheduling conflicts.")
@@ -133,7 +133,7 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
             large_groups.append((group_id, len(enrolled)))
 
     if large_groups:
-        print("\n⚠️  Groups with >10 courses:")
+        print("\n️  Groups with >10 courses:")
         for gid, count in sorted(large_groups, key=lambda x: x[1], reverse=True)[:10]:
             print(f"   • {gid}: {count} courses")
         print("   (Large course loads may be difficult to schedule)")
@@ -180,7 +180,7 @@ def check_data_consistency(base_dir="data"):
                 missing_courses.add(course_id)
 
     if missing_courses:
-        print(f"⚠️  {len(missing_courses)} course IDs referenced but not found:")
+        print(f"️  {len(missing_courses)} course IDs referenced but not found:")
         for cid in sorted(missing_courses)[:20]:
             print(f"   • {cid}")
         if len(missing_courses) > 20:
@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
     # Exit with error code if issues found
     if issues:
-        print("⚠️  Please fix data quality issues before running GA!")
+        print("️  Please fix data quality issues before running GA!")
         sys.exit(1)
     else:
         print("[!yes] All data quality checks passed!")

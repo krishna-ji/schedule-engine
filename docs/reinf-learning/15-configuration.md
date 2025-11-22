@@ -265,9 +265,9 @@ rl:
 ```
 
 **When to use**:
-- ✅ Default choice (stable, sample-efficient)
-- ✅ Continuous/discrete action spaces
-- ✅ On-policy learning
+-  Default choice (stable, sample-efficient)
+-  Continuous/discrete action spaces
+-  On-policy learning
 
 ---
 
@@ -311,9 +311,9 @@ rl:
 ```
 
 **When to use**:
-- ✅ Discrete action spaces only
-- ✅ Off-policy learning (sample-efficient)
-- ✅ Stable exploration strategy
+-  Discrete action spaces only
+-  Off-policy learning (sample-efficient)
+-  Stable exploration strategy
 
 ---
 
@@ -461,7 +461,7 @@ rl:
 
 ## Curriculum Learning
 
-**Status**: ⚠️ Not yet implemented (placeholder config)
+**Status**: ️ Not yet implemented (placeholder config)
 
 ```yaml
 rl:

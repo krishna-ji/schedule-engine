@@ -33,7 +33,11 @@ def record_violations_to_heatmap(
         # 1. Instructor availability
         instructor = context.instructors.get(gene.instructor_id)
         if instructor:
-            if any(q not in instructor.available_quanta for q in gene.quanta):
+            # Check if any quantum in the contiguous block is unavailable
+            if any(
+                q not in instructor.available_quanta
+                for q in range(gene.start_quanta, gene.end_quanta)
+            ):
                 heatmap.record_violation(gene, "availability")
 
         # 2. Instructor qualification
@@ -58,7 +62,7 @@ def record_violations_to_heatmap(
     group_schedule = defaultdict(lambda: defaultdict(list))
     for gene in individual:
         for group_id in gene.group_ids:
-            for q in gene.quanta:
+            for q in range(gene.start_quanta, gene.end_quanta):
                 group_schedule[group_id][q].append(gene)
 
     for group_id, quanta_map in group_schedule.items():
@@ -71,7 +75,7 @@ def record_violations_to_heatmap(
     # Instructor conflicts
     instructor_schedule = defaultdict(lambda: defaultdict(list))
     for gene in individual:
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             instructor_schedule[gene.instructor_id][q].append(gene)
 
     for instructor_id, quanta_map in instructor_schedule.items():
@@ -83,7 +87,7 @@ def record_violations_to_heatmap(
     # Room conflicts
     room_schedule = defaultdict(lambda: defaultdict(list))
     for gene in individual:
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             room_schedule[gene.room_id][q].append(gene)
 
     for room_id, quanta_map in room_schedule.items():

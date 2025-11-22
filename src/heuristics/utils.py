@@ -98,17 +98,20 @@ def move_gene_to_time_if_valid(
 ) -> bool:
     """Shift a gene to a new start time only if all quanta remain valid."""
 
-    if not gene.quanta:
+    # Check if the entire contiguous block fits in valid_quanta
+    if gene.num_quanta == 0:
         if new_start not in valid_quanta:
             return False
-        gene.quanta = [new_start]
+        gene.start_quanta = new_start
+        gene.num_quanta = 1
         return True
 
-    shift_delta = new_start - gene.quanta[0]
-    shifted_quanta = [q + shift_delta for q in gene.quanta]
-
-    if any(q not in valid_quanta for q in shifted_quanta):
+    # Check if all quanta in the shifted contiguous block are valid
+    if any(
+        q not in valid_quanta for q in range(new_start, new_start + gene.num_quanta)
+    ):
         return False
 
-    gene.quanta = shifted_quanta
+    # All quanta valid - update start
+    gene.start_quanta = new_start
     return True

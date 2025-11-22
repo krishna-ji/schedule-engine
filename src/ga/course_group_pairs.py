@@ -61,8 +61,10 @@ def generate_course_group_pairs(
             parent_prefix = group_id[:-1]
             parent_to_subgroups[parent_prefix].append(group_id)
         else:
-            # Standalone group (no siblings)
-            parent_to_subgroups[group_id] = [group_id]
+            # Standalone group (no siblings) OR parent that already has subgroups
+            # Only create a new entry when no subgroups were registered yet
+            if group_id not in parent_to_subgroups:
+                parent_to_subgroups[group_id] = [group_id]
 
     # Process each group of siblings
     for parent_prefix, sibling_ids in parent_to_subgroups.items():

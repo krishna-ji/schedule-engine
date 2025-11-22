@@ -195,11 +195,20 @@ def _mutate_session(gene, context: SchedulingContext):
     available_quanta_list = list(context.available_quanta)
 
     if mutation_type < 0.4:
-        # Change time slots
-        num_quanta = len(gene.quanta)
+        # Change time slots - find contiguous block
+        num_quanta = gene.num_quanta
         if num_quanta > 0 and len(available_quanta_list) >= num_quanta:
-            new_quanta = random.sample(available_quanta_list, num_quanta)
-            gene.quanta = sorted(set(new_quanta))
+            # Find a random valid start time that allows contiguous block
+            from src.ga.quanta_converter import quanta_list_to_contiguous
+
+            valid_starts = [
+                q
+                for q in available_quanta_list
+                if all((q + i) in available_quanta_list for i in range(num_quanta))
+            ]
+            if valid_starts:
+                gene.start_quanta = random.choice(valid_starts)
+                # num_quanta stays the same
 
     elif mutation_type < 0.7:
         # Change room
@@ -218,10 +227,16 @@ def _mutate_session(gene, context: SchedulingContext):
 
     else:
         # Change multiple attributes (aggressive mutation)
-        num_quanta = len(gene.quanta)
+        num_quanta = gene.num_quanta
         if num_quanta > 0 and len(available_quanta_list) >= num_quanta:
-            new_quanta = random.sample(available_quanta_list, num_quanta)
-            gene.quanta = sorted(set(new_quanta))
+            # Find a random valid start time that allows contiguous block
+            valid_starts = [
+                q
+                for q in available_quanta_list
+                if all((q + i) in available_quanta_list for i in range(num_quanta))
+            ]
+            if valid_starts:
+                gene.start_quanta = random.choice(valid_starts)
 
         if context.rooms:
             gene.room_id = random.choice(list(context.rooms.keys()))

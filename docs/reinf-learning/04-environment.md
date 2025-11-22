@@ -340,8 +340,8 @@ vec_env = SubprocVecEnv([make_env(i) for i in range(n_envs)])
 - Memory: 4x usage
 
 **When to use**:
-- ✅ Training (med/prod profiles)
-- ❌ Testing (test profile uses 1 env)
+-  Training (med/prod profiles)
+-  Testing (test profile uses 1 env)
 
 ---
 

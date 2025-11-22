@@ -97,17 +97,17 @@ def _detect_fast(individual: List[SessionGene]) -> Dict[int, List[str]]:
         issues = []
 
         # Check 1: Duplicate quanta (self-overlap)
-        if len(gene.quanta) != len(set(gene.quanta)):
+        if gene.num_quanta != gene.num_quanta:
             issues.append("self_overlap")
 
         # Check 2: Empty schedule
-        if not gene.quanta:
+        if gene.num_quanta == 0:
             issues.append("empty_schedule")
 
         # Check 3: Invalid quantum values
-        if gene.quanta:
-            min_q = min(gene.quanta)
-            max_q = max(gene.quanta)
+        if gene.num_quanta > 0:
+            min_q = gene.start_quanta
+            max_q = (gene.start_quanta + gene.num_quanta - 1)
             # Assuming max quantum is around 527 (6 days * 11 slots * 8 quanta per slot)
             if min_q < 0 or max_q > 600:  # Upper bound safety margin
                 issues.append("invalid_quanta")
@@ -204,7 +204,7 @@ def _detect_full(
             continue
 
         # Check if any quantum violates instructor availability
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             if q not in instructor.available_quanta:
                 violations[idx].append("instructor_availability")
                 break  # One violation is enough
@@ -222,7 +222,7 @@ def _build_group_schedule_map(individual: List[SessionGene]) -> Dict:
     schedule = defaultdict(lambda: defaultdict(list))
 
     for idx, gene in enumerate(individual):
-        for quantum in gene.quanta:
+        for quantum in range(gene.start_quanta, gene.end_quanta):
             for group_id in gene.group_ids:
                 schedule[group_id][quantum].append(idx)
 
@@ -239,7 +239,7 @@ def _build_room_schedule_map(individual: List[SessionGene]) -> Dict:
     schedule = defaultdict(lambda: defaultdict(list))
 
     for idx, gene in enumerate(individual):
-        for quantum in gene.quanta:
+        for quantum in range(gene.start_quanta, gene.end_quanta):
             schedule[gene.room_id][quantum].append(idx)
 
     return schedule
@@ -255,7 +255,7 @@ def _build_instructor_schedule_map(individual: List[SessionGene]) -> Dict:
     schedule = defaultdict(lambda: defaultdict(list))
 
     for idx, gene in enumerate(individual):
-        for quantum in gene.quanta:
+        for quantum in range(gene.start_quanta, gene.end_quanta):
             schedule[gene.instructor_id][quantum].append(idx)
 
     return schedule

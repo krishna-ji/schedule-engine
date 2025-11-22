@@ -91,7 +91,7 @@ See `configs/training/ppo_default.yaml` for overrides.
 ## Testing
 
 - `test/rl/test_state_encoder.py` – ensures deterministic observation output.
-- `test/rl/test_action_mapper.py` – validates ID ↔ heuristic mapping.
+- `test/rl/test_action_mapper.py` – validates ID  heuristic mapping.
 - `test/rl/test_reward_calculator.py` – checks reward scaling.
 - `test/rl/test_rl_integration.py` – end-to-end step with mocked GA.
 

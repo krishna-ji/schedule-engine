@@ -313,6 +313,14 @@ class GAScheduler:
         self.constraint_logger = constraint_logger  # NEW: Store constraint logger
         self.seed = seed  # NEW: Store seed for worker initialization
 
+        # Deterministic short codes (hc1, hc2, ...) for console output/legend
+        self.hard_constraint_codes = {
+            name: f"hc{i+1}" for i, name in enumerate(self.hard_constraint_names)
+        }
+        self.soft_constraint_codes = {
+            name: f"sc{i+1}" for i, name in enumerate(self.soft_constraint_names)
+        }
+
         self.toolbox = None
         self.population = None
         self.metrics = GAMetrics(
@@ -960,20 +968,25 @@ class GAScheduler:
                     self.context.rooms,
                 )
 
-                # Build compact constraint lists with short names
+                # Build compact constraint lists - ALWAYS SHOW ALL CONSTRAINTS
                 hc_parts = []
-                hc_counter = 1
+                for name in self.hard_constraint_names:
+                    short_name = self.hard_constraint_codes.get(name, name[:4])
+                    hc_parts.append(f"{short_name}={int(hard_details.get(name, 0))}")
+
+                # Include any dynamically added constraints not present when scheduler initialized
                 for name, val in hard_details.items():
-                    if val > 0:
-                        hc_parts.append(f"hc{hc_counter}={int(val)}")
-                        hc_counter += 1
+                    if name not in self.hard_constraint_codes:
+                        hc_parts.append(f"{name[:4]}={int(val)}")
 
                 sc_parts = []
-                sc_counter = 1
+                for name in self.soft_constraint_names:
+                    short_name = self.soft_constraint_codes.get(name, name[:4])
+                    sc_parts.append(f"{short_name}={soft_details.get(name, 0.0):.1f}")
+
                 for name, val in soft_details.items():
-                    if val > 0:
-                        sc_parts.append(f"sc{sc_counter}={val:.1f}")
-                        sc_counter += 1
+                    if name not in self.soft_constraint_codes:
+                        sc_parts.append(f"{name[:4]}={val:.1f}")
 
                 # Build constraint list strings
                 hc_list = ", ".join(hc_parts) if hc_parts else ""
@@ -1089,19 +1102,27 @@ class GAScheduler:
         console.print()
         console.print("[dim]constraint mapping:[/dim]")
 
-        # Show hard constraints
-        hc_counter = 1
-        for name, val in hard_details.items():
+        # Show hard constraints (in configured order)
+        for name in self.hard_constraint_names:
             clean_name = name.replace("_", " ")
-            console.print(f"  [dim]hc{hc_counter}:[/dim] {clean_name}")
-            hc_counter += 1
+            code = self.hard_constraint_codes.get(name, name[:4])
+            console.print(f"  [dim]{code}:[/dim] {clean_name}")
 
-        # Show soft constraints
-        sc_counter = 1
-        for name, val in soft_details.items():
+        for name in hard_details.keys():
+            if name not in self.hard_constraint_codes:
+                clean_name = name.replace("_", " ")
+                console.print(f"  [dim]{name[:4]}:[/dim] {clean_name}")
+
+        # Show soft constraints (in configured order)
+        for name in self.soft_constraint_names:
             clean_name = name.replace("_", " ")
-            console.print(f"  [dim]sc{sc_counter}:[/dim] {clean_name}")
-            sc_counter += 1
+            code = self.soft_constraint_codes.get(name, name[:4])
+            console.print(f"  [dim]{code}:[/dim] {clean_name}")
+
+        for name in soft_details.keys():
+            if name not in self.soft_constraint_codes:
+                clean_name = name.replace("_", " ")
+                console.print(f"  [dim]{name[:4]}:[/dim] {clean_name}")
 
         console.print()
 
@@ -1274,7 +1295,7 @@ class GAScheduler:
                 repair_config["memetic_mode"] = False  # Disable memetic for stagnation
                 event_tracker.add("stagnation_repair")
                 console.print(
-                    f"[bold yellow]⚠️ Gen {gen}: STAGNATION repair triggered ({self.stagnation_counter} gens) "
+                    f"[bold yellow]️ Gen {gen}: STAGNATION repair triggered ({self.stagnation_counter} gens) "
                     f"- SOFT mode: selective, max_iterations={repair_config['max_iterations']}, memetic=OFF[/bold yellow]"
                 )
                 self.stagnation_counter = 0  # Reset after applying repair

@@ -128,11 +128,11 @@ class GPUConstraintEvaluator:
                     break
 
                 # Feature extraction
-                tensor[i, j, 0] = gene.quanta[0] if gene.quanta else 0  # Start time
+                tensor[i, j, 0] = gene.start_quanta if gene.quanta else 0  # Start time
                 tensor[i, j, 1] = hash(gene.instructor_id) % 100000  # Instructor ID
                 tensor[i, j, 2] = hash(gene.room_id) % 100000  # Room ID
                 tensor[i, j, 3] = len(gene.group_ids)  # Number of groups
-                tensor[i, j, 4] = len(gene.quanta)  # Duration
+                tensor[i, j, 4] = gene.num_quanta  # Duration
 
         # Single batch transfer to GPU (much faster than creating on GPU directly)
         return tensor.to(self.device, non_blocking=True)
@@ -400,8 +400,8 @@ class GPUConstraintEvaluator:
                 )
 
                 # Basic features
-                tensor[i, j, FEAT_TIME_START] = gene.quanta[0] if gene.quanta else 0
-                tensor[i, j, FEAT_DURATION] = len(gene.quanta)
+                tensor[i, j, FEAT_TIME_START] = gene.start_quanta if gene.quanta else 0
+                tensor[i, j, FEAT_DURATION] = gene.num_quanta
                 tensor[i, j, FEAT_INSTRUCTOR] = hash(gene.instructor_id) % 1000000
                 tensor[i, j, FEAT_ROOM] = hash(gene.room_id) % 1000000
                 tensor[i, j, FEAT_NUM_GROUPS] = len(gene.group_ids)
@@ -438,7 +438,7 @@ class GPUConstraintEvaluator:
                     # HC5: Check instructor time availability
                     if gene.quanta and hasattr(inst, "available_quanta"):
                         available_quanta = inst.available_quanta
-                        all_available = all(q in available_quanta for q in gene.quanta)
+                        all_available = all(q in available_quanta for q in range(gene.start_quanta, gene.end_quanta))
                         tensor[i, j, FEAT_INST_AVAILABLE] = 1 if all_available else 0
                     else:
                         tensor[i, j, FEAT_INST_AVAILABLE] = 1  # Assume available

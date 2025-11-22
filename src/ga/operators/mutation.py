@@ -64,13 +64,19 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     # CRITICAL: Keep the SAME number of quanta to preserve course requirements
     new_quanta = mutate_time_quanta(gene, course, context)
 
+    # Convert quanta list to contiguous representation
+    from src.ga.quanta_converter import quanta_list_to_contiguous
+
+    start_q, num_q = quanta_list_to_contiguous(new_quanta)
+
     return SessionGene(
         course_id=new_course_id,  # NEVER MUTATED
         course_type=gene.course_type,  # NEVER MUTATED
         instructor_id=new_instructor,  # Mutated
         group_ids=new_group_ids,  # NEVER MUTATED
         room_id=new_room,  # Mutated
-        quanta=new_quanta,  # Mutated (but count preserved)
+        start_quanta=start_q,
+        num_quanta=num_q,
     )
 
 
@@ -83,23 +89,15 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
 
     Only changes WHEN the session happens, not HOW LONG it is.
     """
-    # CRITICAL: Preserve the exact number of quanta
-    num_quanta = len(gene.quanta)
-
-    # Validate against course requirements (sanity check)
-    if course:
-        expected_quanta = getattr(course, "quanta_per_week", num_quanta)
-        if num_quanta != expected_quanta:
-            # If current gene has wrong count, fix it
-            num_quanta = expected_quanta
-
-    # Ensure we don't exceed available quanta
-    num_quanta = min(num_quanta, len(context.available_quanta))
-    num_quanta = max(1, num_quanta)  # At least 1 quantum
+    # CRITICAL: Preserve the exact number of quanta (NEVER modify)
+    # For theory classes, num_quanta is 1-2 (per split block)
+    # For practical classes, num_quanta equals full course.quanta_per_week
+    # course_completeness constraint validates the TOTAL across all genes
+    num_quanta = gene.num_quanta
 
     # 30% chance to keep current time slots completely unchanged
     if random.random() < 0.3:
-        return gene.quanta
+        return gene.get_quanta_list()
 
     # Try to assign consecutive quanta for better scheduling
     available_quanta = list(context.available_quanta)

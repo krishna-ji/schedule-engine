@@ -203,6 +203,9 @@ def load_courses(path: str) -> Dict[tuple, Course]:
                 enrolled_group_ids=[],
                 qualified_instructor_ids=[],
                 course_type="theory",
+                L=int(L),  # Store lecture hours
+                T=int(T),  # Store tutorial hours
+                P=0,
             )
             course.course_code = course_code
             course.department = department
@@ -223,6 +226,9 @@ def load_courses(path: str) -> Dict[tuple, Course]:
                 enrolled_group_ids=[],
                 qualified_instructor_ids=[],
                 course_type="practical",
+                L=0,
+                T=0,
+                P=int(P),  # Store practical hours
             )
             course.course_code = course_code
             course.department = department

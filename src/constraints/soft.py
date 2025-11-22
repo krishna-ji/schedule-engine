@@ -220,23 +220,27 @@ def session_continuity(sessions: List[CourseSession]) -> int:
     """
     Encourages sessions to be scheduled in continuous, appropriately-sized blocks.
 
-    Theory courses:
-    - Preferred block sizes: 2-3 consecutive quanta
-    - Penalizes oversized blocks (>3) and isolated single slots (except first one)
+    Theory/Lecture/Tutorial courses (L+T combined):
+    - Preferred block sizes: 2-3 consecutive quanta per day
+    - Penalizes isolated single slots (without contiguity)
+    - First isolated single slot is excused per course
+    - Theory and practical are evaluated SEPARATELY (no cross-type coalescence)
 
     Practical courses:
-    - Must be in a single continuous block (no fragmentation)
-    - Heavy penalty for splitting practical sessions
+    - Always contiguous (enforced by SessionGene structure)
+    - No penalty needed - fragmentation is structurally impossible
+    - Practical is "one-shot scheduled" with multiple quanta (3, 4, etc.)
 
-    Example (Theory - 6 quanta):
-    - [3,3] → 0 penalty (ideal)
-    - [2,2,2] → 0 penalty (acceptable)
-    - [1,2,3] → 0 penalty (first isolated slot excused)
-    - [1,1,4] → 3 penalty (second isolated slot + oversized block)
+    Example (Theory - L+T=5 quanta):
+    - [2,2,1] across different times → 0 penalty (first isolated slot excused)
+    - [2,1,1,1] → 10 penalty (3 isolated slots, only 1 excused)
+    - [3,2] → 0 penalty (acceptable block sizes)
 
-    Example (Practical - 3 quanta):
-    - [3] → 0 penalty (ideal - single continuous block)
-    - [2,1] → 20 penalty (fragmented practical)
+    Example (Practical - P=3 quanta):
+    - [3] continuous → 0 penalty (always contiguous by design)
+
+    Note: Theory and practical are separate course types and are NOT evaluated
+    together for coalescence. Each type has independent clustering rules.
 
     Args:
         sessions: List of course sessions to evaluate.
@@ -265,12 +269,12 @@ def session_continuity(sessions: List[CourseSession]) -> int:
     for course_key, course_days in course_day_quanta.items():
         course_type = course_type_map[course_key]
 
-        for day_quanta in course_days.values():
+        for day, day_quanta in course_days.items():
             # Sort quanta to identify consecutive blocks
             sorted_quanta = sorted(day_quanta)
 
-            # Find consecutive blocks
-            blocks = []
+            # Find consecutive blocks with their actual quantum values
+            blocks_with_quanta = []
             if sorted_quanta:
                 current_block = [sorted_quanta[0]]
 
@@ -280,25 +284,28 @@ def session_continuity(sessions: List[CourseSession]) -> int:
                         current_block.append(sorted_quanta[i])
                     else:
                         # Gap - start new block
-                        blocks.append(len(current_block))
+                        blocks_with_quanta.append(current_block)
                         current_block = [sorted_quanta[i]]
 
                 # Don't forget the last block
-                blocks.append(len(current_block))
+                blocks_with_quanta.append(current_block)
 
             # Apply penalties based on course type
             if course_type.lower() == "practical":
-                # Practical courses: must be in a single block
-                if len(blocks) > 1:
-                    # Heavy penalty for fragmentation
-                    penalty += cfg.practical_fragmentation_penalty * (len(blocks) - 1)
+                # Practical courses are always contiguous (enforced by SessionGene)
+                # No fragmentation penalty needed - structurally impossible
+                # Practical is "one-shot scheduled" automatically
+                pass
             else:
-                # Theory courses: apply refined penalty logic
+                # Theory/Tutorial courses (L+T combined): apply clustering penalty
+                # Theory and practical are evaluated SEPARATELY - no cross-type coalescence
                 isolated_count = 0
 
-                for block_size in blocks:
+                for block in blocks_with_quanta:
+                    block_size = len(block)
+
                     if block_size == 1:
-                        # Isolated single quantum
+                        # Isolated single quantum - penalize for lack of clustering
                         isolated_count += 1
                         if isolated_count > cfg.theory_max_excused_isolated:
                             # Excused slots exceeded, penalize subsequent ones
@@ -307,6 +314,6 @@ def session_continuity(sessions: List[CourseSession]) -> int:
                         # Oversized block - penalty per quantum beyond max
                         excess = block_size - cfg.preferred_block_size_max
                         penalty += excess * cfg.theory_oversized_penalty_per_quantum
-                    # Block sizes within preferred range have no penalty
+                    # Block sizes within preferred range (2-3) have no penalty
 
     return penalty

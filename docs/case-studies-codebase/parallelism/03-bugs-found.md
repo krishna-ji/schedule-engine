@@ -1,14 +1,14 @@
 # Bugs & Issues Found in Parallel Code
 
-## Critical Issues 🔴
+## Critical Issues 
 
-### None Found ✅
+### None Found 
 
 The parallelism implementation is **well-designed** with proper safeguards.
 
 ---
 
-## Medium Issues 🟡
+## Medium Issues 
 
 ### Issue #1: Double Executor Context in `parallel_executor.py`
 
@@ -143,7 +143,7 @@ def batch_evaluate_conflicts(
 
 ---
 
-## Minor Issues 🟢
+## Minor Issues 
 
 ### Issue #4: Inconsistent CPU Count Usage
 
@@ -251,9 +251,9 @@ tensor = tensor.to(self.device)
 
 ---
 
-## Design Issues 🔵
+## Design Issues 
 
-### Design #1: Crossover/Mutation Not Parallelized (Intentional) ✅
+### Design #1: Crossover/Mutation Not Parallelized (Intentional) 
 
 **Files:** `src/core/ga_scheduler.py:78-103`
 
@@ -266,7 +266,7 @@ tensor = tensor.to(self.device)
 # often outweighs benefits for simple operators. Sequential is faster and safer.
 ```
 
-**Analysis:** **CORRECT DECISION** ✅
+**Analysis:** **CORRECT DECISION** 
 
 **Why:**
 - Crossover takes ~10-50 microseconds per operation
@@ -282,7 +282,7 @@ Parallel crossover (8 processes):        0.8 seconds (80x SLOWER!)
 
 ---
 
-### Design #2: No GPU Support in Worker Processes (By Design) ✅
+### Design #2: No GPU Support in Worker Processes (By Design) 
 
 **Files:** `src/utils/parallel_worker.py`
 
@@ -303,22 +303,22 @@ Parallel crossover (8 processes):        0.8 seconds (80x SLOWER!)
 
 | Issue | Severity | Impact | Status |
 |-------|----------|--------|--------|
-| Double executor context | 🟡 Medium | Wasted resources | **Fix recommended** |
-| Inefficient future indexing | 🟡 Medium | O(N²) on errors | **Fix recommended** |
-| Missing GPU batch validation | 🟡 Medium | Potential OOM | **Fix recommended** |
-| Inconsistent CPU detection | 🟢 Minor | Code clarity | Optional fix |
-| No parallel timeout | 🟢 Minor | Potential hangs | Optional fix |
-| GPU tensor creation | 🟢 Minor | Performance | Optional optimization |
-| Sequential operators | 🔵 Design | Intentional | ✅ Correct |
-| No GPU in workers | 🔵 Design | Intentional | ✅ Correct |
+| Double executor context |  Medium | Wasted resources | **Fix recommended** |
+| Inefficient future indexing |  Medium | O(N²) on errors | **Fix recommended** |
+| Missing GPU batch validation |  Medium | Potential OOM | **Fix recommended** |
+| Inconsistent CPU detection |  Minor | Code clarity | Optional fix |
+| No parallel timeout |  Minor | Potential hangs | Optional fix |
+| GPU tensor creation |  Minor | Performance | Optional optimization |
+| Sequential operators |  Design | Intentional |  Correct |
+| No GPU in workers |  Design | Intentional |  Correct |
 
 ---
 
 ## Recommended Fixes Priority
 
 ### High Priority (Implement Soon)
-1. ✅ Fix double executor context (`parallel_executor.py`)
-2. ✅ Add GPU batch size validation (`gpu_batch_evaluator.py`)
+1.  Fix double executor context (`parallel_executor.py`)
+2.  Add GPU batch size validation (`gpu_batch_evaluator.py`)
 
 ### Medium Priority (Nice to Have)
 3. Add timeout for parallel operations
@@ -371,7 +371,7 @@ def test_gpu_batch_size_validation():
 
 ## Conclusion
 
-**Overall Assessment:** Parallelism implementation is **production-ready** ✅
+**Overall Assessment:** Parallelism implementation is **production-ready** 
 
 **Strengths:**
 - Proper GIL avoidance (process-based for CPU tasks)

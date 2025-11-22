@@ -334,16 +334,16 @@ genotype_diversity = 5 / 6 = 0.833
 ### 4.3 Interpretation
 
 **High genotypic diversity (≥ 0.7)**:
-- ✅ Population explores diverse regions of search space
-- ✅ Many different chromosome structures present
-- ✅ Good for early exploration (generations 0-500)
-- ⚠️ May include many infeasible solutions
+-  Population explores diverse regions of search space
+-  Many different chromosome structures present
+-  Good for early exploration (generations 0-500)
+- ️ May include many infeasible solutions
 
 **Low genotypic diversity (≤ 0.3)**:
-- ⚠️ Population converging to similar structures
-- ⚠️ Risk of premature convergence (stuck in local optimum)
-- ✅ OK if phenotypic diversity is HIGH (converging to Pareto front)
-- ❌ BAD if both genotypic & phenotypic diversity are LOW (stagnation)
+- ️ Population converging to similar structures
+- ️ Risk of premature convergence (stuck in local optimum)
+-  OK if phenotypic diversity is HIGH (converging to Pareto front)
+-  BAD if both genotypic & phenotypic diversity are LOW (stagnation)
 
 **Typical trajectory**:
 ```
@@ -360,7 +360,7 @@ Generation    Genotype Diversity    Phenotype Diversity
 **1. Detecting premature convergence**:
 ```python
 if genotype_diversity < 0.2 and current_generation < 500:
-    print("⚠️ WARNING: Premature convergence detected")
+    print("️ WARNING: Premature convergence detected")
     apply_diversity_preserving_operators()
 ```
 
@@ -497,16 +497,16 @@ phenotype_diversity = avg_distance / fitness_range
 ### 5.3 Interpretation
 
 **High phenotypic diversity (≥ 0.6)**:
-- ✅ Population covers wide range of fitness values
-- ✅ Diverse Pareto front (many non-dominated solutions)
-- ✅ Good for multi-objective optimization
-- ✅ Indicates active search (not converged)
+-  Population covers wide range of fitness values
+-  Diverse Pareto front (many non-dominated solutions)
+-  Good for multi-objective optimization
+-  Indicates active search (not converged)
 
 **Low phenotypic diversity (≤ 0.2)**:
-- ✅ Population converging to similar fitness (good if near optimum)
-- ⚠️ May indicate convergence to local optimum
-- ⚠️ All individuals have similar quality
-- ✅ Expected in late stages (generations 1500-2000)
+-  Population converging to similar fitness (good if near optimum)
+- ️ May indicate convergence to local optimum
+- ️ All individuals have similar quality
+-  Expected in late stages (generations 1500-2000)
 
 **Relationship to Pareto front**:
 ```
@@ -543,7 +543,7 @@ if phenotype_diversity < 0.1:
     if best_fitness < threshold:
         print("✓ Convergence to good optimum")
     else:
-        print("⚠️ Convergence to poor optimum (restart?)")
+        print("️ Convergence to poor optimum (restart?)")
 ```
 
 **2. NSGA-II selection pressure**:
@@ -591,7 +591,7 @@ reward = (
 │   High Genotypic         │   High Genotypic         │
 │   High Phenotypic        │   Low Phenotypic         │
 │                          │                          │
-│  ✅ IDEAL EXPLORATION    │  ⚠️ NEUTRAL EVOLUTION     │
+│   IDEAL EXPLORATION    │  ️ NEUTRAL EVOLUTION     │
 │  - Early generations     │  - Many structures       │
 │  - Diverse structures    │  - Same fitness          │
 │  - Diverse fitness       │  - Genetic drift         │
@@ -600,7 +600,7 @@ reward = (
 │   Low Genotypic          │   Low Genotypic          │
 │   High Phenotypic        │   Low Phenotypic         │
 │                          │                          │
-│  ✅ GOOD CONVERGENCE     │  ❌ PREMATURE CONVERGE   │
+│   GOOD CONVERGENCE     │   PREMATURE CONVERGE   │
 │  - Late generations      │  - Stuck in local opt    │
 │  - Similar structures    │  - All clones            │
 │  - Diverse Pareto front  │  - Same fitness          │
@@ -751,8 +751,8 @@ class StateEncoder:
           [3]: fitness_std          - Fitness standard deviation
           [4]: fitness_range        - Max - Min fitness
           [5]: population_diversity - Overall diversity (legacy)
-          [6]: genotype_diversity   - 🧬 Chromosome structure diversity
-          [7]: phenotype_diversity  - 🎯 Fitness outcome diversity
+          [6]: genotype_diversity   -  Chromosome structure diversity
+          [7]: phenotype_diversity  -  Fitness outcome diversity
           [8]: fitness_diversity    - Coefficient of variation
           [9]: unique_fitness_ratio - % unique fitness values
           [10]: current_generation  - Normalized generation counter
@@ -794,8 +794,8 @@ class StateEncoder:
 
         # Diversity metrics (THE KEY METRICS)
         population_diversity = self._calculate_diversity(population)
-        genotype_diversity = self._calculate_genotype_diversity(population)  # 🧬
-        phenotype_diversity = self._calculate_phenotype_diversity(population)  # 🎯
+        genotype_diversity = self._calculate_genotype_diversity(population)  # 
+        phenotype_diversity = self._calculate_phenotype_diversity(population)  # 
         fitness_diversity = np.std(fitness_values) / (np.mean(fitness_values) + 1e-6)
         unique_fitness_ratio = self._calculate_unique_fitness_ratio(population)
 
@@ -957,7 +957,7 @@ phenotype_diversity = 0.72  # HIGH: Fitness values spread out
 unique_fitness_ratio = 0.95 # 95% of individuals have unique fitness
 
 # Interpretation
-print("✅ Healthy exploration phase")
+print(" Healthy exploration phase")
 print("   - High genotypic diversity: exploring many structures")
 print("   - High phenotypic diversity: diverse solution qualities")
 print("   - Ideal for early generations (gen 0-500)")
@@ -1008,7 +1008,7 @@ phenotype_diversity = 0.18  # LOW: Most fitness values clustered around (5, 120)
 unique_fitness_ratio = 0.35 # Only 35% unique fitness (lots of duplicates)
 
 # Interpretation
-print("⚠️ Neutral evolution detected")
+print("️ Neutral evolution detected")
 print("   - Genotype diversity > Phenotype diversity (unusual)")
 print("   - Many different chromosomes → same fitness")
 print("   - Genetic drift on neutral networks")
@@ -1058,7 +1058,7 @@ phenotype_diversity = 0.45  # MODERATE: Pareto front has decent spread
 unique_fitness_ratio = 0.80 # 80% unique fitness (good for Pareto front)
 
 # Interpretation
-print("✅ Good convergence to Pareto front")
+print(" Good convergence to Pareto front")
 print("   - Low genotype diversity: structures converging (expected)")
 print("   - Moderate phenotype diversity: Pareto front coverage (good!)")
 print("   - All solutions feasible (hard violations = 0)")
@@ -1101,7 +1101,7 @@ phenotype_diversity = 0.02  # VERY LOW: All fitness identical
 unique_fitness_ratio = 0.10 # Only 10% unique fitness (90% duplicates!)
 
 # Interpretation
-print("❌ PREMATURE CONVERGENCE DETECTED")
+print(" PREMATURE CONVERGENCE DETECTED")
 print("   - Both diversities very low (< 0.1)")
 print("   - Population collapsed to local optimum")
 print("   - Still early in evolution (gen 300 / 2000)")
@@ -1398,10 +1398,10 @@ Fitness Evolution:
    - Can help escape local optima
 
 6. **Four scenarios**:
-   - High-High: Healthy exploration ✅
-   - High-Low: Neutral evolution ⚠️
-   - Low-High: Good convergence ✅
-   - Low-Low: Premature convergence (check if optimal) ❌/✅
+   - High-High: Healthy exploration 
+   - High-Low: Neutral evolution ️
+   - Low-High: Good convergence 
+   - Low-Low: Premature convergence (check if optimal) /
 
 ### 12.2 Best Practices
 
@@ -1453,7 +1453,7 @@ plot_diversity_evolution(log_file)
 
 # 3. Detect anomalies
 if genotype_diversity > 0.7 and phenotype_diversity < 0.2:
-    console.print("⚠️ Neutral evolution detected")
+    console.print("️ Neutral evolution detected")
 ```
 
 ### 12.3 Common Pitfalls

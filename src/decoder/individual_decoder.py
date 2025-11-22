@@ -57,26 +57,32 @@ def decode_individual(
     for gene in individual:
         # Validate and clip quanta before decoding to prevent ValueError in constraints
         # This handles cases where crossover/mutation bypassed SessionGene validation
-        valid_quanta = [q for q in gene.quanta if 0 <= q < MAX_VALID_QUANTUM]
+        valid_quanta = [
+            q
+            for q in range(gene.start_quanta, gene.end_quanta)
+            if 0 <= q < MAX_VALID_QUANTUM
+        ]
         if not valid_quanta:
             # All quanta invalid - skip this gene entirely
             import logging
 
             logger = logging.getLogger(__name__)
             logger.debug(
-                f"Skipping gene {gene.course_id} - all quanta invalid: {gene.quanta}"
+                f"Skipping gene {gene.course_id} - all quanta invalid: start={gene.start_quanta}, num={gene.num_quanta}"
             )
             continue
 
         # Update gene with valid quanta (modify in-place to fix the chromosome)
-        if len(valid_quanta) != len(gene.quanta):
+        if len(valid_quanta) != gene.num_quanta:
             import logging
 
             logger = logging.getLogger(__name__)
             logger.debug(
-                f"Clipped gene {gene.course_id} quanta from {gene.quanta} to {valid_quanta}"
+                f"Clipped gene {gene.course_id} quanta from {gene.num_quanta} to {len(valid_quanta)}"
             )
-            gene.quanta = valid_quanta
+            # Update to valid range
+            gene.start_quanta = valid_quanta[0] if valid_quanta else 0
+            gene.num_quanta = len(valid_quanta) if valid_quanta else 1
         # Look up course using tuple key (course_id, course_type)
         course_key = (gene.course_id, gene.course_type)
         course = courses[course_key]
@@ -91,7 +97,7 @@ def decode_individual(
             instructor_id=gene.instructor_id,
             group_ids=gene.group_ids,
             room_id=gene.room_id,
-            session_quanta=gene.quanta,
+            session_quanta=gene.get_quanta_list(),
             required_room_features=course.required_room_features,
             course_type=gene.course_type,  # Use gene's course_type
             instructor=instructor,

@@ -236,7 +236,7 @@ def main():
         print(f"GPU: {torch.cuda.get_device_name(0)}")
         print(f"CUDA Version: {torch.version.cuda}")
     else:
-        print("⚠️  CUDA not available - GPU benchmark will be skipped")
+        print("️  CUDA not available - GPU benchmark will be skipped")
 
     # Load context once (reuse for both benchmarks)
     context = load_context(args.data_dir)
@@ -262,7 +262,7 @@ def main():
         print_comparison(results["cpu"], results["gpu"])
     elif not gpu_available:
         print(f"\n{'='*60}")
-        print("⚠️  GPU benchmark skipped - CUDA not available")
+        print("️  GPU benchmark skipped - CUDA not available")
         print(f"{'='*60}")
         print("\nTo enable GPU:")
         print("1. Install NVIDIA drivers")

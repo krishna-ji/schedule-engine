@@ -78,7 +78,7 @@ def main():
 
         for name, info in enabled_repairs.items():
             priority = str(info["priority"])
-            modifies = "⚠️  YES" if info.get("modifies_length", False) else "NO"
+            modifies = "️  YES" if info.get("modifies_length", False) else "NO"
             description = info.get("description", "")
 
             table.add_row(priority, name, modifies, description)

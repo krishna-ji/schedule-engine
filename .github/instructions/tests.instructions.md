@@ -4,7 +4,7 @@ applyTo: "test/**/*.py"
 
 # Testing Guidelines for Schedule Engine
 
-## ⚠️ PRIORITY: All tests go in `test/` directory (NOT in `src/`)
+## ️ PRIORITY: All tests go in `test/` directory (NOT in `src/`)
 
 ## Test Structure & Organization
 

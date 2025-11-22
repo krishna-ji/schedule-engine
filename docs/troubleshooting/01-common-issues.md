@@ -127,20 +127,20 @@ python -c "import yaml; yaml.safe_load(open('configs/base.yaml'))"
 
 2. **Common YAML mistakes:**
 ```yaml
-# ❌ Wrong: Missing space after colon
+#  Wrong: Missing space after colon
 ga:
   ngen:2000
 
-# ✅ Correct: Space after colon
+#  Correct: Space after colon
 ga:
   ngen: 2000
 
-# ❌ Wrong: Inconsistent indentation
+#  Wrong: Inconsistent indentation
 ga:
   ngen: 2000
    pop_size: 200
 
-# ✅ Correct: Consistent 2-space indentation
+#  Correct: Consistent 2-space indentation
 ga:
   ngen: 2000
   pop_size: 200
@@ -246,7 +246,7 @@ python -c "import json; json.load(open('data/Course.json'))"
 
 2. **Common JSON mistakes:**
 ```json
-// ❌ Wrong: Trailing comma
+//  Wrong: Trailing comma
 {
   "courses": [
     {"id": "CS101"},
@@ -254,7 +254,7 @@ python -c "import json; json.load(open('data/Course.json'))"
   ]
 }
 
-// ✅ Correct: No trailing comma
+//  Correct: No trailing comma
 {
   "courses": [
     {"id": "CS101"},

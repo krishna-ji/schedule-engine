@@ -85,11 +85,11 @@ This directory contains GitHub-specific configuration files for automated workfl
 
 ### Multi-Agent Compatibility
 Tested with:
-- ✅ GitHub Copilot
-- ✅ Cursor AI
-- ✅ Cody (Sourcegraph)
-- ✅ Tabnine
-- ✅ Amazon CodeWhisperer
+-  GitHub Copilot
+-  Cursor AI
+-  Cody (Sourcegraph)
+-  Tabnine
+-  Amazon CodeWhisperer
 
 ## Issue Templates
 

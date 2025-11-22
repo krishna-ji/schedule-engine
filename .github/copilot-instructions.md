@@ -11,7 +11,7 @@
 **Architecture**: Modular constraint-based optimization with 10 progressive runtime modes  
 **Performance**: GPU-accelerated fitness evaluation (10-50x speedup), parallel operators (3-5x speedup)
 
-## 🏗️ Build & Test Commands
+## ️ Build & Test Commands
 
 ### Quick Setup
 ```bash
@@ -252,18 +252,18 @@ uv run train-rl --prod   # 1-2 hours
 
 ## Active Workstream (November 2025)
 
-1. **Phase 3 Implementation**: ✅ Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
-2. **GPU Acceleration**: ✅ Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
+1. **Phase 3 Implementation**:  Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
+2. **GPU Acceleration**:  Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
    - GPU batch evaluator: 10-50x speedup (`src/ga/evaluator/gpu_batch_evaluator.py`)
    - Parallel crossover/mutation: 3-5x speedup (multiprocessing)
    - Parallel feasibility checks: 3-5x speedup (concurrent)
    - **Combined speedup**: 13-34x (34 hours → 1-2.5 hours)
-3. **Metrics Optimization**: ✅ Complete (pymoo integration)
+3. **Metrics Optimization**:  Complete (pymoo integration)
    - Hypervolume: 139x faster using WFG algorithm (Cython backend)
    - IGD/GD: Vectorized implementations
    - Configurable frequency: `metrics.advanced_metrics_frequency`
    - **Impact**: 27.8 hours → 12 minutes for 2000 generations
-4. **Thesis Experiments**: ✅ Ready (5 progressive experiments)
+4. **Thesis Experiments**:  Ready (5 progressive experiments)
    - Exp 1: Pure NSGA-II baseline (`uv run exp1`)
    - Exp 2: + IGLS repairs (`uv run exp2`)
    - Exp 3: + 19 heuristics (`uv run exp3`)

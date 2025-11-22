@@ -187,16 +187,19 @@ def _find_first_feasible(
 
     for fixed in current_schedule:
         if fixed.instructor_id == session.instructor_id:
-            occupied_instructor.update(fixed.quanta)
+            # Add all quanta in the contiguous block to occupied set
+            occupied_instructor.update(range(fixed.start_quanta, fixed.end_quanta))
         for gid in session.group_ids:
             if gid in fixed.group_ids:
-                occupied_groups[gid].update(fixed.quanta)
+                occupied_groups[gid].update(range(fixed.start_quanta, fixed.end_quanta))
         if fixed.room_id not in occupied_rooms:
             occupied_rooms[fixed.room_id] = set()
-        occupied_rooms[fixed.room_id].update(fixed.quanta)
+        occupied_rooms[fixed.room_id].update(
+            range(fixed.start_quanta, fixed.end_quanta)
+        )
 
     # Try start times
-    session_duration = len(session.quanta)
+    session_duration = session.num_quanta
     for start_q in sorted(common_quanta):
         span = list(range(start_q, start_q + session_duration))
         if not all(q in common_quanta for q in span):
@@ -351,7 +354,7 @@ def _random_assignment(
     candidates = sorted(common_quanta)
     random.shuffle(candidates)
 
-    session_duration = len(session.quanta)
+    session_duration = session.num_quanta
     for start_q in candidates:
         span = list(range(start_q, start_q + session_duration))
         if all(q in common_quanta for q in span):
@@ -427,8 +430,9 @@ def _propose_move(
                 course_type=session.course_type,
                 instructor_id=session.instructor_id,
                 group_ids=session.group_ids,
-                room_id=new_room,
-                quanta=session.quanta,
+                room_id=session.room_id,
+                start_quanta=session.start_quanta,
+                num_quanta=session.num_quanta,
             )
             return neighbor
 

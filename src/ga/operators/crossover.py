@@ -86,28 +86,38 @@ def crossover_course_group_aware(
                 gene1.instructor_id,
             )
             gene1.room_id, gene2.room_id = gene2.room_id, gene1.room_id
-            gene1.quanta, gene2.quanta = gene2.quanta, gene1.quanta
+            # Swap time allocation (start ONLY - duration is fixed by course requirements)
+            gene1.start_quanta, gene2.start_quanta = (
+                gene2.start_quanta,
+                gene1.start_quanta,
+            )
+            # DO NOT swap num_quanta - it's fixed by course.quanta_per_week (L+T or P)
 
-    # Validate quanta don't exceed valid range after swap
+    # Validate start_quanta don't exceed valid range after swap
+    # If invalid, clip start_quanta only (num_quanta is FIXED by course requirements)
     from src.encoder.quantum_time_system import QuantumTimeSystem
 
     time_system = QuantumTimeSystem()
     max_valid_quantum = time_system.total_quanta
 
     for gene in ind1:
-        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
-            # Quanta exceed valid range - clip to valid range
-            gene.quanta = [q for q in gene.quanta if q < max_valid_quantum]
-            if not gene.quanta:
-                # All quanta were invalid - assign first valid quantum
-                gene.quanta = [0]
+        if (
+            gene.num_quanta > 0
+            and (gene.start_quanta + gene.num_quanta - 1) >= max_valid_quantum
+        ):
+            # Start quantum would make session extend beyond valid range
+            # Adjust start_quanta to fit (num_quanta stays FIXED)
+            max_allowed_start = max(0, max_valid_quantum - gene.num_quanta)
+            gene.start_quanta = min(gene.start_quanta, max_allowed_start)
 
     for gene in ind2:
-        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
-            # Quanta exceed valid range - clip to valid range
-            gene.quanta = [q for q in gene.quanta if q < max_valid_quantum]
-            if not gene.quanta:
-                # All quanta were invalid - assign first valid quantum
-                gene.quanta = [0]
+        if (
+            gene.num_quanta > 0
+            and (gene.start_quanta + gene.num_quanta - 1) >= max_valid_quantum
+        ):
+            # Start quantum would make session extend beyond valid range
+            # Adjust start_quanta to fit (num_quanta stays FIXED)
+            max_allowed_start = max(0, max_valid_quantum - gene.num_quanta)
+            gene.start_quanta = min(gene.start_quanta, max_allowed_start)
 
     return ind1, ind2

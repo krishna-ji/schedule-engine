@@ -95,14 +95,14 @@ def distance_preserving_crossover(
     max_valid_quantum = time_system.total_quanta
 
     for gene in offspring1:
-        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
+        if gene.quanta and (gene.start_quanta + gene.num_quanta - 1) >= max_valid_quantum:
             # Session extends beyond valid range - shift it back
             max_start = max_valid_quantum - gene.duration_quanta
             if max_start >= 0:
                 gene.time_quantum = min(gene.time_quantum, max_start)
 
     for gene in offspring2:
-        if gene.quanta and max(gene.quanta) >= max_valid_quantum:
+        if gene.quanta and (gene.start_quanta + gene.num_quanta - 1) >= max_valid_quantum:
             # Session extends beyond valid range - shift it back
             max_start = max_valid_quantum - gene.duration_quanta
             if max_start >= 0:

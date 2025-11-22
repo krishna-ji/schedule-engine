@@ -99,7 +99,7 @@ def repair_instructor_availability(
 
         # Check if current quanta violate instructor availability
         needs_repair = False
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             if q not in instructor.available_quanta:
                 needs_repair = True
                 break
@@ -108,7 +108,7 @@ def repair_instructor_availability(
             continue
 
         # Find valid replacement quanta (only checking instructor availability)
-        required_duration = len(gene.quanta)
+        required_duration = gene.num_quanta
         new_quanta = _find_instructor_available_slot(
             individual,
             gene,
@@ -493,7 +493,7 @@ def repair_group_overlaps(
 
         for gene in individual:
             for group_id in gene.group_ids:
-                for q in gene.quanta:
+                for q in range(gene.start_quanta, gene.end_quanta):
                     group_schedule[group_id][q].append(gene)
 
         # Find first conflict
@@ -519,7 +519,7 @@ def repair_group_overlaps(
                     if not all([course, instructor, room] + groups_entities):
                         continue
 
-                    required_duration = len(gene.quanta)
+                    required_duration = gene.num_quanta
 
                     # Find new slot (this uses CURRENT occupation state)
                     new_quanta, new_instructor, new_room = _find_available_slot_smart(
@@ -597,7 +597,7 @@ def repair_room_conflicts(
         room_schedule = defaultdict(lambda: defaultdict(list))
 
         for gene in individual:
-            for q in gene.quanta:
+            for q in range(gene.start_quanta, gene.end_quanta):
                 room_schedule[gene.room_id][q].append(gene)
 
         # Find first conflict
@@ -624,7 +624,7 @@ def repair_room_conflicts(
                         continue
 
                     # Strategy 1: Try shifting time with same room
-                    required_duration = len(gene.quanta)
+                    required_duration = gene.num_quanta
                     new_quanta = _find_available_slot(
                         individual,
                         gene,
@@ -842,7 +842,7 @@ def repair_instructor_conflicts(
         instructor_schedule = defaultdict(lambda: defaultdict(list))
 
         for gene in individual:
-            for q in gene.quanta:
+            for q in range(gene.start_quanta, gene.end_quanta):
                 instructor_schedule[gene.instructor_id][q].append(gene)
 
         # Find first conflict
@@ -868,7 +868,7 @@ def repair_instructor_conflicts(
                     if not all([course, instructor, room] + groups_entities):
                         continue
 
-                    required_duration = len(gene.quanta)
+                    required_duration = gene.num_quanta
 
                     new_quanta, new_instructor, new_room = _find_available_slot_smart(
                         individual,
@@ -959,12 +959,15 @@ def repair_instructor_qualifications(
                 continue
 
             # Check if qualified instructor is available at all gene quanta
-            if all(q in qualified_instructor.available_quanta for q in gene.quanta):
+            if all(
+                q in qualified_instructor.available_quanta
+                for q in range(gene.start_quanta, gene.end_quanta)
+            ):
                 # Check no conflict with other genes
                 occupied = _build_occupied_quanta_map(individual, gene)
                 conflict_free = True
 
-                for q in gene.quanta:
+                for q in range(gene.start_quanta, gene.end_quanta):
                     if qualified_id in occupied["instructors"].get(q, set()):
                         conflict_free = False
                         break
@@ -1100,12 +1103,15 @@ def _find_suitable_room_for_gene(
             continue
 
         # Check if room is available at all gene quanta
-        if not all(q in room.available_quanta for q in gene.quanta):
+        if not all(
+            q in room.available_quanta
+            for q in range(gene.start_quanta, gene.end_quanta)
+        ):
             continue
 
         # Check no conflicts with other genes
         conflict_free = True
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             if room.room_id in occupied["rooms"].get(q, set()):
                 conflict_free = False
                 break
@@ -1158,7 +1164,7 @@ def _try_time_shift_for_better_room(
         True if successfully shifted time and assigned suitable room, False otherwise
     """
     occupied = _build_occupied_quanta_map(individual, gene)
-    required_duration = len(gene.quanta)
+    required_duration = gene.num_quanta
 
     # Calculate minimum capacity
     min_capacity = 30
@@ -1296,7 +1302,7 @@ def repair_session_clustering(
 
     # Process each gene individually
     for gene in individual:
-        if len(gene.quanta) < 2:
+        if gene.num_quanta < 2:
             continue
 
         # Get course type for this gene
@@ -1329,7 +1335,7 @@ def repair_session_clustering(
         # THEORY COURSES: Optimize 2-3 block distribution
         else:
             # STRATEGY 1: For genes with 4+ quanta, try complete rebuild
-            if len(gene.quanta) >= 4 and current_penalty >= 5:
+            if gene.num_quanta >= 4 and current_penalty >= 5:
                 success = _rebuild_gene_clustering(gene, individual, context, qts)
                 if success:
                     new_penalty = _calculate_gene_clustering_penalty_typed(
@@ -1340,7 +1346,7 @@ def repair_session_clustering(
                         continue  # Move to next gene
 
             # STRATEGY 2: For oversized blocks, try to split them
-            if len(gene.quanta) >= 4:
+            if gene.num_quanta >= 4:
                 success = _split_oversized_blocks(gene, individual, context, qts)
                 if success:
                     new_penalty = _calculate_gene_clustering_penalty_typed(
@@ -1352,7 +1358,7 @@ def repair_session_clustering(
 
             # STRATEGY 3: Original approach - move isolated quanta (kept for compatibility)
             day_quanta_map = defaultdict(list)
-            for q in gene.quanta:
+            for q in range(gene.start_quanta, gene.end_quanta):
                 day, within_day = quantum_to_day_and_within_day(q, qts)
                 day_quanta_map[day].append((within_day, q))
 
@@ -1426,7 +1432,7 @@ def _rebuild_practical_single_block(
         True if successfully consolidated, False otherwise
     """
 
-    num_quanta = len(gene.quanta)
+    num_quanta = gene.num_quanta
 
     # Get all available quanta for this gene (considering conflicts)
     free_quanta_by_day = _get_free_quanta_by_day(gene, individual, context, qts)
@@ -1466,7 +1472,7 @@ def _calculate_gene_clustering_penalty_typed(
     penalty = 0
     day_quanta_map = defaultdict(list)
 
-    for q in gene.quanta:
+    for q in range(gene.start_quanta, gene.end_quanta):
         day, within_day = quantum_to_day_and_within_day(q, qts)
         day_quanta_map[day].append(within_day)
 
@@ -1517,7 +1523,7 @@ def _rebuild_gene_clustering(
     This is much more effective than incrementally moving isolated quanta!
     """
 
-    num_quanta = len(gene.quanta)
+    num_quanta = gene.num_quanta
 
     # Determine ideal block distribution (same as initialization)
     if num_quanta == 4:
@@ -1605,7 +1611,7 @@ def _split_oversized_blocks(
     )
 
     day_quanta_map = defaultdict(list)
-    for q in gene.quanta:
+    for q in range(gene.start_quanta, gene.end_quanta):
         day, within_day = quantum_to_day_and_within_day(q, qts)
         day_quanta_map[day].append((within_day, q))
 
@@ -1648,7 +1654,7 @@ def _split_oversized_blocks(
             target_block = _find_consecutive_in_list(free_quanta, move_size)
             if target_block:
                 # Success! Replace moved quanta with new block
-                new_quanta = list(gene.quanta)
+                new_quanta = gene.get_quanta_list()
                 for old_q in quanta_to_move:
                     new_quanta.remove(old_q)
                 new_quanta.extend(target_block)
@@ -1779,7 +1785,7 @@ def _try_rearrange_isolated_quantum(
     target_global = target_positions[0]
 
     # Simply replace the isolated quantum with the target quantum
-    new_quanta = list(gene.quanta)
+    new_quanta = gene.get_quanta_list()
     new_quanta.remove(isolated_global)
     new_quanta.append(target_global)
 
@@ -1883,7 +1889,7 @@ def repair_incomplete_or_extra_sessions(
     for gene in individual:
         for group_id in gene.group_ids:
             key = ((gene.course_id, gene.course_type), group_id)
-            course_group_quanta[key] += len(gene.quanta)
+            course_group_quanta[key] += gene.num_quanta
             course_group_genes[key].append(gene)
 
     # Check each course's enrolled groups
@@ -1904,14 +1910,14 @@ def repair_incomplete_or_extra_sessions(
                 genes_for_this = course_group_genes.get(key, [])
 
                 # Remove genes until we reach expected quanta (remove smallest first)
-                genes_for_this.sort(key=lambda g: len(g.quanta))
+                genes_for_this.sort(key=lambda g: g.num_quanta)
 
                 for gene in genes_for_this:
                     if excess <= 0:
                         break
                     if gene in individual:
                         individual.remove(gene)
-                        excess -= len(gene.quanta)
+                        excess -= gene.num_quanta
                         fixes += 1
 
             elif actual_quanta < expected_quanta:
@@ -2005,14 +2011,19 @@ def _create_session_gene_for_course_group(
                         break
 
                 if not conflict:
-                    # Create gene
+                    # Create gene with contiguous quanta
+                    from src.ga.quanta_converter import quanta_list_to_contiguous
+
+                    start_q, num_q = quanta_list_to_contiguous(candidate_quanta)
+
                     return SessionGene(
                         course_id=course_key[0],
                         course_type=course_key[1],
                         instructor_id=instructor_id,
                         group_ids=[group_id],
                         room_id=room.room_id,
-                        quanta=candidate_quanta,
+                        start_quanta=start_q,
+                        num_quanta=num_q,
                     )
 
     return None  # Could not create valid gene
@@ -2050,7 +2061,7 @@ def _build_occupied_quanta_map(
         if exclude_gene and gene is exclude_gene:
             continue
 
-        for q in gene.quanta:
+        for q in range(gene.start_quanta, gene.end_quanta):
             occupied["rooms"][q].add(gene.room_id)
             occupied["instructors"][q].add(gene.instructor_id)
             for group_id in gene.group_ids:
@@ -2396,7 +2407,7 @@ def repair_multi_neighborhood(
     if not course:
         return False
 
-    original_quanta = gene.quanta.copy()
+    original_quanta = gene.get_quanta_list()
     original_instructor = gene.instructor_id
     original_room = gene.room_id
 
@@ -2404,7 +2415,7 @@ def repair_multi_neighborhood(
     # 1. Time slots: All operating quanta that don't overlap with this gene
     candidate_quanta_sets = []
     all_quanta = context.get_all_operating_quanta()
-    session_duration = len(gene.quanta)
+    session_duration = gene.num_quanta
 
     # Generate valid time slots (contiguous quanta blocks)
     for start_idx in range(len(all_quanta) - session_duration + 1):

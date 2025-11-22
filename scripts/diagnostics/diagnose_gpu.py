@@ -112,7 +112,7 @@ def test_gpu_operations():
         print(f"  ✓ Result shape: {z.shape}")
         print(f"  ✓ Result device: {z.device}")
 
-        print("\nTest 3: Transferring tensors CPU ↔ GPU...")
+        print("\nTest 3: Transferring tensors CPU  GPU...")
         x_cpu = x.cpu()
         x_gpu = x_cpu.cuda()
         print(f"  ✓ CPU device: {x_cpu.device}")
@@ -148,7 +148,7 @@ def test_config_device():
         print(f"Configured device: {device}")
 
         if device == "cuda" and not torch.cuda.is_available():
-            print(f"⚠️  WARNING: Config set to 'cuda' but CUDA not available!")
+            print(f"️  WARNING: Config set to 'cuda' but CUDA not available!")
             print(
                 f"   Training will fail. Change to 'cpu' or 'auto' in configs/base.yaml"
             )
@@ -158,12 +158,12 @@ def test_config_device():
             return True
         elif device == "auto":
             actual = "cuda" if torch.cuda.is_available() else "cpu"
-            print(f"ℹ️  'auto' will use: {actual}")
+            print(f"️  'auto' will use: {actual}")
             if torch.cuda.is_available():
                 print(f" TIP: Set 'device: cuda' explicitly for guaranteed GPU usage")
             return True
         else:
-            print(f"ℹ️  Using CPU (device: {device})")
+            print(f"️  Using CPU (device: {device})")
             if torch.cuda.is_available():
                 print(
                     f" TIP: Change to 'device: cuda' in configs/base.yaml for GPU acceleration"
@@ -209,7 +209,7 @@ def estimate_vram_usage():
     elif gpu_mem >= 4:
         print(f" Your GPU has sufficient VRAM for RL training")
     else:
-        print(f"⚠️  Your GPU has limited VRAM - may need to reduce batch sizes")
+        print(f"️  Your GPU has limited VRAM - may need to reduce batch sizes")
 
 
 def print_recommendations():

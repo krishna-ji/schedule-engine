@@ -263,7 +263,7 @@ uv run train-rl --test
 
 ## Next Steps
 
-✅ **You've trained your first RL agent!**
+ **You've trained your first RL agent!**
 
 **Recommended path:**
 
@@ -309,4 +309,4 @@ uv run launcher                 # Select 4-6
 uv run train-rl --help
 ```
 
-Happy training! 🚀
+Happy training! 
