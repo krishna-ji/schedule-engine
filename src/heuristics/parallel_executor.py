@@ -31,11 +31,6 @@ class ParallelHeuristicExecutor:
         if max_workers is None:
             max_workers = get_cpu_count()
         
-        # Windows has a hard limit of 63 handles for WaitForMultipleObjects
-        # Cap at 61 to leave room for management handles (only applies to ProcessPoolExecutor)
-        if not use_threads:
-            max_workers = min(max_workers, 61)
-        
         self.max_workers = max_workers
         self.use_threads = use_threads
 

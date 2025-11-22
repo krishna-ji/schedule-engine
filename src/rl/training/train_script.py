@@ -250,11 +250,6 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
             args.n_envs = min(detected_cores, 8)  # Med: cap at 8 for stability
         else:
             args.n_envs = detected_cores  # Prod/custom: use all cores
-        
-        # Windows has a hard limit of 63 handles for WaitForMultipleObjects
-        # Cap at 61 to leave room for management handles (only if using SubprocVecEnv)
-        if args.use_subproc:
-            args.n_envs = min(args.n_envs, 61)
 
         logger.info(
             f"Auto-detected {detected_cores} CPU cores, using {args.n_envs} parallel environments (profile: {args.profile})"

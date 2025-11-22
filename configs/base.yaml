@@ -34,8 +34,7 @@ calendar:
 # Parallel Processing
 parallel:
   use_multiprocessing: true
-  num_workers: null # Auto-detect: uses CPU cores * 2 for better resource utilization
-                    # NOTE: Windows caps at 61 workers due to WaitForMultipleObjects limit (63 handles)
+  num_workers: null # Auto-detect: uses CPU cores (safe for Windows handle limits)
 
 # Performance Profiling (Phase-level timing breakdown)
 performance:
