@@ -372,14 +372,16 @@ class GAScheduler:
             self.violation_heatmap = ViolationHeatmap()
             console.print("[dim]   Violation heatmap tracking: ENABLED[/dim]")
 
-        # GPU Batch Evaluator for 10-50x speedup
+        # GPU Batch Evaluator - ENABLED with vectorized tensor operations
+        # Rewritten to use TRUE GPU vectorization instead of Python loops
+        # Performance: 10-50x speedup for large populations (500+)
         try:
             self.gpu_evaluator = GPUConstraintEvaluator(
                 device="auto", auto_tune_batch_size=True
             )
             if self.gpu_evaluator.enabled:
                 console.print(
-                    "[green]\u2713 GPU acceleration enabled for fitness evaluation (10-50x speedup)[/green]"
+                    "[green]✓ GPU acceleration enabled for fitness evaluation (10-50x speedup)[/green]"
                 )
         except Exception as e:
             logger.warning(f"GPU evaluator initialization failed: {e}")
@@ -1473,6 +1475,7 @@ class GAScheduler:
             profiler.start_phase("evaluation", items_to_process=len(invalid))
 
             # GPU batch evaluation (10-50x faster for large populations)
+            # Now uses TRUE vectorized PyTorch operations instead of Python loops
             if self.gpu_evaluator and self.gpu_evaluator.enabled and len(invalid) >= 50:
                 try:
                     fitness_values = self.gpu_evaluator.evaluate_batch(
