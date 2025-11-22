@@ -12,12 +12,9 @@ description: "Maximum quality production run (2000 gens, 200 pop, 24-48h runtime
 # GA Settings - PROD: Maximum generations and population
 ga:
   ngen: 2000
-  pop_size: 500
+  pop_size: 1000 # Larger population for better solution quality
 
-# Parallel Processing - Maximum parallelization
-parallel:
-  use_multiprocessing: true
-  num_workers: null # Auto-detect: uses all available CPU cores
+# Parallel Processing - Inherited from base.yaml (CPU cores * 2)
 
 # LNS-IGLS Repair - ENABLED for Production
 lns:

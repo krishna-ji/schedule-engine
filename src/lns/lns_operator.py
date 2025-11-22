@@ -344,7 +344,8 @@ def apply_lns_to_population(
 
     # Parallelize repair for 3-8x speedup (each repair takes ~5-30 seconds)
     if num_to_repair >= 2:
-        max_workers = get_cpu_count()
+        # Windows has a hard limit of 63 handles, cap at 61 to leave room for management handles
+        max_workers = min(get_cpu_count(), 61)
         logger.info(
             f"LNS-IGLS: Repairing {num_to_repair} individuals in parallel ({max_workers} workers)"
         )

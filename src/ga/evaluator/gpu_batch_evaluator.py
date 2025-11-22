@@ -345,16 +345,13 @@ class GPUConstraintEvaluator:
                 batch_tensor, course_map, instructor_map, room_map, batch, group_data
             )
 
-        # Convert to fitness tuples (negative penalties)
-        # NSGA-II uses lexicographic weights: hard violations are primary, soft secondary
-        # Standard weights from DEAP FitnessMulti: (-1.0, -0.01)
-        hard_weight = -1.0
-        soft_weight = -0.01
-
+        # Convert to fitness tuples (positive penalties)
+        # DEAP's FitnessMulti with weights=(-1.0, -0.01) handles the negation
+        # GPU evaluator returns raw penalty counts like CPU evaluator
         results = []
         for i in range(batch_size):
-            hard_penalty = hard_weight * hard_violations[i].item()
-            soft_penalty = soft_weight * soft_violations[i].item()
+            hard_penalty = hard_violations[i].item()
+            soft_penalty = soft_violations[i].item()
             results.append((hard_penalty, soft_penalty))
 
         return results

@@ -4,6 +4,36 @@ Chronological record of bug fixes with brief summaries. For detailed technical a
 
 ---
 
+## [2025-11-22] Windows Multiprocessing Handle Limit
+
+**Severity**: Critical  
+**Component**: Multiprocessing pools in `standard_run.py`, `parallel_executor.py`, `lns_operator.py`, `train_script.py`  
+**Impact**: Complete crash on Windows with 32+ core CPUs (ValueError: need at most 63 handles)
+
+**Problem**: Windows `WaitForMultipleObjects` has a hard limit of 63 handles. With auto-detection using `CPU cores * 2`, a 32-core system creates 64 workers + 2 management handles = 66 total, exceeding the limit.
+
+**Root Cause**: No Windows-specific cap on worker count:
+```python
+# BROKEN:
+num_workers = multiprocessing.cpu_count() * 2  # Can exceed 63!
+
+# FIXED:
+num_workers = min(multiprocessing.cpu_count() * 2, 61)  # Cap at 61
+```
+
+**Fix**:
+1. `src/workflows/standard_run.py`: Cap multiprocessing pool at 61 workers
+2. `src/heuristics/parallel_executor.py`: Cap ProcessPoolExecutor at 61 workers
+3. `src/lns/lns_operator.py`: Cap ProcessPoolExecutor at 61 workers  
+4. `src/rl/training/train_script.py`: Cap SubprocVecEnv environments at 61
+5. `configs/base.yaml`: Added documentation comment about Windows limit
+
+**Impact**: Engine now runs successfully on high-core-count Windows machines. Performance still excellent with 61 workers (vs 64).
+
+**Verification**: Run on Windows with 32+ cores: `uv run nsga --test`
+
+---
+
 ## [2025-11-22] GPU Tuple Corruption - DEAP Operator Tuple Reassignment
 
 **Severity**: Critical  

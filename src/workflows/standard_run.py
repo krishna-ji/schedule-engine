@@ -231,10 +231,17 @@ def run_standard_workflow(
         import multiprocessing
         from src.utils.parallel_worker import init_worker
 
+        # Determine worker count: None = CPU*2 (for better resource utilization)
+        # Windows has a hard limit of 63 handles, cap at 61 to leave room for management handles
+        if config.parallel.num_workers is None:
+            num_workers = min(multiprocessing.cpu_count() * 2, 61)
+        else:
+            num_workers = min(config.parallel.num_workers, 61)
+
         # Create pool with worker initialization
         # Workers load data from JSON files (no pickling of complex objects!)
         pool = multiprocessing.Pool(
-            processes=config.parallel.num_workers,
+            processes=num_workers,
             initializer=init_worker,
             initargs=(data_dir, seed),
         )
@@ -313,7 +320,7 @@ def run_standard_workflow(
         "seed": seed,
         "use_multiprocessing": config.parallel.use_multiprocessing,
         "num_workers": (
-            config.parallel.num_workers if config.parallel.num_workers else "auto"
+            f"{config.parallel.num_workers if config.parallel.num_workers else 'auto (CPU*2)'}"
         ),
         "population_strategy": config.ga.population_strategy,
         "adaptive_operators": config.ga.use_adaptive_probabilities,
