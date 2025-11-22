@@ -25,6 +25,7 @@ from src.rl.training.config_loader import (
 )
 from src.utils.structured_logger import StructuredLogger, setup_logging
 from src.workflows.standard_run import load_input_data
+from src.utils.system_info import get_cpu_count
 
 logger = StructuredLogger.get_logger(__name__)
 
@@ -240,8 +241,6 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
 
     # Auto-detect CPU count if n_envs is None/null
     if args.n_envs is None:
-        from src.utils.system_info import get_cpu_count
-
         detected_cores = get_cpu_count()  # Auto-detect all cores
 
         # Apply profile-specific caps for stability
@@ -272,6 +271,34 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
     else:
         args.device = requested_device
         logger.info(f"Using device: {args.device}")
+
+    total_cores = get_cpu_count()
+    gpu_summary = "CUDA unavailable"
+    cuda_devices = 0
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            cuda_devices = torch.cuda.device_count()
+            gpu_names = []
+            for idx in range(cuda_devices):
+                with torch.cuda.device(idx):
+                    gpu_names.append(torch.cuda.get_device_name(idx))
+            gpu_summary = "; ".join(gpu_names) if gpu_names else "Detected CUDA device"
+        else:
+            gpu_summary = "No CUDA device detected"
+    except Exception as exc:  # pragma: no cover - defensive logging
+        gpu_summary = f"GPU query failed ({exc.__class__.__name__})"
+
+    logger.info(
+        "Hardware summary: total_cores=%s | n_envs=%s | subproc=%s | device=%s | cuda_devices=%s | gpu=%s",
+        total_cores,
+        args.n_envs,
+        args.use_subproc,
+        args.device,
+        cuda_devices,
+        gpu_summary,
+    )
 
 
 def create_environment(args, context, env_rank: int = 0):
