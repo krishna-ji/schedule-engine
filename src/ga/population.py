@@ -9,6 +9,42 @@ from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
+
+
+def get_subsession_durations(quanta_per_week: int, course_type: str) -> List[int]:
+    """
+    Break course duration into subsessions based on pedagogical requirements.
+
+    Theory courses: Break into 2-quanta blocks (with 1-quanta remainder if odd)
+    Practical courses: Single continuous session (can span multiple days)
+
+    Args:
+        quanta_per_week: Total quanta required per week
+        course_type: "theory" or "practical"
+
+    Returns:
+        List of subsession durations in quanta
+
+    Examples:
+        Theory 6 quanta → [2, 2, 2] (three 2-hour sessions)
+        Theory 5 quanta → [2, 2, 1] (two 2-hour + one 1-hour)
+        Practical 30 quanta → [30] (single 30-hour studio)
+    """
+    if course_type == "practical":
+        # Practicals: Single continuous session (can span days if > quanta_per_day)
+        return [quanta_per_week]
+    else:
+        # Theory: Break into 2-quanta blocks with remainder
+        if quanta_per_week % 2 == 0:
+            # Even: All 2-quanta blocks (e.g., 6 → [2,2,2])
+            return [2] * (quanta_per_week // 2)
+        else:
+            # Odd: 2-quanta blocks + 1-quanta remainder (e.g., 5 → [2,2,1])
+            blocks = [2] * (quanta_per_week // 2)
+            blocks.append(1)
+            return blocks
+
+
 from src.utils.parallel_worker import init_worker, get_worker_context
 
 console = get_console()
@@ -167,21 +203,27 @@ def generate_course_group_aware_population(
                     continue
 
                 session_type = course.course_type
-                num_quanta = course.quanta_per_week
 
-                session_gene = create_session_gene_with_conflict_avoidance(
-                    course_id,
-                    group_ids,
-                    session_type,
-                    num_quanta,
-                    course,
-                    context,
-                    used_quanta,
-                    instructor_schedule,
-                    group_schedule,
+                # Break into subsessions: theory → multiple 2-quanta blocks, practical → single session
+                subsession_durations = get_subsession_durations(
+                    course.quanta_per_week, session_type
                 )
-                if session_gene:
-                    genes.append(session_gene)
+
+                # Create one SessionGene per subsession
+                for subsession_idx, num_quanta in enumerate(subsession_durations):
+                    session_gene = create_session_gene_with_conflict_avoidance(
+                        course_id,
+                        group_ids,
+                        session_type,
+                        num_quanta,
+                        course,
+                        context,
+                        used_quanta,
+                        instructor_schedule,
+                        group_schedule,
+                    )
+                    if session_gene:
+                        genes.append(session_gene)
 
             if genes:
                 population.append(create_individual(genes))

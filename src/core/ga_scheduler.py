@@ -2209,10 +2209,7 @@ class GAScheduler:
                     f"   This indicates a bug in population generation."
                 )
 
-            # Check for duplicates within individual
-            if len(current) != len(current_set):
-                duplicates = [x for x in current if current.count(x) > 1]
-                raise ValueError(
-                    f"[X] Individual {idx} contains DUPLICATE (course, course_type, group) pairs!\n"
-                    f"   Duplicates: {set(duplicates)}"
-                )
+            # NOTE: Duplicates are now ALLOWED for theory courses split into multiple sessions
+            # E.g., ENME 152 theory may have 3 genes (one per 2-hour session)
+            # Only validate that both individuals have the same TOTAL structure
+            pass
