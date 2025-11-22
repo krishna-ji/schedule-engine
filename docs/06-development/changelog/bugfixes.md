@@ -1,0 +1,70 @@
+# Bugfix Changelog
+
+Chronological record of bug fixes with brief summaries. For detailed technical analysis, see `docs/06-development/bugfixes/`.
+
+---
+
+## [2025-11-22] Mutation Operator Violating Course Completeness
+
+**Severity**: Critical  
+**Component**: `src/ga/operators/mutation.py`  
+**Constraint**: `hc8` (course_completeness)
+
+**Problem**: `mutate_time_quanta()` fallback used `min(num_quanta, len(available_quanta))` which could return fewer quanta than required. Combined with `quanta_list_to_contiguous()` using list length as `num_quanta`, this permanently corrupted gene duration.
+
+**Root Cause**: 
+```python
+# OLD (BUGGY):
+return random.sample(available_quanta, min(num_quanta, len(available_quanta)))
+# Could return 2 quanta when course needs 5!
+```
+
+**Fix**: 
+1. Check `len(available_quanta) < num_quanta` before mutation
+2. If insufficient, keep original time slots (don't mutate)
+3. Fallback always returns EXACTLY `num_quanta` items (no `min()`)
+
+**Impact**: Course completeness violations (`hc8`) should now be 0 throughout evolution (structural invariant preserved).
+
+**Constraint Mapping**: hc1=student_group_exclusivity, hc2=instructor_exclusivity, hc3=instructor_qualifications, hc4=room_suitability, hc5=instructor_time_availability, hc6=room_time_availability, hc7=course_completeness, hc8=room_exclusivity
+
+**Details**: `docs/06-development/bugfixes/mutation-quanta-count-preservation.md`
+
+---
+
+## [2025-11-21] Repair Operators Using Deprecated SessionGene API
+
+**Severity**: Critical  
+**Component**: `src/ga/operators/repair.py`  
+**Architecture**: SessionGene Nov 2025 migration
+
+**Problem**: Entire repair system (2537 lines, 19+ operators) used OLD `gene.quanta` list API from before Nov 2025 architecture migration to contiguous representation (`start_quanta + num_quanta`).
+
+**Fix**: Complete rewrite of repair.py (2537→370 lines):
+- Updated to use `start_quanta + num_quanta` API
+- Removed `repair_incomplete_or_extra_sessions` (unnecessary with correct init/mutation)
+- Streamlined to 2 core repairs: instructor availability, group overlaps
+
+**Details**: `docs/06-development/bugfixes/repair-operator-architecture-mismatch.md`
+
+---
+
+## Template for Future Entries
+
+```markdown
+## [YYYY-MM-DD] Brief Title (3-7 words)
+
+**Severity**: Critical/High/Medium/Low  
+**Component**: File path  
+**Related**: Constraint/Feature
+
+**Problem**: One-sentence description of bug behavior
+
+**Root Cause**: Code snippet or explanation
+
+**Fix**: Key changes made
+
+**Impact**: Expected behavior after fix
+
+**Details**: Link to detailed bugfix doc
+```

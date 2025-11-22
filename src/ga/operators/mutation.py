@@ -93,7 +93,7 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
     Only changes WHEN the session happens, not HOW LONG it is.
 
     Returns:
-        List[int]: New quanta list (will be converted to start_quanta + num_quanta)
+        List[int]: New quanta list with EXACT same length as gene.num_quanta
 
     Note: Uses SessionGene's contiguous representation (start_quanta + num_quanta)
           introduced in Nov 2025 architecture update.
@@ -111,11 +111,17 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
     # Try to assign consecutive quanta for better scheduling
     available_quanta = list(context.available_quanta)
 
+    # CRITICAL: If not enough available quanta, keep original time slots
+    # DO NOT reduce num_quanta - this would violate course completeness!
+    if len(available_quanta) < num_quanta:
+        return gene.get_quanta_list()  # Keep original
+
     # Attempt to find consecutive slots
     for attempt in range(5):  # Try 5 times to find consecutive slots
-        start_idx = random.randint(0, max(0, len(available_quanta) - num_quanta))
+        start_idx = random.randint(0, len(available_quanta) - num_quanta)
         consecutive_quanta = available_quanta[start_idx : start_idx + num_quanta]
 
+        # Verify we got EXACTLY the right number of quanta
         if len(consecutive_quanta) == num_quanta:
             # Check if quanta are somewhat consecutive (simplified check)
             if (
@@ -124,8 +130,9 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
             ):
                 return consecutive_quanta
 
-    # Fallback to random selection
-    return random.sample(available_quanta, min(num_quanta, len(available_quanta)))
+    # Fallback to random selection - but MUST return exactly num_quanta items
+    # Use random.sample which guarantees exact count
+    return random.sample(available_quanta, num_quanta)
 
 
 def find_suitable_rooms_for_course(
