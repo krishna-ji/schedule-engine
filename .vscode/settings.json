@@ -34,7 +34,7 @@
         "logs/": true,
         ".data": true,
         // "**/*.md": true,
-        "docs/": true,
+        // "docs/": true,
         // "data/bin/": true,
     },
     "python.analysis.extraPaths": [
