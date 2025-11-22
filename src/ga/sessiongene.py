@@ -58,12 +58,9 @@ class SessionGene:
         if self.start_quanta + self.num_quanta > total_quanta:
             self.num_quanta = total_quanta - self.start_quanta
 
-        # Day boundary validation (no midnight wrap)
-        start_day = self.start_quanta // quanta_per_day
-        end_day = (self.start_quanta + self.num_quanta - 1) // quanta_per_day
-        if start_day != end_day:
-            # Clip to end of day
-            self.num_quanta = (start_day + 1) * quanta_per_day - self.start_quanta
+        # REMOVED: Day boundary validation (architecture studios need multi-day sessions)
+        # Old logic clipped AR701 (30 quanta) to 10, causing course_completeness violations
+        # Multi-day courses (AR701=30hrs, AR802=12hrs) are intentional and valid
 
     # ========== UTILITY METHODS ==========
 

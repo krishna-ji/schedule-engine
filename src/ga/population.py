@@ -469,9 +469,28 @@ def create_session_gene_with_conflict_avoidance(
         quanta_needed, available_quanta, used_quanta
     )
 
+    # DEBUG: Log what happened
+    import logging
+
+    if assigned_quanta:
+        if len(assigned_quanta) != quanta_needed:
+            print(
+                f"❌ BUG DETECTED: {course_id} {course_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
+            )
+            print(f"   assigned_quanta={assigned_quanta[:10]}...")
+            logging.warning(
+                f"{course_id}: assign_conflict_free_quanta returned {len(assigned_quanta)} but needed {quanta_needed}"
+            )
+
     # CRITICAL: If assignment fails, wrap around or duplicate quanta as needed
     # Repair operators will fix overlaps later - maintaining correct num_quanta is priority
     if not assigned_quanta:
+        print(
+            f"⚠️ WRAP-AROUND for {course_id} {course_type}: need {quanta_needed} from {len(context.available_quanta)} available"
+        )
+        logging.info(
+            f"{course_id}: Using fallback (needed {quanta_needed}, available {len(context.available_quanta)})"
+        )
         # Use random consecutive block from all available quanta
         if len(context.available_quanta) >= quanta_needed:
             start_idx = random.randint(0, len(context.available_quanta) - quanta_needed)
@@ -484,6 +503,13 @@ def create_session_gene_with_conflict_avoidance(
             while len(assigned_quanta) < quanta_needed:
                 assigned_quanta.extend(context.available_quanta)
             assigned_quanta = assigned_quanta[:quanta_needed]
+        print(f"  ✓ Fallback gave {len(assigned_quanta)} quanta")
+
+    # VERIFICATION: Ensure we got exactly quanta_needed
+    if len(assigned_quanta) != quanta_needed:
+        logging.error(
+            f"BUG: Got {len(assigned_quanta)} quanta but needed {quanta_needed} for {course_id}"
+        )
 
     # Update tracking structures
     used_quanta.update(assigned_quanta)
@@ -515,6 +541,13 @@ def create_session_gene_with_conflict_avoidance(
     from src.ga.quanta_converter import quanta_list_to_contiguous
 
     start_q, num_q = quanta_list_to_contiguous(assigned_quanta)
+
+    # DEBUG: Verify num_q matches quanta_needed
+    if num_q != quanta_needed:
+        print(
+            f"❌ CONVERSION BUG: {course_id} {course_type}: quanta_list_to_contiguous gave num_q={num_q} but quanta_needed={quanta_needed}"
+        )
+        print(f"   assigned_quanta length={len(assigned_quanta)}")
 
     session_gene = SessionGene(
         course_id=actual_course_id,
@@ -570,25 +603,20 @@ def create_component_session_with_conflict_avoidance(
 
     room = random.choice(suitable_rooms)
 
-    # Convert hours to quanta and assign conflict-free time slots
-    # Each hour = 4 quanta (15-minute slots), but limit max session length
-    quanta_per_hour = 4
-    max_session_length = 8  # Maximum 2 hours per session
-
-    raw_quanta_needed = max(1, int(hours * quanta_per_hour))
-    quanta_needed = min(raw_quanta_needed, max_session_length)
-
-    # If the course needs more quanta than max session length, we should create multiple sessions
-    # For now, just limit to reasonable session length
+    # FIXED: Parameter 'hours' is actually quanta_needed (course.quanta_per_week)
+    # Previous bug: treated quanta as hours, multiplied by 4, then capped to 8
+    # Now: use quanta_needed directly without multiplication or capping
+    quanta_needed = hours  # Rename to clarify it's actually quanta, not hours
 
     # Find available quanta that don't conflict with used ones
     available_quanta = [q for q in context.available_quanta if q not in used_quanta]
 
     if len(available_quanta) < quanta_needed:
-        # If not enough conflict-free quanta, use some that are already used (allow some conflicts for now)
+        # If not enough conflict-free quanta, use all (allow conflicts, repair will fix)
         available_quanta = list(context.available_quanta)
 
-    quanta_needed = min(quanta_needed, len(available_quanta))
+    # CRITICAL: NEVER reduce quanta_needed - must equal course.quanta_per_week
+    # (removed: quanta_needed = min(quanta_needed, len(available_quanta)))
 
     if quanta_needed == 0:
         return None
@@ -598,8 +626,21 @@ def create_component_session_with_conflict_avoidance(
         quanta_needed, available_quanta, used_quanta
     )
 
+    # FIXED: Add wrap-around fallback if assignment fails
     if not assigned_quanta:
-        return None
+        if len(context.available_quanta) >= quanta_needed:
+            import random
+
+            start_idx = random.randint(0, len(context.available_quanta) - quanta_needed)
+            assigned_quanta = context.available_quanta[
+                start_idx : start_idx + quanta_needed
+            ]
+        else:
+            # Wrap around to get exactly quanta_needed
+            assigned_quanta = []
+            while len(assigned_quanta) < quanta_needed:
+                assigned_quanta.extend(context.available_quanta)
+            assigned_quanta = assigned_quanta[:quanta_needed]
 
     # Update tracking structures
     used_quanta.update(assigned_quanta)
@@ -669,12 +710,20 @@ def assign_conflict_free_quanta(
     # First attempt: Find consecutive block in free quanta (conflict-free)
     consecutive_block = _find_consecutive_block(free_quanta, quanta_needed)
     if consecutive_block:
+        if len(consecutive_block) != quanta_needed:
+            print(
+                f"❌ BUG: _find_consecutive_block returned {len(consecutive_block)} but needed {quanta_needed}"
+            )
         return consecutive_block
 
     # Second attempt: Try in ALL available quanta (may have conflicts)
     # Repair operators will fix conflicts later
     consecutive_block = _find_consecutive_block(available_quanta, quanta_needed)
     if consecutive_block:
+        if len(consecutive_block) != quanta_needed:
+            print(
+                f"❌ BUG: _find_consecutive_block (all quanta) returned {len(consecutive_block)} but needed {quanta_needed}"
+            )
         return consecutive_block
 
     # Cannot satisfy requirement - fail gene creation
@@ -755,21 +804,32 @@ def create_component_session(
 
     room = random.choice(suitable_rooms)
 
-    # Convert hours to quanta (assuming 1 hour = 4 quanta of 15 minutes each)
-    # But limit session length to reasonable maximum (2 hours = 8 quanta)
-    quanta_per_hour = 4
-    max_session_length = 8  # Maximum 2 hours per session
+    # FIXED: Parameter 'hours' is actually quanta_needed (course.quanta_per_week)
+    # Previous bug: treated quanta as hours, multiplied by 4, then capped to 8
+    # Now: use quanta_needed directly without multiplication or capping
+    quanta_needed = hours  # Rename to clarify it's actually quanta, not hours
 
-    raw_quanta_needed = max(1, int(hours * quanta_per_hour))
-    quanta_needed = min(raw_quanta_needed, max_session_length)
-    quanta_needed = min(quanta_needed, len(context.available_quanta))
+    # CRITICAL: NEVER reduce quanta_needed - must equal course.quanta_per_week
+    # (removed all capping: max_session_length, len(available_quanta))
 
-    # Assign time quanta with some intelligence
+    # Assign time quanta with intelligence
     assigned_quanta = assign_intelligent_quanta(quanta_needed, context.available_quanta)
 
+    # FIXED: Add wrap-around fallback if assignment fails
     if not assigned_quanta:
-        print(f"Warning: No time quanta available for course {course_id}")
-        return None
+        if len(context.available_quanta) >= quanta_needed:
+            import random
+
+            start_idx = random.randint(0, len(context.available_quanta) - quanta_needed)
+            assigned_quanta = context.available_quanta[
+                start_idx : start_idx + quanta_needed
+            ]
+        else:
+            # Wrap around to get exactly quanta_needed
+            assigned_quanta = []
+            while len(assigned_quanta) < quanta_needed:
+                assigned_quanta.extend(context.available_quanta)
+            assigned_quanta = assigned_quanta[:quanta_needed]
 
     # Create session gene
     # Extract course_id and course_type
@@ -935,8 +995,10 @@ def assign_intelligent_quanta(quanta_needed: int, available_quanta: List) -> Lis
 
     available_list = list(available_quanta)
 
-    if quanta_needed > len(available_list):
-        quanta_needed = len(available_list)
+    # CRITICAL: NEVER reduce quanta_needed - must equal course.quanta_per_week
+    # (removed: if quanta_needed > len(available_list): quanta_needed = len(available_list))
+    # assign_conflict_free_quanta will return None if it can't find consecutive blocks
+    # Then caller's wrap-around fallback will handle it
 
     if quanta_needed == 0:
         return []
