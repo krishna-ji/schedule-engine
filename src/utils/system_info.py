@@ -1,8 +1,11 @@
 """System information utilities for resource detection."""
 
+from rich.console import Console
+from rich.text import Text
 import os
 import logging
 
+console = Console()
 logger = logging.getLogger(__name__)
 
 DEFAULT_CPU_COUNT = 8  # Fallback if detection fails
@@ -81,17 +84,37 @@ def diagnose_system():
     return info
 
 
-def print_system_diagnostics():
-    """Print formatted system diagnostics."""
-    info = diagnose_system()
+def print_system_diagnostics(sep: str = " . "):
+    """Print formatted system diagnostics in a single line using Rich.
 
-    print("\n=== System Diagnostics ===")
-    print(f"CPU Cores: {info['cpu_cores']}")
-    print(f"PyTorch Version: {info['pytorch_version']}")
-    print(f"\nGPU Status:")
-    print(f"  Available: {info['gpu_available']}")
-    print(f"  Device: {info['gpu_name']}")
-    if info["gpu_available"]:
-        print(f"  Memory: {info['gpu_memory_gb']} GB")
-        print(f"  CUDA Version: {info['cuda_version']}")
-    print("=" * 30 + "\n")
+    The output is printed on a single line and fields are separated using
+    the provided `sep` string (default is `" . "`). This makes the
+    diagnostics compact and easier to scan in logs.
+
+    Args:
+        sep: separator string inserted between fields (default: " . ")
+    """
+
+    # keep `sep` configurable so callers can pick '.' or a different divider
+    def _print_single_line(sep: str = " . ") -> None:
+        info = diagnose_system()
+
+        parts = [
+            f"CPU Cores: {info['cpu_cores']}",
+            f"PyTorch: {info['pytorch_version']}",
+            f"GPU Available: {info['gpu_available']}",
+            f"GPU: {info['gpu_name']}",
+        ]
+
+        if info["gpu_available"]:
+            parts.append(f"GPU Memory: {info['gpu_memory_gb']} GB")
+            parts.append(f"CUDA: {info['cuda_version']}")
+
+        # Build a single Text object and print via the rich Console
+        line = Text(sep).join(Text(p, style="bold cyan") for p in parts)
+
+        # prepend a short heading for clarity
+        console.print(Text("System Diagnostics:", style="bold magenta"), line)
+
+    # print with the supplied separator
+    _print_single_line(sep)

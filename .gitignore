@@ -34,3 +34,4 @@ uv.lock
 # report/
 
 # suggest/
+.agents/

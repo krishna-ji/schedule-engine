@@ -30,28 +30,72 @@ logger = get_logger(__name__)
 
 
 class RolloutProgressCallback(BaseCallback):
-    """Logs collected timesteps during training to avoid silent rollouts."""
+    """Logs collected timesteps during training with timing info."""
 
     def __init__(self, log_interval_steps: int, total_timesteps: int) -> None:
         super().__init__()
         self.log_interval_steps = max(1, log_interval_steps)
         self.total_timesteps = total_timesteps
         self._last_logged = 0
+        self._start_time = None
+        self._last_time = None
 
     def _on_step(self) -> bool:
+        import time
+
+        current_time = time.time()
+
+        # Initialize timing on first step
+        if self._start_time is None:
+            self._start_time = current_time
+            self._last_time = current_time
+
         if self.num_timesteps - self._last_logged >= self.log_interval_steps:
+            # Calculate timing metrics
+            elapsed = current_time - self._start_time
+            interval_time = current_time - self._last_time
+            steps_in_interval = self.num_timesteps - self._last_logged
+
+            # Calculate speed (steps/sec)
+            speed = steps_in_interval / interval_time if interval_time > 0 else 0
+
+            # Calculate ETA
+            remaining_steps = self.total_timesteps - self.num_timesteps
+            eta_seconds = remaining_steps / speed if speed > 0 else 0
+
+            # Format time values as hh:mm:ss
+            def format_time(seconds):
+                hours = int(seconds // 3600)
+                minutes = int((seconds % 3600) // 60)
+                secs = int(seconds % 60)
+                return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+            elapsed_str = format_time(elapsed)
+            eta_str = format_time(eta_seconds)
+            speed_str = f"{speed:.1f} steps/s"
+
             pct = (
                 (self.num_timesteps / self.total_timesteps) * 100
                 if self.total_timesteps
                 else 0.0
             )
+
+            # Calculate width for step formatting (based on total_timesteps)
+            total_width = len(f"{self.total_timesteps:,}")
+
             logger.info(
-                "Rollout progress: %s/%s env steps (%.1f%%)",
-                f"{self.num_timesteps:,}",
+                "[!ok] step %s/%s (%.1f%%), t=%s, eta=%s, %s",
+                f"{self.num_timesteps:>{total_width},}",
                 f"{self.total_timesteps:,}" if self.total_timesteps else "?",
                 pct,
+                elapsed_str,
+                eta_str,
+                speed_str,
             )
+
             self._last_logged = self.num_timesteps
+            self._last_time = current_time
+
         return True
 
 
@@ -184,7 +228,7 @@ class RLTrainer:
         callbacks: Optional[List[BaseCallback]] = None,
         tb_log_name: Optional[str] = None,
         reset_num_timesteps: bool = True,
-        progress_bar: bool = True,
+        progress_bar: bool = False,
     ) -> BaseAlgorithm:
         """
         Train agent for specified timesteps.
@@ -534,15 +578,41 @@ class RLTrainer:
         return min_candidate if rollout_size % min_candidate == 0 else 1
 
     def _resolve_device(self, requested_device: str) -> str:
-        """Always return CPU device, warning if GPU was requested."""
+        """
+        Resolve device string with proper GPU detection.
 
-        normalized = (requested_device or "cpu").lower()
-        if normalized != "cpu":
-            logger.warning(
-                "GPU execution is disabled in this build; forcing CPU device (requested '%s').",
-                normalized,
-            )
-        return "cpu"
+        Args:
+            requested_device: Device string ("cpu", "cuda", "cuda:0", "auto")
+
+        Returns:
+            Resolved device string
+        """
+        import torch
+
+        normalized = (requested_device or "auto").lower()
+
+        if normalized == "auto":
+            # Auto-detect best device
+            if torch.cuda.is_available():
+                device = "cuda"
+                logger.info(
+                    f"Auto-detected CUDA device: {torch.cuda.get_device_name(0)}"
+                )
+            else:
+                device = "cpu"
+                logger.info("No CUDA device available, using CPU")
+        elif normalized.startswith("cuda"):
+            # Validate CUDA device
+            if torch.cuda.is_available():
+                device = normalized
+                logger.info(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
+            else:
+                logger.warning("CUDA requested but not available, falling back to CPU")
+                device = "cpu"
+        else:
+            device = "cpu"
+
+        return device
 
 
 def create_trainer(

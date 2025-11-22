@@ -7,6 +7,7 @@ Runs standard GA-based course scheduling workflow with runtime mode support.
 import argparse
 import time
 from datetime import datetime
+from pathlib import Path
 from src.workflows import run_standard_workflow
 from src.workflows.experiment_manager import ExperimentManager
 from src.utils.experiment import sanitize_experiment_name
@@ -14,6 +15,7 @@ from src.config import init_config
 from src.config.runtime_mode import RuntimeMode
 from src.config.loader import load_config
 from src.utils.console_service import get_console
+from src.utils.structured_logger import setup_logging
 
 console = get_console()
 
@@ -42,6 +44,20 @@ def main():
         Controlled by parallel.use_multiprocessing in YAML config.
         Provides 3-6x speedup on multi-core systems.
     """
+    # Initialize structured logging system (console + file)
+    log_dir = Path("logs") / "nsga"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = log_dir / f"nsga_{timestamp}.log"
+
+    setup_logging(
+        log_file=log_file,
+        console_level="DEBUG",
+        file_level="DEBUG",
+        show_time=True,
+        show_path=False,
+    )
+
     # Parse CLI arguments
     parser = argparse.ArgumentParser(
         description="University Course Scheduling Engine",

@@ -155,9 +155,8 @@ def check_package_metadata():
 
 def main():
     """Run all verification checks."""
-    print("=" * 60)
+
     print("Code Quality Enhancements - Verification Script")
-    print("=" * 60)
 
     checks = [
         ("File Creation", check_files_exist),
@@ -174,7 +173,6 @@ def main():
 
     print("\n" + "=" * 60)
     print("Summary")
-    print("=" * 60)
 
     total = len(results)
     passed = sum(results.values())

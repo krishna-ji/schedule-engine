@@ -6,7 +6,6 @@ Extracted from monolithic main.py for better testability and separation of conce
 """
 
 from typing import List, Dict, Optional
-import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from deap import base, tools
@@ -41,9 +40,10 @@ from src.utils.console_service import get_console
 from src.heuristics.parallel_executor import get_parallel_executor
 from src.utils.parallel_worker import get_worker_context
 from src.utils.performance_profiler import get_profiler
+from src.utils.structured_logger import StructuredLogger
 
 console = get_console()
-logger = logging.getLogger(__name__)
+logger = StructuredLogger.get_logger(__name__)
 
 
 def _worker_evaluate(individual):
@@ -898,6 +898,13 @@ class GAScheduler:
         progress_table.add_row(spacing_bar)
 
         with Live(progress_table, console=console, refresh_per_second=10):
+            # Helper function to format time as hh:mm:ss
+            def format_time(seconds):
+                hours = int(seconds // 3600)
+                minutes = int((seconds % 3600) // 60)
+                secs = int(seconds % 60)
+                return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
             task1 = progress_bar.add_task(
                 "evol prog",
                 total=self.config.generations,
@@ -1001,25 +1008,27 @@ class GAScheduler:
                 # Build timing breakdown string
                 timing_parts = []
                 if ops_time > 0:
-                    timing_parts.append(f"ops={ops_time:.2f}s")
+                    timing_parts.append(f"ops={format_time(ops_time)}")
                 if eval_time > 0:
-                    timing_parts.append(f"eval={eval_time:.2f}s")
+                    timing_parts.append(f"eval={format_time(eval_time)}")
                 if replacement_time > 0:
-                    timing_parts.append(f"replace={replacement_time:.2f}s")
+                    timing_parts.append(f"replace={format_time(replacement_time)}")
                 if metrics_time > 0.1:
-                    timing_parts.append(f"metrics={metrics_time:.2f}s")
+                    timing_parts.append(f"metrics={format_time(metrics_time)}")
                 if repair_time > 0.01:
-                    timing_parts.append(f"repair={repair_time:.2f}s")
+                    timing_parts.append(f"repair={format_time(repair_time)}")
                 if other_time > 0.1:
-                    timing_parts.append(f"other={other_time:.2f}s")
+                    timing_parts.append(f"other={format_time(other_time)}")
 
                 timing_str = ", ".join(timing_parts) if timing_parts else ""
 
                 # Format exactly as requested: [!ok] gen x/y : hc = , sc = , t=4s,  hc1=, hc2=.. sc1=., sc2=...
+                # Right-align generation numbers for consistent indentation
+                gen_width = len(str(self.config.generations))
                 console.print(
-                    f"[dim][!ok] gen {gen+1}/{self.config.generations} : "
+                    f"[dim][!ok] gen {gen+1:>{gen_width}}/{self.config.generations} : "
                     f"hc={best.fitness.values[0]:.0f}, sc={best.fitness.values[1]:.2f}, "
-                    f"t={gen_time:.1f}s ({timing_str}),  {hc_list} {sc_list}[/dim]"
+                    f"t={format_time(gen_time)} ({timing_str}),  {hc_list} {sc_list}[/dim]"
                 )
 
                 # Log generation metrics
@@ -1046,8 +1055,9 @@ class GAScheduler:
                 # Early stopping if perfect solution found
                 best = tools.selBest(self.population, 1)[0]
                 if best.fitness.values[0] == 0:
+                    gen_width = len(str(self.config.generations))
                     console.print(
-                        f"\n[!ok] [bold green]Perfect solution found at generation {gen + 1}![/bold green]"
+                        f"\n[!ok] [bold green]Perfect solution found at generation {gen + 1:>{gen_width}}![/bold green]"
                     )
 
                     # Log early stop

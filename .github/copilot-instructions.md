@@ -2,11 +2,11 @@
 
 ##  Project Overview
 
-**Type**: University course scheduling optimization system  
-**Domain**: Educational timetabling, multi-objective optimization  
-**Language**: Python 3.12 (pinned)  
-**Framework**: NSGA-II genetic algorithm with reinforcement learning  
-**Key Libraries**: DEAP (GA), PyTorch 2.4.1 + CUDA 12.1 (GPU), Stable-Baselines3 (RL), Pydantic (config), Rich (UI)  
+**Type**: Constraint-satisfaction problem (CSP) solver for educational timetabling via multi-objective evolutionary algorithms  
+**Domain**: University course scheduling (NP-hard combinatorial optimization)  
+**Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)  
+**Metaheuristic**: NSGA-II (Non-dominated Sorting Genetic Algorithm II) with PPO/DQN reinforcement learning hyper-heuristic layer  
+**Dependencies**: DEAP 1.4.1 (NSGA-II toolbox), PyTorch 2.4.1 + CUDA 12.1 (GPU constraint evaluation), Stable-Baselines3 2.3.2 (PPO/DQN agents), Pydantic 2.10.3 (config validation), Rich 13.9.4 (TUI)  
 **Package Manager**: UV (modern, fast Python package installer)  
 **Architecture**: Modular constraint-based optimization with 10 progressive runtime modes  
 **Performance**: GPU-accelerated fitness evaluation (10-50x speedup), parallel operators (3-5x speedup)
@@ -281,14 +281,15 @@ Always log notable runs in `output/` and reference them inside documentation or 
 
 ## Key Components
 
-- **Chromosomes**: `list[SessionGene]`, fitness `(-hard, -soft)` with weights `(-1.0, -0.01)`
-- **Population Strategies**: hybrid (25% greedy, 50% smart, 25% random) / smart / random
-- **Operators**: `crossover_course_group_aware()`, `mutate_individual()`
-- **Repair**: IGLS system with exhaustive search, stagnation repair, selective repair
-- **Constraints**: Hard (must-satisfy) and soft (prefer-satisfy) in `src/constraints/`
-- **Time System**: `QuantumTimeSystem` converts wall-clock ↔ discrete quanta (default 60 min)
-- **Validation**: Input validation + feasibility checking before GA
-- **Exports**: JSON, PDF calendar, plots to `output/evaluation_<timestamp>/`
+- **Chromosome Encoding**: Direct representation `list[SessionGene]` where each gene = (course_id, group_ids, instructor_id, room_id, quanta_slots)
+- **Fitness Function**: Lexicographic multi-objective `(-hard_violations, -soft_penalty)` with weights `(-1.0, -0.01)` for NSGA-II Pareto dominance
+- **Population Initialization**: Hybrid strategy (25% greedy heuristic, 50% constraint-guided smart, 25% random uniform)
+- **Genetic Operators**: Course-group-aware crossover (preserves enrollment relationships), constraint-guided mutation (biased toward feasible regions)
+- **Repair Heuristics**: IGLS (Iterative Greedy Local Search) with 19 registered operators (construction/perturbation/improvement categories)
+- **Constraint Taxonomy**: 12 hard constraints (instructor conflicts, room capacity, qualification mismatches) + 8 soft constraints (schedule gaps, clustering, preferred times)
+- **Temporal Discretization**: `QuantumTimeSystem` converts continuous time → integer quanta (default 60-minute slots, 7 days × 10 hours = 70 total quanta)
+- **Pre-GA Validation Pipeline**: JSON schema validation → entity relationship checks → pigeonhole feasibility analysis (instructor workload, room capacity, group availability)
+- **Output Artifacts**: JSON (decoded schedule), PDF (visual calendar via ReportLab), PNG (Pareto front, constraint trends, diversity metrics)
 
 ## Key References for Agents
 

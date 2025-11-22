@@ -52,9 +52,8 @@ def squash_commits(n: int, message: str) -> bool:
 
 def main():
     """Interactive commit squashing workflow."""
-    print("=" * 60)
+
     print("GIT COMMIT SQUASHER")
-    print("=" * 60)
 
     # Show current branch
     branch = get_current_branch()
@@ -79,7 +78,7 @@ def main():
     # Show commits that will be squashed
     print(f"\n{'=' * 60}")
     print(f"This will squash the last {n} commits into one:")
-    print("=" * 60)
+
     commits = get_commits(n)
     if commits:
         print(commits)
@@ -90,7 +89,6 @@ def main():
     # Confirm action
     print("\n" + "=" * 60)
     print("⚠️  WARNING: This will rewrite git history!")
-    print("=" * 60)
 
     try:
         confirm = input("\nContinue? (y/n): ").strip().lower()
@@ -125,7 +123,7 @@ def main():
         print("\n" + "=" * 60)
         print("To push to remote (if previously pushed):")
         print("  git push --force-with-lease")
-        print("=" * 60)
+
     else:
         print("\n✗ Failed to squash commits")
         sys.exit(1)

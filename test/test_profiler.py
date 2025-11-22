@@ -51,4 +51,4 @@ from src.utils.performance_profiler import cleanup_profiler
 
 cleanup_profiler()
 
-console.print("\n[bold green]✅ Profiler test complete![/bold green]\n")
+console.print("\n[bold green] Profiler test complete![/bold green]\n")

@@ -1,6 +1,6 @@
-# Path-Specific Copilot Instructions
+# Path-Specific AI Agent Instructions
 
-This directory contains detailed instructions for different parts of the schedule-engine codebase. Each file applies to specific file patterns using GitHub Copilot's path-specific instructions feature.
+This directory contains high-entropy, constraint-specific instructions for AI-assisted development across the schedule-engine codebase. Each instruction file targets specific modules using glob patterns, optimized for agentic AI coding tools (GitHub Copilot, Cursor, Cody, etc.).
 
 ## Instruction Files
 
@@ -24,12 +24,20 @@ GitHub Copilot automatically loads the appropriate instruction file based on the
 - Editing `src/ga/operators/mutation.py` → Copilot reads `ga-core.instructions.md`
 - Editing `test/test_constraints.py` → Copilot reads `tests.instructions.md`
 
-## Benefits of This Structure
+## Design Principles for AI Agents
 
- **Focused Context**: Each instruction file contains only relevant information for that module
- **Reduced Token Usage**: Copilot doesn't load unrelated instructions
- **Easier Maintenance**: Update instructions for specific modules without affecting others
- **Better Suggestions**: More targeted guidance = more accurate code suggestions
+✅ **High-Entropy Terminology**: Use precise domain vocabulary (CSP, NSGA-II, phenotype, genotype) over generic terms (algorithm, solution, optimization)
+✅ **Explicit Constraints**: Specify invariants, preconditions, postconditions for every operation
+✅ **Structured Context**: JSON-compatible formats, typed schemas, unambiguous specifications
+✅ **Actionable Directives**: Imperative commands ("Preserve course-group relationships") not vague guidance ("Be careful with groups")
+✅ **Minimal Ambiguity**: Eliminate filler words, pronouns without clear antecedents, vague quantifiers ("some", "often")
+
+## Benefits of This Architecture
+
+ **Token Efficiency**: Path-specific loading reduces context bloat (10-50% token savings per session)
+ **Deterministic Outputs**: High-entropy instructions reduce AI hallucinations via precise terminology
+ **Maintenance Isolation**: Module-specific updates don't cascade to unrelated components
+ **Multi-Agent Compatibility**: Works across Copilot, Cursor, Cody, Tabnine, Amazon CodeWhisperer
 
 ## Adding New Instructions
 

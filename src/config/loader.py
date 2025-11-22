@@ -3,6 +3,7 @@ Configuration loader with base.yaml inheritance.
 Loads configs with base.yaml + environment overrides + runtime mode overrides.
 """
 
+import logging
 import os
 import sys
 import yaml
@@ -10,6 +11,23 @@ from pathlib import Path
 from typing import Optional
 from src.config.models import Config
 from src.config.runtime_mode import RuntimeMode
+
+
+logger = logging.getLogger("schedule_engine.config.loader")
+
+
+def _log(message: str, level: str = "info") -> None:
+    """Log configuration loader events and mirror to console for parent processes."""
+
+    if level == "error":
+        logger.error(message)
+    elif level == "warning":
+        logger.warning(message)
+    else:
+        logger.info(message)
+
+    if not os.environ.get("_GA_WORKER_PROCESS"):
+        print(message)
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -67,7 +85,7 @@ def load_config(
     if runtime_mode is not None:
         mode_path = runtime_mode.config_path
         if not mode_path.exists():
-            print(f"[!ERR] Runtime mode config not found: {mode_path}")
+            _log(f"[!ERR] Runtime mode config not found: {mode_path}", level="error")
             sys.exit(1)
         with open(mode_path) as f:
             mode_dict = yaml.safe_load(f) or {}
@@ -83,21 +101,22 @@ def load_config(
             with open(env_path) as f:
                 env_dict = yaml.safe_load(f) or {}
             merged = _deep_merge(merged, env_dict)
-            if not os.environ.get("_GA_WORKER_PROCESS"):
-                print(
-                    f"Loading runtime mode: {runtime_mode.display_name} + {environment}.yaml"
-                )
+            _log(
+                f"Loading runtime mode: {runtime_mode.display_name} + {environment}.yaml"
+            )
         else:
-            if not os.environ.get("_GA_WORKER_PROCESS"):
-                print(
-                    f"Loading runtime mode: {runtime_mode.display_name} ({mode_path}, merged with base.yaml)"
-                )
+            _log(
+                f"Loading runtime mode: {runtime_mode.display_name} ({mode_path}, merged with base.yaml)"
+            )
 
         # Validate config matches runtime mode constraints
         try:
             runtime_mode.validate_config(merged)
         except ValueError as e:
-            print(f"[!ERR] Config validation failed for mode {runtime_mode.value}: {e}")
+            _log(
+                f"[!ERR] Config validation failed for mode {runtime_mode.value}: {e}",
+                level="error",
+            )
             sys.exit(1)
 
         return Config(**merged)
@@ -105,28 +124,26 @@ def load_config(
     # Priority 2: Explicit path
     if config_path:
         if not Path(config_path).exists():
-            print(f"[!ERR] Config file not found: {config_path}")
+            _log(f"[!ERR] Config file not found: {config_path}", level="error")
             sys.exit(1)
         with open(config_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        if not os.environ.get("_GA_WORKER_PROCESS"):
-            print(f"Loading config: {config_path} (merged with base.yaml)")
+        _log(f"Loading config: {config_path} (merged with base.yaml)")
         return Config(**merged)
 
     # Priority 3: Environment variable
     env_config = os.getenv("SCHEDULE_CONFIG")
     if env_config:
         if not Path(env_config).exists():
-            print(f"[!ERR] Config file not found: {env_config}")
+            _log(f"[!ERR] Config file not found: {env_config}", level="error")
             sys.exit(1)
         with open(env_config) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        if not os.environ.get("_GA_WORKER_PROCESS"):
-            print(
-                f"Loading config from SCHEDULE_CONFIG: {env_config} (merged with base.yaml)"
-            )
+        _log(
+            f"Loading config from SCHEDULE_CONFIG: {env_config} (merged with base.yaml)"
+        )
         return Config(**merged)
 
     # Priority 4: Environment-specific config
@@ -136,8 +153,7 @@ def load_config(
         with open(env_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        if not os.environ.get("_GA_WORKER_PROCESS"):
-            print(f"Loading config: configs/{environment}.yaml (merged with base.yaml)")
+        _log(f"Loading config: configs/{environment}.yaml (merged with base.yaml)")
         return Config(**merged)
 
     # Priority 5: Default test config
@@ -146,10 +162,9 @@ def load_config(
         with open(default_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        if not os.environ.get("_GA_WORKER_PROCESS"):
-            print("Loading config: configs/test.yaml (default, merged with base.yaml)")
+        _log("Loading config: configs/test.yaml (default, merged with base.yaml)")
         return Config(**merged)
 
     # Priority 6: Built-in defaults only
-    print("[!WARN] No config files found, using built-in defaults")
+    _log("[!WARN] No config files found, using built-in defaults", level="warning")
     return Config()

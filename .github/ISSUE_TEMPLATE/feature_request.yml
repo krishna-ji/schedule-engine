@@ -1,0 +1,138 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please provide details to help us evaluate and prioritize.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: "Current GA operators don't handle X constraint effectively..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this feature work?
+      placeholder: "Add a new mutation operator that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Other approaches you've considered
+      placeholder: "Could modify existing operator, but new operator is cleaner"
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which component does this affect?
+      options:
+        - GA operators (crossover, mutation)
+        - Constraints (hard/soft)
+        - Repair heuristics
+        - RL integration
+        - Configuration system
+        - Validation/feasibility
+        - Export/reporting
+        - Performance optimization
+        - Documentation
+        - Testing
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority/Impact
+      description: How important is this feature?
+      options:
+        - Critical (blocking production use)
+        - High (significantly improves results)
+        - Medium (nice to have)
+        - Low (minor convenience)
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Real-world scenarios where this helps
+      placeholder: |
+        1. When scheduling large universities (>100 courses)
+        2. When dealing with complex instructor availability
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Sketch
+      description: Technical approach (optional)
+      render: python
+      placeholder: |
+        # Example pseudocode
+        def new_mutation_operator(individual, context):
+            # Select random gene
+            gene = random.choice(individual)
+            # Apply domain-specific logic
+            ...
+
+  - type: checkboxes
+    id: breaking-changes
+    attributes:
+      label: Breaking Changes
+      options:
+        - label: This feature requires breaking changes to API/config
+        - label: This feature is backward compatible
+
+  - type: textarea
+    id: documentation
+    attributes:
+      label: Documentation Needs
+      description: What documentation should be added?
+      placeholder: |
+        - User guide section on new operator
+        - Config schema update
+        - Example usage in README
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing Strategy
+      description: How should this be tested?
+      placeholder: |
+        - Unit tests for new operator
+        - Benchmark against baseline (expect 10% improvement)
+        - Integration test with full workflow
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Related papers, issues, implementations
+      placeholder: |
+        - Paper: "Adaptive Mutation Operators" (DOI: ...)
+        - Similar implementation: https://github.com/...
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to implement this feature
+        - label: I can help test this feature
+        - label: I can help document this feature

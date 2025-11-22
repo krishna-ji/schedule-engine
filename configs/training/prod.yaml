@@ -13,7 +13,7 @@ parallel:
   use_subproc: true # True parallelism (no GIL)
 
 # Device
-device: cpu # CPU-only execution
+device: auto # Auto-detect GPU (cuda if available, else cpu)
 
 # Debug logging (verbose environment progress)
 debug_logging: true

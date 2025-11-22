@@ -23,10 +23,11 @@ from src.rl.training.config_loader import (
     list_training_profiles,
     load_training_config,
 )
-from src.utils.logging_config import get_logger
+from src.utils.structured_logger import StructuredLogger, setup_logging
 from src.workflows.standard_run import load_input_data
+from src.utils.system_info import get_cpu_count
 
-logger = get_logger(__name__)
+logger = StructuredLogger.get_logger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -240,8 +241,6 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
 
     # Auto-detect CPU count if n_envs is None/null
     if args.n_envs is None:
-        from src.utils.system_info import get_cpu_count
-
         detected_cores = get_cpu_count()  # Auto-detect all cores
 
         # Apply profile-specific caps for stability
@@ -256,14 +255,50 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
             f"Auto-detected {detected_cores} CPU cores, using {args.n_envs} parallel environments (profile: {args.profile})"
         )
 
-    # Device setting: always CPU-only execution (warn if profile requested GPU)
-    requested_device = str(profile.get("device", "cpu")).lower()
-    if requested_device != "cpu":
-        logger.warning(
-            "Profile requested device '%s' but GPU execution is disabled; forcing CPU.",
-            requested_device,
-        )
-    args.device = "cpu"
+    # Device setting: respect user's choice, auto-detect if 'auto'
+    requested_device = str(profile.get("device", "auto")).lower()
+
+    if requested_device == "auto":
+        # Auto-detect best available device
+        import torch
+
+        if torch.cuda.is_available():
+            args.device = "cuda"
+            logger.info(f"Auto-detected CUDA GPU: {torch.cuda.get_device_name(0)}")
+        else:
+            args.device = "cpu"
+            logger.info("No CUDA GPU detected, using CPU")
+    else:
+        args.device = requested_device
+        logger.info(f"Using device: {args.device}")
+
+    total_cores = get_cpu_count()
+    gpu_summary = "CUDA unavailable"
+    cuda_devices = 0
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            cuda_devices = torch.cuda.device_count()
+            gpu_names = []
+            for idx in range(cuda_devices):
+                with torch.cuda.device(idx):
+                    gpu_names.append(torch.cuda.get_device_name(idx))
+            gpu_summary = "; ".join(gpu_names) if gpu_names else "Detected CUDA device"
+        else:
+            gpu_summary = "No CUDA device detected"
+    except Exception as exc:  # pragma: no cover - defensive logging
+        gpu_summary = f"GPU query failed ({exc.__class__.__name__})"
+
+    logger.info(
+        "Hardware summary: total_cores=%s | n_envs=%s | subproc=%s | device=%s | cuda_devices=%s | gpu=%s",
+        total_cores,
+        args.n_envs,
+        args.use_subproc,
+        args.device,
+        cuda_devices,
+        gpu_summary,
+    )
 
 
 def create_environment(args, context, env_rank: int = 0):
@@ -347,6 +382,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
         Vectorized environment
     """
     from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+    import os
 
     logger.info(f"")
     logger.info(f"=" * 80)
@@ -378,6 +414,9 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
 
     logger.info(f"Creating environment factories for {n_envs} workers...")
 
+    env_profile = os.environ.get("ENVIRONMENT")
+    schedule_config = os.environ.get("SCHEDULE_CONFIG")
+
     def make_env(rank: int):
         """Create a single environment with unique seed.
 
@@ -393,6 +432,12 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
             import copy
 
             worker_context = copy.deepcopy(context)
+
+            if env_profile:
+                os.environ["ENVIRONMENT"] = env_profile
+            if schedule_config:
+                os.environ["SCHEDULE_CONFIG"] = schedule_config
+            os.environ["_GA_WORKER_PROCESS"] = "1"
 
             env = create_environment(args, worker_context, env_rank=rank)
             if args.seed is not None:
@@ -439,42 +484,21 @@ def main() -> None:
 
     args = parse_args()
 
-    # Setup detailed logging to file
-    import logging
-    from pathlib import Path
-
+    # Setup structured logging with file output and clean console
     log_dir = Path("logs/training")
     log_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = log_dir / f"train_{timestamp}.log"
 
-    # Get root logger and clear any existing handlers to prevent duplicates
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    root_logger.setLevel(logging.DEBUG)
-
-    # Configure file handler for detailed logging
-    file_handler = logging.FileHandler(log_file, mode="w")
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(
-        logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-    )
-
-    # Configure Rich console handler for INFO+ only (coordinates with tqdm)
-    console_handler = RichHandler(
-        level=logging.INFO,
-        show_time=False,
+    # Initialize structured logging system
+    console_level = "DEBUG"
+    setup_logging(
+        log_file=log_file,
+        console_level=console_level,
+        file_level="DEBUG",
+        show_time=True,
         show_path=False,
-        markup=False,
-        rich_tracebacks=True,
     )
-
-    # Add handlers to root logger
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
 
     logger.info(f"Logging to: {log_file}")
 
@@ -537,10 +561,18 @@ def main() -> None:
 
         _, context = load_input_data(args.data_dir)
 
-        logger.info("Loaded %d courses", len(context.courses))
-        logger.info("Loaded %d instructors", len(context.instructors))
-        logger.info("Loaded %d rooms", len(context.rooms))
-        logger.info("Loaded %d groups", len(context.groups))
+        # Right-align counts for consistent formatting
+        max_count = max(
+            len(context.courses),
+            len(context.instructors),
+            len(context.rooms),
+            len(context.groups),
+        )
+        count_width = len(str(max_count))
+        logger.info("Loaded %*d courses", count_width, len(context.courses))
+        logger.info("Loaded %*d instructors", count_width, len(context.instructors))
+        logger.info("Loaded %*d rooms", count_width, len(context.rooms))
+        logger.info("Loaded %*d groups", count_width, len(context.groups))
 
         logger.info("\n" + "=" * 60)
         logger.info("STEP 2: Create RL Environment")
@@ -640,7 +672,7 @@ def main() -> None:
 
         trainer.train(
             total_timesteps=args.timesteps,
-            progress_bar=True,
+            progress_bar=False,
         )
 
         logger.info("\n[OK] Training completed successfully!")

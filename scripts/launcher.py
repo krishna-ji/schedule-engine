@@ -3,13 +3,14 @@
 Unified CLI Launcher for Schedule Engine
 
 Convention:
-- Main commands: 0-9 (nsga, train-rl, etc.)
-- Helper commands: a-z (diagnose, clean, etc.)
+- Main commands: 0-99+ (nsga, train-rl, curriculum, etc.)
+- Helper commands: a-z (diagnose, clean, test-gpu, etc.)
 - Profiles: --test, --med, --prod
 - Configs: DRY hierarchy (test < med < prod)
 """
 
 import sys
+import os
 import argparse
 from pathlib import Path
 from rich.console import Console
@@ -28,18 +29,19 @@ def create_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # GA Experiments (Main Commands 0-4)
+  # GA Experiments (Commands 1-3)
   uv run nsga --test          # Smoke test NSGA-II (30 gens, ~2 min)
   uv run nsga --med           # Medium NSGA-II (200 gens, ~30 min)
   uv run nsga --prod          # Production NSGA-II (2000 gens, ~3-5 hours)
   
-  # RL Training (Main Command 5)
+  # RL Training (Commands 4-9)
   uv run train-rl --test      # Smoke test RL (10K steps, ~5-10 min)
   uv run train-rl --med       # Medium RL (50K steps, ~30-45 min)
   uv run train-rl --prod      # Production RL (100K steps, ~1-2 hours)
   
   # Helpers (a-z)
   uv run diagnose             # System diagnostics
+  uv run test-gpu             # GPU detection
   uv run clean                # Clean output directory
   uv run list-experiments     # List all experiments
 
@@ -113,13 +115,30 @@ def main_train_rl():
 
     profile = args.profile or "test"
 
+    # Ensure downstream config loader uses the matching environment profile.
+    # GA/RL share the same YAML hierarchy (configs/test.yaml, configs/prod.yaml).
+    # Map RL profiles onto those environments so every worker process
+    # inherits the correct settings instead of falling back to test.
+    env_profile = "test" if profile == "test" else "prod"
+    schedule_config_path = (
+        "configs/test.yaml" if env_profile == "test" else "configs/prod.yaml"
+    )
+
+    os.environ["ENVIRONMENT"] = env_profile
+    os.environ["SCHEDULE_CONFIG"] = schedule_config_path
+
+    console.print(
+        f"[dim]ENVIRONMENT set to[/dim] {env_profile} [dim]for RL profile[/dim] {profile}"
+    )
+    console.print(f"[dim]SCHEDULE_CONFIG ->[/dim] {schedule_config_path}")
+
     # Import RL training
     from src.rl.training.train_script import main as rl_main
 
     # Build argv for RL training
     sys.argv = ["train_script.py", "--profile", profile, "--agent", "ppo"]
 
-    # Add curriculum flag if requested
+    # Add curriculum flag if requested (curriculum works with any profile)
     if args.curriculum:
         sys.argv.append("--curriculum")
     else:
@@ -136,6 +155,16 @@ def main_diagnose():
     from scripts.diagnostics.diagnose_gpu import main as diagnose_gpu
 
     diagnose_gpu()
+
+
+def main_test_gpu():
+    """Quick GPU/CUDA detection test."""
+    import subprocess
+    import sys
+
+    console.print("[cyan]Testing GPU/CUDA availability...[/cyan]\n")
+    result = subprocess.run([sys.executable, "test_gpu.py"], check=False)
+    sys.exit(result.returncode)
 
 
 def main_clean():
@@ -211,20 +240,25 @@ def main_interactive():
                 ("4", "train-rl --test", "Smoke test (500 steps, ~2-3 min)"),
                 ("5", "train-rl --med", "Medium run (50K steps, ~30-45 min)"),
                 ("6", "train-rl --prod", "Production (100K steps, ~1-2 hrs)"),
-                (
-                    "c",
-                    "train-rl --test --curriculum",
-                    "Curriculum learning (test profile)",
-                ),
+            ],
+        ),
+        # RL Curriculum Learning
+        (
+            "rl-curriculum",
+            [
+                ("7", "train-rl --test --curriculum", "Curriculum (test)"),
+                ("8", "train-rl --med --curriculum", "Curriculum (medium)"),
+                ("9", "train-rl --prod --curriculum", "Curriculum (production)"),
             ],
         ),
         # Utilities
         (
             "misc",
             [
-                ("7", "diagnose", "System diagnostics"),
-                ("8", "clean", "Clean output directory"),
-                ("9", "list-experiments", "List experiment history"),
+                ("a", "diagnose", "System diagnostics"),
+                ("b", "test-gpu", "Test GPU/CUDA detection"),
+                ("c", "clean", "Clean output directory"),
+                ("d", "list-experiments", "List experiment history"),
             ],
         ),
     ]
@@ -241,6 +275,8 @@ def main_interactive():
                 console.print("[bold magenta]NSGA-II Experiments[/bold magenta]")
             elif category == "rl":
                 console.print("\n[bold magenta]RL Training[/bold magenta]")
+            elif category == "rl-curriculum":
+                console.print("\n[bold magenta]RL Curriculum Learning[/bold magenta]")
             elif category == "misc":
                 console.print("\n[bold magenta]Utilities[/bold magenta]")
 
@@ -269,10 +305,16 @@ def main_interactive():
             cmd = all_cmds[choice]
             console.print(f"\n[green]Running: uv run {cmd}[/green]\n")
             subprocess.run(["uv", "run"] + cmd.split(), check=False)
-            input("\n[dim]Press Enter to continue...[/dim]")
+            try:
+                input("\nPress Enter to continue...")
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Interrupted - returning to menu[/yellow]")
         else:
             console.print(f"[red]Invalid choice: {choice}[/red]")
-            input("\n[dim]Press Enter to continue...[/dim]")
+            try:
+                input("\nPress Enter to continue...")
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Returning to menu[/yellow]")
 
 
 if __name__ == "__main__":
@@ -283,6 +325,8 @@ if __name__ == "__main__":
         main_nsga()
     elif "train" in script_name and "rl" in script_name:
         main_train_rl()
+    elif "test-gpu" in script_name or "test_gpu" in script_name:
+        main_test_gpu()
     elif "diagnose" in script_name:
         main_diagnose()
     elif "clean" in script_name:

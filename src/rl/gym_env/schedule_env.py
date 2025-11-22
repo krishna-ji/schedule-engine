@@ -19,9 +19,10 @@ from src.rl.gym_env.state_encoder import StateEncoder
 from src.rl.gym_env.action_space import ActionMapper
 from src.rl.gym_env.reward_calculator import RewardCalculator
 from src.utils.performance_profiler import PerformanceProfiler
+from src.utils.structured_logger import StructuredLogger
 
 
-logger = logging.getLogger(__name__)
+logger = StructuredLogger.get_logger(__name__)
 
 
 class ScheduleEnv(gym.Env):
@@ -89,13 +90,13 @@ class ScheduleEnv(gym.Env):
         self.state_encoder = StateEncoder(
             max_generations=max_generations, history_size=10
         )
-        self.action_mapper = ActionMapper(use_config=True)
+        self.action_mapper = ActionMapper(use_config=True, timeout_seconds=30.0)
         self.reward_calculator = RewardCalculator(
             fitness_weight=1.0, diversity_weight=0.1, time_weight=0.01
         )
 
-        # Initialize profiler (enabled when debug logging is on)
-        self.profiler = PerformanceProfiler(enabled=debug_logging)
+        # Initialize profiler (enabled when debug logging is on, but not verbose to avoid progress bar interference)
+        self.profiler = PerformanceProfiler(enabled=debug_logging, verbose=False)
 
         # Define spaces
         obs_dim = self.state_encoder.observation_dim
@@ -129,12 +130,16 @@ class ScheduleEnv(gym.Env):
         # Step counter for debug logging
         self._total_steps_taken = 0
 
-        self._debug_log(
-            "Environment initialized (population=%s, max_steps=%s, max_generations=%s)",
-            len(self.population),
-            self.max_steps_per_episode,
-            self.max_generations,
-        )
+        # Set initial logging context
+        logger.set_context(env_rank=self.env_rank, generation=0, step=0)
+
+        if self.debug_logging:
+            logger.info(
+                "Environment initialized",
+                population=len(self.population),
+                max_steps=self.max_steps_per_episode,
+                max_generations=self.max_generations,
+            )
 
     def reset(
         self,
@@ -165,10 +170,11 @@ class ScheduleEnv(gym.Env):
         self._last_debug_step = -1
         self._total_steps_taken = 0
 
+        # Update logging context
+        logger.set_context(env_rank=self.env_rank, generation=0, step=0)
+
         if self.debug_logging:
-            logger.info(
-                f"[ENV {self.env_rank}] Reset called (total steps so far: {getattr(self, '_total_steps_taken', 0)})"
-            )
+            logger.info("Environment reset", total_steps_so_far=self._total_steps_taken)
 
         # Reset components
         self.state_encoder.reset()
@@ -196,12 +202,14 @@ class ScheduleEnv(gym.Env):
         info = self._get_info()
 
         duration_ms = (time.perf_counter() - reset_start) * 1000
-        self._debug_log(
-            "Environment reset complete (seed=%s, pop=%s, duration=%.2f ms)",
-            seed,
-            len(self.population),
-            duration_ms,
-        )
+
+        if self.debug_logging:
+            logger.debug(
+                "Reset complete",
+                seed=seed,
+                population=len(self.population),
+                duration_ms=f"{duration_ms:.2f}",
+            )
 
         return observation, info
 
@@ -223,11 +231,18 @@ class ScheduleEnv(gym.Env):
         # Track total steps for debugging
         self._total_steps_taken += 1
 
+        # Update logging context
+        logger.set_context(
+            env_rank=self.env_rank,
+            generation=self.current_generation,
+            step=self.current_step,
+        )
+
         # Log FREQUENTLY at first to show it's working, then reduce frequency
         log_freq = 5 if self._total_steps_taken < 50 else 25
         if self.debug_logging and self._total_steps_taken % log_freq == 0:
-            logger.info(
-                f"[ENV {self.env_rank}] Step {self._total_steps_taken} - action={action}"
+            logger.debug(
+                "Step start", total_steps=self._total_steps_taken, action=action
             )
 
         # Convert numpy array to int (SB3 returns actions as arrays)
@@ -236,28 +251,29 @@ class ScheduleEnv(gym.Env):
 
         # Validate action
         if not self.action_mapper.is_valid_action(action):
-            self._debug_log(
-                "Invalid action %s received; applying penalty (population=%s)",
-                action,
-                len(self.population),
-            )
+            if self.debug_logging:
+                logger.warning(
+                    "Invalid action received",
+                    action=action,
+                    population=len(self.population),
+                )
             # Invalid action - penalize and return
             obs = self.state_encoder.encode(
                 self.population,
                 self.current_generation,
                 self.generations_without_improvement,
             )
-            self._maybe_log_step_summary(
-                action_label=f"invalid_{action}",
-                reward=-0.1,
-                success=False,
-                population_diversity=self.state_encoder._calculate_diversity(
-                    self.population
-                ),
-                duration_ms=(time.perf_counter() - step_start) * 1000,
-                improvement_note="",
-                force=True,
-            )
+            duration_ms = (time.perf_counter() - step_start) * 1000
+            if self.debug_logging:
+                logger.step_summary(
+                    action=f"invalid_{action}",
+                    reward=-0.1,
+                    success=False,
+                    best_fitness=self._get_best_fitness(),
+                    diversity=self.state_encoder._calculate_diversity(self.population),
+                    stagnation=self.generations_without_improvement,
+                    duration_ms=duration_ms,
+                )
             return obs, -0.1, False, False, {"error": "invalid_action"}
 
         # Record action
@@ -277,14 +293,13 @@ class ScheduleEnv(gym.Env):
         prev_hard = prev_fitness[0] if len(prev_fitness) > 0 else float("inf")
         prev_soft = prev_fitness[1] if len(prev_fitness) > 1 else 0.0
 
-        self._debug_log(
-            "Selected action=%s (%s); generation=%s, prev_fitness=(%.2f, %.2f)",
-            action_label,
-            action,
-            self.current_generation,
-            prev_hard,
-            prev_soft,
-        )
+        if self.debug_logging:
+            logger.debug(
+                "Applying action",
+                action=action_label,
+                action_id=action,
+                prev_fitness=f"({prev_hard:.2f}, {prev_soft:.2f})",
+            )
 
         # Phase 2: Apply heuristic action (main computational work)
         self.profiler.start_phase(
@@ -299,7 +314,8 @@ class ScheduleEnv(gym.Env):
         )
         self.profiler.end_phase()
 
-        self._debug_log("Action %s success=%s", action_label, success)
+        if self.debug_logging:
+            logger.action(action_label, success=success)
 
         candidate = (
             modified_individual
@@ -364,15 +380,20 @@ class ScheduleEnv(gym.Env):
 
         duration_ms = (time.perf_counter() - step_start) * 1000
 
-        self._maybe_log_step_summary(
-            action_label=action_label,
-            reward=reward,
-            success=success,
-            population_diversity=population_diversity,
-            duration_ms=duration_ms,
-            improvement_note=improvement,
-            force=bool(improvement),
-        )
+        # Log step summary using structured logger
+        if self.debug_logging and (
+            improvement or self.current_step % self.debug_log_interval == 0
+        ):
+            logger.step_summary(
+                action=action_label,
+                reward=reward,
+                success=success,
+                best_fitness=self._get_best_fitness(),
+                diversity=population_diversity,
+                stagnation=self.generations_without_improvement,
+                duration_ms=duration_ms,
+                improvement=float(improvement.split()[-1]) if improvement else None,
+            )
 
         self.current_generation += 1
         self.current_step += 1
@@ -401,6 +422,7 @@ class ScheduleEnv(gym.Env):
 
         # Print profiling summary at episode end
         if (terminated or truncated) and self.debug_logging:
+            logger.info("Episode complete", total_steps=self.current_step)
             self.print_profiling_summary()
 
         return observation, reward, terminated, truncated, info
@@ -435,67 +457,6 @@ class ScheduleEnv(gym.Env):
             "heuristic_counts": self.episode_heuristic_counts.copy(),
             "population_size": len(self.population),
         }
-
-    def _debug_log(self, message: str, *args: Any) -> None:
-        """Emit prefixed debug logs when instrumentation is enabled."""
-
-        if not self.debug_logging:
-            return
-
-        logger.info(
-            "[env=%s gen=%s step=%s] " + message,
-            self.env_rank,
-            self.current_generation,
-            self.current_step,
-            *args,
-        )
-
-    def _maybe_log_step_summary(
-        self,
-        *,
-        action_label: str,
-        reward: float,
-        success: bool,
-        population_diversity: float,
-        duration_ms: float,
-        improvement_note: str,
-        force: bool = False,
-    ) -> None:
-        """Log periodic step summaries to avoid overwhelming the console."""
-
-        if not self.debug_logging:
-            return
-
-        if (
-            not force
-            and self.current_step - self._last_debug_step < self.debug_log_interval
-        ):
-            return
-
-        self._last_debug_step = self.current_step
-
-        # Get profiling breakdown if available
-        profile_str = ""
-        if (
-            hasattr(self.profiler, "generation_profiles")
-            and self.profiler.generation_profiles
-        ):
-            last_profile = self.profiler.generation_profiles[-1]
-            profile_str = f"\n           {last_profile.get_summary()}"
-
-        self._debug_log(
-            "Step summary: action=%s reward=%.4f success=%s best=%.2f diversity=%.4f "
-            "stagnation=%s duration=%.2f ms %s%s",
-            action_label,
-            reward,
-            success,
-            self._get_best_fitness(),
-            population_diversity,
-            self.generations_without_improvement,
-            duration_ms,
-            improvement_note,
-            profile_str,
-        )
 
     def render(self) -> Optional[str]:
         """Render environment state."""
@@ -625,7 +586,7 @@ class ScheduleEnv(gym.Env):
             return
 
         if hasattr(self.profiler, "print_summary_table"):
-            logger.info(f"[ENV {self.env_rank}] Episode profiling summary:")
+            logger.info("Profiling summary")
             self.profiler.print_summary_table()
 
 

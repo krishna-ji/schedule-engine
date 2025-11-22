@@ -5,11 +5,15 @@ Maps discrete action indices to heuristic function calls.
 Action space: 20 discrete actions (19 heuristics + 1 no-op)
 """
 
+import signal
+import logging
 from typing import Callable, List, Tuple, Optional
 from dataclasses import dataclass
 
 from src.heuristics import get_enabled_heuristics
 from src.core.types import Individual, SchedulingContext
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,14 +42,16 @@ class ActionMapper:
     - Heuristic execution with context
     """
 
-    def __init__(self, use_config: bool = True):
+    def __init__(self, use_config: bool = True, timeout_seconds: float = 30.0):
         """
         Initialize action mapper.
 
         Args:
             use_config: Whether to respect config killswitches
+            timeout_seconds: Maximum time for any single heuristic execution (default: 30s)
         """
         self.use_config = use_config
+        self.timeout_seconds = timeout_seconds
         self.actions: List[ActionInfo] = []
         self._build_action_space()
 
@@ -149,7 +155,14 @@ class ActionMapper:
                     )
                     return individual, False
                 parent2 = random.choice(valid_parents)
-                result = action_info.function(individual_copy, parent2, context)
+
+                # Get kwargs excluding already-provided positional params
+                heuristic_kwargs = self._get_heuristic_kwargs(
+                    action_info, provided_params=["parent1", "parent2", "context"]
+                )
+                result = action_info.function(
+                    individual_copy, parent2, context, **heuristic_kwargs
+                )
                 # Crossover returns tuple of offspring - take first
                 if isinstance(result, tuple):
                     modified = result[0]
@@ -159,7 +172,10 @@ class ActionMapper:
             # Handle construction heuristics that build from scratch (context only)
             elif action_info.category == "construction" or len(params) == 1:
                 # Construction heuristics take only context and return new individual
-                modified = action_info.function(context)
+                heuristic_kwargs = self._get_heuristic_kwargs(
+                    action_info, provided_params=["context"]
+                )
+                modified = action_info.function(context, **heuristic_kwargs)
 
             # Handle diversity heuristics with population parameter (individual, population, context, ...)
             elif "population" in params:
@@ -176,11 +192,30 @@ class ActionMapper:
                             f"Heuristic {action_info.name} requires generation parameter"
                         )
                         return individual, False
+                    heuristic_kwargs = self._get_heuristic_kwargs(
+                        action_info,
+                        provided_params=[
+                            "individual",
+                            "population",
+                            "context",
+                            "generation",
+                        ],
+                    )
                     result = action_info.function(
-                        individual_copy, population, context, generation
+                        individual_copy,
+                        population,
+                        context,
+                        generation,
+                        **heuristic_kwargs,
                     )
                 else:
-                    result = action_info.function(individual_copy, population, context)
+                    heuristic_kwargs = self._get_heuristic_kwargs(
+                        action_info,
+                        provided_params=["individual", "population", "context"],
+                    )
+                    result = action_info.function(
+                        individual_copy, population, context, **heuristic_kwargs
+                    )
 
                 # Handle in-place modification heuristics
                 if action_info.modifies_individual and isinstance(result, int):
@@ -190,7 +225,22 @@ class ActionMapper:
 
             # Standard single-individual heuristics (individual, context)
             else:
-                result = action_info.function(individual_copy, context)
+                # Get kwargs excluding already-provided positional params
+                heuristic_kwargs = self._get_heuristic_kwargs(
+                    action_info, provided_params=["individual", "context"]
+                )
+
+                # Apply timeout protection with kwargs
+                result = self._execute_with_timeout(
+                    action_info.function,
+                    individual_copy,
+                    context,
+                    action_name=action_info.name,
+                    **heuristic_kwargs,
+                )
+                if result is None:  # Timeout occurred
+                    return individual, False
+
                 # Handle in-place modification heuristics (return int improvement count)
                 if action_info.modifies_individual and isinstance(result, int):
                     modified = individual_copy
@@ -212,6 +262,111 @@ class ActionMapper:
             # Heuristic failed - return original
             logger.error(f"Action {action_info.name} failed: {e}", exc_info=True)
             return individual, False
+
+    def _get_heuristic_kwargs(
+        self, action_info: ActionInfo, provided_params: list = None
+    ) -> dict:
+        """
+        Extract heuristic configuration parameters from config.
+
+        Args:
+            action_info: Action information with heuristic metadata
+            provided_params: List of parameter names already provided positionally
+
+        Returns:
+            Dict of keyword arguments to pass to heuristic function
+        """
+        from src.config import get_config
+        import inspect
+
+        config = get_config()
+        heuristics_config = getattr(config, "heuristics", None)
+
+        if not heuristics_config:
+            return {}
+
+        # Get category config (e.g., improvement, perturbation, etc.)
+        category_config = getattr(heuristics_config, action_info.category, None)
+        if not category_config:
+            return {}
+
+        # Get heuristic-specific config
+        heuristic_config = category_config.get(action_info.name, {})
+        if not heuristic_config:
+            return {}
+
+        # Get function signature to understand which params it accepts
+        if provided_params is None:
+            provided_params = []
+
+        # Get all parameter names from function signature
+        try:
+            sig = inspect.signature(action_info.function)
+            func_params = set(sig.parameters.keys())
+        except:
+            func_params = set()
+
+        # Build exclusion set: metadata fields + already provided positional params
+        excluded = set(provided_params + ["enabled", "priority"])
+
+        # Extract kwargs: only params that are in function signature, not provided positionally, and not metadata
+        kwargs = {}
+        for key, value in heuristic_config.items():
+            if key not in excluded and key in func_params:
+                kwargs[key] = value
+
+        return kwargs
+
+    def _timeout_handler(self, signum, frame):
+        """Signal handler for timeout."""
+        raise TimeoutError("Heuristic execution timed out")
+
+    def _execute_with_timeout(
+        self, func, *args, action_name: str = "unknown", **kwargs
+    ):
+        """
+        Execute function with timeout protection.
+
+        Args:
+            func: Function to execute
+            *args: Positional arguments to pass to function
+            action_name: Name of action for logging
+            **kwargs: Keyword arguments to pass to function
+
+        Returns:
+            Function result or None if timeout
+        """
+        # Note: signal.alarm only works in main thread on Unix
+        # For Windows/threads, we rely on the TimeoutError catch in apply_action
+        import platform
+
+        if platform.system() != "Windows" and self.timeout_seconds > 0:
+            try:
+                # Set up timeout alarm (Unix only)
+                old_handler = signal.signal(signal.SIGALRM, self._timeout_handler)
+                signal.alarm(int(self.timeout_seconds))
+
+                try:
+                    result = func(*args, **kwargs)
+                    return result
+                finally:
+                    # Cancel alarm and restore handler
+                    signal.alarm(0)
+                    signal.signal(signal.SIGALRM, old_handler)
+
+            except TimeoutError:
+                logger.warning(
+                    f"Action {action_name} timed out after {self.timeout_seconds}s"
+                )
+                return None
+        else:
+            # Windows or no timeout - execute directly
+            # Long-running operations will still block but user can Ctrl+C
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Action {action_name} failed: {e}")
+                return None
 
     def _validate_result(self, result) -> bool:
         """
@@ -283,14 +438,17 @@ class ActionMapper:
         return "\n".join(lines)
 
 
-def create_action_mapper(use_config: bool = True) -> ActionMapper:
+def create_action_mapper(
+    use_config: bool = True, timeout_seconds: float = 30.0
+) -> ActionMapper:
     """
     Factory function to create action mapper.
 
     Args:
         use_config: Whether to respect configuration killswitches
+        timeout_seconds: Maximum time for any single heuristic execution
 
     Returns:
         Configured ActionMapper instance
     """
-    return ActionMapper(use_config=use_config)
+    return ActionMapper(use_config=use_config, timeout_seconds=timeout_seconds)
