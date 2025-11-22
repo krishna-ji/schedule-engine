@@ -23,7 +23,7 @@ dependencies = [
     
     # Scientific computing - Windows-compatible versions (no Fortran required)
     "numpy==1.26.4",          # Last stable 1.x before 2.0 breaking changes
-    "scipy==1.11.4",          # Last version with pre-built Windows wheels (no Fortran)
+    "scipy==1.16.3",          # Last version with pre-built Windows wheels (no Fortran)
     "matplotlib==3.9.4",
     "seaborn==0.13.2",
     "pandas==2.2.3",
