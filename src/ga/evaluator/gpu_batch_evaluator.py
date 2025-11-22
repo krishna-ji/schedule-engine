@@ -128,7 +128,7 @@ class GPUConstraintEvaluator:
                     break
 
                 # Feature extraction
-                tensor[i, j, 0] = gene.start_quanta if gene.quanta else 0  # Start time
+                tensor[i, j, 0] = gene.start_quanta  # Start time
                 tensor[i, j, 1] = hash(gene.instructor_id) % 100000  # Instructor ID
                 tensor[i, j, 2] = hash(gene.room_id) % 100000  # Room ID
                 tensor[i, j, 3] = len(gene.group_ids)  # Number of groups
@@ -228,10 +228,10 @@ class GPUConstraintEvaluator:
 
         Args:
             population: List of individuals to evaluate
-            courses: Course entities
-            instructors: Instructor entities
-            groups: Group entities
-            rooms: Room entities
+            courses: Dict mapping (course_id, course_type) -> Course OR List of Course objects
+            instructors: Dict mapping instructor_id -> Instructor OR List of Instructor objects
+            groups: Dict mapping group_id -> Group OR List of Group objects
+            rooms: Dict mapping room_id -> Room OR List of Room objects
 
         Returns:
             List of fitness tuples (hard_penalty, soft_penalty) with negative values
@@ -240,6 +240,7 @@ class GPUConstraintEvaluator:
             # Fallback to CPU for small batches or no GPU
             from src.ga.evaluator.fitness import evaluate
 
+            # CPU evaluate() expects dicts, not lists - pass through as-is
             return [
                 evaluate(ind, courses, instructors, groups, rooms) for ind in population
             ]
@@ -259,7 +260,19 @@ class GPUConstraintEvaluator:
             return results
 
         except Exception as e:
-            logger.warning(f"GPU batch evaluation failed: {e}, falling back to CPU")
+            import traceback
+            logger.error(f"GPU batch evaluation failed: {e}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Full traceback:\n{traceback.format_exc()}")
+            
+            # Debug: Check first individual structure
+            if population and len(population) > 0:
+                ind = population[0]
+                logger.error(f"DEBUG: population[0] type={type(ind)}, len={len(ind) if hasattr(ind, '__len__') else 'N/A'}")
+                if hasattr(ind, '__iter__') and len(ind) > 0:
+                    logger.error(f"DEBUG: population[0][0] type={type(ind[0])}, has_course_id={hasattr(ind[0], 'course_id')}")
+            
+            logger.warning("Falling back to CPU evaluation")
             from src.ga.evaluator.fitness import evaluate
 
             return [
@@ -267,7 +280,7 @@ class GPUConstraintEvaluator:
             ]
 
     def _evaluate_batch_full_constraints(
-        self, batch: List, courses: List, instructors: List, groups: List, rooms: List
+        self, batch: List, courses, instructors, groups, rooms
     ) -> List[Tuple[float, float]]:
         """GPU-accelerated full constraint evaluation with all hard/soft constraints.
 
@@ -278,7 +291,10 @@ class GPUConstraintEvaluator:
 
         Args:
             batch: Batch of individuals
-            courses, instructors, groups, rooms: Entity lists
+            courses: Dict or List of courses
+            instructors: Dict or List of instructors
+            groups: Dict or List of groups
+            rooms: Dict or List of rooms
 
         Returns:
             List of (hard_penalty, soft_penalty) tuples with negative values
@@ -286,10 +302,32 @@ class GPUConstraintEvaluator:
         batch_size = len(batch)
         max_genes = max(len(ind) for ind in batch)
 
+        # CRITICAL FIX: Handle both dict (from SchedulingContext) and list inputs
+        # SchedulingContext.courses is Dict[tuple, Course], but GPU evaluator expects lists
+        if isinstance(courses, dict):
+            course_list = list(courses.values())
+        else:
+            course_list = courses
+
+        if isinstance(instructors, dict):
+            instructor_list = list(instructors.values())
+        else:
+            instructor_list = instructors
+
+        if isinstance(groups, dict):
+            group_list = list(groups.values())
+        else:
+            group_list = groups
+
+        if isinstance(rooms, dict):
+            room_list = list(rooms.values())
+        else:
+            room_list = rooms
+
         # Build entity lookup tables (fast hash-based access)
-        course_map = {(c.course_id, c.course_type): c for c in courses}
-        instructor_map = {inst.instructor_id: inst for inst in instructors}
-        room_map = {room.room_id: room for room in rooms}
+        course_map = {(c.course_id, c.course_type): c for c in course_list}
+        instructor_map = {inst.instructor_id: inst for inst in instructor_list}
+        room_map = {room.room_id: room for room in room_list}
 
         # Convert batch to GPU tensors with rich feature encoding
         # Shape: [batch_size, max_genes, 15 features]
@@ -376,6 +414,19 @@ class GPUConstraintEvaluator:
                 logger.error(f"Batch[{i}] is not iterable: type={type(individual)}")
                 raise ValueError(f"Individual at batch[{i}] is not iterable")
 
+            # DEBUG: Log first individual structure for diagnosis
+            if i == 0:
+                logger.info(f"DEBUG GPU Batch - First individual structure:")
+                logger.info(f"  individual type: {type(individual)}")
+                logger.info(f"  individual class: {individual.__class__.__name__}")
+                logger.info(f"  individual len: {len(individual)}")
+                if len(individual) > 0:
+                    logger.info(f"  individual[0] type: {type(individual[0])}")
+                    logger.info(f"  individual[0] class: {individual[0].__class__.__name__ if hasattr(individual[0], '__class__') else 'NO CLASS'}")
+                    logger.info(f"  individual[0] has course_id: {hasattr(individual[0], 'course_id')}")
+                    if hasattr(individual[0], '__dict__'):
+                        logger.info(f"  individual[0].__dict__ keys: {list(individual[0].__dict__.keys())[:5]}")
+
             for j, gene in enumerate(individual):
                 if j >= max_genes:
                     break
@@ -383,13 +434,20 @@ class GPUConstraintEvaluator:
                 # Defensive check: Ensure gene is a SessionGene object
                 # DEAP individuals are lists of SessionGenes, but validate to prevent crashes
                 if not hasattr(gene, "course_id"):
-                    # Detailed error for debugging
+                    # Detailed error for debugging - helps identify DEAP operator tuple corruption
                     logger.error(
                         f"Invalid gene at batch[{i}][{j}]: "
                         f"type={type(gene)}, "
                         f"has_course_id={hasattr(gene, 'course_id')}, "
-                        f"repr={repr(gene)[:100]}"
+                        f"repr={repr(gene)[:100]}, "
+                        f"individual_type={type(individual)}, "
+                        f"individual_len={len(individual)}"
                     )
+                    # CRITICAL: This error indicates DEAP operator tuple corruption
+                    # Check that _parallel_crossover and _parallel_mutation properly unpack tuples
+                    # Crossover should: offspring[i], offspring[i+1] = toolbox.mate(...)
+                    # Mutation should: offspring[i] = toolbox.mutate(...)[0]
+                    
                     # Skip this gene and continue (defensive programming)
                     # This allows partial encoding rather than full failure
                     continue
@@ -400,7 +458,7 @@ class GPUConstraintEvaluator:
                 )
 
                 # Basic features
-                tensor[i, j, FEAT_TIME_START] = gene.start_quanta if gene.quanta else 0
+                tensor[i, j, FEAT_TIME_START] = gene.start_quanta
                 tensor[i, j, FEAT_DURATION] = gene.num_quanta
                 tensor[i, j, FEAT_INSTRUCTOR] = hash(gene.instructor_id) % 1000000
                 tensor[i, j, FEAT_ROOM] = hash(gene.room_id) % 1000000
@@ -436,7 +494,7 @@ class GPUConstraintEvaluator:
                     )
 
                     # HC5: Check instructor time availability
-                    if gene.quanta and hasattr(inst, "available_quanta"):
+                    if hasattr(inst, "available_quanta"):
                         available_quanta = inst.available_quanta
                         all_available = all(q in available_quanta for q in range(gene.start_quanta, gene.end_quanta))
                         tensor[i, j, FEAT_INST_AVAILABLE] = 1 if all_available else 0
@@ -453,10 +511,10 @@ class GPUConstraintEvaluator:
                     )
 
                     # HC6: Check room time availability
-                    if gene.quanta and hasattr(room, "available_quanta"):
+                    if hasattr(room, "available_quanta"):
                         room_available_quanta = room.available_quanta
                         all_available = all(
-                            q in room_available_quanta for q in gene.quanta
+                            q in room_available_quanta for q in range(gene.start_quanta, gene.end_quanta)
                         )
                         tensor[i, j, FEAT_ROOM_AVAILABLE] = 1 if all_available else 0
                     else:

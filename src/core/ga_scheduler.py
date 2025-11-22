@@ -83,18 +83,21 @@ def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
     for CPU-bound tasks like crossover. Multiprocessing overhead (pickling)
     often outweighs benefits for simple operators. Sequential is faster and safer.
 
-    CRITICAL FIX: DEAP operators return tuples (ind1, ind2) but we need to preserve
-    the original list objects for GPU evaluator compatibility.
+    CRITICAL FIX: DEAP operators return tuples (ind1, ind2). While most DEAP operators
+    modify in-place, we MUST reassign the tuple results to handle edge cases where
+    operators return new objects. This prevents GPU evaluation failures caused by
+    tuple objects replacing individual contents.
     """
     # Iterate in steps of 2: (0,1), (2,3), etc.
     for i in range(0, len(offspring) - 1, 2):
         if random.random() < cxpb:
-            # Call crossover operator (returns tuple or modifies in-place)
+            # Call crossover operator (returns tuple of modified individuals)
             result = toolbox.mate(offspring[i], offspring[i + 1])
 
-            # If operator returned tuple, unpack (DEAP compatibility)
-            # But offspring already modified in-place, so tuple just confirms this
-            # No need to reassign - genes are already swapped
+            # CRITICAL: Must unpack and reassign even if modified in-place
+            # Some DEAP operators or custom implementations may return new objects
+            # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
+            offspring[i], offspring[i + 1] = result
 
             del offspring[i].fitness.values
             del offspring[i + 1].fitness.values
@@ -109,19 +112,21 @@ def _parallel_mutation(offspring, mutpb, toolbox, max_workers=None):
     NOTE: ThreadPoolExecutor removed because Python's GIL prevents true parallelism
     for CPU-bound tasks. Sequential execution avoids context switching overhead.
 
-    CRITICAL FIX: DEAP mutation returns (individual,) tuple but we need to preserve
-    the original list objects for GPU evaluator compatibility.
+    CRITICAL FIX: DEAP mutation returns (individual,) tuple. While most DEAP operators
+    modify in-place, we MUST reassign the tuple result to handle edge cases where
+    operators return new objects. This prevents GPU evaluation failures.
     """
-    for mutant in offspring:
+    for i in range(len(offspring)):
         if random.random() < mutpb:
-            # Call mutation operator (returns (individual,) tuple or modifies in-place)
-            result = toolbox.mutate(mutant)
+            # Call mutation operator (returns (individual,) tuple)
+            result = toolbox.mutate(offspring[i])
 
-            # If operator returned tuple, unpack (DEAP compatibility)
-            # But mutant already modified in-place, so tuple just confirms this
-            # No need to reassign - genes are already mutated
+            # CRITICAL: Must unpack and reassign even if modified in-place
+            # DEAP convention: mutation returns (ind,) single-element tuple
+            # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
+            offspring[i] = result[0]
 
-            del mutant.fitness.values
+            del offspring[i].fitness.values
 
     return offspring
 
@@ -723,8 +728,9 @@ class GAScheduler:
         )
         console.print()
 
-        # Track initial population as Generation 0
-        self._track_metrics(gen=-1)  # Will be recorded as generation 0
+        # Track initial population as Generation 0 (skip expensive metrics for speed)
+        # NOTE: We defer expensive metric calculation to generation 0 to avoid 2-min startup delay
+        # The initial population metrics are not useful for analysis anyway
 
         # RL INTEGRATION: Initialize RL components after population is ready
         self._init_rl()
@@ -1813,11 +1819,17 @@ class GAScheduler:
         """
         Record metrics for current generation.
         OPTIMIZED: Skip expensive metrics on non-tracked generations.
+        CRITICAL FIX: Skip ALL metrics for initial population (gen=-1) to avoid 2-min startup delay.
 
         Args:
             gen: Generation number (-1 for initial population, 0+ for evolved generations)
             event_tracker: Optional EventTracker with events from this generation
         """
+        # PERFORMANCE FIX: Skip initial population metrics entirely (gen=-1)
+        # These metrics are not useful for analysis and cause 2-min startup delay
+        if gen == -1:
+            return
+
         # Import new metrics modules
         from src.metrics.hypervolume import (
             calculate_hypervolume,
@@ -1834,10 +1846,9 @@ class GAScheduler:
         # Determine if this is a tracked generation for expensive metrics
         metrics_config = get_config().metrics
         advanced_freq = metrics_config.advanced_metrics_frequency
-        # Always track: initial pop (-1), gen 0, last gen, or every Nth generation
+        # Always track: gen 0, last gen, or every Nth generation
         is_tracked_gen = (
-            gen == -1
-            or gen == 0
+            gen == 0
             or gen == self.config.generations - 1
             or gen % advanced_freq == 0
         )
@@ -1859,7 +1870,7 @@ class GAScheduler:
         if is_tracked_gen:
             # Phase 1: Essential multi-objective metrics
             # Calculate hypervolume (use consistent reference point)
-            if gen == 0 or gen == -1:
+            if gen == 0:
                 # First generation: establish reference point
                 self._hypervolume_ref_point = get_hypervolume_reference_point(
                     self.population, margin=0.1
@@ -1882,7 +1893,7 @@ class GAScheduler:
 
             # Phase 2: Advanced metrics (IGD, Spread)
             # IGD requires reference front - use initial population as reference
-            if gen == -1 or gen == 0:
+            if gen == 0:
                 # Store initial Pareto front as reference
                 pareto_front = tools.sortNondominated(
                     self.population, len(self.population), first_front_only=True
