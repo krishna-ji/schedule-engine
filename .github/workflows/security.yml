@@ -15,7 +15,7 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Install UV package manager
               uses: astral-sh/setup-uv@v2
@@ -44,7 +44,7 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Initialize CodeQL
               uses: github/codeql-action/init@v3
@@ -62,7 +62,7 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0
 
