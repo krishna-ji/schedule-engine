@@ -146,7 +146,7 @@ The GPU batch evaluator (`src/ga/evaluator/gpu_batch_evaluator.py`) uses these c
 
 ## Plot System Integration
 
-**Status**: ✅ **YES, plots dynamically use registry as single source of truth**
+**Status**:  **YES, plots dynamically use registry as single source of truth**
 
 ### Data Flow to Plots
 
@@ -183,10 +183,10 @@ The GPU batch evaluator (`src/ga/evaluator/gpu_batch_evaluator.py`) uses these c
 - `src/exporter/plot_detailed_constraints.py` - Individual constraint trends + combined plots
 
 **Dynamic adaptation**:
-- ✅ Adding/removing constraints in `hard.py` automatically updates plots
-- ✅ Legend entries generated from constraint names
-- ✅ Number of subplots/colors adapts to constraint count
-- ✅ No hardcoded constraint lists in plotting code
+-  Adding/removing constraints in `hard.py` automatically updates plots
+-  Legend entries generated from constraint names
+-  Number of subplots/colors adapts to constraint count
+-  No hardcoded constraint lists in plotting code
 
 ### Enhancement Opportunity
 

@@ -30,18 +30,18 @@ class SessionGene:
 ## Files Updated (This Audit)
 
 ### 1. Core Repair System
-✅ **`src/ga/operators/repair.py`** - Complete rewrite (2537 → 370 lines)
+ **`src/ga/operators/repair.py`** - Complete rewrite (2537 → 370 lines)
 - Removed `repair_incomplete_or_extra_sessions` (unnecessary - init is correct)
 - Updated all repairs to use `start_quanta + num_quanta` API
 - Added helper functions for backward compatibility
 
 ### 2. Operator Docstrings
-✅ **`src/ga/operators/mutation.py`**
+ **`src/ga/operators/mutation.py`**
 - Updated `mutate_gene()` docstring to clarify duration preservation
 - Updated `mutate_time_quanta()` to reference new architecture
 - Clarified that course_completeness is now a verification constraint only
 
-✅ **`src/decoder/individual_decoder.py`**
+ **`src/decoder/individual_decoder.py`**
 - Updated `decode_individual()` docstring to explain contiguous representation
 - Added architecture note about Nov 2025 migration
 - Clarified that genes use `start_quanta + num_quanta` not quanta list
@@ -49,20 +49,20 @@ class SessionGene:
 ## Orphan Files Identified
 
 ### 1. Backup Files (Should be removed)
-🗑️ **`src/ga/operators/repair_OLD_BACKUP.py`** (2537 lines)
+️ **`src/ga/operators/repair_OLD_BACKUP.py`** (2537 lines)
 - Backup of old repair.py using deprecated API
 - **RECOMMENDATION**: Delete after verifying new repair.py works
 
 ### 2. Migration Scripts (Can be archived/removed)
-🗑️ **`scripts/migrate_sessiongene_api.py`**
+️ **`scripts/migrate_sessiongene_api.py`**
 - One-time migration script for SessionGene API update
 - **RECOMMENDATION**: Move to `scripts/archive/` or delete
 
-🗑️ **`scripts/final_quanta_migration.py`**
+️ **`scripts/final_quanta_migration.py`**
 - Another migration helper script
 - **RECOMMENDATION**: Move to `scripts/archive/` or delete
 
-🗑️ **`scripts/replace_quanta_assignments.py`**
+️ **`scripts/replace_quanta_assignments.py`**
 - Script to replace `gene.quanta =` assignments
 - **RECOMMENDATION**: Move to `scripts/archive/` or delete
 
@@ -71,38 +71,38 @@ class SessionGene:
 ### Test Files (Legitimate - For backward compatibility testing)
 These files intentionally use old API via SessionGene compatibility methods:
 
-✅ **`test/unit/test_constraints.py`**
+ **`test/unit/test_constraints.py`**
 - Uses `quanta=[...]` in test fixtures
 - **STATUS**: OK - Uses SessionGene's backward compatibility constructor
 
-✅ **`test/test_lns_cp.py`**
+ **`test/test_lns_cp.py`**
 - Uses `quanta=[...]` for test data
 - **STATUS**: OK - Legitimate test fixtures
 
-✅ **`test/test_all_optimizations.py`**
+ **`test/test_all_optimizations.py`**
 - Uses `quanta=[...]` for random test generation
 - **STATUS**: OK - Test code
 
 ### Legitimate Current Usage
 These are NOT problems - they use `List[int]` correctly in context:
 
-✅ **`src/ga/population.py`**
+ **`src/ga/population.py`**
 - `available_quanta: List` - function parameters for available quantum list
 - **STATUS**: OK - These are lists of available quanta, not gene properties
 
-✅ **`src/ga/quanta_converter.py`**
+ **`src/ga/quanta_converter.py`**
 - `quanta_list_to_contiguous(quanta_list: List[int])` - converter function
 - **STATUS**: OK - This is the conversion utility
 
-✅ **`src/entities/decoded_session.py`**
+ **`src/entities/decoded_session.py`**
 - `session_quanta: List[int]` - decoded output format
 - **STATUS**: OK - CourseSession intentionally uses list for decoded format
 
-✅ **`src/core/types.py`**
+ **`src/core/types.py`**
 - `available_quanta: List[int]` - context property
 - **STATUS**: OK - Not a gene property
 
-✅ **`src/exporter/exporter.py`**
+ **`src/exporter/exporter.py`**
 - `quanta: List[int]` - parameter for time conversion function
 - **STATUS**: OK - Utility function parameter
 
@@ -110,20 +110,20 @@ These are NOT problems - they use `List[int]` correctly in context:
 
 These files document the migration process and can be kept for reference:
 
-📄 **`src/ga/sessiongene.py`**
+ **`src/ga/sessiongene.py`**
 - Contains docstring: "BREAKING CHANGE (Nov 2025 Migration)"
 - **STATUS**: Keep - This documents the breaking change
 
 ## Verification Checklist
 
-### ✅ Completed
+###  Completed
 - [x] repair.py updated to new API
 - [x] repair_incomplete_or_extra_sessions removed
 - [x] mutation.py docstrings updated
 - [x] individual_decoder.py docstrings updated
 - [x] All active code using new API verified
 
-### 🔲 Recommended Cleanup
+###  Recommended Cleanup
 - [ ] Delete `src/ga/operators/repair_OLD_BACKUP.py`
 - [ ] Archive migration scripts to `scripts/archive/`:
   - `scripts/migrate_sessiongene_api.py`
@@ -131,7 +131,7 @@ These files document the migration process and can be kept for reference:
   - `scripts/replace_quanta_assignments.py`
 - [ ] Update any remaining outdated comments in codebase
 
-### 🔲 Testing Required
+###  Testing Required
 - [ ] Run full test suite: `pytest test/`
 - [ ] Run smoke test: `uv run nsga --test`
 - [ ] Verify course_completeness = 0 from initialization

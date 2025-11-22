@@ -99,9 +99,10 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
           introduced in Nov 2025 architecture update.
     """
     # CRITICAL: Preserve the exact number of quanta (NEVER modify)
-    # For theory classes, num_quanta is 1-2 (per split block)
-    # For practical classes, num_quanta equals full course.quanta_per_week
-    # course_completeness constraint validates the TOTAL across all genes
+    # num_quanta equals course.quanta_per_week (e.g., L+T for theory, P for practical)
+    # Theory sessions: Full session with all enrolled subgroups (e.g., 4-6 quanta)
+    # Practical sessions: Full session per subgroup (e.g., 1-3 quanta)
+    # course_completeness constraint validates quanta match course requirements
     num_quanta = gene.num_quanta
 
     # 30% chance to keep current time slots completely unchanged

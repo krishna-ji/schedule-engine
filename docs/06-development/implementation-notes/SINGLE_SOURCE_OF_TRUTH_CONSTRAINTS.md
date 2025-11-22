@@ -1,7 +1,7 @@
 # Single Source of Truth - Constraint System Implementation
 
 **Date**: November 22, 2025  
-**Status**: ✅ Complete  
+**Status**:  Complete  
 **Impact**: Eliminates duplication, ensures consistency across codebase
 
 ## Problem Statement
@@ -112,10 +112,10 @@ for name in all_hard_constraints.keys():
 ### 2. Existing Registry Usage (Already Implemented)
 
 These files **already use the registry** correctly:
-- ✅ `src/ga/evaluator/fitness.py` - Uses `get_enabled_hard_constraints()`
-- ✅ `src/ga/evaluator/detailed_fitness.py` - Uses `get_enabled_hard_constraints()`
-- ✅ `src/lns/conflict_detection.py` - Uses `get_enabled_hard_constraints()`
-- ✅ `scripts/benchmarking/bench_constraint_check.py` - Uses registry
+-  `src/ga/evaluator/fitness.py` - Uses `get_enabled_hard_constraints()`
+-  `src/ga/evaluator/detailed_fitness.py` - Uses `get_enabled_hard_constraints()`
+-  `src/lns/conflict_detection.py` - Uses `get_enabled_hard_constraints()`
+-  `scripts/benchmarking/bench_constraint_check.py` - Uses registry
 
 ### 3. Code Generation (`ga_scheduler.py`)
 

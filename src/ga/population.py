@@ -453,10 +453,12 @@ def create_session_gene_with_conflict_avoidance(
     available_quanta = [q for q in context.available_quanta if q not in used_quanta]
 
     if len(available_quanta) < num_quanta:
-        # Fall back to all if not enough free
+        # Fall back to all if not enough free - allow conflicts, repair will fix later
         available_quanta = list(context.available_quanta)
 
-    quanta_needed = min(num_quanta, len(available_quanta))
+    # CRITICAL: NEVER reduce quanta_needed - must always equal course.quanta_per_week
+    # Initial conflicts are acceptable; repair operators will resolve them during evolution
+    quanta_needed = num_quanta
 
     # CRITICAL: Always assign some quanta, never return None
     if quanta_needed == 0:
@@ -467,7 +469,8 @@ def create_session_gene_with_conflict_avoidance(
         quanta_needed, available_quanta, used_quanta
     )
 
-    # CRITICAL: If assignment fails, use random quanta as fallback
+    # CRITICAL: If assignment fails, wrap around or duplicate quanta as needed
+    # Repair operators will fix overlaps later - maintaining correct num_quanta is priority
     if not assigned_quanta:
         # Use random consecutive block from all available quanta
         if len(context.available_quanta) >= quanta_needed:
@@ -476,8 +479,11 @@ def create_session_gene_with_conflict_avoidance(
                 start_idx : start_idx + quanta_needed
             ]
         else:
-            # Absolute fallback: use first available quanta
-            assigned_quanta = context.available_quanta[:quanta_needed]
+            # Wrap around if needed to get exactly quanta_needed
+            assigned_quanta = []
+            while len(assigned_quanta) < quanta_needed:
+                assigned_quanta.extend(context.available_quanta)
+            assigned_quanta = assigned_quanta[:quanta_needed]
 
     # Update tracking structures
     used_quanta.update(assigned_quanta)
