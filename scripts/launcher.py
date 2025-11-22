@@ -10,6 +10,7 @@ Convention:
 """
 
 import sys
+import os
 import argparse
 from pathlib import Path
 from rich.console import Console
@@ -113,6 +114,23 @@ def main_train_rl():
     args = parser.parse_args()
 
     profile = args.profile or "test"
+
+    # Ensure downstream config loader uses the matching environment profile.
+    # GA/RL share the same YAML hierarchy (configs/test.yaml, configs/prod.yaml).
+    # Map RL profiles onto those environments so every worker process
+    # inherits the correct settings instead of falling back to test.
+    env_profile = "test" if profile == "test" else "prod"
+    schedule_config_path = (
+        "configs/test.yaml" if env_profile == "test" else "configs/prod.yaml"
+    )
+
+    os.environ["ENVIRONMENT"] = env_profile
+    os.environ["SCHEDULE_CONFIG"] = schedule_config_path
+
+    console.print(
+        f"[dim]ENVIRONMENT set to[/dim] {env_profile} [dim]for RL profile[/dim] {profile}"
+    )
+    console.print(f"[dim]SCHEDULE_CONFIG ->[/dim] {schedule_config_path}")
 
     # Import RL training
     from src.rl.training.train_script import main as rl_main

@@ -355,6 +355,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
         Vectorized environment
     """
     from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+    import os
 
     logger.info(f"")
     logger.info(f"=" * 80)
@@ -386,6 +387,9 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
 
     logger.info(f"Creating environment factories for {n_envs} workers...")
 
+    env_profile = os.environ.get("ENVIRONMENT")
+    schedule_config = os.environ.get("SCHEDULE_CONFIG")
+
     def make_env(rank: int):
         """Create a single environment with unique seed.
 
@@ -401,6 +405,12 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
             import copy
 
             worker_context = copy.deepcopy(context)
+
+            if env_profile:
+                os.environ["ENVIRONMENT"] = env_profile
+            if schedule_config:
+                os.environ["SCHEDULE_CONFIG"] = schedule_config
+            os.environ["_GA_WORKER_PROCESS"] = "1"
 
             env = create_environment(args, worker_context, env_rank=rank)
             if args.seed is not None:
