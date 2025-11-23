@@ -235,7 +235,7 @@ initializer:
 
 **Modify:** `src/ga/sessiongene.py`
 
-**⚠️ BREAKING CHANGE**: Complete replacement of `quanta: List[int]` with `start_quanta + num_quanta`. No backward compatibility.
+**️ BREAKING CHANGE**: Complete replacement of `quanta: List[int]` with `start_quanta + num_quanta`. No backward compatibility.
 
 ```python
 @dataclass

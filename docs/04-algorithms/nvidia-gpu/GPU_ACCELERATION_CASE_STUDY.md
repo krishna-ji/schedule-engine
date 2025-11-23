@@ -12,12 +12,12 @@
 This case study documents the implementation and performance analysis of GPU-accelerated constraint evaluation for the University Course Timetabling Problem (UCTP) using PyTorch and CUDA. The implementation achieves **10-50x speedup** for large population sizes (500+) by parallelizing constraint checking across NVIDIA GPUs.
 
 ### Key Achievements
-- ✅ Full GPU implementation of 8 hard + 4 soft constraints
-- ✅ Automatic GPU detection and graceful CPU fallback
-- ✅ Adaptive batch sizing based on GPU memory (4-12GB)
-- ✅ 10-50x speedup for populations of 500+ individuals
-- ✅ Zero accuracy loss compared to CPU evaluation
-- ✅ Production-ready error handling and monitoring
+-  Full GPU implementation of 8 hard + 4 soft constraints
+-  Automatic GPU detection and graceful CPU fallback
+-  Adaptive batch sizing based on GPU memory (4-12GB)
+-  10-50x speedup for populations of 500+ individuals
+-  Zero accuracy loss compared to CPU evaluation
+-  Production-ready error handling and monitoring
 
 ---
 
@@ -295,11 +295,11 @@ def evaluate_batch(self, population, courses, instructors, groups, rooms):
 
 | Population | CPU Time | GPU Time | Speedup | GPU Efficient? |
 |-----------|----------|----------|---------|----------------|
-| 50        | 4.2s     | 4.8s     | 0.9x    | ❌ No (overhead) |
-| 100       | 8.5s     | 2.1s     | 4.0x    | ✅ Yes          |
-| 200       | 17.1s    | 1.5s     | 11.4x   | ✅ Yes          |
-| 500       | 45.2s    | 1.8s     | 25.1x   | ✅ Yes          |
-| 1000      | 92.8s    | 2.4s     | 38.7x   | ✅ Yes          |
+| 50        | 4.2s     | 4.8s     | 0.9x    |  No (overhead) |
+| 100       | 8.5s     | 2.1s     | 4.0x    |  Yes          |
+| 200       | 17.1s    | 1.5s     | 11.4x   |  Yes          |
+| 500       | 45.2s    | 1.8s     | 25.1x   |  Yes          |
+| 1000      | 92.8s    | 2.4s     | 38.7x   |  Yes          |
 
 **Key Insight**: GPU acceleration becomes worthwhile for populations > 100. Below that, CPU-GPU transfer overhead dominates.
 
@@ -309,10 +309,10 @@ def evaluate_batch(self, population, courses, instructors, groups, rooms):
 
 | GPU Memory | Batch Size | Max Population | Status |
 |-----------|-----------|----------------|---------|
-| 4GB       | 64        | 512            | ✅ Works |
-| 8GB       | 128       | 1024           | ✅ Works |
-| 12GB      | 256       | 2048           | ✅ Works |
-| 16GB+     | 512       | 4096+          | ✅ Works |
+| 4GB       | 64        | 512            |  Works |
+| 8GB       | 128       | 1024           |  Works |
+| 12GB      | 256       | 2048           |  Works |
+| 16GB+     | 512       | 4096+          |  Works |
 
 **Constraint Complexity vs GPU Benefit:**
 
@@ -449,16 +449,16 @@ Generations: 100 (for quick comparison)
 
 CPU Best Fitness: (-4246, -7339.80)
 GPU Best Fitness: (-4246, -7339.80)
-Match: ✅ Exact match
+Match:  Exact match
 
 CPU Pareto Front Size: 47 individuals
 GPU Pareto Front Size: 47 individuals
-Match: ✅ Exact match
+Match:  Exact match
 
 Constraint Violations (Gen 100):
-  HC1 (Group Exclusivity): CPU=1350, GPU=1350 ✅
-  HC2 (Instructor Exclusivity): CPU=270, GPU=270 ✅
-  HC3 (Qualifications): CPU=775, GPU=775 ✅
+  HC1 (Group Exclusivity): CPU=1350, GPU=1350 
+  HC2 (Instructor Exclusivity): CPU=270, GPU=270 
+  HC3 (Qualifications): CPU=775, GPU=775 
   [... all constraints match ...]
 ```
 
@@ -495,7 +495,7 @@ GPU Profiling:
   Result sync (GPU→CPU): 0.20s (25%)
   TOTAL: 0.80s
 
-Speedup: 48.1x ✅
+Speedup: 48.1x 
 ```
 
 ---
@@ -608,13 +608,13 @@ class RealTimeScheduler:
 
 ### 8.1 Technical Insights
 
-**✅ What Worked Well:**
+** What Worked Well:**
 1. **Automatic fallback**: CPU fallback for small batches prevented slowdowns
 2. **Adaptive batching**: Memory-based batch sizing avoided OOM errors
 3. **Vectorized conflicts**: O(n²) checks became GPU-friendly
 4. **Singleton pattern**: Single GPU instance avoided initialization overhead
 
-**❌ What Didn't Work:**
+** What Didn't Work:**
 1. **Naive tensor transfer**: Direct CPU→GPU transfer too slow (fixed with batch encoding)
 2. **Per-constraint kernels**: Too many kernel launches (fixed with fusion)
 3. **Dynamic shapes**: Variable-length sessions caused padding overhead (fixed with masking)
@@ -623,31 +623,31 @@ class RealTimeScheduler:
 ### 8.2 Best Practices
 
 **DO:**
-- ✅ Profile before optimizing (measure actual bottlenecks)
-- ✅ Use CPU for small batches (< 50 individuals)
-- ✅ Batch encoding on CPU, transfer once to GPU
-- ✅ Validate correctness against CPU version
-- ✅ Monitor GPU memory usage (OOM protection)
+-  Profile before optimizing (measure actual bottlenecks)
+-  Use CPU for small batches (< 50 individuals)
+-  Batch encoding on CPU, transfer once to GPU
+-  Validate correctness against CPU version
+-  Monitor GPU memory usage (OOM protection)
 
 **DON'T:**
-- ❌ Transfer data every generation (batch across generations)
-- ❌ Use GPU for sequential operations (CPU faster)
-- ❌ Ignore memory limits (causes crashes)
-- ❌ Assume GPU always faster (profile first)
+-  Transfer data every generation (batch across generations)
+-  Use GPU for sequential operations (CPU faster)
+-  Ignore memory limits (causes crashes)
+-  Assume GPU always faster (profile first)
 
 ### 8.3 Recommendations for Similar Projects
 
 **When to use GPU acceleration:**
-- ✅ Population size > 100
-- ✅ Constraint evaluation is bottleneck (> 50% time)
-- ✅ Constraints are parallelizable (O(n²) checks)
-- ✅ Budget allows GPU purchase ($200-1200)
+-  Population size > 100
+-  Constraint evaluation is bottleneck (> 50% time)
+-  Constraints are parallelizable (O(n²) checks)
+-  Budget allows GPU purchase ($200-1200)
 
 **When to stick with CPU:**
-- ❌ Small populations (< 50)
-- ❌ Sequential constraints (dynamic programming)
-- ❌ Memory-bound operations (large hash tables)
-- ❌ No NVIDIA GPU available
+-  Small populations (< 50)
+-  Sequential constraints (dynamic programming)
+-  Memory-bound operations (large hash tables)
+-  No NVIDIA GPU available
 
 ---
 
@@ -674,14 +674,14 @@ The GPU acceleration implementation for UCTP constraint evaluation demonstrates:
 
 ### 9.2 Production Readiness
 
-**Status: ✅ Production-Ready**
+**Status:  Production-Ready**
 
 The GPU evaluator has been deployed in production with:
-- ✅ Comprehensive error handling and fallback
-- ✅ Automatic GPU detection and configuration
-- ✅ Validation against CPU version (100% match)
-- ✅ Memory management and OOM protection
-- ✅ Performance monitoring and logging
+-  Comprehensive error handling and fallback
+-  Automatic GPU detection and configuration
+-  Validation against CPU version (100% match)
+-  Memory management and OOM protection
+-  Performance monitoring and logging
 
 **Usage in thesis experiments:**
 ```bash
@@ -692,7 +692,7 @@ uv run exp3  # + Heuristics (GPU: 1.8 hours)
 uv run exp4  # + Local search (GPU: 2.1 hours)
 uv run exp5  # + RL-guided (GPU: 2.5 hours)
 
-# Total: 9 hours (vs 120 hours on CPU) ✅
+# Total: 9 hours (vs 120 hours on CPU) 
 ```
 
 ### 9.3 Future Directions

@@ -16,10 +16,10 @@ This directory contains a comprehensive case study of parallelism implementation
 - Performance benchmarks
 
 **Key findings:**
-- ✅ Process-based parallelism for CPU-intensive tasks
-- ✅ Thread-based parallelism for I/O-bound tasks
-- ✅ Smart worker initialization (no pickling)
-- ✅ Correct decision to keep operators sequential
+-  Process-based parallelism for CPU-intensive tasks
+-  Thread-based parallelism for I/O-bound tasks
+-  Smart worker initialization (no pickling)
+-  Correct decision to keep operators sequential
 
 ---
 
@@ -39,12 +39,12 @@ This directory contains a comprehensive case study of parallelism implementation
 
 ### [03-bugs-found.md](./03-bugs-found.md)
 **Issues identified in parallel code**
-- 🟡 Medium: Double executor context creation
-- 🟡 Medium: Inefficient future indexing
-- 🟡 Medium: Missing GPU batch validation
-- 🟢 Minor: Inconsistent CPU detection
-- 🟢 Minor: No operation timeouts
-- ✅ Design: Sequential operators (correct)
+-  Medium: Double executor context creation
+-  Medium: Inefficient future indexing
+-  Medium: Missing GPU batch validation
+-  Minor: Inconsistent CPU detection
+-  Minor: No operation timeouts
+-  Design: Sequential operators (correct)
 
 **Critical finding:** No critical bugs! Implementation is solid.
 
@@ -87,43 +87,43 @@ This directory contains a comprehensive case study of parallelism implementation
 ### GIL Impact Summary
 
 **Bypassed (Process-based):**
-- ✅ Fitness evaluation
-- ✅ Population generation
-- ✅ Heuristic application
-- ✅ RL training (SubprocVecEnv)
+-  Fitness evaluation
+-  Population generation
+-  Heuristic application
+-  RL training (SubprocVecEnv)
 
 **Affected (Thread-based):**
-- ⚠️ Validation (but I/O-bound, so OK)
-- ⚠️ Feasibility checks (but I/O-bound, so OK)
+- ️ Validation (but I/O-bound, so OK)
+- ️ Feasibility checks (but I/O-bound, so OK)
 
 **Intentionally Sequential:**
-- ✅ Crossover (too fast to parallelize)
-- ✅ Mutation (too fast to parallelize)
+-  Crossover (too fast to parallelize)
+-  Mutation (too fast to parallelize)
 
 ---
 
 ## Key Insights
 
-### 1. No Critical Bugs Found ✅
+### 1. No Critical Bugs Found 
 The parallelism implementation is production-ready with proper safeguards:
 - Worker initialization avoids pickling issues
 - Windows-compatible (DEAP creator registration)
 - GIL-aware design decisions
 - Proper error handling and fallbacks
 
-### 2. GPU Integration is Highest Priority 🎯
+### 2. GPU Integration is Highest Priority 
 - **Potential:** 5-10x total speedup
 - **Status:** Implemented but not enabled
 - **Effort:** 2-4 hours to integrate
 - **Blocker:** CUDA toolkit installation
 
-### 3. Sequential Operators are Correct ✅
+### 3. Sequential Operators are Correct 
 Keeping crossover/mutation sequential is the **right decision**:
 - Process overhead >> operation time
 - GIL prevents threading from helping
 - Benchmark: Sequential is 80x faster than parallel!
 
-### 4. Worker Initialization is Brilliant 🌟
+### 4. Worker Initialization is Brilliant 
 Loading data from JSON in each worker:
 - Avoids pickling complex objects
 - Prevents DEAP creator type errors
@@ -135,12 +135,12 @@ Loading data from JSON in each worker:
 ## Performance Roadmap
 
 ### Current Performance (CPU Only)
-- **Test (30 gens):** 5-10 minutes ✅
-- **Production (2000 gens):** 6-10 hours ⚠️
+- **Test (30 gens):** 5-10 minutes 
+- **Production (2000 gens):** 6-10 hours ️
 
 ### With Recommended Fixes (GPU Enabled)
-- **Test (30 gens):** 1-2 minutes ✅✅
-- **Production (2000 gens):** 1-2 hours ✅✅
+- **Test (30 gens):** 1-2 minutes 
+- **Production (2000 gens):** 1-2 hours 
 - **Speedup:** 5-10x
 
 ### Implementation Timeline
@@ -173,14 +173,14 @@ Loading data from JSON in each worker:
 **Overall Assessment:** Parallelism implementation is **excellent** with **no critical issues**.
 
 **Strengths:**
-- ✅ Proper GIL avoidance (process-based for CPU tasks)
-- ✅ Smart worker initialization (avoid pickling)
-- ✅ Windows-compatible (DEAP creator registration)
-- ✅ Correct design decisions (sequential operators)
+-  Proper GIL avoidance (process-based for CPU tasks)
+-  Smart worker initialization (avoid pickling)
+-  Windows-compatible (DEAP creator registration)
+-  Correct design decisions (sequential operators)
 
 **Opportunities:**
-- 🎯 Enable GPU for 5-10x speedup (highest priority)
-- 🔧 Minor code cleanup (double executor)
-- 🧪 Add unit tests for parallel operations
+-  Enable GPU for 5-10x speedup (highest priority)
+-  Minor code cleanup (double executor)
+-  Add unit tests for parallel operations
 
 **Recommendation:** Implement Phase 1 fixes, then focus on GPU integration for production runs.

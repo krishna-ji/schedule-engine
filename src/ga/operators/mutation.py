@@ -8,11 +8,14 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     """
     Performs constraint-aware mutation on a single gene.
 
-    CRITICAL: Course and Group are NEVER mutated!
-    Only mutates: Instructor, Room, Time slots
+    CRITICAL: Course, Group, and Duration are NEVER mutated!
+    Only mutates: Instructor, Room, Time slots (when, not how long)
 
     This preserves the fundamental (course, group) enrollment structure
-    and prevents incomplete_or_extra_sessions violations.
+    and maintains course duration requirements (num_quanta = course.quanta_per_week).
+
+    Architecture: Uses SessionGene's contiguous representation (start_quanta + num_quanta)
+    introduced in Nov 2025 to structurally enforce session continuity.
     """
     # Get course info for constraint-aware mutation
     # Look up using tuple key (course_id, course_type)
@@ -64,13 +67,19 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     # CRITICAL: Keep the SAME number of quanta to preserve course requirements
     new_quanta = mutate_time_quanta(gene, course, context)
 
+    # Convert quanta list to contiguous representation
+    from src.ga.quanta_converter import quanta_list_to_contiguous
+
+    start_q, num_q = quanta_list_to_contiguous(new_quanta)
+
     return SessionGene(
         course_id=new_course_id,  # NEVER MUTATED
         course_type=gene.course_type,  # NEVER MUTATED
         instructor_id=new_instructor,  # Mutated
         group_ids=new_group_ids,  # NEVER MUTATED
         room_id=new_room,  # Mutated
-        quanta=new_quanta,  # Mutated (but count preserved)
+        start_quanta=start_q,
+        num_quanta=num_q,
     )
 
 
@@ -78,37 +87,42 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
     """
     Intelligently mutate time quanta while PRESERVING quanta count.
 
-    CRITICAL: Number of quanta MUST stay the same to avoid
-    incomplete_or_extra_sessions violations!
+    CRITICAL: Number of quanta MUST stay the same to maintain course requirements!
+    Duration (num_quanta) is fixed by course.quanta_per_week and should never change.
 
     Only changes WHEN the session happens, not HOW LONG it is.
+
+    Returns:
+        List[int]: New quanta list with EXACT same length as gene.num_quanta
+
+    Note: Uses SessionGene's contiguous representation (start_quanta + num_quanta)
+          introduced in Nov 2025 architecture update.
     """
-    # CRITICAL: Preserve the exact number of quanta
-    num_quanta = len(gene.quanta)
-
-    # Validate against course requirements (sanity check)
-    if course:
-        expected_quanta = getattr(course, "quanta_per_week", num_quanta)
-        if num_quanta != expected_quanta:
-            # If current gene has wrong count, fix it
-            num_quanta = expected_quanta
-
-    # Ensure we don't exceed available quanta
-    num_quanta = min(num_quanta, len(context.available_quanta))
-    num_quanta = max(1, num_quanta)  # At least 1 quantum
+    # CRITICAL: Preserve the exact number of quanta (NEVER modify)
+    # num_quanta equals course.quanta_per_week (e.g., L+T for theory, P for practical)
+    # Theory sessions: Full session with all enrolled subgroups (e.g., 4-6 quanta)
+    # Practical sessions: Full session per subgroup (e.g., 1-3 quanta)
+    # course_completeness constraint validates quanta match course requirements
+    num_quanta = gene.num_quanta
 
     # 30% chance to keep current time slots completely unchanged
     if random.random() < 0.3:
-        return gene.quanta
+        return gene.get_quanta_list()
 
     # Try to assign consecutive quanta for better scheduling
     available_quanta = list(context.available_quanta)
 
+    # CRITICAL: If not enough available quanta, keep original time slots
+    # DO NOT reduce num_quanta - this would violate course completeness!
+    if len(available_quanta) < num_quanta:
+        return gene.get_quanta_list()  # Keep original
+
     # Attempt to find consecutive slots
     for attempt in range(5):  # Try 5 times to find consecutive slots
-        start_idx = random.randint(0, max(0, len(available_quanta) - num_quanta))
+        start_idx = random.randint(0, len(available_quanta) - num_quanta)
         consecutive_quanta = available_quanta[start_idx : start_idx + num_quanta]
 
+        # Verify we got EXACTLY the right number of quanta
         if len(consecutive_quanta) == num_quanta:
             # Check if quanta are somewhat consecutive (simplified check)
             if (
@@ -117,8 +131,9 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
             ):
                 return consecutive_quanta
 
-    # Fallback to random selection
-    return random.sample(available_quanta, min(num_quanta, len(available_quanta)))
+    # Fallback to random selection - but MUST return exactly num_quanta items
+    # Use random.sample which guarantees exact count
+    return random.sample(available_quanta, num_quanta)
 
 
 def find_suitable_rooms_for_course(

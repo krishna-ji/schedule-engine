@@ -176,11 +176,15 @@ def _greedy_construction(
             instructor_usage,
         )
 
+        # FIXED: Always create gene, even if greedy fails (use random fallback)
+        if not gene:
+            gene = _random_gene(course_key, group_ids, num_quanta, context)
+
         if gene:
             individual.append(gene)
 
             # Mark resources as used
-            for quantum in gene.quanta:
+            for quantum in range(gene.start_quanta, gene.end_quanta):
                 for gid in gene.group_ids:
                     group_schedule[(gid, quantum)] = True
                 room_usage[(gene.room_id, quantum)] = True
@@ -256,9 +260,17 @@ def _find_feasible_assignment(
     max_attempts = min(50, len(available_quanta))
 
     for attempt in range(max_attempts):
-        # Try contiguous block of quanta
-        start_idx = random.randint(0, max(0, len(available_quanta) - num_quanta))
-        candidate_quanta = available_quanta[start_idx : start_idx + num_quanta]
+        # FIXED: Handle cases where num_quanta > len(available_quanta)
+        if num_quanta <= len(available_quanta):
+            # Try contiguous block of quanta
+            start_idx = random.randint(0, len(available_quanta) - num_quanta)
+            candidate_quanta = available_quanta[start_idx : start_idx + num_quanta]
+        else:
+            # Wrap around to get exactly num_quanta
+            candidate_quanta = []
+            while len(candidate_quanta) < num_quanta:
+                candidate_quanta.extend(available_quanta)
+            candidate_quanta = candidate_quanta[:num_quanta]
 
         if len(candidate_quanta) != num_quanta:
             continue
@@ -289,14 +301,19 @@ def _find_feasible_assignment(
         if not instructor_id:
             continue
 
-        # Success! Create gene
+        # Success! Create gene with contiguous quanta
+        from src.ga.quanta_converter import quanta_list_to_contiguous
+
+        start_q, num_q = quanta_list_to_contiguous(sorted(candidate_quanta))
+
         return SessionGene(
             course_id=course_key[0],
             course_type=course_key[1],
             instructor_id=instructor_id,
             group_ids=sorted(group_ids),
             room_id=room_id,
-            quanta=sorted(candidate_quanta),
+            start_quanta=start_q,
+            num_quanta=num_q,
         )
 
     # Fallback to random if no feasible found
@@ -380,7 +397,11 @@ def _random_gene(
     if len(available_quanta_list) >= num_quanta:
         quanta = sorted(random.sample(available_quanta_list, num_quanta))
     else:
-        quanta = sorted(available_quanta_list[:num_quanta])
+        # FIXED: Wrap around to get exactly num_quanta (never reduce!)
+        quanta = []
+        while len(quanta) < num_quanta:
+            quanta.extend(available_quanta_list)
+        quanta = sorted(quanta[:num_quanta])
 
     # Random room
     room_id = random.choice(list(context.rooms.keys())) if context.rooms else "ROOM1"
@@ -393,13 +414,19 @@ def _random_gene(
     else:
         instructor_id = "INST1"
 
+    # Convert quanta list to contiguous representation
+    from src.ga.quanta_converter import quanta_list_to_contiguous
+
+    start_q, num_q = quanta_list_to_contiguous(quanta)
+
     return SessionGene(
         course_id=course_key[0],
         course_type=course_key[1],
         instructor_id=instructor_id,
         group_ids=sorted(group_ids),
         room_id=room_id,
-        quanta=quanta,
+        start_quanta=start_q,
+        num_quanta=num_q,
     )
 
 

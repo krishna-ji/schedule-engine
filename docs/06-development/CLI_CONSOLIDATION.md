@@ -8,21 +8,21 @@ Had 3 CLI files with overlapping functionality:
 
 ## Solution
 
-### ✅ Consolidated into ONE file: `launcher.py`
+###  Consolidated into ONE file: `launcher.py`
 
 **Merged functionality:**
 1. Profile-based commands (`--test/med/prod`)
 2. Helper commands (diagnose, clean, list)
 3. Interactive TUI menu (merged from interactive_launcher.py)
 
-### ✅ Kept: `cli.py`
+###  Kept: `cli.py`
 
 **Purpose**: Entry point registry for utility scripts
 - Not redundant - provides organized access to all utility scripts
 - Used by launcher.py for `diagnose_gpu()` etc.
 - Clean separation: launcher = UX, cli = registry
 
-### ❌ Deleted: `interactive_launcher.py`
+###  Deleted: `interactive_launcher.py`
 
 **Reason**: Functionality merged into launcher.py
 
@@ -59,9 +59,9 @@ uv run check-data         # Data integrity
 
 | File | Purpose | Keep? |
 |------|---------|-------|
-| `launcher.py` | Unified CLI + interactive menu | ✅ YES |
-| `cli.py` | Entry point registry for utilities | ✅ YES |
-| `interactive_launcher.py` | Old interactive menu | ❌ DELETED |
+| `launcher.py` | Unified CLI + interactive menu |  YES |
+| `cli.py` | Entry point registry for utilities |  YES |
+| `interactive_launcher.py` | Old interactive menu |  DELETED |
 
 ## Benefits
 
@@ -74,11 +74,11 @@ uv run check-data         # Data integrity
 ## Testing
 
 ```bash
-✅ uv sync                    # Reload scripts
-✅ uv run launcher            # Interactive menu works
-✅ uv run nsga --test         # Profile commands work
-✅ uv run diagnose            # Helper commands work
-✅ uv run diagnose-gpu        # Utility scripts work via cli.py
+ uv sync                    # Reload scripts
+ uv run launcher            # Interactive menu works
+ uv run nsga --test         # Profile commands work
+ uv run diagnose            # Helper commands work
+ uv run diagnose-gpu        # Utility scripts work via cli.py
 ```
 
 ## Summary

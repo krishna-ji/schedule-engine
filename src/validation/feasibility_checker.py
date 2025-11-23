@@ -222,7 +222,7 @@ def check_feasibility(
             )
         )
         console.print()
-        console.print("[bold red]⏹ Exiting program...[/bold red]\n")
+        console.print("[bold red] Exiting program...[/bold red]\n")
 
         # Gracefully exit without traceback
         sys.exit(1)

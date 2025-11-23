@@ -17,9 +17,9 @@ for generation in range(max_gens):
 ```
 
 Problems:
-- ❌ Rigid rules don't adapt to problem instance
-- ❌ Hard to tune parameters
-- ❌ Doesn't learn from experience
+-  Rigid rules don't adapt to problem instance
+-  Hard to tune parameters
+-  Doesn't learn from experience
 
 ### RL-Powered GA (Learned Selection)
 ```python
@@ -33,10 +33,10 @@ for generation in range(max_gens):
 ```
 
 Benefits:
-- ✅ Adapts to problem characteristics
-- ✅ Learns optimal timing automatically
-- ✅ Generalizes across problem instances
-- ✅ Continuous improvement
+-  Adapts to problem characteristics
+-  Learns optimal timing automatically
+-  Generalizes across problem instances
+-  Continuous improvement
 
 ## Architecture Overview
 
@@ -244,26 +244,26 @@ best_schedule = run_rl_guided_ga(agent, data)
 
 ## Key Features
 
-### ✨ Curriculum Learning
+###  Curriculum Learning
 Progressive difficulty stages for stable training:
 - **Stage 1 (Easy)**: Small problem, 50 gens, 30 pop
 - **Stage 2 (Medium)**: Medium problem, 100 gens, 50 pop  
 - **Stage 3 (Hard)**: Full problem, 200 gens, 80 pop
 
-### ⚡ Parallel Training
+###  Parallel Training
 Multiple environments in parallel for faster experience collection:
 - Test: 1 env (no overhead)
 - Medium: 4 envs (4x speedup)
 - Production: 8 envs (8x speedup)
 
-### 📊 TensorBoard Monitoring
+###  TensorBoard Monitoring
 Real-time training visualization:
 - Episode rewards over time
 - Action selection frequency
 - State value estimates
 - Policy entropy
 
-### 💾 Checkpointing
+###  Checkpointing
 Automatic model saving:
 - Every N timesteps
 - Best model based on validation
@@ -272,18 +272,18 @@ Automatic model saving:
 ## When to Use RL vs. Static GA
 
 ### Use RL When:
-- ✅ Problem instances vary widely
-- ✅ Need to adapt to problem characteristics
-- ✅ Have compute budget for training (1-2 hours)
-- ✅ Want to continuously improve over time
-- ✅ Research/thesis requiring state-of-art
+-  Problem instances vary widely
+-  Need to adapt to problem characteristics
+-  Have compute budget for training (1-2 hours)
+-  Want to continuously improve over time
+-  Research/thesis requiring state-of-art
 
 ### Use Static GA When:
-- ✅ Problem instances are similar
-- ✅ Good hand-coded rules already exist
-- ✅ Need results immediately (no training time)
-- ✅ Simpler system is preferred
-- ✅ Baseline comparison needed
+-  Problem instances are similar
+-  Good hand-coded rules already exist
+-  Need results immediately (no training time)
+-  Simpler system is preferred
+-  Baseline comparison needed
 
 ## Performance Comparison
 

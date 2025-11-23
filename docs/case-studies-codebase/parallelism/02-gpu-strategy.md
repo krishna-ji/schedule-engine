@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**GPU Support:** ✅ Implemented, ❌ Not Enabled
+**GPU Support:**  Implemented,  Not Enabled
 
 **Implementation:** `src/ga/evaluator/gpu_batch_evaluator.py`
 
@@ -14,7 +14,7 @@
 
 ## Where to Use GPU?
 
-### 1. Fitness Evaluation (HIGHEST PRIORITY) 🎯
+### 1. Fitness Evaluation (HIGHEST PRIORITY) 
 
 **File:** `src/ga/evaluator/gpu_batch_evaluator.py`
 
@@ -47,7 +47,7 @@ class GPUConstraintEvaluator:
 
 ---
 
-### 2. RL Training (SECONDARY) 🤖
+### 2. RL Training (SECONDARY) 
 
 **File:** `src/rl/training/train_script.py`
 
@@ -381,6 +381,6 @@ uv add torch==2.4.1+cu121 --index https://download.pytorch.org/whl/cu121
 3. **Use hybrid evaluator** - best of both worlds
 
 **Priority:**
-1. ✅ GPU fitness evaluation (HIGHEST IMPACT)
-2. ⏳ GPU RL training (MEDIUM IMPACT)
-3. ⏳ GPU heuristic batch eval (FUTURE)
+1.  GPU fitness evaluation (HIGHEST IMPACT)
+2.  GPU RL training (MEDIUM IMPACT)
+3.  GPU heuristic batch eval (FUTURE)

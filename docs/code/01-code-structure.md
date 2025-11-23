@@ -194,7 +194,7 @@ schedule-engine/
 
 **`src/encoder/quantum_time_system.py`** (~400 lines)
 - Time discretization (continuous → discrete)
-- Quantum mapping (wall clock ↔ quantum index)
+- Quantum mapping (wall clock  quantum index)
 - Time constraint checking
 - Break period handling
 

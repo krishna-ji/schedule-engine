@@ -1,11 +1,12 @@
 # Schedule Engine
 
-University course scheduling engine that combines NSGA-II genetic algorithms with reinforcement learning, GPU-accelerated fitness evaluation, and rich orchestration tooling. The system targets large university timetabling problems with hard/soft constraints and staged runtime modes for experiments and production runs.
+University course scheduling engine that combines NSGA-II genetic algorithms with reinforcement learning, CPU-parallelized fitness evaluation, and rich orchestration tooling. The system targets large university timetabling problems with hard/soft constraints and staged runtime modes for experiments and production runs.
 
 ## Highlights
 
 - Progressive runtime modes (baseline NSGA-II through multi-agent RL) with killswitch-controlled features.
-- GPU batch evaluator, parallel operators, and local search phases for 10-50x throughput gains.
+- CPU multiprocessing for parallel fitness evaluation, operators, and local search phases.
+- GPU acceleration reserved for RL training and neural network inference (where it excels).
 - YAML-driven configuration system with environment overrides (`test`, `prod`) and experiment manifests.
 - Extensive CLI and UV script shortcuts for experiments, diagnostics, benchmarking, and RL training.
 - Rich documentation in `docs/` covering algorithms, architecture, and thesis guides.

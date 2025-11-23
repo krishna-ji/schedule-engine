@@ -66,21 +66,21 @@ INFO     ✓ Action niching_selection
 
 ## Key Improvements
 
-### ✅ Reduced Redundancy
+###  Reduced Redundancy
 - Context `[env=0 gen=0 step=0]` set once, not repeated in every message
 - `generation=9` no longer appears twice (prefix + message)
 
-### ✅ Visual Hierarchy
+###  Visual Hierarchy
 - ✓/✗ symbols for success/failure
 - Rich colors (green=success, red=error, cyan=improvement)
 - Consistent metric abbreviations (r=reward, div=diversity, stag=stagnation)
 
-### ✅ Dual Output Strategy
+###  Dual Output Strategy
 - **Console**: INFO level (key events only)
 - **File**: DEBUG level (everything)
 - All logs automatically saved to `logs/training/train_YYYYMMDD_HHMMSS.log`
 
-### ✅ Structured Format
+###  Structured Format
 - Consistent field ordering
 - Timestamps in file output
 - Context injection via `extra` parameter

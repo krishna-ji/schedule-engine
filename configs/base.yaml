@@ -24,6 +24,8 @@ time:
 io:
   data_dir: data
   output_dir: output
+  logs_dir: output/logs     # Consolidated under output/
+  models_dir: output/models # Consolidated under output/
 
 # Calendar Display
 calendar:
@@ -34,7 +36,7 @@ calendar:
 # Parallel Processing
 parallel:
   use_multiprocessing: true
-  num_workers: null # Auto-detect: uses ALL available CPU cores (works with VMs)
+  num_workers: null # Auto-detect: uses CPU cores (safe for Windows handle limits)
 
 # Performance Profiling (Phase-level timing breakdown)
 performance:
@@ -366,7 +368,7 @@ rl:
   # Agent configuration
   agent:
     type: ppo # Options: ppo, dqn, random
-    model_path: models/rl_agents/best_model.zip # Path to trained model
+    model_path: output/models/rl_agents/best_model.zip # Path to trained model (consolidated)
     device: cuda # ENABLE GPU for RL inference
 
     # PPO-specific hyperparameters (optimized for 8 parallel envs)
@@ -399,9 +401,9 @@ rl:
     total_timesteps: 100000 # Total training steps
     checkpoint_interval: 10000 # Save checkpoint every N steps
     evaluation_interval: 5000 # Evaluate every N steps
-    tensorboard_log: logs/tensorboard # TensorBoard log directory
-    checkpoint_dir: models/rl_agents/checkpoints # Checkpoint directory
-    save_dir: models/rl_agents # Model checkpoint directory
+    tensorboard_log: output/logs/tensorboard # TensorBoard log directory (consolidated)
+    checkpoint_dir: output/models/rl_agents/checkpoints # Checkpoint directory (consolidated)
+    save_dir: output/models/rl_agents # Model checkpoint directory (consolidated)
     verbose: 1 # Logging verbosity (0=none, 1=info, 2=debug)
 
     # Curriculum learning (Phase 2.2)
@@ -441,7 +443,7 @@ rl:
 
     # Checkpoint settings
     checkpoint_settings:
-      manifest_path: "models/rl_agents/manifest.json"
+      manifest_path: "output/models/rl_agents/manifest.json"  # Consolidated under output/
       validation_set_dir: "data/validation"
       checkpoint_keep_last: 5 # Keep only last N checkpoints per stage
       validation_threshold: 0.05 # Relative improvement for stage advancement
@@ -470,7 +472,7 @@ rl:
       - fixed_priority
     num_evaluation_episodes: 10
     save_metrics: true
-    metrics_dir: output/rl_metrics
+    metrics_dir: output/analysis/rl_metrics  # Under analysis/ for better organization
 
   # Logging
   logging:

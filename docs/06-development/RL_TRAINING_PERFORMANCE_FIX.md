@@ -100,4 +100,4 @@ uv run train-rl --prod     # ~1-2 hours
 Test profile was trying to do production-scale work in "test" mode. Now it actually tests the pipeline quickly instead of freezing forever.
 
 **Before**: 10,000 timesteps × 4 envs = waiting forever  
-**After**: 500 timesteps × 1 env = done in 2-3 minutes ✅
+**After**: 500 timesteps × 1 env = done in 2-3 minutes 

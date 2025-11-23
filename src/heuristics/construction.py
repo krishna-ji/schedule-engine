@@ -117,14 +117,15 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
                 context, course, time_quantum, assigned_times
             )
 
-            # Create gene
+            # Create gene with contiguous quanta
             gene = SessionGene(
                 course_id=course_code,
                 course_type=course_type,
                 group_ids=course.enrolled_group_ids,
                 room_id=room_id,
                 instructor_id=instructor_id,
-                quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
+                start_quanta=time_quantum,
+                num_quanta=course.quanta_per_week,
             )
 
             individual.append(gene)
@@ -230,7 +231,7 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
             context, course, time_quantum, assigned_times
         )
 
-        # Create gene
+        # Create gene with contiguous quanta
         course_code, course_type = course_id  # Unpack tuple
         gene = SessionGene(
             course_id=course_code,
@@ -238,7 +239,8 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
             group_ids=course.enrolled_group_ids,
             room_id=room_id,
             instructor_id=instructor_id,
-            quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
+            start_quanta=time_quantum,
+            num_quanta=course.quanta_per_week,
         )
 
         individual.append(gene)
@@ -327,14 +329,15 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
             context, course, time_quantum, assigned_times
         )
 
-        # Create gene
+        # Create gene with contiguous quanta
         gene = SessionGene(
             course_id=course_code,
             course_type=course_type,
             group_ids=course.enrolled_group_ids,
             room_id=room_id,
             instructor_id=instructor_id,
-            quanta=list(range(time_quantum, time_quantum + course.quanta_per_week)),
+            start_quanta=time_quantum,
+            num_quanta=course.quanta_per_week,
         )
 
         individual.append(gene)

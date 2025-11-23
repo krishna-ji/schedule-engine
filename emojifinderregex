@@ -1,0 +1,1 @@
+(\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]\uFE0F\u20E3)

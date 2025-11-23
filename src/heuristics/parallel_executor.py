@@ -30,6 +30,7 @@ class ParallelHeuristicExecutor:
         """
         if max_workers is None:
             max_workers = get_cpu_count()
+        
         self.max_workers = max_workers
         self.use_threads = use_threads
 

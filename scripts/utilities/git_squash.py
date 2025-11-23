@@ -88,7 +88,7 @@ def main():
 
     # Confirm action
     print("\n" + "=" * 60)
-    print("⚠️  WARNING: This will rewrite git history!")
+    print("️  WARNING: This will rewrite git history!")
 
     try:
         confirm = input("\nContinue? (y/n): ").strip().lower()

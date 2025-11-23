@@ -29,7 +29,7 @@ The Schedule Engine employs a **sophisticated multi-level parallelism strategy**
 
 ## 1. Thread-Level vs Core-Level Parallelism {#thread-vs-core}
 
-### Core-Level Parallelism (Process-Based) ✅
+### Core-Level Parallelism (Process-Based) 
 
 **What:** Each CPU core runs a separate Python process
 
@@ -38,11 +38,11 @@ The Schedule Engine employs a **sophisticated multi-level parallelism strategy**
 **Why:** Bypasses Python's Global Interpreter Lock (GIL)
 
 **Used for:**
-- ✅ Fitness evaluation (CPU-intensive)
-- ✅ Population generation (CPU-intensive)
-- ✅ Heuristic application (CPU-intensive)
-- ✅ Large Neighborhood Search (CPU-intensive)
-- ✅ Exhaustive local search (CPU-intensive)
+-  Fitness evaluation (CPU-intensive)
+-  Population generation (CPU-intensive)
+-  Heuristic application (CPU-intensive)
+-  Large Neighborhood Search (CPU-intensive)
+-  Exhaustive local search (CPU-intensive)
 
 **Libraries:**
 ```python
@@ -62,7 +62,7 @@ pool = multiprocessing.Pool(
 
 ---
 
-### Thread-Level Parallelism (GIL-Limited) ⚠️
+### Thread-Level Parallelism (GIL-Limited) ️
 
 **What:** Multiple threads within single Python process
 
@@ -71,10 +71,10 @@ pool = multiprocessing.Pool(
 **Why:** Good for I/O-bound operations only
 
 **Used for:**
-- ✅ Input validation (file reading, checks)
-- ✅ Feasibility checks (data validation)
-- ✅ Report generation (I/O operations)
-- ❌ **NOT used for GA operators** (crossover/mutation are CPU-bound)
+-  Input validation (file reading, checks)
+-  Feasibility checks (data validation)
+-  Report generation (I/O operations)
+-  **NOT used for GA operators** (crossover/mutation are CPU-bound)
 
 **Libraries:**
 ```python
@@ -175,7 +175,7 @@ os.environ["_GA_WORKER_PROCESS"] = "1"
 
 **Parallelism Model:** Internal BLAS/LAPACK threading
 
-**GIL Behavior:** **Releases GIL during operations** ✅
+**GIL Behavior:** **Releases GIL during operations** 
 
 **Impact:** Operations like matrix multiplication run in parallel automatically
 
@@ -292,15 +292,15 @@ def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
 
 | Operation | Parallelism | Library | Level | CPU Cores Used | GIL Impact |
 |-----------|-------------|---------|-------|----------------|------------|
-| **Fitness Eval** | ✅ Process | `multiprocessing` | Core | ALL | None (bypassed) |
-| **Population Init** | ✅ Process | `ProcessPoolExecutor` | Core | ALL | None (bypassed) |
-| **Heuristics** | ✅ Process | `ProcessPoolExecutor` | Core | ALL | None (bypassed) |
-| **Crossover** | ❌ Sequential | N/A | Single | 1 | Full (but intentional) |
-| **Mutation** | ❌ Sequential | N/A | Single | 1 | Full (but intentional) |
-| **Validation** | ✅ Thread | `ThreadPoolExecutor` | Thread | Variable | Partial (I/O) |
-| **Feasibility** | ✅ Thread | `ThreadPoolExecutor` | Thread | Variable | Partial (I/O) |
-| **RL Training** | ✅ Process | `SubprocVecEnv` | Core | 8 envs | None (bypassed) |
-| **GPU Eval** | ⚠️ Disabled | PyTorch CUDA | GPU | N/A | None (GPU ops) |
+| **Fitness Eval** |  Process | `multiprocessing` | Core | ALL | None (bypassed) |
+| **Population Init** |  Process | `ProcessPoolExecutor` | Core | ALL | None (bypassed) |
+| **Heuristics** |  Process | `ProcessPoolExecutor` | Core | ALL | None (bypassed) |
+| **Crossover** |  Sequential | N/A | Single | 1 | Full (but intentional) |
+| **Mutation** |  Sequential | N/A | Single | 1 | Full (but intentional) |
+| **Validation** |  Thread | `ThreadPoolExecutor` | Thread | Variable | Partial (I/O) |
+| **Feasibility** |  Thread | `ThreadPoolExecutor` | Thread | Variable | Partial (I/O) |
+| **RL Training** |  Process | `SubprocVecEnv` | Core | 8 envs | None (bypassed) |
+| **GPU Eval** | ️ Disabled | PyTorch CUDA | GPU | N/A | None (GPU ops) |
 
 ---
 

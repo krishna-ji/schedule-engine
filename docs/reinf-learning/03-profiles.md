@@ -38,11 +38,11 @@ debug_log_interval: 10
 ```
 
 **When to use:**
-- ✅ Quick sanity check (CI/CD)
-- ✅ Verify code changes work
-- ✅ Local development
-- ✅ Debug training loop
-- ❌ NOT for actual model training
+-  Quick sanity check (CI/CD)
+-  Verify code changes work
+-  Local development
+-  Debug training loop
+-  NOT for actual model training
 
 **Command:**
 ```bash
@@ -74,12 +74,12 @@ save_prefix: rl_agent_med
 ```
 
 **When to use:**
-- ✅ Hyperparameter tuning
-- ✅ Ablation studies
-- ✅ Iterative experiments
-- ✅ Compare agent configurations
-- ⚠️ OK for preliminary results
-- ❌ NOT for final thesis/paper
+-  Hyperparameter tuning
+-  Ablation studies
+-  Iterative experiments
+-  Compare agent configurations
+- ️ OK for preliminary results
+-  NOT for final thesis/paper
 
 **Command:**
 ```bash
@@ -115,11 +115,11 @@ debug_log_interval: 25
 ```
 
 **When to use:**
-- ✅ **Final thesis/paper experiments**
-- ✅ Production deployment
-- ✅ Benchmark comparisons
-- ✅ Published results
-- ✅ Real-world usage
+-  **Final thesis/paper experiments**
+-  Production deployment
+-  Benchmark comparisons
+-  Published results
+-  Real-world usage
 
 **Command:**
 ```bash
@@ -129,7 +129,7 @@ uv run train-rl --prod
 **Output:**
 - Model: `models/rl_agents/rl_agent_prod.zip` (~15 MB)
 - Time: 1-2 hours (300K timesteps)
-- Quality: **Production-ready** 🎯
+- Quality: **Production-ready** 
 
 ---
 
@@ -271,9 +271,9 @@ Total:                 ~110 min
 
 | Profile | Time | CPU Hours | Model Quality | Best Use |
 |---------|------|-----------|---------------|----------|
-| Test | 3 min | 0.05h | ⭐ | Debug |
-| Med | 45 min | 3h | ⭐⭐⭐ | Experiments |
-| Prod | 2 hrs | 16h | ⭐⭐⭐⭐⭐ | **Thesis** |
+| Test | 3 min | 0.05h |  | Debug |
+| Med | 45 min | 3h |  | Experiments |
+| Prod | 2 hrs | 16h |  | **Thesis** |
 
 **Recommendation**: 
 - Use **Test** for development (100+ runs OK)

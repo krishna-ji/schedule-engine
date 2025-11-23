@@ -26,11 +26,11 @@ GitHub Copilot automatically loads the appropriate instruction file based on the
 
 ## Design Principles for AI Agents
 
-✅ **High-Entropy Terminology**: Use precise domain vocabulary (CSP, NSGA-II, phenotype, genotype) over generic terms (algorithm, solution, optimization)
-✅ **Explicit Constraints**: Specify invariants, preconditions, postconditions for every operation
-✅ **Structured Context**: JSON-compatible formats, typed schemas, unambiguous specifications
-✅ **Actionable Directives**: Imperative commands ("Preserve course-group relationships") not vague guidance ("Be careful with groups")
-✅ **Minimal Ambiguity**: Eliminate filler words, pronouns without clear antecedents, vague quantifiers ("some", "often")
+ **High-Entropy Terminology**: Use precise domain vocabulary (CSP, NSGA-II, phenotype, genotype) over generic terms (algorithm, solution, optimization)
+ **Explicit Constraints**: Specify invariants, preconditions, postconditions for every operation
+ **Structured Context**: JSON-compatible formats, typed schemas, unambiguous specifications
+ **Actionable Directives**: Imperative commands ("Preserve course-group relationships") not vague guidance ("Be careful with groups")
+ **Minimal Ambiguity**: Eliminate filler words, pronouns without clear antecedents, vague quantifiers ("some", "often")
 
 ## Benefits of This Architecture
 

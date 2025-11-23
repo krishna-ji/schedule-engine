@@ -132,7 +132,7 @@ def check_bare_exceptions_fixed():
             else:
                 print(f"   {file_path} - No bare exceptions")
         else:
-            print(f"  ⚠️  {file_path} - File not found")
+            print(f"  ️  {file_path} - File not found")
 
     return not bare_exceptions_found
 
@@ -188,7 +188,7 @@ def main():
         print("\n All enhancements verified successfully!")
         return 0
     else:
-        print(f"\n⚠️  {failed} check(s) failed. Please review above.")
+        print(f"\n️  {failed} check(s) failed. Please review above.")
         return 1
 
 

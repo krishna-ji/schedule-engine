@@ -1,0 +1,113 @@
+# ================
+# NSGA-II WITH REPAIRS - PRODUCTION
+# ================
+# NSGA-II with all repair mechanisms enabled for comparison
+# Includes selective repair after every generation
+
+name: "NSGA-II with Full Repairs (Production)"
+environment: prod
+description: "NSGA-II with selective repair after every generation + all repair mechanisms"
+
+# GA Settings - Production scale
+ga:
+  ngen: 2000
+  pop_size: 1000
+
+# ENABLE ALL REPAIRS
+repair:
+  enabled: true  # Master switch
+  apply_after_mutation: true   # Repair after mutation
+  apply_after_crossover: true  # Repair after crossover
+  selective_mode: true
+  detection_strategy: hybrid
+  max_iterations: 3
+  memetic_mode: true
+  elite_percentage: 0.1
+  memetic_iterations: 5
+
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: true
+    periodic_trigger:
+      enabled: true
+
+  stagnation_repair:
+    enabled: true
+    patience: 10
+    min_generation: 15
+    population_coverage: 0.3
+    max_iterations: 20
+    timeout_seconds: 300
+    cooldown: 5
+
+  selective_repair:
+    enabled: true
+    apply_probability: 0.5       # High probability
+    apply_after_mutation: true   # ENABLED - repair after every mutation
+    apply_after_crossover: true  # ENABLED - repair after every crossover
+    detection_strategy: hybrid
+
+  exhaustive_search:
+    enabled: true
+    generations: [5, 50, 150, 300, 500, 750, 1000, 1250, 1500, 1750]
+    population_coverage: 0.2
+    max_neighborhood_size: 150
+    timeout_seconds: 1800
+
+# LNS-IGLS - Enabled
+lns:
+  enabled: true
+  trigger_interval: 75
+  stagnation_threshold: 8
+  force_trigger_generations: [10, 100]
+  max_subproblem_size: 35
+  min_subproblem_size: 8
+  igls_max_iterations: 1200
+  igls_time_limit: 1200.0
+  apply_to_best_n: 5
+
+# All heuristics enabled
+heuristics:
+  construction:
+    largest_degree_first:
+      enabled: true
+    most_constrained_first:
+      enabled: true
+    earliest_deadline_first:
+      enabled: true
+  perturbation:
+    random_swap:
+      enabled: true
+    temporal_shift:
+      enabled: true
+    room_shuffle:
+      enabled: true
+    instructor_reassign:
+      enabled: true
+    multi_perturbation:
+      enabled: true
+  improvement:
+    kempe_chain:
+      enabled: true
+    ejection_chain:
+      enabled: true
+    variable_depth_search:
+      enabled: true
+  diversity:
+    distance_preserving_crossover:
+      enabled: true
+    crowding_mutation:
+      enabled: true
+    niching_selection:
+      enabled: true
+    adaptive_diversity_maintenance:
+      enabled: true
+  meta:
+    variable_neighborhood_descent:
+      enabled: true
+    iterated_local_search:
+      enabled: true
+    adaptive_large_neighborhood:
+      enabled: true
+    guided_local_search:
+      enabled: true

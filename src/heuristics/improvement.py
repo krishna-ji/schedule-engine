@@ -407,8 +407,8 @@ def _apply_kempe_swap(chain: List[SessionGene]) -> bool:
 
     # Calculate what the new quanta would be after swap
     # gene1 will start at time2, gene2 will start at time1
-    gene1_duration = len(gene1.quanta)
-    gene2_duration = len(gene2.quanta)
+    gene1_duration = gene1.num_quanta
+    gene2_duration = gene2.num_quanta
 
     gene1_new_end = time2 + gene1_duration - 1
     gene2_new_end = time1 + gene2_duration - 1
@@ -428,7 +428,7 @@ def _apply_kempe_swap(chain: List[SessionGene]) -> bool:
     # Double-check after assignment that no quanta exceed bounds
     # (time_quantum setter shifts all quanta)
     for gene in chain:
-        if gene.quanta and max(gene.quanta) >= qts.total_quanta:
+        if gene.quanta and (gene.start_quanta + gene.num_quanta - 1) >= qts.total_quanta:
             # Revert the swap
             gene1.time_quantum = time1
             gene2.time_quantum = time2

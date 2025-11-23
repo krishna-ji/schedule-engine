@@ -33,7 +33,10 @@ class ParallelConfig(BaseModel):
     """Multiprocessing settings"""
 
     use_multiprocessing: bool = True
-    num_workers: Optional[int] = Field(default=None, ge=1, le=64)
+    num_workers: Optional[int] = Field(
+        default=None, 
+        description="Number of workers: None=CPU*2 (auto), >0=explicit count"
+    )
 
 
 class PerformanceConfig(BaseModel):

@@ -61,18 +61,22 @@ def sample_individual():
 
     return [
         SessionGene(
-            course_id=("CS101", "Theory"),
-            group_ids=["G1"],
+            course_id="CS101",
+            course_type="theory",
             instructor_id="I1",
+            group_ids=["G1"],
             room_id="R1",
-            quanta=[0, 1, 2],
+            start_quanta=0,
+            num_quanta=3,
         ),
         SessionGene(
-            course_id=("MATH101", "Theory"),
-            group_ids=["G1"],
+            course_id="MATH101",
+            course_type="theory",
             instructor_id="I2",
+            group_ids=["G1"],
             room_id="R2",
-            quanta=[5, 6, 7],
+            start_quanta=5,
+            num_quanta=3,
         ),
     ]
 

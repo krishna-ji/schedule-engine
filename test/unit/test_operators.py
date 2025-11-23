@@ -16,19 +16,27 @@ class TestCrossover:
         """Test that crossover doesn't lose or duplicate genes."""
         # Create two parent individuals
         parent1 = [
-            SessionGene(("CS101", "Theory"), ["G1"], "I1", "R1", [0, 1, 2]),
-            SessionGene(("CS102", "Theory"), ["G2"], "I2", "R2", [5, 6, 7]),
+            SessionGene(
+                "CS101", "theory", "I1", ["G1"], "R1", start_quanta=0, num_quanta=3
+            ),
+            SessionGene(
+                "CS102", "theory", "I2", ["G2"], "R2", start_quanta=5, num_quanta=3
+            ),
         ]
         parent2 = [
-            SessionGene(("CS101", "Theory"), ["G1"], "I1", "R3", [10, 11, 12]),
-            SessionGene(("CS102", "Theory"), ["G2"], "I2", "R4", [15, 16, 17]),
+            SessionGene(
+                "CS101", "theory", "I1", ["G1"], "R3", start_quanta=10, num_quanta=3
+            ),
+            SessionGene(
+                "CS102", "theory", "I2", ["G2"], "R4", start_quanta=15, num_quanta=3
+            ),
         ]
 
         context = MagicMock()
 
-        # Perform crossover
+        # Perform crossover (crossover doesn't need context, it takes cx_prob)
         child1, child2 = crossover_course_group_aware(
-            deepcopy(parent1), deepcopy(parent2), context
+            deepcopy(parent1), deepcopy(parent2), cx_prob=0.5
         )
 
         # Check children have same number of genes
@@ -42,13 +50,21 @@ class TestCrossover:
 
     def test_crossover_returns_tuple_of_two_individuals(self):
         """Test crossover returns exactly two offspring."""
-        parent1 = [SessionGene(("CS101", "Theory"), ["G1"], "I1", "R1", [0, 1, 2])]
-        parent2 = [SessionGene(("CS101", "Theory"), ["G1"], "I1", "R2", [5, 6, 7])]
+        parent1 = [
+            SessionGene(
+                "CS101", "theory", "I1", ["G1"], "R1", start_quanta=0, num_quanta=3
+            )
+        ]
+        parent2 = [
+            SessionGene(
+                "CS101", "theory", "I1", ["G1"], "R2", start_quanta=5, num_quanta=3
+            )
+        ]
 
         context = MagicMock()
 
         result = crossover_course_group_aware(
-            deepcopy(parent1), deepcopy(parent2), context
+            deepcopy(parent1), deepcopy(parent2), cx_prob=0.5
         )
 
         assert isinstance(result, tuple)
@@ -63,8 +79,12 @@ class TestMutation:
     def test_mutation_preserves_gene_count(self):
         """Test that mutation doesn't add or remove genes."""
         individual = [
-            SessionGene(("CS101", "Theory"), ["G1"], "I1", "R1", [0, 1, 2]),
-            SessionGene(("CS102", "Theory"), ["G2"], "I2", "R2", [5, 6, 7]),
+            SessionGene(
+                "CS101", "theory", "I1", ["G1"], "R1", start_quanta=0, num_quanta=3
+            ),
+            SessionGene(
+                "CS102", "theory", "I2", ["G2"], "R2", start_quanta=5, num_quanta=3
+            ),
         ]
 
         context = MagicMock()
@@ -76,37 +96,41 @@ class TestMutation:
         ]
 
         original_len = len(individual)
-        mutated = mutate_individual(deepcopy(individual), context, indpb=0.5)
+        mutated = mutate_individual(deepcopy(individual), context, mut_prob=0.5)
 
         assert len(mutated[0]) == original_len
 
     def test_mutation_returns_tuple(self):
         """Test mutation returns tuple (required by DEAP)."""
         individual = [
-            SessionGene(("CS101", "Theory"), ["G1"], "I1", "R1", [0, 1, 2]),
+            SessionGene(
+                "CS101", "theory", "I1", ["G1"], "R1", start_quanta=0, num_quanta=3
+            ),
         ]
 
         context = MagicMock()
         context.available_quanta = list(range(100))
         context.rooms = [MagicMock(room_id="R1")]
 
-        result = mutate_individual(individual, context, indpb=0.2)
+        result = mutate_individual(individual, context, mut_prob=0.2)
 
         assert isinstance(result, tuple)
         assert len(result) == 1
         assert isinstance(result[0], list)
 
     def test_mutation_with_zero_probability_unchanged(self):
-        """Test mutation with indpb=0 returns unchanged individual."""
+        """Test mutation with mut_prob=0 returns unchanged individual."""
         individual = [
-            SessionGene(("CS101", "Theory"), ["G1"], "I1", "R1", [0, 1, 2]),
+            SessionGene(
+                "CS101", "theory", "I1", ["G1"], "R1", start_quanta=0, num_quanta=3
+            ),
         ]
 
         context = MagicMock()
         context.available_quanta = list(range(100))
         context.rooms = [MagicMock(room_id="R1")]
 
-        mutated = mutate_individual(deepcopy(individual), context, indpb=0.0)
+        mutated = mutate_individual(deepcopy(individual), context, mut_prob=0.0)
 
         # With 0 probability, individual should be unchanged
         assert mutated[0][0].quanta == individual[0].quanta

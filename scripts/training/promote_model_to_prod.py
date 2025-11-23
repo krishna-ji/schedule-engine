@@ -91,7 +91,7 @@ def promote_from_checkpoint(
             f"Checkpoint {checkpoint_id} has status '{checkpoint.status}' (not validated)"
         )
         confirm = input(
-            f"⚠️  Checkpoint status is '{checkpoint.status}'. Continue? (y/N): "
+            f"️  Checkpoint status is '{checkpoint.status}'. Continue? (y/N): "
         )
         if confirm.lower() != "y":
             print("Promotion cancelled")
@@ -208,7 +208,7 @@ def rollback_deployment() -> None:
     print(f"   Deployed: {current.deployed_at}")
     print()
 
-    confirm = input("⚠️  Rollback to previous deployment? (y/N): ")
+    confirm = input("️  Rollback to previous deployment? (y/N): ")
     if confirm.lower() != "y":
         print("Rollback cancelled")
         sys.exit(0)

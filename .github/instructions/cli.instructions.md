@@ -267,13 +267,13 @@ def test_argument_parsing():
 
 ## Common Pitfalls
 
-❌ **Don't**:
+ **Don't**:
 - Hardcode config paths in multiple places
 - Forget to update pyproject.toml after adding commands
 - Mix profile logic with business logic
 - Use different naming conventions for similar commands
 
-✅ **Do**:
+ **Do**:
 - Use PROFILE_MAP for centralized config
 - Run `uv sync` after script changes
 - Keep launcher.py as thin routing layer
@@ -309,7 +309,7 @@ parser.add_argument(
 
 ### Bad: Hardcoded Paths
 ```python
-# ❌ Don't do this
+#  Don't do this
 if profile == 'test':
     config = 'configs/test.yaml'
 elif profile == 'prod':
@@ -318,7 +318,7 @@ elif profile == 'prod':
 
 ### Good: Centralized Mapping
 ```python
-# ✅ Do this
+#  Do this
 config = PROFILE_MAP[profile]['config']
 ```
 

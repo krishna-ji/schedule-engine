@@ -231,10 +231,16 @@ def run_standard_workflow(
         import multiprocessing
         from src.utils.parallel_worker import init_worker
 
+        # Determine worker count: None = CPU count (Windows handle limit safe)
+        if config.parallel.num_workers is None:
+            num_workers = multiprocessing.cpu_count()
+        else:
+            num_workers = config.parallel.num_workers
+
         # Create pool with worker initialization
         # Workers load data from JSON files (no pickling of complex objects!)
         pool = multiprocessing.Pool(
-            processes=config.parallel.num_workers,
+            processes=num_workers,
             initializer=init_worker,
             initargs=(data_dir, seed),
         )
@@ -273,63 +279,33 @@ def run_standard_workflow(
         repair_config=repair_config,
     )
 
-    # Get enabled constraint names
-    hard_constraints_dict = {
-        "student_group_exclusivity": {
-            "enabled": config.hard_constraints.student_group_exclusivity.enabled,
-            "weight": config.hard_constraints.student_group_exclusivity.weight,
-        },
-        "instructor_exclusivity": {
-            "enabled": config.hard_constraints.instructor_exclusivity.enabled,
-            "weight": config.hard_constraints.instructor_exclusivity.weight,
-        },
-        "instructor_qualifications": {
-            "enabled": config.hard_constraints.instructor_qualifications.enabled,
-            "weight": config.hard_constraints.instructor_qualifications.weight,
-        },
-        "instructor_time_availability": {
-            "enabled": config.hard_constraints.instructor_time_availability.enabled,
-            "weight": config.hard_constraints.instructor_time_availability.weight,
-        },
-        "room_suitability": {
-            "enabled": config.hard_constraints.room_suitability.enabled,
-            "weight": config.hard_constraints.room_suitability.weight,
-        },
-        "room_exclusivity": {
-            "enabled": config.hard_constraints.room_exclusivity.enabled,
-            "weight": config.hard_constraints.room_exclusivity.weight,
-        },
-        "room_time_availability": {
-            "enabled": config.hard_constraints.room_time_availability.enabled,
-            "weight": config.hard_constraints.room_time_availability.weight,
-        },
-        "course_completeness": {
-            "enabled": config.hard_constraints.course_completeness.enabled,
-            "weight": config.hard_constraints.course_completeness.weight,
-        },
-    }
+    # ========================================
+    # Get enabled constraint names from REGISTRY (Single Source of Truth)
+    # ========================================
+    from src.constraints.registry import (
+        get_all_hard_constraints,
+        get_all_soft_constraints,
+    )
 
-    soft_constraints_dict = {
-        "student_schedule_compactness": {
-            "enabled": config.soft_constraints.student_schedule_compactness.enabled,
-            "weight": config.soft_constraints.student_schedule_compactness.weight,
-        },
-        "instructor_schedule_compactness": {
-            "enabled": config.soft_constraints.instructor_schedule_compactness.enabled,
-            "weight": config.soft_constraints.instructor_schedule_compactness.weight,
-        },
-        "student_lunch_break": {
-            "enabled": config.soft_constraints.student_lunch_break.enabled,
-            "weight": config.soft_constraints.student_lunch_break.weight,
-        },
-        "session_continuity": {
-            "enabled": config.soft_constraints.session_continuity.enabled,
-            "weight": config.soft_constraints.session_continuity.weight,
-        },
-    }
+    # Build constraint lists dynamically from registry + config
+    # This ensures we never miss a constraint or have mismatched names
+    all_hard_constraints = get_all_hard_constraints()
+    all_soft_constraints = get_all_soft_constraints()
 
-    hard_names = [name for name, cfg in hard_constraints_dict.items() if cfg["enabled"]]
-    soft_names = [name for name, cfg in soft_constraints_dict.items() if cfg["enabled"]]
+    # Get enabled constraints by checking config for each registered constraint
+    # CRITICAL: Order matters! This defines hc1-hc8 mapping used in console output
+    # Order is deterministic from registry (decorator registration order in hard.py)
+    hard_names = []
+    for name in all_hard_constraints.keys():
+        constraint_cfg = getattr(config.hard_constraints, name, None)
+        if constraint_cfg and constraint_cfg.enabled:
+            hard_names.append(name)
+
+    soft_names = []
+    for name in all_soft_constraints.keys():
+        constraint_cfg = getattr(config.soft_constraints, name, None)
+        if constraint_cfg and constraint_cfg.enabled:
+            soft_names.append(name)
 
     # ========================================
     # Step 4.5: Initialize Logger
@@ -343,7 +319,7 @@ def run_standard_workflow(
         "seed": seed,
         "use_multiprocessing": config.parallel.use_multiprocessing,
         "num_workers": (
-            config.parallel.num_workers if config.parallel.num_workers else "auto"
+            f"{config.parallel.num_workers if config.parallel.num_workers else 'auto (CPU)'}"
         ),
         "population_strategy": config.ga.population_strategy,
         "adaptive_operators": config.ga.use_adaptive_probabilities,

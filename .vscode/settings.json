@@ -31,7 +31,7 @@
         "**/*.db": true,
         "**/*.sqlite3": true,
         ".pytest_cache/": true,
-        "logs/": true,
+        // "logs/": true,
         ".data": true,
         // "**/*.md": true,
         // "docs/": true,

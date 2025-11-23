@@ -110,11 +110,11 @@ INFO     ✗ adaptive_large_neighborhood r=0.000 best=1262761.2 div=67.1 stag=0 
 ```
 
 **Key improvements:**
-- ✅ Context `[env=0 gen=0 step=0]` shown automatically (no repetition)
-- ✅ One compact line per key event
-- ✅ Visual indicators (✓/✗) for success/failure
-- ✅ Consistent metric abbreviations (r=reward, div=diversity, stag=stagnation)
-- ✅ DEBUG messages only in file (not flooding console)
+-  Context `[env=0 gen=0 step=0]` shown automatically (no repetition)
+-  One compact line per key event
+-  Visual indicators (✓/✗) for success/failure
+-  Consistent metric abbreviations (r=reward, div=diversity, stag=stagnation)
+-  DEBUG messages only in file (not flooding console)
 
 ## Configuration
 
@@ -147,9 +147,9 @@ setup_logging(console_level="ERROR", file_level="DEBUG")
 
 The structured logging system has been integrated into:
 
-- ✅ `src/rl/gym_env/schedule_env.py` - RL environment logging
-- ✅ `src/rl/training/train_script.py` - Training script initialization
-- ✅ `src/utils/system_info.py` - System diagnostics (single-line output)
+-  `src/rl/gym_env/schedule_env.py` - RL environment logging
+-  `src/rl/training/train_script.py` - Training script initialization
+-  `src/utils/system_info.py` - System diagnostics (single-line output)
 
 ### Migration Guide
 

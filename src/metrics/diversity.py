@@ -24,7 +24,8 @@ def gene_distance(g1: SessionGene, g2: SessionGene) -> float:
         score += 1
     if g1.room_id != g2.room_id:
         score += 1
-    if set(g1.quanta) != set(g2.quanta):
+    # Compare time allocation (start and duration)
+    if g1.start_quanta != g2.start_quanta or g1.num_quanta != g2.num_quanta:
         score += 1
     return score / 5  # Normalize to [0, 1]
 
@@ -52,8 +53,12 @@ def individual_distance(ind1: List[SessionGene], ind2: List[SessionGene]) -> flo
     groups_diff = np.sum(
         [set(g1.group_ids) != set(g2.group_ids) for g1, g2 in zip(ind1, ind2)]
     )
+    # Compare time allocation (start and duration)
     quanta_diff = np.sum(
-        [set(g1.quanta) != set(g2.quanta) for g1, g2 in zip(ind1, ind2)]
+        [
+            (g1.start_quanta != g2.start_quanta or g1.num_quanta != g2.num_quanta)
+            for g1, g2 in zip(ind1, ind2)
+        ]
     )
 
     total_diff = (

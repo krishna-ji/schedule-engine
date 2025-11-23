@@ -19,7 +19,7 @@ Data transformation pipeline: JSON → entities → chromosomes → decoded sess
 ### Encoder (`src/encoder/input_encoder.py`)
 - Loads JSON files from `data/` directory
 - Converts to entity objects
-- Links courses ↔ groups, courses ↔ instructors
+- Links courses  groups, courses  instructors
 - Creates `SchedulingContext` with all entities + time system
 - **Key function**: `load_groups()`, `load_courses()`, `load_instructors()`, `load_rooms()`
 
