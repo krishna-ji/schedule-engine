@@ -382,6 +382,10 @@ class GAScheduler:
         # PERFORMANCE CACHE: Store detailed constraint breakdown to avoid re-evaluation
         self._cached_hard_details = {}
         self._cached_soft_details = {}
+        
+        # PERFORMANCE CACHE: Store enabled constraints (computed once, used frequently)
+        self._enabled_hard_constraints = get_enabled_hard_constraints()
+        self._enabled_soft_constraints = get_enabled_soft_constraints()
 
         # RL INTEGRATION: Components for hyper-heuristic control
         self.rl_enabled = False
@@ -853,13 +857,13 @@ class GAScheduler:
         # Display in compact form: 3 constraints per row
         legend_bars = []
         legend_bars.append(
-            Progress(TextColumn(""), console=console, refresh_per_second=10)
+            Progress(TextColumn(""), console=console, refresh_per_second=1)
         )  # spacing
         legend_bars.append(
             Progress(
                 TextColumn("[dim]constraint mapping:[/dim]"),
                 console=console,
-                refresh_per_second=10,
+                refresh_per_second=1,
             )
         )
 
@@ -893,7 +897,7 @@ class GAScheduler:
                 Progress(
                     TextColumn(row_text),
                     console=console,
-                    refresh_per_second=10,
+                    refresh_per_second=1,  # Static text, no need for frequent updates
                 )
             )
 
@@ -917,7 +921,7 @@ class GAScheduler:
                 Progress(
                     TextColumn(row_text),
                     console=console,
-                    refresh_per_second=10,
+                    refresh_per_second=1,  # Static text, no need for frequent updates
                 )
             )
 
@@ -932,7 +936,13 @@ class GAScheduler:
         # Add spacing at bottom
         progress_table.add_row(spacing_bar)
 
-        with Live(progress_table, console=console, refresh_per_second=10):
+        # Use Live display with reduced refresh rate to prevent duplication on resize
+        with Live(
+            progress_table, 
+            console=console, 
+            refresh_per_second=2,  # Reduced from 10 to prevent render issues
+            transient=False,  # Don't clear on exit
+        ):
             # Helper function to format time as hh:mm:ss
             def format_time(seconds):
                 hours = int(seconds // 3600)
@@ -985,11 +995,14 @@ class GAScheduler:
                 # Show progress feedback after EVERY generation completes
                 # Display constraint breakdown for non-zero violations
                 _display_start = time.time()
-                best = tools.selBest(self.population, 1)[0]
 
                 # PERFORMANCE FIX: Use cached detailed evaluation from _track_metrics()
                 # This avoids re-evaluating the best individual (saves ~2 seconds per generation!)
                 _eval_detailed_start = time.time()
+                _best_selection_start = time.time()
+                best = tools.selBest(self.population, 1)[0]
+                _best_selection_time = time.time() - _best_selection_start
+                
                 if hasattr(self, '_cached_hard_details') and hasattr(self, '_cached_soft_details'):
                     # Use cached values (already computed in _track_metrics)
                     hard_details = self._cached_hard_details
@@ -1009,8 +1022,8 @@ class GAScheduler:
                 # Build compact constraint lists - SHOW RAW VIOLATIONS (not weighted)
                 # Get raw violations by dividing by weights
                 _constraint_format_start = time.time()
-                enabled_hc = get_enabled_hard_constraints()
-                enabled_sc = get_enabled_soft_constraints()
+                enabled_hc = self._enabled_hard_constraints  # Use cached dict (computed once in __init__)
+                enabled_sc = self._enabled_soft_constraints  # Use cached dict (computed once in __init__)
                 
                 hc_parts = []
                 for name in self.hard_constraint_names:
@@ -1073,6 +1086,13 @@ class GAScheduler:
                 replacement_time = phase_times.get("replacement", 0)
                 repair_time = phase_times.get("repair_memetic", 0)
                 metrics_time = phase_times.get("metrics", 0)
+                
+                # New phases
+                rl_time = phase_times.get("rl_ops", 0)
+                igls_time = phase_times.get("igls_exhaustive", 0) + phase_times.get("igls_greedy", 0)
+                lns_time = phase_times.get("lns_repair", 0)
+                selective_repair_time = phase_times.get("selective_repair_cx", 0) + phase_times.get("selective_repair_mut", 0)
+                
                 display_time = time.time() - _display_start  # Total display overhead
                 other_time = (
                     gen_time
@@ -1081,6 +1101,11 @@ class GAScheduler:
                     - replacement_time
                     - repair_time
                     - metrics_time
+                    - rl_time
+                    - igls_time
+                    - lns_time
+                    - selective_repair_time
+                    - display_time  # CRITICAL: Exclude display time from "other" bucket
                 )
 
                 # Build timing breakdown string
@@ -1095,6 +1120,17 @@ class GAScheduler:
                     timing_parts.append(f"metrics={format_time(metrics_time)}")
                 if repair_time > 0.01:
                     timing_parts.append(f"repair={format_time(repair_time)}")
+                
+                # New phases display
+                if rl_time > 0.01:
+                    timing_parts.append(f"rl={format_time(rl_time)}")
+                if igls_time > 0.01:
+                    timing_parts.append(f"igls={format_time(igls_time)}")
+                if lns_time > 0.01:
+                    timing_parts.append(f"lns={format_time(lns_time)}")
+                if selective_repair_time > 0.01:
+                    timing_parts.append(f"sel_repair={format_time(selective_repair_time)}")
+                    
                 # Show display breakdown if significant
                 if display_time > 1.0:
                     timing_parts.append(f"display={format_time(display_time)} (eval_detail={_eval_detailed_time:.1f}s)")
@@ -1107,6 +1143,7 @@ class GAScheduler:
                 # Format exactly as requested: [!ok] gen x/y : hc = , sc = , t=4s,  hc1=, hc2=.. sc1=., sc2=...
                 # Right-align generation numbers for consistent indentation
                 gen_width = len(str(self.config.generations))
+                console.print()  # Line break before generation output
                 console.print(
                     f"[dim][!ok] gen {gen+1:>{gen_width}}/{self.config.generations} : "
                     f"hc={best.fitness.values[0]:.0f}, sc={best.fitness.values[1]:.2f}, "
@@ -1138,12 +1175,15 @@ class GAScheduler:
                 
                 # Log micro-breakdown if display overhead > 0.5s
                 if display_time > 0.5:
+                    _unaccounted = display_time - (_best_selection_time + _eval_detailed_time + _constraint_format_time + _timing_calc_time + _logging_time)
                     logger.info(
                         f"Gen {gen} display breakdown: total={display_time:.2f}s "
-                        f"(eval_detailed={_eval_detailed_time:.2f}s, "
+                        f"(best_selection={_best_selection_time:.2f}s, "
+                        f"eval_detailed={_eval_detailed_time:.2f}s, "
                         f"constraint_format={_constraint_format_time:.2f}s, "
                         f"timing_calc={_timing_calc_time:.2f}s, "
-                        f"logging={_logging_time:.2f}s)"
+                        f"logging={_logging_time:.2f}s, "
+                        f"unaccounted={_unaccounted:.2f}s)"
                     )
 
                 # Early stopping if perfect solution found
@@ -1412,6 +1452,10 @@ class GAScheduler:
         profiler.start_generation(gen)
 
         cxpb, mutpb = self._get_adaptive_probabilities(gen)
+        
+        # DEBUG: Log probabilities to identify the issue
+        if gen <= 5:  # Only log first few generations to avoid spam
+            console.print(f"[dim]   DEBUG Gen {gen}: cxpb={cxpb:.2f}, mutpb={mutpb:.2f} (config: cx={self.config.crossover_prob:.2f}, mut={self.config.mutation_prob:.2f})[/dim]")
 
         # ENHANCEMENT: Override mutation probability if hypermutation is active
         if self.hypermutation_active:
@@ -1462,6 +1506,7 @@ class GAScheduler:
             and igls_config.selective_repair.enabled
             and igls_config.selective_repair.apply_after_crossover  # Should be FALSE in config
         ):
+            profiler.start_phase("selective_repair_cx")
             for i in range(0, len(offspring), 2):
                 if i + 1 < len(offspring) and not offspring[i].fitness.valid:
                     if random.random() < igls_config.selective_repair.apply_probability:
@@ -1492,6 +1537,7 @@ class GAScheduler:
                             if was_repaired2:
                                 generation_repair_stats["individuals_repaired"] += 1
                                 generation_repair_stats["crossover_repairs"] += 1
+            profiler.end_phase()
 
         # PERFORMANCE: Parallel Mutation (8-12x faster for large populations)
         # Uses ThreadPoolExecutor to apply mutation concurrently
@@ -1508,6 +1554,7 @@ class GAScheduler:
             and igls_config.selective_repair.enabled
             and igls_config.selective_repair.apply_after_mutation  # Should be FALSE in config
         ):
+            profiler.start_phase("selective_repair_mut")
             for mutant in offspring:
                 if not mutant.fitness.valid:
                     # Probabilistic gate
@@ -1530,6 +1577,7 @@ class GAScheduler:
 
                             generation_repair_stats["individuals_repaired"] += 1
                             generation_repair_stats["mutation_repairs"] += 1
+            profiler.end_phase()
 
         # Evaluate invalid individuals with GPU acceleration when available
         _before_invalid = time_module.time()
@@ -1538,6 +1586,10 @@ class GAScheduler:
         
         if invalid:
             profiler.start_phase("evaluation", items_to_process=len(invalid))
+            
+            # DEBUG: Log how many individuals are being re-evaluated
+            if gen <= 5:  # Only log first few generations
+                console.print(f"[dim]   DEBUG Gen {gen}: Re-evaluating {len(invalid)} individuals[/dim]")
 
             # CPU-only evaluation with multiprocessing parallelization
             # GPU removed from GA loop - better suited for RL neural networks
@@ -1546,6 +1598,10 @@ class GAScheduler:
                 ind.fitness.values = fit
 
             profiler.end_phase()
+        else:
+            # DEBUG: No individuals to re-evaluate (this is the problem!)
+            if gen <= 5:
+                console.print(f"[dim]   DEBUG Gen {gen}: NO individuals to re-evaluate - this is the bug![/dim]")
         
         # Track overhead
         _eval_prep_time = _invalid_check_time
@@ -1576,7 +1632,9 @@ class GAScheduler:
 
         # RL INTEGRATION: Apply RL-selected heuristics
         if self.rl_enabled:
+            profiler.start_phase("rl_ops")
             self._apply_rl_operators(gen)
+            profiler.end_phase()
             event_tracker.add("rl_operators_applied")
 
         # Memetic mode: Apply intensive local search to elite individuals
@@ -1667,6 +1725,7 @@ class GAScheduler:
 
             from src.ga.operators.intensive_local_search import apply_exhaustive_search
 
+            profiler.start_phase("igls_exhaustive")
             self.population, igls_metrics = apply_exhaustive_search(
                 population=self.population,
                 context=self.context,
@@ -1674,6 +1733,7 @@ class GAScheduler:
                 max_neighborhood_size=igls_config.exhaustive_search.max_neighborhood_size,
                 timeout_seconds=igls_config.exhaustive_search.timeout_seconds,
             )
+            profiler.end_phase()
 
             # Re-evaluate population after exhaustive search
             fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
@@ -1707,6 +1767,7 @@ class GAScheduler:
 
             from src.ga.operators.intensive_local_search import apply_greedy_search
 
+            profiler.start_phase("igls_greedy")
             self.population, igls_metrics = apply_greedy_search(
                 population=self.population,
                 context=self.context,
@@ -1714,6 +1775,7 @@ class GAScheduler:
                 max_iterations=igls_config.stagnation_repair.max_iterations,
                 timeout_seconds=igls_config.stagnation_repair.timeout_seconds,
             )
+            profiler.end_phase()
 
             # Re-evaluate population after greedy search
             fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
@@ -1770,6 +1832,7 @@ class GAScheduler:
                     f"\n[bold blue][!info] LNS-IGLS repair triggered on gen {gen}[/bold blue]"
                 )
 
+                profiler.start_phase("lns_repair")
                 # Get best individuals
                 num_to_repair = min(lns_config.apply_to_best_n, len(self.population))
                 best_individuals = tools.selBest(self.population, num_to_repair)
@@ -1830,6 +1893,7 @@ class GAScheduler:
                     console.print(
                         "[yellow]   LNS-IGLS repair: no improvements found[/yellow]"
                     )
+                profiler.end_phase()
 
         # ============
         # END: LNS-IGLS REPAIR SYSTEM
@@ -1873,8 +1937,10 @@ class GAScheduler:
             mutation_prob = 0.4
         elif progress < 0.7:
             # Mid phase: balanced (use config defaults)
-            crossover_prob = self.config.crossover_prob
-            mutation_prob = self.config.mutation_prob
+            # Use explicit values from our config instead of potentially unset config object values
+            config = get_config()
+            crossover_prob = config.ga.cxpb  # Use explicit ga.cxpb
+            mutation_prob = config.ga.mutpb   # Use explicit ga.mutpb
         else:
             # Late phase: exploit (refine good solutions)
             crossover_prob = 0.9

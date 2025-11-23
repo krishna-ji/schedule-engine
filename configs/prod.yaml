@@ -5,14 +5,14 @@
 # Expected runtime: 24-48 hours on 16+ cores, 32+ GB RAM.
 # This config inherits all settings from base.yaml.
 
-name: "Production - Best Quality (No Constraints)"
+name: "Production - Best Quality"
 environment: prod
-description: "Maximum quality production run (2000 gens, 200 pop, 24-48h runtime)"
+description: "Full-scale production run - SAME functionality as test, scaled up (2000 gens, 1000 pop, 24-48h runtime)"
 
-# GA Settings - PROD: Maximum generations and population
+# GA Settings - PROD: SAME algorithm as test, scaled up for quality
 ga:
   ngen: 2000
-  pop_size: 1000 # Larger population for better solution quality
+  pop_size: 1000 # Larger population for better solution quality (SAME algorithm)
 
 # Parallel Processing - Inherited from base.yaml (CPU cores * 2)
 

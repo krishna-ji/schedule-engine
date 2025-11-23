@@ -7,35 +7,49 @@
 
 name: "Test - Smoke Test"
 environment: test
-description: "Fast smoke test (30 gens, 10 pop, 5-10 min runtime)"
+description: "Fast smoke test - SAME functionality as prod, scaled down (30 gens, 10 pop, 5-10 min runtime)"
 
-# GA Settings - TEST: Minimal for quick validation
+# GA Settings - TEST: SAME algorithm as prod, scaled down for speed
 ga:
   ngen: 30
   pop_size: 10
 
-# Parallel Processing - Disabled for easier debugging
+# Parallel Processing - SAME as prod (only scale differs)
 parallel:
-  use_multiprocessing: false
+  use_multiprocessing: true
   num_workers: null
 
-# IGLS Exhaustive Search - Minimal triggers
+# IGLS Repair - SAME functionality as prod (proportionally scaled)
 repair:
   exhaustive_search:
     enabled: true
-    generations: [3, 25]
-    population_coverage: 0.3 # Top 30% (3 individuals)
-    max_neighborhood_size: 80
-    timeout_seconds: 120
+    generations: [3, 25] # Proportional to prod [3, 30, 150, ...] for 30 gen run
+    population_coverage: 0.15 # SAME as prod (consistent percentage)
+    max_neighborhood_size: 120 # SAME as prod
+    timeout_seconds: 120 # Reasonable for test
 
   stagnation_repair:
-    patience: 8
-    min_generation: 12
-    population_coverage: 0.5
-    max_iterations: 10
-    timeout_seconds: 60
-    cooldown: 5
+    patience: 15 # SAME as prod
+    min_generation: 20 # SAME as prod
+    population_coverage: 0.2 # SAME as prod (consistent percentage)
+    max_iterations: 15 # SAME as prod
+    timeout_seconds: 180 # SAME as prod
+    cooldown: 8 # SAME as prod
 
   selective_repair:
-    apply_probability: 0.4
-    apply_after_crossover: true
+    apply_probability: 0.3 # SAME as prod
+    apply_after_crossover: false # SAME as prod
+
+# LNS-IGLS - SAME functionality as prod (scaled appropriately)
+lns:
+  trigger_interval: 15 # Proportional to prod (100 -> 15 for 30 gen run)
+  stagnation_threshold: 10 # SAME as prod
+  force_trigger_generations: [6] # SAME as prod (early validation)
+  trigger_before_igls: false # SAME as prod
+  max_subproblem_size: 30 # SAME as prod
+  min_subproblem_size: 6 # SAME as prod
+  expand_neighborhood_hops: 1 # SAME as prod
+  igls_max_iterations: 1000 # SAME as prod
+  igls_time_limit: 1000.0 # SAME as prod
+  apply_to_best_n: 1 # Scaled down (3 -> 1 for smaller population)
+  enable_diagnostics: true # SAME as prod

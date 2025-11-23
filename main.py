@@ -132,23 +132,10 @@ def main():
 
     # Experiment name: interactive prompt fallback
     exp_name = args.experiment
+    # Use automatic experiment naming - no interactive prompt needed
     if exp_name is None:
-        # Only prompt when running interactively (TTY). In CI / uv runs we'll skip prompt.
-        import sys
-
-        if sys.stdin and sys.stdin.isatty():
-            try:
-                raw = timed_input(
-                    "Experiment name (optional): ",
-                    timeout=10,
-                    default="noname_provided",
-                )
-                exp_name = raw.strip() if raw else None
-            except Exception:
-                exp_name = None
-        else:
-            exp_name = None
-
+        exp_name = "auto_generated"
+    
     exp_name = sanitize_experiment_name(exp_name)
 
     # Initialize experiment manager
@@ -250,56 +237,7 @@ def main():
         console.print()
 
 
-def timed_input(prompt, timeout=10, default=None):
-    """
-    Read input with a timeout.
-    Supports Windows (msvcrt) and Unix (select).
-    """
-    import sys
-    import time
-
-    sys.stdout.write(prompt)
-    sys.stdout.flush()
-
-    if sys.platform == "win32":
-        import msvcrt
-
-        start_time = time.time()
-        input_chars = []
-        while True:
-            if msvcrt.kbhit():
-                char = msvcrt.getwch()
-                if char == "\r" or char == "\n":
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
-                    return "".join(input_chars)
-                elif char == "\b" or ord(char) == 8:
-                    if input_chars:
-                        input_chars.pop()
-                        sys.stdout.write("\b \b")
-                        sys.stdout.flush()
-                elif ord(char) == 3:  # Ctrl+C
-                    raise KeyboardInterrupt
-                else:
-                    input_chars.append(char)
-                    sys.stdout.write(char)
-                    sys.stdout.flush()
-
-            if time.time() - start_time > timeout:
-                sys.stdout.write(f"\nTimeout! Using default: {default}\n")
-                sys.stdout.flush()
-                return default
-            time.sleep(0.05)
-    else:
-        import select
-
-        rlist, _, _ = select.select([sys.stdin], [], [], timeout)
-        if rlist:
-            return sys.stdin.readline().strip()
-        else:
-            sys.stdout.write(f"\nTimeout! Using default: {default}\n")
-            sys.stdout.flush()
-            return default
+# Removed timed_input function - no longer needed with automatic experiment naming
 
 
 def _create_env_entry_point(env: str):
