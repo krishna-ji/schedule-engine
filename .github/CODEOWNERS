@@ -1,25 +1,29 @@
 # CODEOWNERS - Auto-assign reviewers for pull requests
 # Syntax: path/pattern @github-username
 
-# Global owners (review all changes)
+# Global owner (review all changes)
 * @krishna-ji
 
 # Configuration files (require extra scrutiny)
 configs/**/*.yaml @krishna-ji
 src/config/**/*.py @krishna-ji
-.github/**/* @krishna-ji
+pyproject.toml @krishna-ji
 
 # Core GA algorithm (critical path)
 src/core/**/*.py @krishna-ji
 src/ga/**/*.py @krishna-ji
 
-# Constraints (domain logic)
+# Constraints (domain logic - thesis critical)
 src/constraints/**/*.py @krishna-ji
 
 # RL modules (experimental features)
 src/rl/**/*.py @krishna-ji
-scripts/**/rl*.py @krishna-ji
+scripts/training/**/*.py @krishna-ji
+
+# Analysis and utilities
+scripts/analysis/**/*.py @krishna-ji
+scripts/launcher.py @krishna-ji
 
 # Documentation (maintain quality)
 docs/**/*.md @krishna-ji
-*.md @krishna-ji
+README.md @krishna-ji
