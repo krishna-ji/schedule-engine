@@ -33,7 +33,7 @@ from src.ga.operators.mutation import mutate_individual
 from src.ga.evaluator.fitness import evaluate
 from src.config import get_config
 from src.ga.evaluator.detailed_fitness import evaluate_detailed
-from src.ga.evaluator.gpu_batch_evaluator import GPUConstraintEvaluator
+from src.constraints.registry import get_enabled_hard_constraints, get_enabled_soft_constraints
 from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
@@ -372,23 +372,16 @@ class GAScheduler:
             self.violation_heatmap = ViolationHeatmap()
             console.print("[dim]   Violation heatmap tracking: ENABLED[/dim]")
 
-        # GPU Batch Evaluator - ENABLED with vectorized tensor operations
-        # Rewritten to use TRUE GPU vectorization instead of Python loops
-        # Performance: 10-50x speedup for large populations (500+)
-        try:
-            self.gpu_evaluator = GPUConstraintEvaluator(
-                device="auto", auto_tune_batch_size=True
-            )
-            if self.gpu_evaluator.enabled:
-                console.print(
-                    "[green]✓ GPU acceleration enabled for fitness evaluation (10-50x speedup)[/green]"
-                )
-        except Exception as e:
-            logger.warning(f"GPU evaluator initialization failed: {e}")
-            self.gpu_evaluator = None
+        # GPU acceleration REMOVED from GA loop - CPU multiprocessing only
+        # GPU is reserved for RL training/inference (better suited for neural networks)
+        console.print("[dim]   GA fitness evaluation: CPU multiprocessing only[/dim]")
 
         # NEW: Hypervolume reference point (initialized during first metric tracking)
         self._hypervolume_ref_point = None
+        
+        # PERFORMANCE CACHE: Store detailed constraint breakdown to avoid re-evaluation
+        self._cached_hard_details = {}
+        self._cached_soft_details = {}
 
         # RL INTEGRATION: Components for hyper-heuristic control
         self.rl_enabled = False
@@ -991,22 +984,41 @@ class GAScheduler:
 
                 # Show progress feedback after EVERY generation completes
                 # Display constraint breakdown for non-zero violations
+                _display_start = time.time()
                 best = tools.selBest(self.population, 1)[0]
 
-                # Get detailed constraint breakdown
-                hard_details, soft_details = evaluate_detailed(
-                    best,
-                    self.context.courses,
-                    self.context.instructors,
-                    self.context.groups,
-                    self.context.rooms,
-                )
+                # PERFORMANCE FIX: Use cached detailed evaluation from _track_metrics()
+                # This avoids re-evaluating the best individual (saves ~2 seconds per generation!)
+                _eval_detailed_start = time.time()
+                if hasattr(self, '_cached_hard_details') and hasattr(self, '_cached_soft_details'):
+                    # Use cached values (already computed in _track_metrics)
+                    hard_details = self._cached_hard_details
+                    soft_details = self._cached_soft_details
+                    _eval_detailed_time = 0.0  # No re-evaluation needed
+                else:
+                    # Fallback: evaluate if cache not available (shouldn't happen)
+                    hard_details, soft_details = evaluate_detailed(
+                        best,
+                        self.context.courses,
+                        self.context.instructors,
+                        self.context.groups,
+                        self.context.rooms,
+                    )
+                    _eval_detailed_time = time.time() - _eval_detailed_start
 
-                # Build compact constraint lists - ALWAYS SHOW ALL CONSTRAINTS
+                # Build compact constraint lists - SHOW RAW VIOLATIONS (not weighted)
+                # Get raw violations by dividing by weights
+                _constraint_format_start = time.time()
+                enabled_hc = get_enabled_hard_constraints()
+                enabled_sc = get_enabled_soft_constraints()
+                
                 hc_parts = []
                 for name in self.hard_constraint_names:
                     short_name = self.hard_constraint_codes.get(name, name[:4])
-                    hc_parts.append(f"{short_name}={int(hard_details.get(name, 0))}")
+                    weighted_val = hard_details.get(name, 0)
+                    weight = enabled_hc.get(name, {}).get("weight", 1.0)
+                    raw_val = int(weighted_val / weight) if weight > 0 else 0
+                    hc_parts.append(f"{short_name}={raw_val}")
 
                 # Include any dynamically added constraints not present when scheduler initialized
                 for name, val in hard_details.items():
@@ -1016,7 +1028,10 @@ class GAScheduler:
                 sc_parts = []
                 for name in self.soft_constraint_names:
                     short_name = self.soft_constraint_codes.get(name, name[:4])
-                    sc_parts.append(f"{short_name}={soft_details.get(name, 0.0):.1f}")
+                    weighted_val = soft_details.get(name, 0.0)
+                    weight = enabled_sc.get(name, {}).get("weight", 1.0)
+                    raw_val = weighted_val / weight if weight > 0 else 0
+                    sc_parts.append(f"{short_name}={raw_val:.1f}")
 
                 for name, val in soft_details.items():
                     if name not in self.soft_constraint_codes:
@@ -1025,8 +1040,23 @@ class GAScheduler:
                 # Build constraint list strings
                 hc_list = ", ".join(hc_parts) if hc_parts else ""
                 sc_list = ", ".join(sc_parts) if sc_parts else ""
+                _constraint_format_time = time.time() - _constraint_format_start
+                
+                # DIAGNOSTIC: Verify fitness matches detailed breakdown
+                computed_hc = sum(hard_details.values())
+                computed_sc = sum(soft_details.values())
+                fitness_hc = best.fitness.values[0]
+                fitness_sc = best.fitness.values[1]
+                
+                if abs(computed_hc - fitness_hc) > 0.01 or abs(computed_sc - fitness_sc) > 0.01:
+                    console.print(f"[bold red]WARNING: Fitness mismatch detected![/bold red]")
+                    console.print(f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc-computed_hc):.2f})")
+                    console.print(f"  Fitness SC={fitness_sc:.2f} vs Computed SC={computed_sc:.2f} (diff={abs(fitness_sc-computed_sc):.2f})")
+                    console.print(f"  Hard details: {hard_details}")
+                    console.print(f"  Soft details: {soft_details}")
 
                 # Get phase timing breakdown from profiler
+                _timing_calc_start = time.time()
                 phase_times = {}
                 if profiler.enabled and profiler.generation_profiles:
                     last_profile = profiler.generation_profiles[-1]
@@ -1043,6 +1073,7 @@ class GAScheduler:
                 replacement_time = phase_times.get("replacement", 0)
                 repair_time = phase_times.get("repair_memetic", 0)
                 metrics_time = phase_times.get("metrics", 0)
+                display_time = time.time() - _display_start  # Total display overhead
                 other_time = (
                     gen_time
                     - ops_time
@@ -1064,10 +1095,14 @@ class GAScheduler:
                     timing_parts.append(f"metrics={format_time(metrics_time)}")
                 if repair_time > 0.01:
                     timing_parts.append(f"repair={format_time(repair_time)}")
+                # Show display breakdown if significant
+                if display_time > 1.0:
+                    timing_parts.append(f"display={format_time(display_time)} (eval_detail={_eval_detailed_time:.1f}s)")
                 if other_time > 0.1:
                     timing_parts.append(f"other={format_time(other_time)}")
 
                 timing_str = ", ".join(timing_parts) if timing_parts else ""
+                _timing_calc_time = time.time() - _timing_calc_start
 
                 # Format exactly as requested: [!ok] gen x/y : hc = , sc = , t=4s,  hc1=, hc2=.. sc1=., sc2=...
                 # Right-align generation numbers for consistent indentation
@@ -1079,6 +1114,7 @@ class GAScheduler:
                 )
 
                 # Log generation metrics
+                _logging_start = time.time()
                 if self.logger:
                     diversity = average_pairwise_diversity(self.population)
                     repairs = 0
@@ -1097,6 +1133,17 @@ class GAScheduler:
                         diversity=diversity,
                         repairs=repairs,
                         notes=notes,
+                    )
+                _logging_time = time.time() - _logging_start
+                
+                # Log micro-breakdown if display overhead > 0.5s
+                if display_time > 0.5:
+                    logger.info(
+                        f"Gen {gen} display breakdown: total={display_time:.2f}s "
+                        f"(eval_detailed={_eval_detailed_time:.2f}s, "
+                        f"constraint_format={_constraint_format_time:.2f}s, "
+                        f"timing_calc={_timing_calc_time:.2f}s, "
+                        f"logging={_logging_time:.2f}s)"
                     )
 
                 # Early stopping if perfect solution found
@@ -1134,7 +1181,7 @@ class GAScheduler:
         )
 
         console.print()
-        console.print("[dim]constraint mapping:[/dim]")
+        console.print("[dim]constraint mapping (individual values = raw violations, hc/sc totals = weighted sums):[/dim]")
 
         # Show hard constraints (in configured order)
         for name in self.hard_constraint_names:
@@ -1379,15 +1426,30 @@ class GAScheduler:
                     f"[dim]   Gen {gen}: Hypermutation ended, returning to normal mutpb[/dim]"
                 )
 
+        # MICRO-TIMING: Track unaccounted overhead between phases
+        import time as time_module
+        _phase_start = time_module.time()
+        _selection_prep_time = 0
+        _crossover_prep_time = 0
+        _mutation_prep_time = 0
+        _eval_prep_time = 0
+        _replace_prep_time = 0
+        
         # Selection
+        _before = time_module.time()
         profiler.start_phase("selection", items_to_process=len(self.population))
+        _selection_prep_time = time_module.time() - _before
+        
         offspring = self.toolbox.select(self.population, len(self.population))
         offspring = list(map(self.toolbox.clone, offspring))
         profiler.end_phase()
-
+        
         # PERFORMANCE: Parallel Crossover (8-12x faster for large populations)
         # Uses ThreadPoolExecutor to apply crossover to pairs concurrently
+        _before = time_module.time()
         profiler.start_phase("crossover", items_to_process=len(offspring) // 2)
+        _crossover_prep_time = time_module.time() - _before
+        
         offspring = _parallel_crossover(offspring, cxpb, self.toolbox)
         profiler.end_phase()
 
@@ -1470,47 +1532,47 @@ class GAScheduler:
                             generation_repair_stats["mutation_repairs"] += 1
 
         # Evaluate invalid individuals with GPU acceleration when available
+        _before_invalid = time_module.time()
         invalid = [ind for ind in offspring if not ind.fitness.valid]
+        _invalid_check_time = time_module.time() - _before_invalid
+        
         if invalid:
             profiler.start_phase("evaluation", items_to_process=len(invalid))
 
-            # GPU batch evaluation (10-50x faster for large populations)
-            # Now uses TRUE vectorized PyTorch operations instead of Python loops
-            if self.gpu_evaluator and self.gpu_evaluator.enabled and len(invalid) >= 50:
-                try:
-                    fitness_values = self.gpu_evaluator.evaluate_batch(
-                        invalid,
-                        self.context.courses,
-                        self.context.instructors,
-                        self.context.groups,
-                        self.context.rooms,
-                    )
-                    for ind, fit in zip(invalid, fitness_values):
-                        ind.fitness.values = fit
-                except Exception as e:
-                    logger.warning(f"GPU evaluation failed, falling back to CPU: {e}")
-                    # Fallback to CPU
-                    fitness_values = list(
-                        self.toolbox.map(self.toolbox.evaluate, invalid)
-                    )
-                    for ind, fit in zip(invalid, fitness_values):
-                        ind.fitness.values = fit
-            else:
-                # CPU evaluation for small batches or when GPU unavailable
-                fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
-                for ind, fit in zip(invalid, fitness_values):
-                    ind.fitness.values = fit
+            # CPU-only evaluation with multiprocessing parallelization
+            # GPU removed from GA loop - better suited for RL neural networks
+            fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
+            for ind, fit in zip(invalid, fitness_values):
+                ind.fitness.values = fit
 
             profiler.end_phase()
+        
+        # Track overhead
+        _eval_prep_time = _invalid_check_time
 
         # PHASE 1.2: Explicit Elitism - preserve top solutions
+        _before_replace = time_module.time()
         profiler.start_phase("replacement", items_to_process=len(self.population))
+        _replace_prep_time = time_module.time() - _before_replace
 
         # Replacement: (μ + λ) selection - combine parents + offspring only
         # Elite are already in population, no need to add separately
         combined = self.population + offspring  # 200 + 200 = 400 (vs 410 before)
         self.population[:] = self.toolbox.select(combined, len(self.population))
         profiler.end_phase()
+        
+        # Calculate overhead timing
+        _total_overhead = (_selection_prep_time + _crossover_prep_time + 
+                          _mutation_prep_time + _eval_prep_time + _replace_prep_time)
+        
+        # Log if overhead is significant (>100ms)
+        if _total_overhead > 0.1:
+            console.print(
+                f"[dim]   Phase overhead: {_total_overhead:.3f}s "
+                f"(sel={_selection_prep_time:.3f}s, cx={_crossover_prep_time:.3f}s, "
+                f"mut={_mutation_prep_time:.3f}s, eval_check={_eval_prep_time:.3f}s, "
+                f"replace={_replace_prep_time:.3f}s)[/dim]"
+            )
 
         # RL INTEGRATION: Apply RL-selected heuristics
         if self.rl_enabled:
@@ -1778,7 +1840,9 @@ class GAScheduler:
 
         # Track metrics (also logs to constraint logger)
         profiler.start_phase("metrics", items_to_process=len(self.population))
-        self._track_metrics(gen, event_tracker)
+        # Pass best individual to avoid re-evaluation in display code
+        best = tools.selBest(self.population, 1)[0]
+        self._track_metrics(gen, event_tracker, best_individual=best)
         profiler.end_phase()
 
         # End profiler generation and display breakdown
@@ -1818,7 +1882,7 @@ class GAScheduler:
 
         return crossover_prob, mutation_prob
 
-    def _track_metrics(self, gen: int, event_tracker=None):
+    def _track_metrics(self, gen: int, event_tracker=None, best_individual=None):
         """
         Record metrics for current generation.
         OPTIMIZED: Skip expensive metrics on non-tracked generations.
@@ -1827,6 +1891,7 @@ class GAScheduler:
         Args:
             gen: Generation number (-1 for initial population, 0+ for evolved generations)
             event_tracker: Optional EventTracker with events from this generation
+            best_individual: Optional pre-selected best individual to cache detailed evaluation
         """
         # PERFORMANCE FIX: Skip initial population metrics entirely (gen=-1)
         # These metrics are not useful for analysis and cause 2-min startup delay
@@ -1956,7 +2021,12 @@ class GAScheduler:
                 self.metrics.spread.append(0.0)
 
         # Detailed constraint breakdown
-        best = tools.selBest(self.population, 1)[0]
+        # PERFORMANCE: Use cached best individual if provided to avoid re-evaluation
+        if best_individual is None:
+            best = tools.selBest(self.population, 1)[0]
+        else:
+            best = best_individual
+            
         hard_details, soft_details = evaluate_detailed(
             best,
             self.context.courses,
@@ -1964,6 +2034,10 @@ class GAScheduler:
             self.context.groups,
             self.context.rooms,
         )
+        
+        # Cache the detailed breakdown for display (avoid re-evaluation)
+        self._cached_hard_details = hard_details
+        self._cached_soft_details = soft_details
 
         for name in self.hard_constraint_names:
             self.metrics.detailed_hard[name].append(hard_details[name])

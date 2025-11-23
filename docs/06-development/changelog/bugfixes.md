@@ -4,6 +4,61 @@ Chronological record of bug fixes with brief summaries. For detailed technical a
 
 ---
 
+## [2025-11-23] GPU Removed from GA Loop (CPU-Only Fitness Evaluation)
+
+**Severity**: Enhancement (Performance Clarification)  
+**Component**: `ga_scheduler.py` fitness evaluation  
+**Impact**: Simplified architecture, clearer separation of concerns
+
+**Rationale**: GPU acceleration provided minimal benefit for GA fitness evaluation due to:
+1. Only 3/12 constraints were GPU-friendly (instructor/room/group conflicts)
+2. Most constraints require complex Python logic (dicts, strings, sets) - not vectorizable
+3. Small problem size (~200 pop, ~100 genes) - GPU overhead > benefit
+4. CPU multiprocessing already provides excellent parallelization (32 cores)
+
+**Change**: Removed GPU evaluator from GA loop entirely:
+- Deleted GPU batch evaluation code path
+- Removed GPU evaluator initialization
+- Simplified to CPU-only multiprocessing
+
+**GPU Still Used For**: RL training and inference (where it truly excels - neural network computations)
+
+**Performance Impact**: None (GPU was providing <5% speedup at best, often slower due to overhead)
+
+**Files**: `src/core/ga_scheduler.py` (removed GPU import, init, and evaluation branching)
+
+**Verification**: Run `uv run nsga --test` - should show "GA fitness evaluation: CPU multiprocessing only"
+
+---
+
+## [2025-11-23] Constraint Display Confusion (hc total vs individual values)
+
+**Severity**: Medium (Display Issue)  
+**Component**: Console output in `ga_scheduler.py`  
+**Impact**: User confusion - displayed constraint breakdown didn't sum to total
+
+**Problem**: Console showed `hc=27` (total) but individual values like `hc8=3129` that summed to 12,778. User thought constraint calculation was broken.
+
+**Root Cause**: Display code showed **weighted penalties** (`weight × raw_violations`) as individual constraint values, but users interpreted them as raw violation counts. The total `hc` correctly showed the weighted sum, but the breakdown was confusing.
+
+**Example**:
+- Room exclusivity: 1043 raw violations, weight=3.0
+- Old display: `hc8=3129` (user thinks: 3129 violations)
+- New display: `hc8=1043` (shows raw count, contributes 3129 to weighted total)
+
+**Fix**:
+1. Changed display to show **raw violation counts** by dividing weighted values by constraint weights
+2. Added diagnostic check to verify fitness matches detailed breakdown
+3. Updated legend: "individual values = raw violations, hc/sc totals = weighted sums"
+
+**Files**: `src/core/ga_scheduler.py` (display logic, lines ~1006-1038)
+
+**Verification**: Run `uv run nsga --test` - individual constraint values now sum correctly when multiplied by weights.
+
+**Detailed docs**: `docs/06-development/bugfixes/constraint-display-confusion.md`
+
+---
+
 ## [2025-11-22] Windows Multiprocessing Handle Limit
 
 **Severity**: Critical  

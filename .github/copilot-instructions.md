@@ -6,10 +6,10 @@
 **Domain**: University course scheduling (NP-hard combinatorial optimization)  
 **Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)  
 **Metaheuristic**: NSGA-II (Non-dominated Sorting Genetic Algorithm II) with PPO/DQN reinforcement learning hyper-heuristic layer  
-**Dependencies**: DEAP 1.4.1 (NSGA-II toolbox), PyTorch 2.4.1 + CUDA 12.1 (GPU constraint evaluation), Stable-Baselines3 2.3.2 (PPO/DQN agents), Pydantic 2.10.3 (config validation), Rich 13.9.4 (TUI)  
+**Dependencies**: DEAP 1.4.1 (NSGA-II toolbox), PyTorch 2.4.1 + CUDA 12.1 (RL training/inference only), Stable-Baselines3 2.3.2 (PPO/DQN agents), Pydantic 2.10.3 (config validation), Rich 13.9.4 (TUI)  
 **Package Manager**: UV (modern, fast Python package installer)  
 **Architecture**: Modular constraint-based optimization with 10 progressive runtime modes  
-**Performance**: GPU-accelerated fitness evaluation (10-50x speedup), parallel operators (3-5x speedup)
+**Performance**: CPU multiprocessing for GA (32 parallel workers), GPU reserved for RL neural networks
 
 ## ️ Build & Test Commands
 
@@ -96,14 +96,14 @@ uv run check-data
 - **Phase 2.1 – Gymnasium Environment**:  Complete (env, reward, action mapper). See `docs/06-development/implementation-notes/PHASE_2.1_SUMMARY.md`.
 - **Phase 2.2-2.4 – RL Training/Deployment/Integration**:  Code complete (`docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`). Pending execution tasks: curriculum training runs, checkpoint selection, promotion, RL-enabled GA benchmarking, and documentation updates.
 - **Phase 3 – Advanced RL / Evaluation**:  Planned (multi-agent, transfer learning, evaluation suite) per `Todo.md` and `docs/10-ai-suggestions/rlphase2.2-2.4_guide_manual.md`.
-- **GPU Acceleration**:  Deployed (CUDA enabled in configs/base.yaml, see `docs/04-algorithms/nvidia-gpu/`).
+- **GPU Acceleration**:  Removed from GA loop (CPU multiprocessing only). GPU reserved for RL training/inference where it excels (neural networks).
 
 ## Tech Stack
 
 - **Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)
 - **Core Libraries**: 
   - DEAP 1.4.1 (genetic algorithms)
-  - PyTorch 2.4.1 + CUDA 12.1 (GPU acceleration)
+  - PyTorch 2.4.1 + CUDA 12.1 (RL training/inference only - NOT used for GA fitness evaluation)
   - Stable-Baselines3 2.3.2 (RL agents)
   - Pydantic 2.10.3 (validation)
   - Rich 13.9.4 (terminal UI)
@@ -112,7 +112,7 @@ uv run check-data
   - pymoo 0.6.1.3 (optimized multi-objective metrics)
 - **Config**: YAML-based with base.yaml + environment overrides + runtime modes
 - **Package Manager**: UV (uv.lock, pyproject.toml)
-- **Performance**: GPU batch evaluation, parallel operators, concurrent validation, pymoo-accelerated metrics
+- **Performance**: CPU multiprocessing (32 cores), parallel operators, concurrent validation, pymoo-accelerated metrics
 
 ## Repository Structure
 
@@ -242,9 +242,8 @@ uv run train-rl --prod   # 1-2 hours
 - **Experiment Management**: `src/workflows/experiment_manager.py` tracks runs in `manifest.json` with `ExperimentManager` class
 - **Workflow**: `src/workflows/standard_run.py` orchestrates: load → validate → feasibility → GA → decode → report
 - **GA Core**: `src/core/ga_scheduler.py` - GAScheduler class with DEAP toolbox, population init, evolution
-- **GPU Acceleration**: `src/ga/evaluator/gpu_batch_evaluator.py` - GPU batch constraint evaluation (10-50x speedup)
 - **Parallel Processing**: 
-  - Multiprocessing for fitness evaluation (`parallel.use_multiprocessing`)
+  - CPU multiprocessing for fitness evaluation (`parallel.use_multiprocessing`)
   - Parallel crossover/mutation operators (3-5x speedup)
   - Concurrent feasibility checks (3-5x speedup)
 - **Metrics Optimization**: pymoo-accelerated multi-objective metrics (hypervolume, IGD, GD) - 139x speedup (50s → 0.36s per generation)
@@ -253,11 +252,11 @@ uv run train-rl --prod   # 1-2 hours
 ## Active Workstream (November 2025)
 
 1. **Phase 3 Implementation**:  Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
-2. **GPU Acceleration**:  Deployed & Integrated (see `PHASE_3_COMPLETION_SUMMARY.md`)
-   - GPU batch evaluator: 10-50x speedup (`src/ga/evaluator/gpu_batch_evaluator.py`)
-   - Parallel crossover/mutation: 3-5x speedup (multiprocessing)
-   - Parallel feasibility checks: 3-5x speedup (concurrent)
-   - **Combined speedup**: 13-34x (34 hours → 1-2.5 hours)
+2. **GPU Acceleration**:  Removed from GA loop (CPU multiprocessing only)
+   - GPU not beneficial for timetabling constraints (complex Python logic, small problem size)
+   - CPU multiprocessing provides better parallelization (32 cores)
+   - GPU reserved for RL neural network training/inference (where it excels)
+   - **Removed files**: GPU evaluator integration from `ga_scheduler.py`
 3. **Metrics Optimization**:  Complete (pymoo integration)
    - Hypervolume: 139x faster using WFG algorithm (Cython backend)
    - IGD/GD: Vectorized implementations
