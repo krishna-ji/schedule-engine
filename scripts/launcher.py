@@ -366,49 +366,49 @@ def main_interactive():
         (
             "baseline",
             [
-                ("1", "baseline --test", "A1: Pure NSGA-II (~2 min)"),
-                ("2", "baseline --prod", "A1: Pure NSGA-II (full run)"),
-                ("3", "repairs --test", "A2: NSGA + Repairs (~2 min)"),
-                ("4", "repairs --prod", "A2: NSGA + Repairs (full run)"),
+                ("a1", "baseline --test", "A1: Pure NSGA-II (~2 min)"),
+                ("a2", "baseline --prod", "A1: Pure NSGA-II (full run)"),
             ],
         ),
-        # Group B: GA Enhancement Methods
+        # Group B: Enhanced GA Methods
         (
             "ga-enhancement",
             [
-                ("5", "heuristics --test", "B2: NSGA + Heuristics (~3 min)"),
-                ("6", "heuristics --prod", "B2: NSGA + Heuristics (full run)"),
-                ("7", "full --test", "B3: Full GA (~3 min)"),
-                ("8", "full --prod", "B3: Full GA (full run)"),
+                ("b1", "repairs --test", "B1: NSGA + Repairs (~2 min)"),
+                ("b2", "repairs --prod", "B1: NSGA + Repairs (full run)"),
+                ("b3", "heuristics --test", "B2: NSGA + Heuristics (~3 min)"),
+                ("b4", "heuristics --prod", "B2: NSGA + Heuristics (full run)"),
+                ("b5", "full --test", "B3: Full GA (~3 min)"),
+                ("b6", "full --prod", "B3: Full GA (full run)"),
             ],
         ),
         # Group C: Hyper-Heuristic Methods
         (
             "hyper-heuristic",
             [
-                ("9", "roundrobin --test", "C1: Round-Robin (~3 min)"),
-                ("a", "roundrobin --prod", "C1: Round-Robin (full run)"),
-                ("b", "rl --test", "C2: RL-Guided (~3 min)"),
-                ("c", "rl --prod", "C2: RL-Guided (full run)"),
+                ("c1", "roundrobin --test", "C1: Round-Robin (~3 min)"),
+                ("c2", "roundrobin --prod", "C1: Round-Robin (full run)"),
+                ("c3", "rl --test", "C2: RL-Guided (~3 min)"),
+                ("c4", "rl --prod", "C2: RL-Guided (full run)"),
             ],
         ),
         # RL Training
         (
             "rl-training",
             [
-                ("d", "train-rl --test", "RL Training (500 steps, ~2-3 min)"),
-                ("e", "train-rl --med", "RL Training (50K steps, ~30-45 min)"),
-                ("f", "train-rl --prod", "RL Training (100K steps, ~1-2 hrs)"),
+                ("d1", "train-rl --test", "RL Training (500 steps, ~2-3 min)"),
+                ("d2", "train-rl --med", "RL Training (50K steps, ~30-45 min)"),
+                ("d3", "train-rl --prod", "RL Training (100K steps, ~1-2 hrs)"),
             ],
         ),
         # Utilities
         (
             "utilities",
             [
-                ("g", "analyze-results", "Generate analysis & plots"),
-                ("h", "diagnose", "System diagnostics"),
-                ("i", "clean", "Clean output directory"),
-                ("j", "list-experiments", "List experiment history"),
+                ("u1", "analyze-results", "Generate analysis & plots"),
+                ("u2", "diagnose", "System diagnostics"),
+                ("u3", "clean", "Clean output directory"),
+                ("u4", "list-experiments", "List experiment history"),
             ],
         ),
     ]

@@ -33,9 +33,9 @@ uv run analyze-results    # Generate comparison analysis
 | Command | Method | Description |
 |---------|--------|-------------|
 | `uv run baseline --test/prod` | **A1: Pure NSGA-II** | Minimal baseline (no repairs, no heuristics) |
-| `uv run repairs --test/prod` | **A2: NSGA + Repairs** | NSGA-II with repair heuristics |
-| `uv run heuristics --test/prod` | **B1: NSGA + Heuristics** | NSGA-II + 19 heuristic operators |
-| `uv run full --test/prod` | **B2: Full GA** | Complete GA with local search |
+| `uv run repairs --test/prod` | **B1: NSGA + Repairs** | NSGA-II with repair heuristics |
+| `uv run heuristics --test/prod` | **B2: NSGA + Heuristics** | NSGA-II + 19 heuristic operators |
+| `uv run full --test/prod` | **B3: Full GA** | Complete GA with local search |
 | `uv run roundrobin --test/prod` | **C1: Round-Robin** | Fixed heuristic rotation |
 | `uv run rl --test/prod` | **C2: RL-Guided** | Reinforcement learning selection |
 
