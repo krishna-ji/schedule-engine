@@ -23,84 +23,24 @@ console = Console()
 
 
 def create_parser():
-    """Create argument parser with all commands."""
+    """Create minimal argument parser."""
     parser = argparse.ArgumentParser(
-        description="Schedule Engine - Unified CLI Launcher",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Group A: Baseline Methods
-  uv run baseline --test      # A1: Pure NSGA-II baseline (~2 min)
-  uv run baseline --prod      # A1: Pure NSGA-II (2000 gens, ~3-5 hours)
-  uv run repairs --test       # A2: NSGA + Repairs (~2 min) 
-  uv run repairs --prod       # A2: NSGA + Repairs (full run)
-  
-  # Group B: GA Enhancement Methods  
-  uv run heuristics --test    # B2: NSGA + 19 Heuristics (~3 min)
-  uv run heuristics --prod    # B2: NSGA + Heuristics (full run)
-  uv run full --test          # B3: Full GA with local search (~3 min)
-  uv run full --prod          # B3: Full GA (full run)
-  
-  # Group C: Hyper-Heuristic Methods
-  uv run roundrobin --test    # C1: Round-Robin selection (~3 min)
-  uv run roundrobin --prod    # C1: Round-Robin (full run)
-  uv run rl --test            # C2: RL-Guided selection (~3 min)
-  uv run rl --prod            # C2: RL-Guided (full run)
-  
-  # RL Training
-  uv run train-rl --test      # RL Training (500 steps, ~2-3 min)
-  uv run train-rl --med       # RL Training (50K steps, ~30-45 min)  
-  uv run train-rl --prod      # RL Training (100K steps, ~1-2 hours)
-  
-  # Analysis & Utilities
-  uv run analyze-results      # Generate comparison analysis & plots
-  uv run diagnose             # System diagnostics
-  uv run clean                # Clean output directory
-  uv run list-experiments     # List all experiments
-
-Profile Hierarchy (DRY):
-  test: Quick smoke test (inherit base + test overrides)
-  med:  Medium run (inherit test + med overrides)  
-  prod: Full production (inherit med + prod overrides)
-        """,
+        description="Schedule Engine",
+        add_help=False  # No --help drama
     )
 
-    # Profile selection (mutually exclusive)
+    # Profile selection
     profile_group = parser.add_mutually_exclusive_group()
-    profile_group.add_argument(
-        "--test",
-        action="store_const",
-        const="test",
-        dest="profile",
-        help="Test profile (smoke test)",
-    )
-    profile_group.add_argument(
-        "--med",
-        action="store_const",
-        const="med",
-        dest="profile",
-        help="Medium profile",
-    )
-    profile_group.add_argument(
-        "--prod",
-        action="store_const",
-        const="prod",
-        dest="profile",
-        help="Production profile",
-    )
+    profile_group.add_argument("--test", action="store_const", const="test", dest="profile")
+    profile_group.add_argument("--med", action="store_const", const="med", dest="profile")
+    profile_group.add_argument("--prod", action="store_const", const="prod", dest="profile")
 
-    # Additional flags
-    parser.add_argument(
-        "--curriculum", action="store_true", help="Enable curriculum learning (RL only)"
-    )
-    parser.add_argument(
-        "--repair-after-every-generation", 
-        action="store_true", 
-        help="Enable repair after every crossover/mutation (for comparison)"
-    )
-    parser.add_argument("--name", type=str, help="Experiment name")
-    parser.add_argument("--mode", type=str, help="Runtime mode override")
-    parser.add_argument("--config", type=str, help="Custom config file")
+    # Options
+    parser.add_argument("--curriculum", action="store_true")
+    parser.add_argument("--repair-after-every-generation", action="store_true")
+    parser.add_argument("--name")
+    parser.add_argument("--mode")
+    parser.add_argument("--config")
 
     return parser
 
@@ -257,7 +197,7 @@ def main_roundrobin():
     
     from main import main
     
-    sys.argv = ["main.py", "--env", profile, "--mode", "round_robin"]
+    sys.argv = ["main.py", "--env", profile, "--mode", "roundrobin"]
     if args.name:
         sys.argv.extend(["--name", args.name])
     
@@ -276,9 +216,45 @@ def main_rl_guided():
     
     sys.argv = ["main.py", "--env", profile, "--mode", "rl_guided"]
     if args.name:
-        sys.argv.extend(["--name", args.name])
+        sys.argv.extend(["--experiment", args.name])
     
     console.print(f"[green]Running C2: RL-guided hyper-heuristic ({profile} profile)[/green]")
+    sys.exit(main() or 0)
+
+
+def main_heuristic_roundrobin():
+    """B1: All heuristics with fixed round-robin rotation (simple)."""
+    parser = create_parser()
+    args = parser.parse_args()
+    
+    profile = args.profile or "test"
+    
+    from main import main
+    
+    sys.argv = ["main.py", "--env", profile, "--mode", "roundrobin"]
+    if args.name:
+        sys.argv.extend(["--experiment", args.name])
+    
+    console.print(f"[green]Running B1: Heuristic Round-Robin ({profile} profile)[/green]")
+    console.print("[cyan]Strategy: Fixed rotation through all 22 heuristics[/cyan]")
+    sys.exit(main() or 0)
+
+
+def main_heuristic_adaptive():
+    """B2: All heuristics with intelligent adaptive selection (complex)."""
+    parser = create_parser()
+    args = parser.parse_args()
+    
+    profile = args.profile or "test"
+    
+    from main import main
+    
+    sys.argv = ["main.py", "--env", profile, "--mode", "full"]
+    if args.name:
+        sys.argv.extend(["--experiment", args.name])
+    
+    console.print(f"[green]Running B2: Heuristic Adaptive Selection ({profile} profile)[/green]")
+    console.print("[cyan]Strategy: Learning-based heuristic selection with performance tracking[/cyan]")
     sys.exit(main() or 0)
 
 
@@ -362,43 +338,32 @@ def main_interactive():
     import subprocess
 
     commands = [
-        # Group A: Baseline Methods
+        # Group A: Baseline (Pure NSGA-II only)
         (
             "baseline",
             [
-                ("a1", "baseline --test", "A1: Pure NSGA-II (~2 min)"),
-                ("a2", "baseline --prod", "A1: Pure NSGA-II (full run)"),
+                ("a1", "baseline --test", "A: Pure NSGA-II baseline (~2 min)"),
+                ("a2", "baseline --prod", "A: Pure NSGA-II (2000 gens, ~3-5 hrs)"),
             ],
         ),
-        # Group B: Enhanced GA Methods
+        # Group B: Heuristic Methods
         (
-            "ga-enhancement",
+            "heuristic",
             [
-                ("b1", "repairs --test", "B1: NSGA + Repairs (~2 min)"),
-                ("b2", "repairs --prod", "B1: NSGA + Repairs (full run)"),
-                ("b3", "heuristics --test", "B2: NSGA + Heuristics (~3 min)"),
-                ("b4", "heuristics --prod", "B2: NSGA + Heuristics (full run)"),
-                ("b5", "full --test", "B3: Full GA (~3 min)"),
-                ("b6", "full --prod", "B3: Full GA (full run)"),
+                ("b1", "heuristic-roundrobin --test", "B1: Fixed rotation (~3 min)"),
+                ("b2", "heuristic-roundrobin --prod", "B1: Fixed rotation (full run, ~3-5 hrs)"),
+                ("b3", "heuristic-adaptive --test", "B2: Intelligent selection (~3 min)"),
+                ("b4", "heuristic-adaptive --prod", "B2: Intelligent selection (full run, ~3-5 hrs)"),
             ],
         ),
-        # Group C: Hyper-Heuristic Methods
+        # Group C: RL-Guided Methods
         (
-            "hyper-heuristic",
+            "rl-guided",
             [
-                ("c1", "roundrobin --test", "C1: Round-Robin (~3 min)"),
-                ("c2", "roundrobin --prod", "C1: Round-Robin (full run)"),
-                ("c3", "rl --test", "C2: RL-Guided (~3 min)"),
-                ("c4", "rl --prod", "C2: RL-Guided (full run)"),
-            ],
-        ),
-        # RL Training
-        (
-            "rl-training",
-            [
-                ("d1", "train-rl --test", "RL Training (500 steps, ~2-3 min)"),
-                ("d2", "train-rl --med", "RL Training (50K steps, ~30-45 min)"),
-                ("d3", "train-rl --prod", "RL Training (100K steps, ~1-2 hrs)"),
+                ("c1", "rl --test", "C: RL-guided selection (~3 min)"),
+                ("c2", "rl --prod", "C: RL-guided selection (full run, ~3-5 hrs)"),
+                ("c3", "train-rl --test", "Train RL agent (10K steps, ~5 min)"),
+                ("c4", "train-rl --prod", "Train RL agent (100K steps, ~1-2 hrs)"),
             ],
         ),
         # Utilities
@@ -422,15 +387,13 @@ def main_interactive():
         for category, cmds in commands:
             # Category header
             if category == "baseline":
-                console.print("[bold magenta]Group A: Baseline Methods[/bold magenta]")
-            elif category == "ga-enhancement":
-                console.print("\n[bold magenta]Group B: GA Enhancement Methods[/bold magenta]")
-            elif category == "hyper-heuristic":
-                console.print("\n[bold magenta]Group C: Hyper-Heuristic Methods[/bold magenta]")
-            elif category == "rl-training":
-                console.print("\n[bold magenta]RL Training[/bold magenta]")
+                console.print("[bold magenta]A: BASELINE (Pure NSGA-II)[/bold magenta]")
+            elif category == "heuristic":
+                console.print("\n[bold magenta]B: HEURISTIC METHODS[/bold magenta]")
+            elif category == "rl-guided":
+                console.print("\n[bold magenta]C: RL-GUIDED METHODS[/bold magenta]")
             elif category == "utilities":
-                console.print("\n[bold magenta]Utilities[/bold magenta]")
+                console.print("\n[bold magenta]UTILITIES[/bold magenta]")
 
             # Commands in category
             for num, cmd, desc in cmds:

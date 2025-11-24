@@ -29,6 +29,7 @@ def test_heuristic_registry():
         get_improvement_heuristics,
         get_diversity_heuristics,
         get_meta_heuristics,
+        get_repair_heuristics,
         list_all_heuristics,
     )
 
@@ -46,6 +47,7 @@ def test_heuristic_registry():
         "Improvement": get_improvement_heuristics(),
         "Diversity": get_diversity_heuristics(),
         "Meta": get_meta_heuristics(),
+        "Repair": get_repair_heuristics(),
     }
 
     for category_name, heuristics in categories.items():
@@ -60,6 +62,7 @@ def test_heuristic_registry():
         "Improvement": 3,
         "Diversity": 4,
         "Meta": 4,
+        "Repair": 3,
     }
 
     console.print("\n[bold]Validation:[/bold]")

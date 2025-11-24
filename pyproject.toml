@@ -69,46 +69,28 @@ launcher = "scripts.launcher:main_interactive"
 run = "scripts.launcher:main_interactive"
 
 # ==================
-# MAIN COMMANDS (0-99+): GA & RL Experiments
+# A→B→C THESIS EXPERIMENTS (Clean Structure)
 # ==================
 
-# Command 0: Pure NSGA-II Baseline (Mode 1)
-nsga = "scripts.launcher:main_nsga"                   # uv run nsga --test/med/prod
-baseline = "scripts.launcher:main_baseline"           # A1: Pure NSGA-II baseline
+# Group A: Baseline (Pure NSGA-II only)
+baseline = "scripts.launcher:main_baseline"           # A: Pure NSGA-II
 
-# Commands 1-4: GA Enhancement Methods (Group B)
-repairs = "scripts.launcher:main_repairs"             # A2: NSGA-II + repairs
-heuristics = "scripts.launcher:main_heuristics"       # B2: NSGA-II + heuristics  
-full = "scripts.launcher:main_full"                   # B3: Full GA (best non-RL)
+# Group B: Heuristic Methods
+heuristic-roundrobin = "scripts.launcher:main_heuristic_roundrobin"  # B1: Fixed heuristic rotation
+heuristic-adaptive = "scripts.launcher:main_heuristic_adaptive"      # B2: Intelligent heuristic selection
 
-# Commands 5-6: Hyper-Heuristic Methods (Group C)
-roundrobin = "scripts.launcher:main_roundrobin"       # C1: Round-robin selection
-rl = "scripts.launcher:main_rl_guided"                # C2: RL-guided selection
-
-# Command 5: RL Training
-train-rl = "scripts.launcher:main_train_rl"           # uv run train-rl --test/med/prod
-
-# Legacy entry points (backward compatibility)
-test = "main:main_test"                               # uv run test
-prod = "main:main_prod"                               # uv run prod
-test-nsga = "main:main_baseline_test"                 
-prod-nsga = "main:main_baseline_prod"                 
-train-rl-legacy = "src.rl.training.train_script:main" # Direct RL script
+# Group C: RL-Guided Methods
+rl = "scripts.launcher:main_rl_guided"                # C: RL-guided heuristic selection
+train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
 
 # ==================
-# HELPER COMMANDS (a-z): Utilities & Diagnostics
+# HELPER COMMANDS: Utilities & Analysis
 # ==================
 
-analyze-results = "scripts.analysis.compare_experiments:main"  # uv run analyze-results
-clean = "scripts.launcher:main_clean"                 # uv run clean  
-diagnose = "scripts.launcher:main_diagnose"           # uv run diagnose
-list-experiments = "scripts.launcher:main_list"       # uv run list-experiments
-migrate = "scripts.utilities.migrate_to_output:main"  # uv run migrate
-test-gpu = "scripts.launcher:main_test_gpu"           # uv run test-gpu
-
-# Legacy utility scripts (use launcher commands above instead)
-verify-config = "scripts.cli:verify_config"
-check-data = "scripts.cli:check_data"
+analyze-results = "scripts.analysis.compare_experiments:main"  # Generate comparison plots
+clean = "scripts.launcher:main_clean"                 # Clean output directory
+diagnose = "scripts.launcher:main_diagnose"           # System diagnostics
+list-experiments = "scripts.launcher:main_list"       # List experiment history
 
 [[tool.uv.index]]
 name = "pytorch-cu121"

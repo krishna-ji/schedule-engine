@@ -1,12 +1,13 @@
 """
 Heuristic Operator Registry
 
-Decorator-based registration system for heuristic operators across five categories:
+Decorator-based registration system for heuristic operators across six categories:
 1. Construction: Build schedules greedily
 2. Perturbation: Shake solutions
 3. Improvement: Local search moves
 4. Diversity: Population diversity maintenance
 5. Meta: High-level search strategies
+6. Repair: Fix constraint violations
 
 Architecture inspired by src/constraints/registry.py and src/ga/operators/repair_wrappers.py
 for consistency across the codebase.
@@ -38,6 +39,7 @@ class HeuristicCategory(str, Enum):
     IMPROVEMENT = "improvement"
     DIVERSITY = "diversity"
     META = "meta"
+    REPAIR = "repair"
 
 
 @dataclass
@@ -75,6 +77,7 @@ _PERTURBATION_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 _IMPROVEMENT_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 _DIVERSITY_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 _META_HEURISTICS: Dict[str, HeuristicMetadata] = {}
+_REPAIR_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 
 
 def _get_registry(category: HeuristicCategory) -> Dict[str, HeuristicMetadata]:
@@ -85,6 +88,7 @@ def _get_registry(category: HeuristicCategory) -> Dict[str, HeuristicMetadata]:
         HeuristicCategory.IMPROVEMENT: _IMPROVEMENT_HEURISTICS,
         HeuristicCategory.DIVERSITY: _DIVERSITY_HEURISTICS,
         HeuristicCategory.META: _META_HEURISTICS,
+        HeuristicCategory.REPAIR: _REPAIR_HEURISTICS,
     }
     return registries[category]
 
@@ -145,6 +149,7 @@ perturbation_heuristic = _heuristic_decorator(HeuristicCategory.PERTURBATION)
 improvement_heuristic = _heuristic_decorator(HeuristicCategory.IMPROVEMENT)
 diversity_heuristic = _heuristic_decorator(HeuristicCategory.DIVERSITY)
 meta_heuristic = _heuristic_decorator(HeuristicCategory.META)
+repair_heuristic = _heuristic_decorator(HeuristicCategory.REPAIR)
 
 
 # ================
@@ -191,6 +196,11 @@ def get_diversity_heuristics() -> Dict[str, HeuristicMetadata]:
 def get_meta_heuristics() -> Dict[str, HeuristicMetadata]:
     """Get all meta-heuristics."""
     return get_heuristics_by_category(HeuristicCategory.META)
+
+
+def get_repair_heuristics() -> Dict[str, HeuristicMetadata]:
+    """Get all repair heuristics."""
+    return get_heuristics_by_category(HeuristicCategory.REPAIR)
 
 
 def get_heuristic_by_name(name: str) -> Optional[HeuristicMetadata]:

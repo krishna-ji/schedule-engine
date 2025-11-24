@@ -541,12 +541,13 @@ class HeuristicsConfig(BaseModel):
     """
     Heuristic Toolbox Configuration (Phase 1.5)
 
-    Five categories of heuristic operators:
+    Six categories of heuristic operators:
     - construction: Build schedules greedily from scratch
     - perturbation: Shake solutions to escape local optima
     - improvement: Local search moves for refinement
     - diversity: Maintain population diversity
     - meta: High-level search strategies
+    - repair: Fix constraint violations
 
     Each category contains multiple heuristics with individual killswitches.
     Heuristics are integrated via decorator-based registry (like constraints).
@@ -571,6 +572,10 @@ class HeuristicsConfig(BaseModel):
     meta: Dict[str, Any] = Field(
         default_factory=dict,
         description="Meta-heuristics for high-level search strategies",
+    )
+    repair: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Repair heuristics for constraint violation fixes",
     )
 
 
