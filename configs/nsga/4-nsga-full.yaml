@@ -83,7 +83,7 @@ enhancements:
     availability_weight: 0.8
     overlap_weight: 0.15
     other_weight: 0.05
-  greedy_initialization_percent: 0.25
+  greedy_initialization_percent: 0.0 # DISABLED: Construction heuristics create different gene structure (split vs combined groups)
   population_restart:
     enabled: true
     trigger_stagnation_gens: 50
