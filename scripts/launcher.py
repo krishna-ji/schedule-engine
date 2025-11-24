@@ -25,15 +25,20 @@ console = Console()
 def create_parser():
     """Create minimal argument parser."""
     parser = argparse.ArgumentParser(
-        description="Schedule Engine",
-        add_help=False  # No --help drama
+        description="Schedule Engine", add_help=False  # No --help drama
     )
 
     # Profile selection
     profile_group = parser.add_mutually_exclusive_group()
-    profile_group.add_argument("--test", action="store_const", const="test", dest="profile")
-    profile_group.add_argument("--med", action="store_const", const="med", dest="profile")
-    profile_group.add_argument("--prod", action="store_const", const="prod", dest="profile")
+    profile_group.add_argument(
+        "--test", action="store_const", const="test", dest="profile"
+    )
+    profile_group.add_argument(
+        "--med", action="store_const", const="med", dest="profile"
+    )
+    profile_group.add_argument(
+        "--prod", action="store_const", const="prod", dest="profile"
+    )
 
     # Options
     parser.add_argument("--curriculum", action="store_true")
@@ -91,37 +96,37 @@ def main_baseline():
     """A1: Pure NSGA-II baseline (no repairs, no heuristics)."""
     parser = create_parser()
     args = parser.parse_args()
-    
+
     profile = args.profile or "test"
-    
+
     from main import main
-    
+
     sys.argv = ["main.py", "--env", profile, "--mode", "baseline"]
     if args.name:
-        sys.argv.extend(["--name", args.name])
-    
-    console.print(f"[green]Running A1: Pure NSGA-II baseline ({profile} profile)[/green]")
+        sys.argv.extend(["--experiment", args.name])
+
+    console.print(
+        f"[green]Running A1: Pure NSGA-II baseline ({profile} profile)[/green]"
+    )
     sys.exit(main() or 0)
-
-
-
-
 
 
 def main_rl_guided():
     """C2: RL-guided hyper-heuristic."""
     parser = create_parser()
     args = parser.parse_args()
-    
+
     profile = args.profile or "test"
-    
+
     from main import main
-    
+
     sys.argv = ["main.py", "--env", profile, "--mode", "rl_guided"]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
-    
-    console.print(f"[green]Running C2: RL-guided hyper-heuristic ({profile} profile)[/green]")
+
+    console.print(
+        f"[green]Running C2: RL-guided hyper-heuristic ({profile} profile)[/green]"
+    )
     sys.exit(main() or 0)
 
 
@@ -129,17 +134,25 @@ def main_heuristic_roundrobin():
     """B1: Heuristic round-robin (fixed rotation through all 22 heuristics)."""
     parser = create_parser()
     args = parser.parse_args()
-    
+
     profile = args.profile or "test"
-    
+
     from main import main
-    
+
     # Use --config to load mode-specific config file (main.py doesn't support --mode roundrobin)
-    sys.argv = ["main.py", "--config", "configs/hybrid/6-roundrobin.yaml", "--env", profile]
+    sys.argv = [
+        "main.py",
+        "--config",
+        "configs/hybrid/6-roundrobin.yaml",
+        "--env",
+        profile,
+    ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
-    
-    console.print(f"[green]Running B1: Heuristic Round-Robin ({profile} profile)[/green]")
+
+    console.print(
+        f"[green]Running B1: Heuristic Round-Robin ({profile} profile)[/green]"
+    )
     console.print("[cyan]Strategy: Fixed rotation through all 22 heuristics[/cyan]")
     sys.exit(main() or 0)
 
@@ -148,17 +161,21 @@ def main_heuristic_adaptive():
     """B2: All heuristics with intelligent adaptive selection (complex)."""
     parser = create_parser()
     args = parser.parse_args()
-    
+
     profile = args.profile or "test"
-    
+
     from main import main
-    
+
     sys.argv = ["main.py", "--env", profile, "--mode", "full"]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
-    
-    console.print(f"[green]Running B2: Heuristic Adaptive Selection ({profile} profile)[/green]")
-    console.print("[cyan]Strategy: Learning-based heuristic selection with performance tracking[/cyan]")
+
+    console.print(
+        f"[green]Running B2: Heuristic Adaptive Selection ({profile} profile)[/green]"
+    )
+    console.print(
+        "[cyan]Strategy: Learning-based heuristic selection with performance tracking[/cyan]"
+    )
     sys.exit(main() or 0)
 
 
@@ -187,7 +204,9 @@ def main_clean():
 
     output_dir = Path("output")
     if output_dir.exists():
-        console.print(f"[yellow]Cleaning consolidated structure: {output_dir}...[/yellow]")
+        console.print(
+            f"[yellow]Cleaning consolidated structure: {output_dir}...[/yellow]"
+        )
         for item in output_dir.iterdir():
             if item.name != "experiment_manifest.json":
                 if item.is_dir():
@@ -255,9 +274,21 @@ def main_interactive():
             "heuristic",
             [
                 ("b1", "heuristic-roundrobin --test", "B1: Fixed rotation (~3 min)"),
-                ("b2", "heuristic-roundrobin --prod", "B1: Fixed rotation (full run, ~3-5 hrs)"),
-                ("b3", "heuristic-adaptive --test", "B2: Intelligent selection (~3 min)"),
-                ("b4", "heuristic-adaptive --prod", "B2: Intelligent selection (full run, ~3-5 hrs)"),
+                (
+                    "b2",
+                    "heuristic-roundrobin --prod",
+                    "B1: Fixed rotation (full run, ~3-5 hrs)",
+                ),
+                (
+                    "b3",
+                    "heuristic-adaptive --test",
+                    "B2: Intelligent selection (~3 min)",
+                ),
+                (
+                    "b4",
+                    "heuristic-adaptive --prod",
+                    "B2: Intelligent selection (full run, ~3-5 hrs)",
+                ),
             ],
         ),
         # Group C: RL-Guided Methods

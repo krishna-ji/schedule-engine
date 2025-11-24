@@ -35,7 +35,7 @@ class GALogger:
         self.start_time = None
         self.end_time = None
 
-        # Ensure output directory exists
+        # Ensure output directory exists (os.makedirs creates parents by default)
         os.makedirs(output_dir, exist_ok=True)
 
         # Initialize log file with header
