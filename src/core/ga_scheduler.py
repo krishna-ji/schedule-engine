@@ -398,6 +398,11 @@ class GAScheduler:
         self.rl_state_encoder = None
         self.rl_action_mapper = None
 
+        # HEURISTIC TRACKING: Round-robin tracking and detailed statistics
+        from src.ga.heuristic_tracker import HeuristicTracker
+        self.heuristic_tracker = HeuristicTracker()
+        self._setup_heuristic_rotation()
+
         # PERFORMANCE: Parallel heuristic executor (10-16x speedup)
         try:
             self.parallel_executor = get_parallel_executor()
@@ -699,6 +704,139 @@ class GAScheduler:
 
         except Exception as e:
             logger.warning(f"RL action application failed at gen {gen}: {e}")
+
+    def _setup_heuristic_rotation(self) -> None:
+        """
+        Setup round-robin heuristic rotation from enabled heuristics.
+        
+        Builds ordered list based on priority and category.
+        """
+        from src.heuristics import get_enabled_heuristics
+        
+        # Get all enabled heuristics sorted by priority
+        enabled = get_enabled_heuristics()
+        
+        if not enabled:
+            console.print("[dim]   No heuristics enabled for round-robin[/dim]")
+            return
+        
+        # Set rotation order in tracker
+        heuristic_names = list(enabled.keys())
+        self.heuristic_tracker.set_heuristic_order(heuristic_names)
+        
+        console.print(f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics enabled[/dim]")
+        
+    def _apply_round_robin_heuristics(self, gen: int) -> None:
+        """
+        Apply heuristics in round-robin order.
+        
+        Each generation cycles to the next heuristic in the priority-ordered list.
+        Tracks application results for detailed analysis.
+        
+        Args:
+            gen: Current generation number
+        """
+        from src.heuristics import get_enabled_heuristics
+        from deap import tools
+        import time
+        
+        # Check if any heuristics are enabled
+        if not self.heuristic_tracker.heuristic_order:
+            return
+        
+        # Get next heuristic in rotation
+        heuristic_name = self.heuristic_tracker.get_next_heuristic()
+        
+        # Get heuristic metadata
+        enabled_heuristics = get_enabled_heuristics()
+        heuristic_meta = enabled_heuristics.get(heuristic_name)
+        
+        if not heuristic_meta:
+            logger.warning(f"Heuristic '{heuristic_name}' not found in enabled heuristics")
+            return
+        
+        # Skip construction heuristics (they generate NEW individuals, not modify existing)
+        if heuristic_meta.category.value == 'construction':
+            return
+        
+        # Skip repair heuristics (handled by separate repair system)
+        if heuristic_meta.category.value == 'repair':
+            return
+        
+        # Select target individual(s)
+        if heuristic_meta.requires_population:
+            # Diversity/selection heuristics need full population
+            target_individuals = tools.selBest(self.population, min(4, len(self.population)))
+        else:
+            # Most heuristics work on single individual
+            target_individuals = tools.selBest(self.population, 1)
+        
+        # Apply heuristic to each target
+        for ind_idx, individual in enumerate(target_individuals):
+            # Record fitness before
+            fitness_before = individual.fitness.values
+            
+            # Apply heuristic
+            start_time = time.time()
+            try:
+                if heuristic_meta.requires_population:
+                    # Pass population for diversity heuristics
+                    result = heuristic_meta.function(
+                        individual=list(individual),
+                        population=[list(ind) for ind in self.population],
+                        context=self.context,
+                    )
+                    
+                    # Update individual if modified
+                    if heuristic_meta.modifies_individual and isinstance(result, list):
+                        individual[:] = result
+                else:
+                    # Standard heuristic (individual + context)
+                    result = heuristic_meta.function(
+                        individual=list(individual),
+                        context=self.context,
+                    )
+                    
+                    # Update individual if modified
+                    if heuristic_meta.modifies_individual:
+                        if isinstance(result, list):
+                            individual[:] = result
+                        elif isinstance(result, int):
+                            # Modification count returned, individual modified in-place
+                            pass
+                
+                # Re-evaluate if individual was modified
+                if heuristic_meta.modifies_individual:
+                    fitness_after = self.toolbox.evaluate(individual)
+                    individual.fitness.values = fitness_after
+                else:
+                    fitness_after = individual.fitness.values
+                
+                execution_time = time.time() - start_time
+                
+                # Record application in tracker
+                self.heuristic_tracker.record_application(
+                    generation=gen,
+                    heuristic_name=heuristic_name,
+                    category=heuristic_meta.category.value,
+                    fitness_before=fitness_before,
+                    fitness_after=fitness_after,
+                    execution_time=execution_time,
+                    individual_id=self.population.index(individual),
+                )
+                
+            except Exception as e:
+                logger.debug(f"Heuristic '{heuristic_name}' failed at gen {gen}: {e}")
+                # Record failed application (don't spam console)
+                self.heuristic_tracker.record_application(
+                    generation=gen,
+                    heuristic_name=heuristic_name,
+                    category=heuristic_meta.category.value,
+                    fitness_before=fitness_before,
+                    fitness_after=fitness_before,  # No change
+                    execution_time=0.0,
+                    individual_id=0,
+                )
 
     def initialize_population(self):
         """Create and evaluate initial population."""
@@ -1657,6 +1795,12 @@ class GAScheduler:
             self._apply_rl_operators(gen)
             profiler.end_phase()
             event_tracker.add("rl_operators_applied")
+        # ROUND-ROBIN: Apply heuristics in fixed rotation (when RL disabled)
+        elif len(self.heuristic_tracker.heuristic_order) > 0:
+            profiler.start_phase("roundrobin_heuristics")
+            self._apply_round_robin_heuristics(gen)
+            profiler.end_phase()
+            event_tracker.add("roundrobin_heuristic_applied")
 
         # Memetic mode: Apply intensive local search to elite individuals
         if repair_config.get("enabled", False) and repair_config.get(

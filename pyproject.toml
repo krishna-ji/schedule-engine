@@ -91,6 +91,7 @@ analyze-results = "scripts.analysis.compare_experiments:main"  # Generate compar
 clean = "scripts.launcher:main_clean"                 # Clean output directory
 diagnose = "scripts.launcher:main_diagnose"           # System diagnostics
 list-experiments = "scripts.launcher:main_list"       # List experiment history
+organize-output = "scripts.utilities.organize_output:main"  # Reorganize output structure
 
 [[tool.uv.index]]
 name = "pytorch-cu121"

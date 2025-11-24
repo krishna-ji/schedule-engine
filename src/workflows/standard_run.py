@@ -112,8 +112,29 @@ def run_standard_workflow(
 
     # Create output directory
     if output_dir is None:
+        # Fallback: create organized structure even without explicit runtime mode
+        from pathlib import Path
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = os.path.join("output", f"evaluation_{timestamp}")
+        # Try to infer mode from config
+        try:
+            from src.config.runtime_mode import RuntimeMode
+            runtime_mode = RuntimeMode.from_config(config)
+            mode_value = runtime_mode.value
+            mode_number, mode_name = mode_value.split("-", 1)
+            
+            # Map to category
+            category_map = {
+                "1": "baseline", "2": "nsga", "3": "nsga", "4": "nsga",
+                "5": "rl", "6": "hybrid", "7": "rl", "8": "hybrid",
+                "9": "rl", "10": "rl"
+            }
+            category = category_map.get(mode_number, "other")
+            output_dir = Path("output") / category / mode_name / f"evaluation_{timestamp}_auto"
+        except Exception:
+            # Ultimate fallback: put in "other" category
+            output_dir = Path("output") / "other" / f"evaluation_{timestamp}_auto"
+        
+        output_dir = str(output_dir)
     else:
         # Ensure directory exists and make sure it's normalized
         output_dir = os.path.normpath(output_dir)
@@ -488,6 +509,7 @@ def run_standard_workflow(
             qts=qts,
             output_dir=output_dir,
             course_map=context.courses,
+            heuristic_tracker=getattr(scheduler, 'heuristic_tracker', None),
         )
         progress.update(task, completed=1)
 

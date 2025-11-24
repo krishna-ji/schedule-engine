@@ -42,6 +42,7 @@ from src.exporter.plot_convergence import (
     plot_constraint_satisfaction_evolution,
 )
 from src.lns.lns_operator import get_lns_stats
+from src.ga.heuristic_tracker import HeuristicTracker
 
 
 def generate_reports(
@@ -51,6 +52,7 @@ def generate_reports(
     qts: QuantumTimeSystem,
     output_dir: str,
     course_map: Dict[tuple, Course] = None,
+    heuristic_tracker: HeuristicTracker = None,
 ):
     """
     Generate all output artifacts: plots, JSON, PDFs, violation reports.
@@ -101,29 +103,35 @@ def generate_reports(
                         if lns_stats.total_attempts > 0
                         else 0.0
                     ),
-                    "heuristic_attempts": lns_stats.heuristic_attempts,
-                    "heuristic_success": lns_stats.heuristic_success,
-                    "heuristic_success_rate_percent": (
-                        lns_stats.heuristic_success / lns_stats.heuristic_attempts * 100
-                        if lns_stats.heuristic_attempts > 0
+                    "igls_attempts": lns_stats.igls_attempts,
+                    "igls_success": lns_stats.igls_success,
+                    "igls_success_rate_percent": (
+                        lns_stats.igls_success / lns_stats.igls_attempts * 100
+                        if lns_stats.igls_attempts > 0
                         else 0.0
                     ),
-                    "cp_attempts": lns_stats.cp_attempts,
-                    "cp_success": lns_stats.cp_success,
-                    "cp_success_rate_percent": (
-                        lns_stats.cp_success / lns_stats.cp_attempts * 100
-                        if lns_stats.cp_attempts > 0
-                        else 0.0
-                    ),
-                    "pre_check_skips": lns_stats.pre_check_skips,
                     "avg_subproblem_size": lns_stats.avg_subproblem_size,
                     "total_repair_time_seconds": lns_stats.total_repair_time,
+                    "total_conflicts_detected": lns_stats.total_conflicts_detected,
+                    "total_conflicts_repaired": lns_stats.total_conflicts_repaired,
                 },
                 f,
                 indent=2,
             )
         print("      [!ok] lns_repair_stats.json")
         print(f"      [!info] LNS Stats: {lns_stats}")
+
+    # Export heuristic tracking statistics and plots if available
+    if heuristic_tracker and len(heuristic_tracker.applications) > 0:
+        print("  [+] Generating heuristic tracking reports...")
+        heuristic_tracker.export_json(output_dir)
+        heuristic_tracker.generate_plots(output_dir)
+        
+        # Print summary
+        summary = heuristic_tracker.get_summary()
+        print(f"      [!info] Tracked {summary['total_applications']} heuristic applications")
+        print(f"      [!info] Success rate: {summary['success_rate_percent']:.1f}%")
+        print(f"      [!info] Best heuristic: {summary['best_heuristic']} (improvement: {summary['best_heuristic_improvement']:.2f})")
 
     # Generate violation report - sequential (depends on export)
     if course_map:

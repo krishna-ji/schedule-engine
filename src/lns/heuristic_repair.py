@@ -231,7 +231,8 @@ def _find_first_feasible(
                     instructor_id=session.instructor_id,
                     group_ids=session.group_ids,
                     room_id=room_id,
-                    quanta=span,
+                    start_quanta=span[0],
+                    num_quanta=len(span),
                 )
 
     return None
@@ -375,7 +376,8 @@ def _random_assignment(
                     instructor_id=session.instructor_id,
                     group_ids=session.group_ids,
                     room_id=random.choice(suitable),
-                    quanta=span,
+                    start_quanta=start_q,
+                    num_quanta=session_duration,
                 )
 
     return None

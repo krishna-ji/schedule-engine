@@ -234,6 +234,83 @@ class RuntimeMode(str, Enum):
         )
 
     @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> "RuntimeMode":
+        """
+        Infer runtime mode from loaded config dictionary.
+
+        Args:
+            config: Loaded configuration dictionary or Pydantic Config model
+
+        Returns:
+            RuntimeMode enum value
+
+        Raises:
+            ValueError: If mode cannot be determined from config
+        """
+        # Convert Pydantic model to dict if needed
+        if hasattr(config, 'model_dump'):
+            config = config.model_dump()
+        elif not isinstance(config, dict):
+            raise ValueError(f"Config must be dict or Pydantic model, got {type(config)}")
+        
+        # Try to extract mode from metadata first
+        if "metadata" in config and "runtime_mode" in config["metadata"]:
+            mode_str = config["metadata"]["runtime_mode"]
+            return cls.from_string(mode_str)
+
+        # Otherwise infer from config features
+        rl_enabled = config.get("rl", {}).get("enabled", False)
+        repair_enabled = config.get("repair", {}).get("enabled") is not False  # True or None = enabled
+        adaptive_probs = config.get("ga", {}).get("use_adaptive_probabilities", False)
+        enhancements = config.get("enhancements", {}).get("master_enabled", False)
+        
+        # Check if heuristics are enabled (any category with enabled heuristics)
+        heuristics_config = config.get("heuristics", {})
+        heuristics_enabled = False
+        if heuristics_config:
+            for category in ["construction", "perturbation", "improvement", "diversity", "meta"]:
+                if category in heuristics_config:
+                    for heuristic_name, heuristic_cfg in heuristics_config[category].items():
+                        if isinstance(heuristic_cfg, dict) and heuristic_cfg.get("enabled", False):
+                            heuristics_enabled = True
+                            break
+                if heuristics_enabled:
+                    break
+
+        # Decision tree for mode inference
+        if rl_enabled:
+            # RL modes (5, 7, 9, 10)
+            rl_mode = config.get("rl", {}).get("mode", "inference")
+            if rl_mode == "hierarchical":
+                return RuntimeMode.RL_HIERARCHICAL
+            elif rl_mode == "multiagent":
+                return RuntimeMode.RL_MULTIAGENT
+            elif config.get("rl", {}).get("use_specialists", False):
+                return RuntimeMode.RL_SPECIALISTS
+            else:
+                return RuntimeMode.RL_GUIDED
+        elif enhancements and repair_enabled and heuristics_enabled and not rl_enabled:
+            # Full GA with heuristics enabled (modes 3, 4, 6, 8)
+            if config.get("enhancements", {}).get("archive_diversity", {}).get("enabled", False):
+                return RuntimeMode.ARCHIVE_DIVERSITY  # Mode 8
+            elif not adaptive_probs:
+                return RuntimeMode.ROUND_ROBIN  # Mode 6: Fixed round-robin
+            else:
+                return RuntimeMode.NSGA_FULL  # Mode 4: Full with local search
+        elif repair_enabled and heuristics_enabled and not enhancements:
+            # Heuristics without enhancements
+            return RuntimeMode.NSGA_HEURISTICS  # Mode 3
+        elif repair_enabled and not heuristics_enabled and not enhancements:
+            # Repair only, no heuristics
+            return RuntimeMode.NSGA_REPAIRS  # Mode 2
+        elif not repair_enabled and not heuristics_enabled and not enhancements:
+            # Pure baseline
+            return RuntimeMode.BASELINE  # Mode 1
+        else:
+            # Fallback: if uncertain, default to baseline
+            return RuntimeMode.BASELINE
+
+    @classmethod
     def list_modes(cls) -> str:
         """
         Get formatted list of all runtime modes.

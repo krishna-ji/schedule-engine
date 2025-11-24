@@ -169,18 +169,18 @@ def main():
         return 1
 
     # Create output directory with runtime mode structure
-    if runtime_mode:
-        output_dir = manager.create_output_dir(runtime_mode, exp_name)
-        console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
-        console.print()
-    else:
-        output_dir = (
-            None
-            if exp_name is None
-            else f"output/evaluation_{{}}_{exp_name}".format(
-                datetime.now().strftime("%Y%m%d_%H%M%S")
-            )
-        )
+    # ALWAYS use ExperimentManager for organized structure
+    if not runtime_mode:
+        # Infer runtime mode from config
+        try:
+            runtime_mode = RuntimeMode.from_config(config)
+        except (ValueError, AttributeError):
+            # Fallback to baseline if mode cannot be determined
+            runtime_mode = RuntimeMode.BASELINE
+    
+    output_dir = manager.create_output_dir(runtime_mode, exp_name)
+    console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
+    console.print()
 
     # Register experiment run
     experiment_run = None
