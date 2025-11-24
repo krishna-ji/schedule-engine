@@ -3,10 +3,12 @@
 # ================
 # Full GA with round-robin heuristic selection (no RL).
 # Cycles through all enabled heuristics in fixed order.
+# 
+# NOTE: ngen and pop_size inherit from environment config (test/prod)
+# Test: 30 gens, 10 pop | Prod: 2000 gens, 200 pop
 
 ga:
-  ngen: 2000
-  pop_size: 200
+  # ngen and pop_size inherit from environment (test.yaml / prod.yaml)
   cxpb: 0.75
   mutpb: 0.25
   elite_preservation: true
@@ -83,7 +85,7 @@ enhancements:
     availability_weight: 0.8
     overlap_weight: 0.15
     other_weight: 0.05
-  greedy_initialization_percent: 0.25
+  greedy_initialization_percent: 0.0  # DISABLED: Construction heuristics create different gene structure (split vs combined groups)
   population_restart:
     enabled: true
     trigger_stagnation_gens: 50

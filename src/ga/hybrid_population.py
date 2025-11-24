@@ -62,8 +62,8 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
         greedy_percent = 0.25  # Fallback to original 25%
 
     # Calculate counts for each strategy
-    greedy_count = max(1, int(n * greedy_percent))
-    random_count = max(1, int(n * 0.2))  # Fixed 20% random
+    greedy_count = int(n * greedy_percent)  # Allow 0 if percentage is 0
+    random_count = max(1, int(n * 0.2))  # Fixed 20% random (minimum 1)
     smart_count = n - greedy_count - random_count  # Rest are smart
 
     # Detect if we're in a worker process (suppress info messages)

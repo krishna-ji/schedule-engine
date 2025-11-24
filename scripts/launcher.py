@@ -126,7 +126,7 @@ def main_rl_guided():
 
 
 def main_heuristic_roundrobin():
-    """B1: All heuristics with fixed round-robin rotation (simple)."""
+    """B1: Heuristic round-robin (fixed rotation through all 22 heuristics)."""
     parser = create_parser()
     args = parser.parse_args()
     
@@ -134,7 +134,8 @@ def main_heuristic_roundrobin():
     
     from main import main
     
-    sys.argv = ["main.py", "--env", profile, "--mode", "roundrobin"]
+    # Use --config to load mode-specific config file (main.py doesn't support --mode roundrobin)
+    sys.argv = ["main.py", "--config", "configs/hybrid/6-roundrobin.yaml", "--env", profile]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
     

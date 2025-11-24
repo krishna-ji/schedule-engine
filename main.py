@@ -99,6 +99,14 @@ def main():
     )
     args = parser.parse_args()
 
+    # CRITICAL: Set environment FIRST before any config loading
+    # This ensures config loader sees the correct environment
+    import os
+    if args.env:
+        os.environ["ENVIRONMENT"] = args.env
+    elif "ENVIRONMENT" not in os.environ:
+        os.environ["ENVIRONMENT"] = "test"  # Default to test
+
     # Handle --list-modes
     if args.list_modes:
         console.print(RuntimeMode.list_modes())
@@ -110,12 +118,6 @@ def main():
         table = manager.compare_modes()
         console.print(table)
         return 0
-
-    # Set environment variable if --env provided
-    if args.env:
-        import os
-
-        os.environ["ENVIRONMENT"] = args.env
 
     # Parse runtime mode
     runtime_mode = None
@@ -141,15 +143,19 @@ def main():
     manager = ExperimentManager()
 
     # Load configuration (with runtime mode support)
+    # Environment is already set above via os.environ["ENVIRONMENT"]
     try:
         if args.config:
-            # Explicit config overrides runtime mode
+            # Explicit config path: base → config → environment
+            console.print(f"[dim]Loading: {args.config} + {os.environ['ENVIRONMENT']}.yaml[/dim]")
             config = load_config(args.config)
         elif runtime_mode:
-            # Load config for runtime mode
+            # Runtime mode: base → mode → environment
+            console.print(f"[dim]Loading: {runtime_mode.value} + {os.environ['ENVIRONMENT']}.yaml[/dim]")
             config = load_config(runtime_mode=runtime_mode)
         else:
-            # Default config
+            # Default: base → environment only
+            console.print(f"[dim]Loading: {os.environ['ENVIRONMENT']}.yaml[/dim]")
             config = load_config(None)
         
         # Initialize global config singleton
