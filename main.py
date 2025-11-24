@@ -67,9 +67,8 @@ def main():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=[m.value for m in RuntimeMode]
-        + ["baseline", "repairs", "heuristics", "full", "rl", "roundrobin"],
-        help="Runtime mode: baseline, nsga-repairs, nsga-heuristics, nsga-full, rl-guided, roundrobin",
+        choices=["baseline", "rl"],
+        help="Runtime mode: baseline (pure NSGA-II) or rl (RL-guided heuristics)",
     )
     parser.add_argument(
         "--config",
@@ -278,47 +277,15 @@ main_test = _create_env_entry_point("test")
 main_test.__doc__ = "Entry point for test runs (uv run test)"
 
 
-# Runtime mode entry points (Modes 1-10)
+# Runtime mode entry points (A→B→C structure)
 _MODE_MAPPING = {
     "baseline": (
         RuntimeMode.BASELINE.value,
-        "Mode 1: Pure NSGA-II (uv run baseline)",
-    ),
-    "repairs": (
-        RuntimeMode.NSGA_REPAIRS.value,
-        "Mode 2: NSGA-II + repairs (uv run repairs)",
-    ),
-    "heuristics": (
-        RuntimeMode.NSGA_HEURISTICS.value,
-        "Mode 3: NSGA-II + repairs + heuristics (uv run heuristics)",
-    ),
-    "full": (
-        RuntimeMode.NSGA_FULL.value,
-        "Mode 4: Full GA (uv run full)",
+        "Mode 1: Pure NSGA-II baseline",
     ),
     "rl": (
         RuntimeMode.RL_GUIDED.value,
-        "Mode 5: RL-guided heuristics (uv run rl)",
-    ),
-    "roundrobin": (
-        RuntimeMode.ROUND_ROBIN.value,
-        "Mode 6: Round-robin (uv run roundrobin)",
-    ),
-    "specialists": (
-        RuntimeMode.RL_SPECIALISTS.value,
-        "Mode 7: RL specialists (uv run specialists)",
-    ),
-    "archive": (
-        RuntimeMode.ARCHIVE_DIVERSITY.value,
-        "Mode 8: Archive diversity (uv run archive)",
-    ),
-    "hierarchical": (
-        RuntimeMode.RL_HIERARCHICAL.value,
-        "Mode 9: Hierarchical RL (uv run hierarchical)",
-    ),
-    "multiagent": (
-        RuntimeMode.RL_MULTIAGENT.value,
-        "Mode 10: Multi-agent RL (uv run multiagent)",
+        "Mode 5: RL-guided heuristics",
     ),
 }
 

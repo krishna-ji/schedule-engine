@@ -45,39 +45,6 @@ def create_parser():
     return parser
 
 
-def main_nsga():
-    """NSGA-II launcher with profile support."""
-    parser = create_parser()
-    args = parser.parse_args()
-
-    profile = args.profile or "test"
-
-    # Select appropriate config based on repair flag
-    config_override = None
-    if profile == "prod":
-        if args.repair_after_every_generation:
-            config_override = "configs/baseline/nsga-with-repairs-prod.yaml"
-            console.print("[yellow]Using NSGA-II with repairs after every generation[/yellow]")
-        else:
-            config_override = "configs/baseline/pure-nsga-prod.yaml"
-            console.print("[green]Using Pure NSGA-II baseline (NO repairs, NO heuristics)[/green]")
-    
-    # Import and run main with environment
-    from main import main
-
-    sys.argv = ["main.py", "--env", profile]
-    if config_override:
-        sys.argv.extend(["--config", config_override])
-    elif args.config:
-        sys.argv.extend(["--config", args.config])
-    if args.name:
-        sys.argv.extend(["--name", args.name])
-    if args.mode:
-        sys.argv.extend(["--mode", args.mode])
-
-    sys.exit(main() or 0)
-
-
 def main_train_rl():
     """RL training launcher with profile support."""
     parser = create_parser()
@@ -137,72 +104,8 @@ def main_baseline():
     sys.exit(main() or 0)
 
 
-def main_repairs():
-    """A2: NSGA-II + repairs after every generation."""
-    parser = create_parser()
-    args = parser.parse_args()
-    
-    profile = args.profile or "test"
-    
-    from main import main
-    
-    sys.argv = ["main.py", "--env", profile, "--mode", "nsga_repairs"]
-    if args.name:
-        sys.argv.extend(["--name", args.name])
-    
-    console.print(f"[green]Running A2: NSGA-II + repairs ({profile} profile)[/green]")
-    sys.exit(main() or 0)
 
 
-def main_heuristics():
-    """B2: NSGA-II + repairs + 19 heuristics."""
-    parser = create_parser()
-    args = parser.parse_args()
-    
-    profile = args.profile or "test"
-    
-    from main import main
-    
-    sys.argv = ["main.py", "--env", profile, "--mode", "nsga_heuristics"]
-    if args.name:
-        sys.argv.extend(["--name", args.name])
-    
-    console.print(f"[green]Running B2: NSGA-II + heuristics ({profile} profile)[/green]")
-    sys.exit(main() or 0)
-
-
-def main_full():
-    """B3: Full GA (repairs + heuristics + local search)."""
-    parser = create_parser()
-    args = parser.parse_args()
-    
-    profile = args.profile or "test"
-    
-    from main import main
-    
-    sys.argv = ["main.py", "--env", profile, "--mode", "nsga_full"]
-    if args.name:
-        sys.argv.extend(["--name", args.name])
-    
-    console.print(f"[green]Running B3: Full GA ({profile} profile)[/green]")
-    sys.exit(main() or 0)
-
-
-def main_roundrobin():
-    """C1: Round-robin hyper-heuristic."""
-    parser = create_parser()
-    args = parser.parse_args()
-    
-    profile = args.profile or "test"
-    
-    from main import main
-    
-    sys.argv = ["main.py", "--env", profile, "--mode", "roundrobin"]
-    if args.name:
-        sys.argv.extend(["--name", args.name])
-    
-    console.print(f"[green]Running C1: Round-robin hyper-heuristic ({profile} profile)[/green]")
-    sys.exit(main() or 0)
 
 
 def main_rl_guided():
