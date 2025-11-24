@@ -380,6 +380,11 @@ class GAScheduler:
         self._hypervolume_ref_point = None
         
         # PERFORMANCE CACHE: Store detailed constraint breakdown to avoid re-evaluation
+        
+        # TRACKING: Initial and best solutions for improvement reporting
+        self.initial_best_hard = None
+        self.initial_best_soft = None
+        self.all_time_best = None  # Track best individual ever seen
         self._cached_hard_details = {}
         self._cached_soft_details = {}
         
@@ -421,20 +426,31 @@ class GAScheduler:
             self.toolbox.register("select", tools.selNSGA2)
 
         # PHASE 3: Hybrid population initialization support
-        if get_config().ga.population_strategy == "hybrid":
+        strategy = get_config().ga.population_strategy
+        
+        if strategy == "hybrid":
             from src.ga.hybrid_population import generate_hybrid_population
 
             self.toolbox.register(
                 "population", generate_hybrid_population, context=self.context
             )
-        elif get_config().ga.population_strategy == "smart":
+        elif strategy == "smart":
             # Original constraint-aware (Phase 1+2 default)
             self.toolbox.register(
                 "population",
                 generate_course_group_aware_population,
                 context=self.context,
             )
-        else:  # "random" or any other value defaults to smart
+        elif strategy == "random":
+            # Pure random initialization (no heuristics, no conflict avoidance)
+            from src.ga.population import generate_pure_random_population
+
+            self.toolbox.register(
+                "population",
+                generate_pure_random_population,
+                context=self.context,
+            )
+        else:  # Unknown strategy defaults to smart
             self.toolbox.register(
                 "population",
                 generate_course_group_aware_population,
@@ -726,6 +742,11 @@ class GAScheduler:
             f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
         )
         console.print()
+        
+        # Track initial values for improvement calculation
+        self.initial_best_hard = abs(best.fitness.values[0])
+        self.initial_best_soft = abs(best.fitness.values[1])
+        self.all_time_best = self.toolbox.clone(best)
 
         # Track initial population as Generation 0 (skip expensive metrics for speed)
         # NOTE: We defer expensive metric calculation to generation 0 to avoid 2-min startup delay
@@ -2104,6 +2125,15 @@ class GAScheduler:
         # Cache the detailed breakdown for display (avoid re-evaluation)
         self._cached_hard_details = hard_details
         self._cached_soft_details = soft_details
+        
+        # Update all-time best individual
+        if self.all_time_best is None or best.fitness.values[0] < self.all_time_best.fitness.values[0]:
+            # Better hard constraint score
+            self.all_time_best = self.toolbox.clone(best)
+        elif best.fitness.values[0] == self.all_time_best.fitness.values[0]:
+            # Same hard constraint score, check soft constraint
+            if best.fitness.values[1] < self.all_time_best.fitness.values[1]:
+                self.all_time_best = self.toolbox.clone(best)
 
         for name in self.hard_constraint_names:
             self.metrics.detailed_hard[name].append(hard_details[name])
@@ -2327,15 +2357,21 @@ class GAScheduler:
 
     def get_best_solution(self):
         """
-        Select best solution from final population.
+        Select best solution from all generations (hall of fame).
 
+        Returns the all-time best individual seen during evolution.
         Prefers feasible solutions (hard constraints satisfied) with
         lowest soft constraint penalty. If no feasible solution exists,
         returns the solution with fewest hard constraint violations.
 
         Returns:
-            Best individual from the final population
+            Best individual from all generations
         """
+        # Return all-time best if available (tracked during evolution)
+        if self.all_time_best is not None:
+            return self.all_time_best
+        
+        # Fallback: Search current population (shouldn't reach here in normal execution)
         pareto_front = tools.sortNondominated(
             self.population, len(self.population), first_front_only=True
         )[0]

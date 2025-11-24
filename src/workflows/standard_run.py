@@ -431,11 +431,35 @@ def run_standard_workflow(
         context.rooms,
     )
 
+    final_hard = abs(best_individual.fitness.values[0])
+    final_soft = abs(best_individual.fitness.values[1])
+    
     console.print(
-        f"  [dim]hard violations:[/dim] {best_individual.fitness.values[0]:.0f}"
+        f"  [dim]hard violations:[/dim] {final_hard:.0f}"
     )
-    console.print(f"  [dim]soft penalty:[/dim] {best_individual.fitness.values[1]:.2f}")
+    console.print(f"  [dim]soft penalty:[/dim] {final_soft:.2f}")
     console.print(f"  [dim]sessions:[/dim] {len(decoded_schedule)}")
+    
+    # Calculate and display improvement percentages
+    if hasattr(scheduler, 'initial_best_hard') and scheduler.initial_best_hard is not None:
+        initial_hard = scheduler.initial_best_hard
+        initial_soft = scheduler.initial_best_soft
+        
+        # Calculate percentage reductions
+        if initial_hard > 0:
+            hc_reduction_pct = ((initial_hard - final_hard) / initial_hard) * 100
+            console.print(
+                f"  [dim]hard constraint improvement:[/dim] [green]{hc_reduction_pct:.1f}%[/green] "
+                f"[dim](from {initial_hard:.0f})[/dim]"
+            )
+        
+        if initial_soft > 0:
+            sc_reduction_pct = ((initial_soft - final_soft) / initial_soft) * 100
+            console.print(
+                f"  [dim]soft constraint improvement:[/dim] [green]{sc_reduction_pct:.1f}%[/green] "
+                f"[dim](from {initial_soft:.2f})[/dim]"
+            )
+    
     console.print()
 
     # Finalize logger

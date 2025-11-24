@@ -76,6 +76,9 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
     Returns:
         List[SessionGene] representing a complete schedule
     """
+    # Import subsession breaker (canonical L/T/P logic)
+    from src.ga.population import get_subsession_durations
+
     time_system = QuantumTimeSystem()
     individual = []
 
@@ -93,21 +96,39 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
         course = context.courses[course_id]
         course_code, course_type = course_id  # Unpack tuple
 
-        # Build sessions for this course (1 session with quanta_per_week duration)
-        for session_idx in range(1):  # One session per course
-            # Find valid time slot
+        # FIXED: Break into subsessions using canonical logic
+        # Theory → [2, 2, ...] with [1] if odd
+        # Practical → [full_duration]
+        subsession_durations = get_subsession_durations(
+            course.quanta_per_week, course.course_type
+        )
+
+        # Build one gene per subsession
+        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+            # Find valid time slot for THIS subsession
             time_quantum = _find_earliest_valid_time(
                 context,
                 course,
                 time_system,
                 assigned_times,
                 assigned_rooms,
+                required_duration=subsession_duration,
             )
 
             if time_quantum is None:
                 # No valid time found - assign random (will be repaired later)
                 all_quanta = list(time_system.get_all_operating_quanta())
-                time_quantum = random.choice(all_quanta) if all_quanta else 0
+                # Ensure we can fit the subsession
+                valid_starts = [
+                    q
+                    for q in all_quanta
+                    if q + subsession_duration <= time_system.total_quanta
+                ]
+                time_quantum = (
+                    random.choice(valid_starts)
+                    if valid_starts
+                    else (all_quanta[0] if all_quanta else 0)
+                )
 
             # Find suitable room
             room_id = _find_suitable_room(context, course, time_quantum, assigned_rooms)
@@ -117,7 +138,7 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
                 context, course, time_quantum, assigned_times
             )
 
-            # Create gene with contiguous quanta
+            # Create gene with subsession duration
             gene = SessionGene(
                 course_id=course_code,
                 course_type=course_type,
@@ -125,13 +146,13 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
                 room_id=room_id,
                 instructor_id=instructor_id,
                 start_quanta=time_quantum,
-                num_quanta=course.quanta_per_week,
+                num_quanta=subsession_duration,  # Use subsession duration!
             )
 
             individual.append(gene)
 
-            # Update assignments
-            for q in range(time_quantum, time_quantum + course.quanta_per_week):
+            # Update assignments for THIS subsession
+            for q in range(time_quantum, time_quantum + subsession_duration):
                 for group_id in course.enrolled_group_ids:
                     assigned_times[group_id].add(q)
                 assigned_times[instructor_id].add(q)
@@ -179,6 +200,9 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
     Returns:
         List[SessionGene] representing a complete schedule
     """
+    # Import subsession breaker (canonical L/T/P logic)
+    from src.ga.population import get_subsession_durations
+
     time_system = QuantumTimeSystem()
     individual = []
 
@@ -186,8 +210,15 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
     assigned_times = defaultdict(set)
     assigned_rooms = defaultdict(set)
 
-    # Build list of all sessions to schedule (one per course)
-    sessions_to_schedule = list(context.courses.items())
+    # Build list of all sessions to schedule
+    # FIXED: Include subsessions, not just courses
+    sessions_to_schedule = []
+    for course_id, course in context.courses.items():
+        subsession_durations = get_subsession_durations(
+            course.quanta_per_week, course.course_type
+        )
+        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+            sessions_to_schedule.append((course_id, course, subsession_duration))
 
     # Schedule sessions in constraint order
     while sessions_to_schedule:
@@ -195,35 +226,46 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
         most_constrained = None
         min_options = float("inf")
 
-        for course_id, course in sessions_to_schedule:
-            # Count valid time slots
+        for course_id, course, subsession_duration in sessions_to_schedule:
+            # Count valid time slots for THIS subsession duration
             valid_slots = _count_valid_time_slots(
                 context,
                 course,
                 time_system,
                 assigned_times,
                 assigned_rooms,
+                required_duration=subsession_duration,
             )
 
             if valid_slots < min_options:
                 min_options = valid_slots
-                most_constrained = (course_id, course)
+                most_constrained = (course_id, course, subsession_duration)
 
         # Remove from pending list
         sessions_to_schedule.remove(most_constrained)
-        course_id, course = most_constrained
+        course_id, course, subsession_duration = most_constrained
 
-        # Find best time slot
+        # Find best time slot for THIS subsession
         time_quantum = _find_earliest_valid_time(
             context,
             course,
             time_system,
             assigned_times,
             assigned_rooms,
+            required_duration=subsession_duration,
         )
 
         if time_quantum is None:
-            time_quantum = random.choice(context.available_quanta)
+            valid_starts = [
+                q
+                for q in context.available_quanta
+                if q + subsession_duration <= time_system.total_quanta
+            ]
+            time_quantum = (
+                random.choice(valid_starts)
+                if valid_starts
+                else context.available_quanta[0]
+            )
 
         # Find room and instructor
         room_id = _find_suitable_room(context, course, time_quantum, assigned_rooms)
@@ -231,7 +273,7 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
             context, course, time_quantum, assigned_times
         )
 
-        # Create gene with contiguous quanta
+        # Create gene with subsession duration
         course_code, course_type = course_id  # Unpack tuple
         gene = SessionGene(
             course_id=course_code,
@@ -240,13 +282,13 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
             room_id=room_id,
             instructor_id=instructor_id,
             start_quanta=time_quantum,
-            num_quanta=course.quanta_per_week,
+            num_quanta=subsession_duration,  # Use subsession duration!
         )
 
         individual.append(gene)
 
-        # Update assignments
-        for q in range(time_quantum, time_quantum + course.quanta_per_week):
+        # Update assignments for THIS subsession
+        for q in range(time_quantum, time_quantum + subsession_duration):
             for group_id in course.enrolled_group_ids:
                 assigned_times[group_id].add(q)
             assigned_times[instructor_id].add(q)
@@ -294,6 +336,9 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
     Returns:
         List[SessionGene] representing a complete schedule
     """
+    # Import subsession breaker (canonical L/T/P logic)
+    from src.ga.population import get_subsession_durations
+
     time_system = QuantumTimeSystem()
     individual = []
 
@@ -311,43 +356,60 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
         course = context.courses[course_id]
         course_code, course_type = course_id  # Unpack tuple
 
-        # Find valid time slot
-        time_quantum = _find_earliest_valid_time(
-            context,
-            course,
-            time_system,
-            assigned_times,
-            assigned_rooms,
+        # FIXED: Break into subsessions
+        subsession_durations = get_subsession_durations(
+            course.quanta_per_week, course.course_type
         )
 
-        if time_quantum is None:
-            time_quantum = random.choice(context.available_quanta)
+        # Schedule each subsession
+        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+            # Find valid time slot for THIS subsession
+            time_quantum = _find_earliest_valid_time(
+                context,
+                course,
+                time_system,
+                assigned_times,
+                assigned_rooms,
+                required_duration=subsession_duration,
+            )
 
-        # Find room and instructor
-        room_id = _find_suitable_room(context, course, time_quantum, assigned_rooms)
-        instructor_id = _select_qualified_instructor(
-            context, course, time_quantum, assigned_times
-        )
+            if time_quantum is None:
+                valid_starts = [
+                    q
+                    for q in context.available_quanta
+                    if q + subsession_duration <= time_system.total_quanta
+                ]
+                time_quantum = (
+                    random.choice(valid_starts)
+                    if valid_starts
+                    else context.available_quanta[0]
+                )
 
-        # Create gene with contiguous quanta
-        gene = SessionGene(
-            course_id=course_code,
-            course_type=course_type,
-            group_ids=course.enrolled_group_ids,
-            room_id=room_id,
-            instructor_id=instructor_id,
-            start_quanta=time_quantum,
-            num_quanta=course.quanta_per_week,
-        )
+            # Find room and instructor
+            room_id = _find_suitable_room(context, course, time_quantum, assigned_rooms)
+            instructor_id = _select_qualified_instructor(
+                context, course, time_quantum, assigned_times
+            )
 
-        individual.append(gene)
+            # Create gene with subsession duration
+            gene = SessionGene(
+                course_id=course_code,
+                course_type=course_type,
+                group_ids=course.enrolled_group_ids,
+                room_id=room_id,
+                instructor_id=instructor_id,
+                start_quanta=time_quantum,
+                num_quanta=subsession_duration,  # Use subsession duration!
+            )
 
-        # Update assignments
-        for q in range(time_quantum, time_quantum + course.quanta_per_week):
-            for group_id in course.enrolled_group_ids:
-                assigned_times[group_id].add(q)
-            assigned_times[instructor_id].add(q)
-            assigned_rooms[room_id].add(q)
+            individual.append(gene)
+
+            # Update assignments for THIS subsession
+            for q in range(time_quantum, time_quantum + subsession_duration):
+                for group_id in course.enrolled_group_ids:
+                    assigned_times[group_id].add(q)
+                assigned_times[instructor_id].add(q)
+                assigned_rooms[room_id].add(q)
 
     return individual
 
@@ -423,17 +485,27 @@ def _count_valid_time_slots(
     time_system: QuantumTimeSystem,
     assigned_times: Dict,
     assigned_rooms: Dict,
+    required_duration: int = None,  # NEW: subsession duration
 ) -> int:
-    """Count number of valid time slots for a course session."""
+    """
+    Count number of valid time slots for a course session.
+    
+    Args:
+        required_duration: Duration in quanta for THIS subsession.
+                          If None, uses course.quanta_per_week.
+    """
+    # Use subsession duration if provided, otherwise full course duration
+    duration = required_duration if required_duration is not None else course.quanta_per_week
+    
     valid_count = 0
 
     for time_quantum in context.available_quanta:
-        # Check if slot is long enough
-        if time_quantum + course.quanta_per_week > max(context.available_quanta):
+        # Check if slot is long enough for the subsession
+        if time_quantum + duration > max(context.available_quanta):
             continue
 
         # Check group conflicts
-        time_range = range(time_quantum, time_quantum + course.quanta_per_week)
+        time_range = range(time_quantum, time_quantum + duration)
         has_conflict = False
 
         for group_id in course.enrolled_group_ids:
@@ -453,15 +525,25 @@ def _find_earliest_valid_time(
     time_system: QuantumTimeSystem,
     assigned_times: Dict,
     assigned_rooms: Dict,
+    required_duration: int = None,  # NEW: subsession duration
 ) -> int:
-    """Find earliest valid time slot for a course session."""
+    """
+    Find earliest valid time slot for a course session.
+    
+    Args:
+        required_duration: Duration in quanta for THIS subsession (not full course).
+                          If None, uses course.quanta_per_week.
+    """
+    # Use subsession duration if provided, otherwise full course duration
+    duration = required_duration if required_duration is not None else course.quanta_per_week
+    
     for time_quantum in context.available_quanta:
-        # Check if slot is long enough
-        if time_quantum + course.quanta_per_week > max(context.available_quanta):
+        # Check if slot is long enough for the subsession
+        if time_quantum + duration > max(context.available_quanta):
             continue
 
         # Check conflicts
-        time_range = range(time_quantum, time_quantum + course.quanta_per_week)
+        time_range = range(time_quantum, time_quantum + duration)
         has_conflict = False
 
         # Check group conflicts

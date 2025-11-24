@@ -144,13 +144,16 @@ def main():
     try:
         if args.config:
             # Explicit config overrides runtime mode
-            config = init_config(args.config)
+            config = load_config(args.config)
         elif runtime_mode:
             # Load config for runtime mode
             config = load_config(runtime_mode=runtime_mode)
         else:
             # Default config
-            config = init_config(None)
+            config = load_config(None)
+        
+        # Initialize global config singleton
+        init_config(config_obj=config)
 
         console.print()
         console.print(config.summary())

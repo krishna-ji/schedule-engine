@@ -85,17 +85,32 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
     num_workers = get_cpu_count()
     use_parallel = num_workers > 1 and n >= 10
 
-    # Generate greedy individuals (25%)
-    if use_parallel:
-        greedy_tasks = [(context, pair_tuples) for _ in range(greedy_count)]
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            results = list(executor.map(_greedy_construction_wrapper, greedy_tasks))
-        population.extend([ind for ind in results if ind is not None])
-    else:
-        for i in range(greedy_count):
-            individual = _greedy_construction(context, pair_tuples)
-            if individual:
-                population.append(create_individual(individual))
+    # Generate greedy individuals using registered construction heuristics
+    # Cycle through: largest_degree_first, most_constrained_first, earliest_deadline_first
+    from src.heuristics.construction import (
+        largest_degree_first,
+        most_constrained_first,
+        earliest_deadline_first,
+    )
+
+    construction_heuristics = [
+        largest_degree_first,
+        most_constrained_first,
+        earliest_deadline_first,
+    ]
+
+    for i in range(greedy_count):
+        # Round-robin through construction heuristics for diversity
+        heuristic = construction_heuristics[i % len(construction_heuristics)]
+        try:
+            genes = heuristic(context)
+            if genes:
+                population.append(create_individual(genes))
+        except Exception as e:
+            # Fallback to smart if construction heuristic fails
+            fallback = generate_course_group_aware_population(1, context)
+            if fallback:
+                population.append(fallback[0])
 
     # Generate smart constraint-aware individuals (50%)
     # Note: generate_course_group_aware_population handles its own parallelization
@@ -156,6 +171,9 @@ def _greedy_construction(
     room_usage = {}  # {(room_id, quantum): True}
     instructor_usage = {}  # {(instructor_id, quantum): True}
 
+    # Import subsession breaker (canonical L/T/P logic)
+    from src.ga.population import get_subsession_durations
+
     # Schedule each pair greedily
     for course_key, group_ids, session_type, num_quanta in sorted_pairs:
         if num_quanta == 0:
@@ -165,30 +183,39 @@ def _greedy_construction(
         if not course:
             continue
 
-        # Find first feasible assignment
-        gene = _find_feasible_assignment(
-            course_key,
-            group_ids,
-            num_quanta,
-            context,
-            group_schedule,
-            room_usage,
-            instructor_usage,
+        # FIXED: Break into subsessions using canonical logic
+        # Theory → [2, 2, ...] with [1] if odd
+        # Practical → [full_duration]
+        subsession_durations = get_subsession_durations(
+            course.quanta_per_week, course.course_type
         )
 
-        # FIXED: Always create gene, even if greedy fails (use random fallback)
-        if not gene:
-            gene = _random_gene(course_key, group_ids, num_quanta, context)
+        # Schedule each subsession separately
+        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+            # Find first feasible assignment for THIS subsession
+            gene = _find_feasible_assignment(
+                course_key,
+                group_ids,
+                subsession_duration,  # Use subsession duration, not full course duration
+                context,
+                group_schedule,
+                room_usage,
+                instructor_usage,
+            )
 
-        if gene:
-            individual.append(gene)
+            # FIXED: Always create gene, even if greedy fails (use random fallback)
+            if not gene:
+                gene = _random_gene(course_key, group_ids, subsession_duration, context)
 
-            # Mark resources as used
-            for quantum in range(gene.start_quanta, gene.end_quanta):
-                for gid in gene.group_ids:
-                    group_schedule[(gid, quantum)] = True
-                room_usage[(gene.room_id, quantum)] = True
-                instructor_usage[(gene.instructor_id, quantum)] = True
+            if gene:
+                individual.append(gene)
+
+                # Mark resources as used
+                for quantum in range(gene.start_quanta, gene.end_quanta):
+                    for gid in gene.group_ids:
+                        group_schedule[(gid, quantum)] = True
+                    room_usage[(gene.room_id, quantum)] = True
+                    instructor_usage[(gene.instructor_id, quantum)] = True
 
     return individual
 

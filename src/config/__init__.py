@@ -17,10 +17,15 @@ from src.config.models import Config
 config: Config = None
 
 
-def init_config(config_path: str = None) -> Config:
+def init_config(config_path: str = None, config_obj: Config = None) -> Config:
     """Initialize global config (called from main.py)"""
     global config
-    config = load_config(config_path)
+    if config_obj is not None:
+        # Use provided config object (from runtime mode loading)
+        config = config_obj
+    else:
+        # Load from path
+        config = load_config(config_path)
     return config
 
 
