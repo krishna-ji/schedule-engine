@@ -76,12 +76,13 @@ class ConstraintLogger:
         self.output_dir = output_dir
         # Create data/ subdirectory for CSV files
         data_dir = os.path.join(output_dir, "data")
+        # os.makedirs already creates all parent directories by default
         os.makedirs(data_dir, exist_ok=True)
         self.log_path = os.path.join(data_dir, "metrics.csv")
         self.hard_names = hard_constraint_names
         self.soft_names = soft_constraint_names
 
-        # Ensure output directory exists
+        # Ensure output directory exists (redundant but defensive)
         os.makedirs(output_dir, exist_ok=True)
 
         # Initialize CSV file with header

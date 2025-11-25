@@ -33,7 +33,10 @@ from src.ga.operators.mutation import mutate_individual
 from src.ga.evaluator.fitness import evaluate
 from src.config import get_config
 from src.ga.evaluator.detailed_fitness import evaluate_detailed
-from src.constraints.registry import get_enabled_hard_constraints, get_enabled_soft_constraints
+from src.constraints.registry import (
+    get_enabled_hard_constraints,
+    get_enabled_soft_constraints,
+)
 from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
@@ -378,11 +381,16 @@ class GAScheduler:
 
         # NEW: Hypervolume reference point (initialized during first metric tracking)
         self._hypervolume_ref_point = None
-        
+
         # PERFORMANCE CACHE: Store detailed constraint breakdown to avoid re-evaluation
+
+        # TRACKING: Initial and best solutions for improvement reporting
+        self.initial_best_hard = None
+        self.initial_best_soft = None
+        self.all_time_best = None  # Track best individual ever seen
         self._cached_hard_details = {}
         self._cached_soft_details = {}
-        
+
         # PERFORMANCE CACHE: Store enabled constraints (computed once, used frequently)
         self._enabled_hard_constraints = get_enabled_hard_constraints()
         self._enabled_soft_constraints = get_enabled_soft_constraints()
@@ -392,6 +400,12 @@ class GAScheduler:
         self.rl_controller = None
         self.rl_state_encoder = None
         self.rl_action_mapper = None
+
+        # HEURISTIC TRACKING: Round-robin tracking and detailed statistics
+        from src.ga.heuristic_tracker import HeuristicTracker
+
+        self.heuristic_tracker = HeuristicTracker()
+        self._setup_heuristic_rotation()
 
         # PERFORMANCE: Parallel heuristic executor (10-16x speedup)
         try:
@@ -421,20 +435,31 @@ class GAScheduler:
             self.toolbox.register("select", tools.selNSGA2)
 
         # PHASE 3: Hybrid population initialization support
-        if get_config().ga.population_strategy == "hybrid":
+        strategy = get_config().ga.population_strategy
+
+        if strategy == "hybrid":
             from src.ga.hybrid_population import generate_hybrid_population
 
             self.toolbox.register(
                 "population", generate_hybrid_population, context=self.context
             )
-        elif get_config().ga.population_strategy == "smart":
+        elif strategy == "smart":
             # Original constraint-aware (Phase 1+2 default)
             self.toolbox.register(
                 "population",
                 generate_course_group_aware_population,
                 context=self.context,
             )
-        else:  # "random" or any other value defaults to smart
+        elif strategy == "random":
+            # Pure random initialization (no heuristics, no conflict avoidance)
+            from src.ga.population import generate_pure_random_population
+
+            self.toolbox.register(
+                "population",
+                generate_pure_random_population,
+                context=self.context,
+            )
+        else:  # Unknown strategy defaults to smart
             self.toolbox.register(
                 "population",
                 generate_course_group_aware_population,
@@ -684,6 +709,170 @@ class GAScheduler:
         except Exception as e:
             logger.warning(f"RL action application failed at gen {gen}: {e}")
 
+    def _setup_heuristic_rotation(self) -> None:
+        """
+        Setup round-robin heuristic rotation from enabled heuristics.
+
+        Builds ordered list based on priority and category.
+        """
+        from src.heuristics import get_enabled_heuristics
+
+        # Get all enabled heuristics sorted by priority
+        enabled = get_enabled_heuristics()
+
+        if not enabled:
+            console.print("[dim]   No heuristics enabled for round-robin[/dim]")
+            return
+
+        # Set rotation order in tracker
+        heuristic_names = list(enabled.keys())
+        self.heuristic_tracker.set_heuristic_order(heuristic_names)
+
+        console.print(
+            f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics enabled[/dim]"
+        )
+
+    def _apply_round_robin_heuristics(self, gen: int) -> None:
+        """
+        Apply heuristics in round-robin order.
+
+        Each generation cycles to the next heuristic in the priority-ordered list.
+        Tracks application results for detailed analysis.
+
+        Args:
+            gen: Current generation number
+        """
+        from src.heuristics import get_enabled_heuristics
+        from deap import tools
+        import time
+
+        # Check if any heuristics are enabled
+        if not self.heuristic_tracker.heuristic_order:
+            return
+
+        # Get next heuristic in rotation
+        heuristic_name = self.heuristic_tracker.get_next_heuristic()
+
+        # Get heuristic metadata
+        enabled_heuristics = get_enabled_heuristics()
+        heuristic_meta = enabled_heuristics.get(heuristic_name)
+
+        if not heuristic_meta:
+            logger.warning(
+                f"Heuristic '{heuristic_name}' not found in enabled heuristics"
+            )
+            return
+
+        # Skip construction heuristics (they generate NEW individuals, not modify existing)
+        if heuristic_meta.category.value == "construction":
+            return
+
+        # Skip repair heuristics (handled by separate repair system)
+        if heuristic_meta.category.value == "repair":
+            return
+
+        # Select target individual(s)
+        if heuristic_meta.requires_population:
+            # Diversity/selection heuristics need full population
+            target_individuals = tools.selBest(
+                self.population, min(4, len(self.population))
+            )
+        else:
+            # Most heuristics work on single individual
+            target_individuals = tools.selBest(self.population, 1)
+
+        # Apply heuristic to each target
+        for ind_idx, individual in enumerate(target_individuals):
+            # Record fitness before
+            fitness_before = individual.fitness.values
+
+            # Apply heuristic
+            start_time = time.time()
+            try:
+                if heuristic_meta.requires_population:
+                    # Pass population for diversity heuristics
+                    # NOTE: Pass individual directly (not copy) for in-place modification
+                    result = heuristic_meta.function(
+                        individual=individual,
+                        population=[list(ind) for ind in self.population],
+                        context=self.context,
+                    )
+
+                    # Update individual if modified and heuristic returns new list
+                    if heuristic_meta.modifies_individual and isinstance(result, list):
+                        individual[:] = result
+                else:
+                    # Standard heuristic (individual + context)
+                    # NOTE: Pass individual directly (not copy) for in-place modification
+                    result = heuristic_meta.function(
+                        individual=individual,
+                        context=self.context,
+                    )
+
+                    # Handle result based on type
+                    if heuristic_meta.modifies_individual:
+                        if isinstance(result, list):
+                            # Heuristic returned modified copy - update original
+                            individual[:] = result
+                        # If result is int or None, heuristic modified individual in-place (no action needed)
+
+                # Re-evaluate if individual was modified
+                if heuristic_meta.modifies_individual:
+                    # Use direct evaluate() function (not toolbox) since we're in main process
+                    fitness_after = evaluate(
+                        individual,
+                        self.context.courses,
+                        self.context.instructors,
+                        self.context.groups,
+                        self.context.rooms,
+                    )
+                    individual.fitness.values = fitness_after
+                else:
+                    fitness_after = individual.fitness.values
+
+                execution_time = time.time() - start_time
+
+                # Record application in tracker
+                self.heuristic_tracker.record_application(
+                    generation=gen,
+                    heuristic_name=heuristic_name,
+                    category=heuristic_meta.category.value,
+                    fitness_before=fitness_before,
+                    fitness_after=fitness_after,
+                    execution_time=execution_time,
+                    individual_id=self.population.index(individual),
+                )
+
+            except Exception as e:
+                logger.debug(f"Heuristic '{heuristic_name}' failed at gen {gen}: {e}")
+
+                # Ensure individual has valid fitness (re-evaluate if needed)
+                if (
+                    not hasattr(individual.fitness, "values")
+                    or not individual.fitness.valid
+                ):
+                    fitness_after = evaluate(
+                        individual,
+                        self.context.courses,
+                        self.context.instructors,
+                        self.context.groups,
+                        self.context.rooms,
+                    )
+                    individual.fitness.values = fitness_after
+                else:
+                    fitness_after = individual.fitness.values
+
+                # Record failed application (don't spam console)
+                self.heuristic_tracker.record_application(
+                    generation=gen,
+                    heuristic_name=heuristic_name,
+                    category=heuristic_meta.category.value,
+                    fitness_before=fitness_before,
+                    fitness_after=fitness_after,
+                    execution_time=0.0,
+                    individual_id=0,
+                )
+
     def initialize_population(self):
         """Create and evaluate initial population."""
         with Progress(
@@ -726,6 +915,11 @@ class GAScheduler:
             f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
         )
         console.print()
+
+        # Track initial values for improvement calculation
+        self.initial_best_hard = abs(best.fitness.values[0])
+        self.initial_best_soft = abs(best.fitness.values[1])
+        self.all_time_best = self.toolbox.clone(best)
 
         # Track initial population as Generation 0 (skip expensive metrics for speed)
         # NOTE: We defer expensive metric calculation to generation 0 to avoid 2-min startup delay
@@ -938,8 +1132,8 @@ class GAScheduler:
 
         # Use Live display with reduced refresh rate to prevent duplication on resize
         with Live(
-            progress_table, 
-            console=console, 
+            progress_table,
+            console=console,
             refresh_per_second=2,  # Reduced from 10 to prevent render issues
             transient=False,  # Don't clear on exit
         ):
@@ -1002,8 +1196,10 @@ class GAScheduler:
                 _best_selection_start = time.time()
                 best = tools.selBest(self.population, 1)[0]
                 _best_selection_time = time.time() - _best_selection_start
-                
-                if hasattr(self, '_cached_hard_details') and hasattr(self, '_cached_soft_details'):
+
+                if hasattr(self, "_cached_hard_details") and hasattr(
+                    self, "_cached_soft_details"
+                ):
                     # Use cached values (already computed in _track_metrics)
                     hard_details = self._cached_hard_details
                     soft_details = self._cached_soft_details
@@ -1022,9 +1218,13 @@ class GAScheduler:
                 # Build compact constraint lists - SHOW RAW VIOLATIONS (not weighted)
                 # Get raw violations by dividing by weights
                 _constraint_format_start = time.time()
-                enabled_hc = self._enabled_hard_constraints  # Use cached dict (computed once in __init__)
-                enabled_sc = self._enabled_soft_constraints  # Use cached dict (computed once in __init__)
-                
+                enabled_hc = (
+                    self._enabled_hard_constraints
+                )  # Use cached dict (computed once in __init__)
+                enabled_sc = (
+                    self._enabled_soft_constraints
+                )  # Use cached dict (computed once in __init__)
+
                 hc_parts = []
                 for name in self.hard_constraint_names:
                     short_name = self.hard_constraint_codes.get(name, name[:4])
@@ -1054,17 +1254,26 @@ class GAScheduler:
                 hc_list = ", ".join(hc_parts) if hc_parts else ""
                 sc_list = ", ".join(sc_parts) if sc_parts else ""
                 _constraint_format_time = time.time() - _constraint_format_start
-                
+
                 # DIAGNOSTIC: Verify fitness matches detailed breakdown
                 computed_hc = sum(hard_details.values())
                 computed_sc = sum(soft_details.values())
                 fitness_hc = best.fitness.values[0]
                 fitness_sc = best.fitness.values[1]
-                
-                if abs(computed_hc - fitness_hc) > 0.01 or abs(computed_sc - fitness_sc) > 0.01:
-                    console.print(f"[bold red]WARNING: Fitness mismatch detected![/bold red]")
-                    console.print(f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc-computed_hc):.2f})")
-                    console.print(f"  Fitness SC={fitness_sc:.2f} vs Computed SC={computed_sc:.2f} (diff={abs(fitness_sc-computed_sc):.2f})")
+
+                if (
+                    abs(computed_hc - fitness_hc) > 0.01
+                    or abs(computed_sc - fitness_sc) > 0.01
+                ):
+                    console.print(
+                        f"[bold red]WARNING: Fitness mismatch detected![/bold red]"
+                    )
+                    console.print(
+                        f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc-computed_hc):.2f})"
+                    )
+                    console.print(
+                        f"  Fitness SC={fitness_sc:.2f} vs Computed SC={computed_sc:.2f} (diff={abs(fitness_sc-computed_sc):.2f})"
+                    )
                     console.print(f"  Hard details: {hard_details}")
                     console.print(f"  Soft details: {soft_details}")
 
@@ -1086,13 +1295,17 @@ class GAScheduler:
                 replacement_time = phase_times.get("replacement", 0)
                 repair_time = phase_times.get("repair_memetic", 0)
                 metrics_time = phase_times.get("metrics", 0)
-                
+
                 # New phases
                 rl_time = phase_times.get("rl_ops", 0)
-                igls_time = phase_times.get("igls_exhaustive", 0) + phase_times.get("igls_greedy", 0)
+                igls_time = phase_times.get("igls_exhaustive", 0) + phase_times.get(
+                    "igls_greedy", 0
+                )
                 lns_time = phase_times.get("lns_repair", 0)
-                selective_repair_time = phase_times.get("selective_repair_cx", 0) + phase_times.get("selective_repair_mut", 0)
-                
+                selective_repair_time = phase_times.get(
+                    "selective_repair_cx", 0
+                ) + phase_times.get("selective_repair_mut", 0)
+
                 display_time = time.time() - _display_start  # Total display overhead
                 other_time = (
                     gen_time
@@ -1120,7 +1333,7 @@ class GAScheduler:
                     timing_parts.append(f"metrics={format_time(metrics_time)}")
                 if repair_time > 0.01:
                     timing_parts.append(f"repair={format_time(repair_time)}")
-                
+
                 # New phases display
                 if rl_time > 0.01:
                     timing_parts.append(f"rl={format_time(rl_time)}")
@@ -1129,11 +1342,15 @@ class GAScheduler:
                 if lns_time > 0.01:
                     timing_parts.append(f"lns={format_time(lns_time)}")
                 if selective_repair_time > 0.01:
-                    timing_parts.append(f"sel_repair={format_time(selective_repair_time)}")
-                    
+                    timing_parts.append(
+                        f"sel_repair={format_time(selective_repair_time)}"
+                    )
+
                 # Show display breakdown if significant
                 if display_time > 1.0:
-                    timing_parts.append(f"display={format_time(display_time)} (eval_detail={_eval_detailed_time:.1f}s)")
+                    timing_parts.append(
+                        f"display={format_time(display_time)} (eval_detail={_eval_detailed_time:.1f}s)"
+                    )
                 if other_time > 0.1:
                     timing_parts.append(f"other={format_time(other_time)}")
 
@@ -1172,10 +1389,16 @@ class GAScheduler:
                         notes=notes,
                     )
                 _logging_time = time.time() - _logging_start
-                
+
                 # Log micro-breakdown if display overhead > 0.5s
                 if display_time > 0.5:
-                    _unaccounted = display_time - (_best_selection_time + _eval_detailed_time + _constraint_format_time + _timing_calc_time + _logging_time)
+                    _unaccounted = display_time - (
+                        _best_selection_time
+                        + _eval_detailed_time
+                        + _constraint_format_time
+                        + _timing_calc_time
+                        + _logging_time
+                    )
                     logger.info(
                         f"Gen {gen} display breakdown: total={display_time:.2f}s "
                         f"(best_selection={_best_selection_time:.2f}s, "
@@ -1221,7 +1444,9 @@ class GAScheduler:
         )
 
         console.print()
-        console.print("[dim]constraint mapping (individual values = raw violations, hc/sc totals = weighted sums):[/dim]")
+        console.print(
+            "[dim]constraint mapping (individual values = raw violations, hc/sc totals = weighted sums):[/dim]"
+        )
 
         # Show hard constraints (in configured order)
         for name in self.hard_constraint_names:
@@ -1452,10 +1677,12 @@ class GAScheduler:
         profiler.start_generation(gen)
 
         cxpb, mutpb = self._get_adaptive_probabilities(gen)
-        
+
         # DEBUG: Log probabilities to identify the issue
         if gen <= 5:  # Only log first few generations to avoid spam
-            console.print(f"[dim]   DEBUG Gen {gen}: cxpb={cxpb:.2f}, mutpb={mutpb:.2f} (config: cx={self.config.crossover_prob:.2f}, mut={self.config.mutation_prob:.2f})[/dim]")
+            console.print(
+                f"[dim]   DEBUG Gen {gen}: cxpb={cxpb:.2f}, mutpb={mutpb:.2f} (config: cx={self.config.crossover_prob:.2f}, mut={self.config.mutation_prob:.2f})[/dim]"
+            )
 
         # ENHANCEMENT: Override mutation probability if hypermutation is active
         if self.hypermutation_active:
@@ -1472,28 +1699,29 @@ class GAScheduler:
 
         # MICRO-TIMING: Track unaccounted overhead between phases
         import time as time_module
+
         _phase_start = time_module.time()
         _selection_prep_time = 0
         _crossover_prep_time = 0
         _mutation_prep_time = 0
         _eval_prep_time = 0
         _replace_prep_time = 0
-        
+
         # Selection
         _before = time_module.time()
         profiler.start_phase("selection", items_to_process=len(self.population))
         _selection_prep_time = time_module.time() - _before
-        
+
         offspring = self.toolbox.select(self.population, len(self.population))
         offspring = list(map(self.toolbox.clone, offspring))
         profiler.end_phase()
-        
+
         # PERFORMANCE: Parallel Crossover (8-12x faster for large populations)
         # Uses ThreadPoolExecutor to apply crossover to pairs concurrently
         _before = time_module.time()
         profiler.start_phase("crossover", items_to_process=len(offspring) // 2)
         _crossover_prep_time = time_module.time() - _before
-        
+
         offspring = _parallel_crossover(offspring, cxpb, self.toolbox)
         profiler.end_phase()
 
@@ -1583,13 +1811,15 @@ class GAScheduler:
         _before_invalid = time_module.time()
         invalid = [ind for ind in offspring if not ind.fitness.valid]
         _invalid_check_time = time_module.time() - _before_invalid
-        
+
         if invalid:
             profiler.start_phase("evaluation", items_to_process=len(invalid))
-            
+
             # DEBUG: Log how many individuals are being re-evaluated
             if gen <= 5:  # Only log first few generations
-                console.print(f"[dim]   DEBUG Gen {gen}: Re-evaluating {len(invalid)} individuals[/dim]")
+                console.print(
+                    f"[dim]   DEBUG Gen {gen}: Re-evaluating {len(invalid)} individuals[/dim]"
+                )
 
             # CPU-only evaluation with multiprocessing parallelization
             # GPU removed from GA loop - better suited for RL neural networks
@@ -1601,8 +1831,10 @@ class GAScheduler:
         else:
             # DEBUG: No individuals to re-evaluate (this is the problem!)
             if gen <= 5:
-                console.print(f"[dim]   DEBUG Gen {gen}: NO individuals to re-evaluate - this is the bug![/dim]")
-        
+                console.print(
+                    f"[dim]   DEBUG Gen {gen}: NO individuals to re-evaluate - this is the bug![/dim]"
+                )
+
         # Track overhead
         _eval_prep_time = _invalid_check_time
 
@@ -1616,11 +1848,16 @@ class GAScheduler:
         combined = self.population + offspring  # 200 + 200 = 400 (vs 410 before)
         self.population[:] = self.toolbox.select(combined, len(self.population))
         profiler.end_phase()
-        
+
         # Calculate overhead timing
-        _total_overhead = (_selection_prep_time + _crossover_prep_time + 
-                          _mutation_prep_time + _eval_prep_time + _replace_prep_time)
-        
+        _total_overhead = (
+            _selection_prep_time
+            + _crossover_prep_time
+            + _mutation_prep_time
+            + _eval_prep_time
+            + _replace_prep_time
+        )
+
         # Log if overhead is significant (>100ms)
         if _total_overhead > 0.1:
             console.print(
@@ -1636,6 +1873,12 @@ class GAScheduler:
             self._apply_rl_operators(gen)
             profiler.end_phase()
             event_tracker.add("rl_operators_applied")
+        # ROUND-ROBIN: Apply heuristics in fixed rotation (when RL disabled)
+        elif len(self.heuristic_tracker.heuristic_order) > 0:
+            profiler.start_phase("roundrobin_heuristics")
+            self._apply_round_robin_heuristics(gen)
+            profiler.end_phase()
+            event_tracker.add("roundrobin_heuristic_applied")
 
         # Memetic mode: Apply intensive local search to elite individuals
         if repair_config.get("enabled", False) and repair_config.get(
@@ -1940,7 +2183,7 @@ class GAScheduler:
             # Use explicit values from our config instead of potentially unset config object values
             config = get_config()
             crossover_prob = config.ga.cxpb  # Use explicit ga.cxpb
-            mutation_prob = config.ga.mutpb   # Use explicit ga.mutpb
+            mutation_prob = config.ga.mutpb  # Use explicit ga.mutpb
         else:
             # Late phase: exploit (refine good solutions)
             crossover_prob = 0.9
@@ -1982,13 +2225,29 @@ class GAScheduler:
         advanced_freq = metrics_config.advanced_metrics_frequency
         # Always track: gen 0, last gen, or every Nth generation
         is_tracked_gen = (
-            gen == 0
-            or gen == self.config.generations - 1
-            or gen % advanced_freq == 0
+            gen == 0 or gen == self.config.generations - 1 or gen % advanced_freq == 0
         )
 
         # ALWAYS calculate basic metrics (fast, essential for progress tracking)
         # Optimized with numpy for 2-10x speedup on large populations
+
+        # Validate all individuals have valid fitness before numpy conversion
+        for ind in self.population:
+            if (
+                not hasattr(ind.fitness, "values")
+                or not ind.fitness.valid
+                or len(ind.fitness.values) != 2
+            ):
+                # Re-evaluate invalid fitness (use direct evaluate function)
+                fitness = evaluate(
+                    ind,
+                    self.context.courses,
+                    self.context.instructors,
+                    self.context.groups,
+                    self.context.rooms,
+                )
+                ind.fitness.values = fitness
+
         fitness_array = np.array([ind.fitness.values for ind in self.population])
         self.metrics.hard_violations.append(float(fitness_array[:, 0].min()))
         self.metrics.soft_penalties.append(float(fitness_array[:, 1].min()))
@@ -2092,7 +2351,7 @@ class GAScheduler:
             best = tools.selBest(self.population, 1)[0]
         else:
             best = best_individual
-            
+
         hard_details, soft_details = evaluate_detailed(
             best,
             self.context.courses,
@@ -2100,10 +2359,22 @@ class GAScheduler:
             self.context.groups,
             self.context.rooms,
         )
-        
+
         # Cache the detailed breakdown for display (avoid re-evaluation)
         self._cached_hard_details = hard_details
         self._cached_soft_details = soft_details
+
+        # Update all-time best individual
+        if (
+            self.all_time_best is None
+            or best.fitness.values[0] < self.all_time_best.fitness.values[0]
+        ):
+            # Better hard constraint score
+            self.all_time_best = self.toolbox.clone(best)
+        elif best.fitness.values[0] == self.all_time_best.fitness.values[0]:
+            # Same hard constraint score, check soft constraint
+            if best.fitness.values[1] < self.all_time_best.fitness.values[1]:
+                self.all_time_best = self.toolbox.clone(best)
 
         for name in self.hard_constraint_names:
             self.metrics.detailed_hard[name].append(hard_details[name])
@@ -2327,15 +2598,21 @@ class GAScheduler:
 
     def get_best_solution(self):
         """
-        Select best solution from final population.
+        Select best solution from all generations (hall of fame).
 
+        Returns the all-time best individual seen during evolution.
         Prefers feasible solutions (hard constraints satisfied) with
         lowest soft constraint penalty. If no feasible solution exists,
         returns the solution with fewest hard constraint violations.
 
         Returns:
-            Best individual from the final population
+            Best individual from all generations
         """
+        # Return all-time best if available (tracked during evolution)
+        if self.all_time_best is not None:
+            return self.all_time_best
+
+        # Fallback: Search current population (shouldn't reach here in normal execution)
         pareto_front = tools.sortNondominated(
             self.population, len(self.population), first_front_only=True
         )[0]

@@ -50,6 +50,133 @@ from src.utils.parallel_worker import init_worker, get_worker_context
 console = get_console()
 
 
+def generate_pure_random_population(
+    n: int,
+    context: SchedulingContext,
+    parallel: bool = True,
+) -> List:
+    """
+    Generate population with PURE RANDOM initialization (no heuristics).
+
+    For baseline experiments - no conflict avoidance, no greedy logic.
+    Each gene gets completely random instructor, room, and time slot.
+
+    Args:
+        n: Population size
+        context: SchedulingContext
+        parallel: Enable/disable parallelization
+
+    Returns:
+        List of n individuals (each with random genes)
+    """
+    hierarchy = analyze_group_hierarchy(context.groups)
+    course_group_pairs = generate_course_group_pairs(
+        context.courses, context.groups, hierarchy, silent=True
+    )
+
+    # Generate population sequentially (parallel requires data_dir approach like other functions)
+    # TODO: Implement parallel version using data_dir + worker loading pattern
+    population = []
+    
+    for i in range(n):
+        genes = []
+        for course_id, group_ids, session_type, num_quanta in course_group_pairs:
+            course = context.courses.get(course_id)
+            if not course:
+                continue
+
+            # Break into subsessions
+            subsession_durations = get_subsession_durations(
+                course.quanta_per_week, course.course_type
+            )
+
+            for subsession_duration in subsession_durations:
+                # Pure random assignment - no conflict checking!
+                gene = _create_pure_random_gene(
+                    course_id, group_ids, subsession_duration, course, context
+                )
+                if gene:
+                    genes.append(gene)
+
+        if genes:
+            population.append(create_individual(genes))
+
+    return population
+
+
+def _create_pure_random_individual_wrapper(args):
+    """Wrapper for parallel pure random individual creation."""
+    individual_idx, course_group_pairs, silent = args
+
+    try:
+        worker_data = get_worker_context()
+        context = worker_data["context"]
+    except RuntimeError:
+        return None
+
+    genes = []
+    for course_id, group_ids, session_type, num_quanta in course_group_pairs:
+        course = context.courses.get(course_id)
+        if not course:
+            continue
+
+        subsession_durations = get_subsession_durations(
+            course.quanta_per_week, course.course_type
+        )
+
+        for subsession_duration in subsession_durations:
+            gene = _create_pure_random_gene(
+                course_id, group_ids, subsession_duration, course, context
+            )
+            if gene:
+                genes.append(gene)
+
+    if genes:
+        return create_individual(genes)
+    return None
+
+
+def _create_pure_random_gene(course_id, group_ids, num_quanta, course, context):
+    """Create gene with completely random assignment (no conflict avoidance)."""
+    from src.ga.sessiongene import SessionGene
+
+    # course_id is tuple (course_code, course_type)
+    course_code, course_type = course_id
+    
+    # Random instructor from qualified instructors
+    qualified_instructors = [
+        instr_id
+        for instr_id, instr in context.instructors.items()
+        if course_id in instr.qualified_courses  # Match full tuple
+    ]
+    if not qualified_instructors:
+        return None
+
+    instructor_id = random.choice(qualified_instructors)
+
+    # Random room (ignore suitability - will be caught by constraints)
+    if not context.rooms:
+        return None
+    room_id = random.choice(list(context.rooms.keys()))
+
+    # Random start time (ensure enough space for duration)
+    total_quanta = len(context.available_quanta) if context.available_quanta else 42
+    max_start = total_quanta - num_quanta
+    if max_start < 0:
+        return None
+    start_quanta = random.randint(0, max_start)
+
+    return SessionGene(
+        course_id=course_code,  # Just the code, not the tuple
+        course_type=course_type,  # Separate field
+        group_ids=list(group_ids),  # SessionGene expects List[str]
+        instructor_id=instructor_id,
+        room_id=room_id,
+        start_quanta=start_quanta,
+        num_quanta=num_quanta,
+    )
+
+
 def _create_single_individual_wrapper(args):
     """
     Wrapper function for parallel individual creation.

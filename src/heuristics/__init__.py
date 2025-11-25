@@ -1,12 +1,13 @@
 """
 Heuristic Toolbox Module
 
-Provides decorator-based registration for heuristic operators across five categories:
+Provides decorator-based registration for heuristic operators across six categories:
 1. Construction: Build schedules greedily from scratch
 2. Perturbation: Shake solutions to escape local optima
 3. Improvement: Local search moves for refinement
 4. Diversity: Maintain population diversity
 5. Meta: High-level search strategies
+6. Repair: Fix constraint violations
 
 Architecture:
 - Decorator-based registry (like constraints/repair operators)
@@ -41,6 +42,7 @@ from src.heuristics.registry import (
     improvement_heuristic,
     diversity_heuristic,
     meta_heuristic,
+    repair_heuristic,
     # Registry access
     get_all_heuristics,
     get_enabled_heuristics,
@@ -52,6 +54,7 @@ from src.heuristics.registry import (
     get_improvement_heuristics,
     get_diversity_heuristics,
     get_meta_heuristics,
+    get_repair_heuristics,
 )
 
 # Import heuristic implementations to trigger decorator registration
@@ -60,6 +63,7 @@ from src.heuristics import perturbation
 from src.heuristics import improvement
 from src.heuristics import diversity
 from src.heuristics import meta
+from src.heuristics import repair
 
 __all__ = [
     # Decorators
@@ -68,6 +72,7 @@ __all__ = [
     "improvement_heuristic",
     "diversity_heuristic",
     "meta_heuristic",
+    "repair_heuristic",
     # Registry functions
     "get_all_heuristics",
     "get_enabled_heuristics",
@@ -76,6 +81,9 @@ __all__ = [
     "get_construction_heuristics",
     "get_perturbation_heuristics",
     "get_improvement_heuristics",
+    "get_diversity_heuristics",
+    "get_meta_heuristics",
+    "get_repair_heuristics",
     "get_diversity_heuristics",
     "get_meta_heuristics",
 ]

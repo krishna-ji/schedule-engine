@@ -112,11 +112,44 @@ def run_standard_workflow(
 
     # Create output directory
     if output_dir is None:
+        # Fallback: create organized structure even without explicit runtime mode
+        from pathlib import Path
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = os.path.join("output", f"evaluation_{timestamp}")
+        # Try to infer mode from config
+        try:
+            from src.config.runtime_mode import RuntimeMode
+
+            runtime_mode = RuntimeMode.from_config(config)
+            mode_value = runtime_mode.value
+            mode_number, mode_name = mode_value.split("-", 1)
+
+            # Map to category
+            category_map = {
+                "1": "baseline",
+                "2": "nsga",
+                "3": "nsga",
+                "4": "nsga",
+                "5": "rl",
+                "6": "hybrid",
+                "7": "rl",
+                "8": "hybrid",
+                "9": "rl",
+                "10": "rl",
+            }
+            category = category_map.get(mode_number, "other")
+            output_dir = (
+                Path("output") / category / mode_name / f"evaluation_{timestamp}_auto"
+            )
+        except Exception:
+            # Ultimate fallback: put in "other" category
+            output_dir = Path("output") / "other" / f"evaluation_{timestamp}_auto"
+
+        output_dir = str(output_dir)
     else:
         # Ensure directory exists and make sure it's normalized
         output_dir = os.path.normpath(output_dir)
+    # os.makedirs already creates all parent directories by default
     os.makedirs(output_dir, exist_ok=True)
     console.print(f"[dim]output:[/dim] {output_dir}")
     console.print()
@@ -431,11 +464,36 @@ def run_standard_workflow(
         context.rooms,
     )
 
-    console.print(
-        f"  [dim]hard violations:[/dim] {best_individual.fitness.values[0]:.0f}"
-    )
-    console.print(f"  [dim]soft penalty:[/dim] {best_individual.fitness.values[1]:.2f}")
+    final_hard = abs(best_individual.fitness.values[0])
+    final_soft = abs(best_individual.fitness.values[1])
+
+    console.print(f"  [dim]hard violations:[/dim] {final_hard:.0f}")
+    console.print(f"  [dim]soft penalty:[/dim] {final_soft:.2f}")
     console.print(f"  [dim]sessions:[/dim] {len(decoded_schedule)}")
+
+    # Calculate and display improvement percentages
+    if (
+        hasattr(scheduler, "initial_best_hard")
+        and scheduler.initial_best_hard is not None
+    ):
+        initial_hard = scheduler.initial_best_hard
+        initial_soft = scheduler.initial_best_soft
+
+        # Calculate percentage reductions
+        if initial_hard > 0:
+            hc_reduction_pct = ((initial_hard - final_hard) / initial_hard) * 100
+            console.print(
+                f"  [dim]hard constraint improvement:[/dim] [green]{hc_reduction_pct:.1f}%[/green] "
+                f"[dim](from {initial_hard:.0f})[/dim]"
+            )
+
+        if initial_soft > 0:
+            sc_reduction_pct = ((initial_soft - final_soft) / initial_soft) * 100
+            console.print(
+                f"  [dim]soft constraint improvement:[/dim] [green]{sc_reduction_pct:.1f}%[/green] "
+                f"[dim](from {initial_soft:.2f})[/dim]"
+            )
+
     console.print()
 
     # Finalize logger
@@ -464,6 +522,7 @@ def run_standard_workflow(
             qts=qts,
             output_dir=output_dir,
             course_map=context.courses,
+            heuristic_tracker=getattr(scheduler, "heuristic_tracker", None),
         )
         progress.update(task, completed=1)
 

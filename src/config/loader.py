@@ -48,30 +48,70 @@ def load_config(
     config_path: str = None, runtime_mode: Optional[RuntimeMode] = None
 ) -> Config:
     """
-    Load configuration with base.yaml + environment overrides + runtime mode overrides.
+    Load configuration with layered merge strategy.
 
-    Config structure:
-    - base.yaml: All common settings
-    - prod.yaml/test.yaml: Environment-specific overrides
-    - configs/{category}/{mode}.yaml: Runtime mode overrides
-
-    Loading priority:
-    1. Runtime mode (--mode flag) - loads mode-specific config with base.yaml merge
-    2. Explicit config_path argument (--config flag) - loads with base.yaml merge
-    3. SCHEDULE_CONFIG environment variable - loads with base.yaml merge
-    4. configs/{ENVIRONMENT}.yaml (ENVIRONMENT env var) - loads with base.yaml merge
-    5. configs/test.yaml (default) - loads with base.yaml merge
-    6. Built-in defaults
-
+    Architecture:
+    ============
+    
+    1. BASE LAYER (configs/base.yaml)
+       - Common settings shared across all environments and modes
+       - Default values for all configuration parameters
+       
+    2. MODE LAYER (configs/{category}/{mode}.yaml) [OPTIONAL]
+       - Runtime mode specific settings (baseline, rl-guided, etc.)
+       - Overrides base settings for that specific mode
+       
+    3. ENVIRONMENT LAYER (configs/{env}.yaml) [ALWAYS APPLIED]
+       - Environment scaling (test=30 gens, prod=2000 gens)
+       - Final overrides for deployment environment
+       - CRITICAL: Always applied last regardless of priority path
+    
+    Merge Order: base.yaml → [mode.yaml] → env.yaml
+    
+    Loading Priority Paths:
+    =======================
+    
+    Priority 1: Runtime Mode (--mode baseline)
+        Flow: base.yaml → mode.yaml → env.yaml
+        Use: Experiment-specific configuration with environment scaling
+        
+    Priority 2: Explicit Path (--config path/to/config.yaml)
+        Flow: base.yaml → custom.yaml → env.yaml
+        Use: Custom configurations with environment scaling
+        
+    Priority 3: SCHEDULE_CONFIG Environment Variable
+        Flow: base.yaml → $SCHEDULE_CONFIG.yaml → env.yaml
+        Use: CI/CD or automated workflows
+        
+    Priority 4: Default Environment (ENVIRONMENT=test)
+        Flow: base.yaml → test.yaml
+        Use: Quick testing without mode specification
+    
+    Environment Variable:
+    ====================
+    ENVIRONMENT: Controls which env.yaml to load (test/prod)
+    - Must be set BEFORE calling load_config()
+    - Default: "test" (safe for development)
+    - Set in main.py from --env CLI argument
+    
     Args:
-        config_path: Path to config YAML file (overrides runtime_mode)
-        runtime_mode: RuntimeMode enum for experiment (e.g., RuntimeMode.BASELINE)
+        config_path: Path to config YAML file (Priority 2)
+        runtime_mode: RuntimeMode enum for experiment (Priority 1)
 
     Returns:
-        Config object
+        Config object with all layers merged
 
     Raises:
         ValueError: If runtime mode config violates mode constraints
+        
+    Example:
+        # Via runtime mode (recommended)
+        os.environ["ENVIRONMENT"] = "prod"
+        config = load_config(runtime_mode=RuntimeMode.RL_GUIDED)
+        
+        # Via explicit path
+        os.environ["ENVIRONMENT"] = "test"
+        config = load_config("configs/custom.yaml")
     """
     base_path = Path("configs/base.yaml")
 
@@ -129,7 +169,17 @@ def load_config(
         with open(config_path) as f:
             override_dict = yaml.safe_load(f) or {}
         merged = _deep_merge(base_dict, override_dict)
-        _log(f"Loading config: {config_path} (merged with base.yaml)")
+        
+        # ALWAYS apply environment config on top (test/prod scaling)
+        environment = os.getenv("ENVIRONMENT", "test")
+        env_path = Path(f"configs/{environment}.yaml")
+        if env_path.exists():
+            with open(env_path) as f:
+                env_dict = yaml.safe_load(f) or {}
+            merged = _deep_merge(merged, env_dict)
+            _log(f"Loading config: {config_path} + {environment}.yaml (merged with base.yaml)")
+        else:
+            _log(f"Loading config: {config_path} (merged with base.yaml)")
         return Config(**merged)
 
     # Priority 3: Environment variable

@@ -122,12 +122,16 @@ class ExperimentManager:
 
         # Map mode to category folder
         category_map = {
-            "1": "baseline",
-            "2": "nsga",
-            "3": "nsga",
-            "4": "nsga",
-            "5": "rl",
-            "6": "hybrid",
+            "1": "baseline",      # Pure NSGA-II
+            "2": "nsga",          # NSGA + Repairs
+            "3": "nsga",          # NSGA + Heuristics
+            "4": "nsga",          # Full NSGA
+            "5": "rl",            # RL-Guided
+            "6": "hybrid",        # Round-Robin
+            "7": "rl",            # RL Specialists
+            "8": "hybrid",        # Archive Diversity
+            "9": "rl",            # Hierarchical RL
+            "10": "rl",           # Multi-Agent RL
         }
         category = category_map.get(mode_number, "other")
 

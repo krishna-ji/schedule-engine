@@ -14,20 +14,40 @@ University course scheduling engine that combines NSGA-II genetic algorithms wit
 ## Quick Start
 
 ```bash
-uv sync --frozen          # install dependencies
-uv run test               # smoke test (30 generations)
-uv run prod               # full production run (2000 generations)
+uv sync --frozen          # Install dependencies
+uv run launcher           # Interactive experiment launcher
+uv run baseline --test    # Quick smoke test
 ```
 
-Common runtime shortcuts:
+## Experiment Framework
 
+### 📋 **Unified Launcher & Experiment Management**
 ```bash
-uv run launcher           # interactive menu
-uv run baseline           # Mode 1: pure NSGA-II
-uv run repairs            # Mode 2: NSGA-II + repairs
-uv run heuristics         # Mode 3: + heuristics
-uv run full               # Mode 4: full GA stack
-uv run rl                 # Mode 5: RL-guided selection
+uv run launcher           # Interactive TUI menu for all experiments
+uv run clean              # Clear all experimental artifacts
+uv run migrate            # Organize output structure
+uv run analyze-results    # Generate comparison analysis
+```
+
+### 🧪 **Available Experiments**
+| Command | Method | Description |
+|---------|--------|-------------|
+| `uv run baseline --test/prod` | **A1: Pure NSGA-II** | Minimal baseline (no repairs, no heuristics) |
+| `uv run repairs --test/prod` | **B1: NSGA + Repairs** | NSGA-II with repair heuristics |
+| `uv run heuristics --test/prod` | **B2: NSGA + Heuristics** | NSGA-II + 19 heuristic operators |
+| `uv run full --test/prod` | **B3: Full GA** | Complete GA with local search |
+| `uv run roundrobin --test/prod` | **C1: Round-Robin** | Fixed heuristic rotation |
+| `uv run rl --test/prod` | **C2: RL-Guided** | Reinforcement learning selection |
+
+**Profiles:** `--test` (30 gens, ~2 min) • `--prod` (2000 gens, ~3-5 hours)
+
+### 🎯 **Experiment Output Structure**
+```
+output/
+├── experiments/{method}/{type}/evaluation_TIMESTAMP/  # Results per run
+├── logs/           # Execution logs, TensorBoard data
+├── models/         # Trained RL agents
+└── analysis/       # Comparison plots, statistics
 ```
 
 ## Repository Layout
