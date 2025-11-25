@@ -2052,203 +2052,21 @@ class GAScheduler:
             + generation_repair_stats["memetic_repairs"]
         )
         generation_repair_stats["total_fixes"] = max(category_total, phase_total)
-
         # ============
-        # NEW: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
+        # HEURISTIC TOOLBOX ARCHITECTURE (Nov 2025)
         # ============
-        # Three-tier repair strategy with priority resolution:
-        #   Tier 1: Exhaustive search (fixed generations: 3, 25)
-        #   Tier 2: Greedy full search (stagnation-triggered)
-        #   Tier 3: Selective probabilistic (post-mutation cleanup)
-        # ============
-
-        repair_triggered = None  # Track which repair was applied
-        igls_metrics = {}
-
-        # TIER 1: Exhaustive Search (Fixed Generations)
-        if (
-            igls_config.exhaustive_search.enabled
-            and gen in igls_config.exhaustive_search.generations
-        ):
-            console.print(
-                f"\n[bold red][!info] exhaustive search triggered on  gen {gen}: "
-                f"(steepest descent on top {igls_config.exhaustive_search.population_coverage*100:.0f}%)[/bold red]"
-            )
-
-            from src.ga.operators.intensive_local_search import apply_exhaustive_search
-
-            profiler.start_phase("igls_exhaustive")
-            self.population, igls_metrics = apply_exhaustive_search(
-                population=self.population,
-                context=self.context,
-                population_coverage=igls_config.exhaustive_search.population_coverage,
-                max_neighborhood_size=igls_config.exhaustive_search.max_neighborhood_size,
-                timeout_seconds=igls_config.exhaustive_search.timeout_seconds,
-            )
-            profiler.end_phase()
-
-            # Re-evaluate population after exhaustive search
-            fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
-            for ind, fit in zip(self.population, fitnesses):
-                ind.fitness.values = fit
-
-            repair_triggered = "exhaustive"
-            event_tracker.add("igls_exhaustive_search")
-
-            console.print(
-                f"[bold green][!done] exhaustive search complete: "
-                f"{igls_metrics['genes_improved']} genes improved, "
-                f"total reduction: {igls_metrics['total_improvement']}, "
-                f"time: {igls_metrics['execution_time']:.1f}s"
-                f"{' [TIMED OUT]' if igls_metrics.get('timed_out') else ''}[/bold green]"
-            )
-
-        # TIER 2: Greedy Full Search (Stagnation-Triggered)
-        elif (
-            igls_config.stagnation_repair.enabled
-            and gen >= igls_config.stagnation_repair.min_generation
-            and self.stagnation_counter >= igls_config.stagnation_repair.patience
-            and (gen - getattr(self, "_last_stagnation_repair_gen", -999))
-            >= igls_config.stagnation_repair.cooldown
-        ):
-            console.print(
-                f"\n[bold yellow] [!info] Gen {gen}: STAGNATION REPAIR triggered "
-                f"(greedy search on top {igls_config.stagnation_repair.population_coverage*100:.0f}%, "
-                f"{self.stagnation_counter} gens stagnant)[/bold yellow]"
-            )
-
-            from src.ga.operators.intensive_local_search import apply_greedy_search
-
-            profiler.start_phase("igls_greedy")
-            self.population, igls_metrics = apply_greedy_search(
-                population=self.population,
-                context=self.context,
-                population_coverage=igls_config.stagnation_repair.population_coverage,
-                max_iterations=igls_config.stagnation_repair.max_iterations,
-                timeout_seconds=igls_config.stagnation_repair.timeout_seconds,
-            )
-            profiler.end_phase()
-
-            # Re-evaluate population after greedy search
-            fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
-            for ind, fit in zip(self.population, fitnesses):
-                ind.fitness.values = fit
-
-            repair_triggered = "greedy_stagnation"
-            event_tracker.add("igls_stagnation_repair")
-
-            # Reset stagnation counter and update last repair generation
-            self.stagnation_counter = 0
-            self._last_stagnation_repair_gen = gen
-
-            console.print(
-                f"[bold green]   ✓ Stagnation repair complete: "
-                f"{igls_metrics['genes_improved']} genes improved, "
-                f"total reduction: {igls_metrics['total_improvement']}, "
-                f"time: {igls_metrics['execution_time']:.1f}s"
-                f"{' [TIMED OUT]' if igls_metrics.get('timed_out') else ''}[/bold green]"
-            )
-
-        # Store IGLS metrics if repair was triggered
-        if repair_triggered:
-            igls_metrics["repair_type"] = repair_triggered
-            igls_metrics["generation"] = gen
-            if not hasattr(self.metrics, "igls_history"):
-                self.metrics.igls_history = []
-            self.metrics.igls_history.append(igls_metrics)
-
-        # ============
-        # END: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
-        # ============
-
-        # ============
-        # LNS-IGLS REPAIR SYSTEM
-        # ============
-        # Apply LNS-IGLS repair to best individuals when triggered
-        lns_config = get_config().lns
-        if lns_config.enabled:
-            from src.lns.lns_operator import should_trigger_lns_repair, lns_igls_repair
-
-            # Check if LNS should be triggered
-            should_trigger = should_trigger_lns_repair(
-                generation=gen,
-                trigger_interval=lns_config.trigger_interval,
-                stagnation_counter=self.stagnation_counter,
-                stagnation_threshold=lns_config.stagnation_threshold,
-                force_trigger_generations=lns_config.force_trigger_generations,
-            )
-
-            if should_trigger:
-                event_tracker.add("lns_repair_triggered")
-                console.print(
-                    f"\n[bold blue][!info] LNS-IGLS repair triggered on gen {gen}[/bold blue]"
-                )
-
-                profiler.start_phase("lns_repair")
-                # Get best individuals
-                num_to_repair = min(lns_config.apply_to_best_n, len(self.population))
-                best_individuals = tools.selBest(self.population, num_to_repair)
-
-                # Apply LNS-IGLS repair to each
-                repaired_count = 0
-                for idx, individual in enumerate(best_individuals):
-                    console.print(
-                        f"[dim]   Repairing individual {idx+1}/{num_to_repair}...[/dim]"
-                    )
-
-                    repaired = lns_igls_repair(
-                        individual=individual,
-                        courses=self.context.courses,
-                        instructors=self.context.instructors,
-                        groups=self.context.groups,
-                        rooms=self.context.rooms,
-                        max_subproblem_size=lns_config.max_subproblem_size,
-                        min_subproblem_size=lns_config.min_subproblem_size,
-                        expand_hops=lns_config.expand_neighborhood_hops,
-                        igls_max_iterations=lns_config.igls_max_iterations,
-                        igls_time_limit=lns_config.igls_time_limit,
-                        enable_diagnostics=lns_config.enable_diagnostics,
-                    )
-
-                    # If repair was successful (returned different individual), update
-                    if repaired is not individual:
-                        # Replace in population
-                        pop_idx = self.population.index(individual)
-                        self.population[pop_idx] = repaired
-                        repaired_count += 1
-                        # Invalidate fitness
-                        del repaired.fitness.values
-
-                # Re-evaluate repaired individuals
-                if repaired_count > 0:
-                    # Optimized: direct list comprehension (fitness.valid is boolean attribute)
-                    invalid = [ind for ind in self.population if not ind.fitness.valid]
-                    fitness_values = list(
-                        self.toolbox.map(self.toolbox.evaluate, invalid)
-                    )
-                    for ind, fit in zip(invalid, fitness_values):
-                        ind.fitness.values = fit
-
-                    event_tracker.add("lns_igls_repair_applied")
-                    console.print(
-                        f"[bold green]   ✓ LNS-IGLS repair complete: "
-                        f"{repaired_count}/{num_to_repair} individuals repaired[/bold green]"
-                    )
-
-                    # Reset stagnation counter after successful repair
-                    # This prevents immediate re-triggering on next generation
-                    self.stagnation_counter = 0
-                    logger.info(
-                        f"Stagnation counter reset after LNS-IGLS repair (gen {gen})"
-                    )
-                else:
-                    console.print(
-                        "[yellow]   LNS-IGLS repair: no improvements found[/yellow]"
-                    )
-                profiler.end_phase()
-
-        # ============
-        # END: LNS-IGLS REPAIR SYSTEM
+        # ALL repair/improvement operations are now unified heuristics:
+        #   - igls_repair, lns_repair, selective_repair, exhaustive_search
+        #   - Applied via round-robin rotation OR RL-guided selection
+        #   - No hardcoded generation triggers - mode-specific configuration
+        #   - Managed through heuristics.repair.* in configs
+        #
+        # Legacy hardcoded triggers REMOVED:
+        #   ❌ Exhaustive search at gens [3, 25] - use heuristic instead
+        #   ❌ LNS periodic trigger every 50 gens - use heuristic instead
+        #   ❌ Stagnation-triggered repairs - migrate to heuristics (future)
+        #
+        # Migration: Enable via configs/heuristics/repair/*.enabled=true
         # ============
 
         # Store generation repair stats
