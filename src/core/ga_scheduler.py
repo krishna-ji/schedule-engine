@@ -729,30 +729,20 @@ class GAScheduler:
             console.print("[dim]   No heuristics enabled for round-robin[/dim]")
             return
 
-        # Build rotation order: interleave REPAIR every N heuristics (if repair enabled)
+        # Build rotation order from all enabled heuristics
         heuristic_names = list(enabled.keys())
         
-        # CRITICAL FIX: Only add REPAIR if repair.enabled=true (respect killswitch)
-        repair_config = get_config().repair
-        if repair_config.enabled:
-            # Add REPAIR as pseudo-heuristic (every 4th position for balance)
-            repair_interval = 4
-            rotation_with_repair = []
-            for i, h in enumerate(heuristic_names):
-                rotation_with_repair.append(h)
-                if (i + 1) % repair_interval == 0:
-                    rotation_with_repair.append("REPAIR")
-            
-            # Set rotation order in tracker
-            self.heuristic_tracker.set_heuristic_order(rotation_with_repair)
-
+        # Set rotation order in tracker (includes repair heuristics if enabled)
+        self.heuristic_tracker.set_heuristic_order(heuristic_names)
+        
+        # Count repair heuristics for display
+        repair_heuristics = [h for h in heuristic_names if 'repair' in h.lower()]
+        
+        if repair_heuristics:
             console.print(
-                f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics + REPAIR (total {len(rotation_with_repair)} operators)[/dim]"
+                f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics (including {len(repair_heuristics)} repair operators)[/dim]"
             )
         else:
-            # NO REPAIR - just heuristics
-            self.heuristic_tracker.set_heuristic_order(heuristic_names)
-            
             console.print(
                 f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics (NO repair)[/dim]"
             )
@@ -823,7 +813,6 @@ class GAScheduler:
                     # Special handling for crossover-type heuristics that need two parents
                     if heuristic_name == "distance_preserving_crossover":
                         # Select second parent for crossover
-                        from deap import tools
                         parent2 = tools.selRandom(self.population, 1)[0]
                         result = heuristic_meta.function(
                             parent1=individual,
@@ -831,8 +820,10 @@ class GAScheduler:
                             context=self.context,
                         )
                         # Distance preserving crossover returns TWO offspring - use first one
-                        if isinstance(result, tuple) and len(result) == 2:
-                            individual[:] = result[0]
+                        if isinstance(result, tuple) and len(result) >= 2:
+                            offspring = result[0]
+                            if isinstance(offspring, list):
+                                individual[:] = offspring
                     elif heuristic_name == "adaptive_diversity_maintenance":
                         # Pass generation parameter for adaptive diversity
                         result = heuristic_meta.function(
@@ -841,16 +832,18 @@ class GAScheduler:
                             context=self.context,
                             generation=gen,
                         )
+                        # Handle list return (modified individual)
+                        if heuristic_meta.modifies_individual and isinstance(result, list):
+                            individual[:] = result
                     else:
                         result = heuristic_meta.function(
                             individual=individual,
                             population=[list(ind) for ind in self.population],
                             context=self.context,
                         )
-
-                    # Update individual if modified and heuristic returns new list
-                    if heuristic_meta.modifies_individual and isinstance(result, list):
-                        individual[:] = result
+                        # Update individual if modified and heuristic returns new list
+                        if heuristic_meta.modifies_individual and isinstance(result, list):
+                            individual[:] = result
                 else:
                     # Standard heuristic (individual + context)
                     # NOTE: Pass individual directly (not copy) for in-place modification
