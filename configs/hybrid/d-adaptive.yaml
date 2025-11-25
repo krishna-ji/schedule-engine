@@ -1,8 +1,9 @@
 # ================
-# RUNTIME MODE 5: NSGA-II + RL-Guided Repairs + Local Search
+# RUNTIME MODE D: Adaptive Heuristic Selection (No Memetic)
 # ================
-# Full GA with RL agent controlling heuristic selection.
-# RL guides both repair strategies and local search budget.
+# NSGA-II with adaptive heuristic selection based on performance tracking.
+# Tests: Can adaptive selection beat fixed round-robin?
+# NOTE: No memetic (isolate heuristic selection strategy impact).
 
 ga:
   ngen: 2000
@@ -11,12 +12,12 @@ ga:
   mutpb: 0.25
   elite_preservation: true
   elite_size: 0.1
-  use_adaptive_probabilities: true # RL may override this dynamically
+  use_adaptive_probabilities: true  # Enable adaptive selection
   use_constraint_guided_mutation: true
-  population_strategy: random # FIXED: Smart init produces worse solutions with many constraints
+  population_strategy: random
   validate_population_integrity: false
 
-# Enable IGLS repair system with memetic mode
+# Enable IGLS repair (no memetic)
 repair:
   enabled: true
   apply_after_mutation: false
@@ -25,7 +26,7 @@ repair:
   detection_strategy: hybrid
   recheck_after_repair: false
   max_iterations: 2
-  memetic_mode: true
+  memetic_mode: false  # NO memetic - test adaptive strategy only
   elite_percentage: 0.05
   memetic_iterations: 1
 
@@ -45,13 +46,9 @@ repair:
     cooldown: 5
 
   selective_repair:
-    enabled: true
-    apply_probability: 0.4
-    apply_after_mutation: true
-    apply_after_crossover: true
-    detection_strategy: hybrid
+    enabled: false
 
-# Enable LNS-IGLS local search
+# Enable LNS local search
 lns:
   enabled: true
   trigger_interval: 50
@@ -66,10 +63,10 @@ lns:
   apply_to_best_n: 1
   enable_diagnostics: true
 
-# Enable enhancements
+# Enable enhancements (but not memetic)
 enhancements:
   master_enabled: true
-  memetic_mode: true
+  memetic_mode: false  # NO memetic
   increased_population: false
   frequent_repair: false
   hypermutation:
@@ -83,7 +80,7 @@ enhancements:
     availability_weight: 0.8
     overlap_weight: 0.15
     other_weight: 0.05
-  greedy_initialization_percent: 0.25
+  greedy_initialization_percent: 0.0
   population_restart:
     enabled: true
     trigger_stagnation_gens: 50
@@ -99,7 +96,7 @@ enhancements:
     max_combinations: 10
     fallback_to_single: true
 
-# Enable all Phase 1.5 heuristics (RL will select from these)
+# Enable all 19 heuristics with adaptive selection
 heuristics:
   construction:
     largest_degree_first:
@@ -173,72 +170,15 @@ heuristics:
 
   meta:
     variable_neighborhood_descent:
-      enabled: true
-      priority: 1
-      max_neighborhoods: 3
-      max_iterations: 5
+      enabled: false  # Too slow
     iterated_local_search:
-      enabled: true
-      priority: 2
-      num_iterations: 5
-      perturbation_strength: 0.3
+      enabled: false  # Too slow
     adaptive_large_neighborhood:
-      enabled: true
-      priority: 3
-      num_iterations: 10
-      initial_destroy_rate: 0.3
+      enabled: false  # Too slow
     guided_local_search:
-      enabled: true
-      priority: 4
-      num_iterations: 10
-      penalty_factor: 0.1
+      enabled: false  # Too slow
 
-# Enable RL in inference mode (use trained model)
+# Disable RL
 rl:
-  enabled: true
-  mode: inference # Options: training, inference, hybrid
-
-  environment:
-    max_steps_per_episode: 20
-    observation_history_size: 10
-    render_mode: null
-
-  # ENHANCEMENT #2: Constraint-specific state representation
-  state:
-    type: constraint_specific # Use per-constraint breakdown
-    enable_constraint_breakdown: true # 8 hard + 4 soft = 12 additional features
-    history_size: 10
-    normalize: true
-
-  # ENHANCEMENT #1: Multi-objective reward (start with scalar, can switch to hypervolume)
-  reward:
-    type: scalar # Options: scalar, hypervolume, decomposed, adaptive
-    normalize: true
-
-    scalar:
-      hard_weight: 100.0
-      soft_weight: 1.0
-      cost_weight: 0.01
-
-  agent:
-    type: ppo # Trained PPO agent
-    model_path: models/rl_agents/best_model.zip
-    device: cpu # CPU-only inference
-
-  inference:
-    batch_prediction: false
-    timeout_ms: 10
-    fallback_on_timeout: true
-    cache_predictions: false
-
-  hybrid:
-    mode: rl_primary
-    fallback_strategy: greedy
-    rl_probability: 0.9
-    enable_action_masking: true
-
-  logging:
-    log_heuristic_usage: true
-    log_rewards: true
-    log_state_transitions: false
-    log_inference_time: true
+  enabled: false
+  mode: disabled

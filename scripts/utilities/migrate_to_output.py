@@ -16,7 +16,7 @@ console = Console()
 def migrate_to_output_structure():
     """Migrate logs and models to consolidated output/ structure."""
     
-    console.print("[cyan]🔄 Migrating to consolidated output/ structure...[/cyan]\n")
+    console.print("[cyan] Migrating to consolidated output/ structure...[/cyan]\n")
     
     # Create new directory structure
     output_dir = Path("output")
@@ -36,7 +36,7 @@ def migrate_to_output_structure():
     # Migrate logs/
     old_logs_dir = Path("logs")
     if old_logs_dir.exists():
-        console.print(f"\n[yellow]📁 Moving logs/ → output/logs/[/yellow]")
+        console.print(f"\n[yellow] Moving logs/ → output/logs/[/yellow]")
         
         for item in old_logs_dir.iterdir():
             dest = new_logs_dir / item.name
@@ -51,14 +51,14 @@ def migrate_to_output_structure():
         
         # Remove old logs directory
         shutil.rmtree(old_logs_dir)
-        console.print(f"  🗑️  Removed old: {old_logs_dir}")
+        console.print(f"  ️  Removed old: {old_logs_dir}")
     else:
-        console.print("  ℹ️  No logs/ directory found")
+        console.print("  ️  No logs/ directory found")
     
     # Migrate models/
     old_models_dir = Path("models")
     if old_models_dir.exists():
-        console.print(f"\n[yellow]🤖 Moving models/ → output/models/[/yellow]")
+        console.print(f"\n[yellow] Moving models/ → output/models/[/yellow]")
         
         for item in old_models_dir.iterdir():
             dest = new_models_dir / item.name
@@ -73,15 +73,15 @@ def migrate_to_output_structure():
         
         # Remove old models directory
         shutil.rmtree(old_models_dir)
-        console.print(f"  🗑️  Removed old: {old_models_dir}")
+        console.print(f"  ️  Removed old: {old_models_dir}")
     else:
-        console.print("  ℹ️  No models/ directory found")
+        console.print("  ️  No models/ directory found")
     
     # Move old experiment folders to experiments/ subdirectory
     experiments_dir = output_dir / "experiments"
     experiments_dir.mkdir(exist_ok=True)
     
-    console.print(f"\n[yellow]🧪 Organizing experiment folders...[/yellow]")
+    console.print(f"\n[yellow] Organizing experiment folders...[/yellow]")
     
     moved_count = 0
     for item in output_dir.iterdir():
@@ -93,22 +93,22 @@ def migrate_to_output_structure():
             moved_count += 1
     
     if moved_count == 0:
-        console.print("  ℹ️  No old evaluation folders to move")
+        console.print("  ️  No old evaluation folders to move")
     
-    console.print(f"\n[green]✅ Migration complete![/green]")
+    console.print(f"\n[green] Migration complete![/green]")
     console.print("\n[bold green]New consolidated structure enforced:[/bold green]")
-    console.print("📁 output/")
+    console.print(" output/")
     console.print("  ├── experiments/    # GA experiment results (ORGANIZED)")
     console.print("  ├── logs/          # All logs (MOVED from logs/)")
     console.print("  ├── models/        # All trained models (MOVED from models/)")
     console.print("  └── analysis/      # Analysis results (analyze-results output)")
-    console.print("\n[yellow]⚠️  Analysis scripts now REQUIRE this structure[/yellow]")
+    console.print("\n[yellow]️  Analysis scripts now REQUIRE this structure[/yellow]")
     console.print("[yellow]   Old scattered structure is no longer supported[/yellow]")
     
 
 def show_current_structure():
     """Show current directory structure."""
-    console.print("[cyan]📁 Current structure:[/cyan]\n")
+    console.print("[cyan] Current structure:[/cyan]\n")
     
     def show_tree(path: Path, prefix="", max_depth=2, current_depth=0):
         if current_depth > max_depth:
@@ -144,7 +144,7 @@ def show_current_structure():
     for dir_name in ["output", "logs", "models"]:
         path = Path(dir_name)
         if path.exists():
-            console.print(f"📁 {dir_name}/")
+            console.print(f" {dir_name}/")
             show_tree(path, "  ")
             console.print()
 
@@ -161,7 +161,7 @@ def main():
     
     if Confirm.ask("\n[yellow]Proceed with migration?[/yellow]"):
         migrate_to_output_structure()
-        console.print(f"\n[green]🎉 All experimental artifacts now consolidated under output/![/green]")
+        console.print(f"\n[green] All experimental artifacts now consolidated under output/![/green]")
         console.print("[dim]Use 'uv run clean' to clear everything at once.[/dim]")
     else:
         console.print("[yellow]Migration cancelled.[/yellow]")

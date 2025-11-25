@@ -91,9 +91,15 @@ def main_train_rl():
     sys.exit(rl_main() or 0)
 
 
-# Experimental Method Commands (baseline, repairs, heuristics, full, roundrobin, rl)
+# Progressive Mode Commands (A-E: Increasing complexity)
+# Mode A: Pure NSGA-II                           [repairs: NO,  memetic: NO,  heuristics: NO]
+# Mode B: + Memetic local search                 [repairs: YES, memetic: YES, heuristics: NO]
+# Mode C: + Round-robin (heuristics + repair)    [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed)]
+# Mode D: + Adaptive heuristics                  [repairs: YES, memetic: NO,  heuristics: YES (adaptive)]
+# Mode E: + RL-guided (deploys all techniques)   [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
+
 def main_baseline():
-    """A1: Pure NSGA-II baseline (no repairs, no heuristics)."""
+    """Mode A: Pure NSGA-II baseline (no repairs, no heuristics)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -101,18 +107,20 @@ def main_baseline():
 
     from main import main
 
-    sys.argv = ["main.py", "--env", profile, "--mode", "baseline"]
+    sys.argv = ["main.py", "--config", "configs/baseline/a-pure-nsga.yaml", "--env", profile]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Running A1: Pure NSGA-II baseline ({profile} profile)[/green]"
+        f"[green]Mode A: Pure NSGA-II baseline ({profile} profile)[/green]"
     )
+    console.print("[dim]  [repairs: NO, memetic: NO, heuristics: NO][/dim]")
     sys.exit(main() or 0)
 
 
-def main_rl_guided():
-    """C2: RL-guided hyper-heuristic."""
+
+def main_memetic():
+    """Mode B: NSGA-II + memetic local search (no heuristics)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -120,18 +128,19 @@ def main_rl_guided():
 
     from main import main
 
-    sys.argv = ["main.py", "--env", profile, "--mode", "rl_guided"]
+    sys.argv = ["main.py", "--config", "configs/nsga/b-nsga-memetic.yaml", "--env", profile]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Running C2: RL-guided hyper-heuristic ({profile} profile)[/green]"
+        f"[green]Mode B: NSGA-II + memetic local search ({profile} profile)[/green]"
     )
+    console.print("[dim]  [repairs: YES, memetic: YES, heuristics: NO][/dim]")
     sys.exit(main() or 0)
 
 
-def main_heuristic_roundrobin():
-    """B1: Heuristic round-robin (fixed rotation through all 22 heuristics)."""
+def main_roundrobin():
+    """Mode C: Round-robin heuristics (no memetic)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -139,11 +148,10 @@ def main_heuristic_roundrobin():
 
     from main import main
 
-    # Use --config to load mode-specific config file (main.py doesn't support --mode roundrobin)
     sys.argv = [
         "main.py",
         "--config",
-        "configs/hybrid/6-roundrobin.yaml",
+        "configs/hybrid/c-roundrobin.yaml",
         "--env",
         profile,
     ]
@@ -151,14 +159,14 @@ def main_heuristic_roundrobin():
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Running B1: Heuristic Round-Robin ({profile} profile)[/green]"
+        f"[green]Mode C: Round-robin heuristics + repair ({profile} profile)[/green]"
     )
-    console.print("[cyan]Strategy: Fixed rotation through all 22 heuristics[/cyan]")
+    console.print("[dim]  [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed rotation)][/dim]")
     sys.exit(main() or 0)
 
 
-def main_heuristic_adaptive():
-    """B2: All heuristics with intelligent adaptive selection (complex)."""
+def main_adaptive():
+    """Mode D: Adaptive heuristic selection (no memetic)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -166,17 +174,76 @@ def main_heuristic_adaptive():
 
     from main import main
 
-    sys.argv = ["main.py", "--env", profile, "--mode", "full"]
+    sys.argv = [
+        "main.py",
+        "--config",
+        "configs/hybrid/d-adaptive.yaml",
+        "--env",
+        profile,
+    ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Running B2: Heuristic Adaptive Selection ({profile} profile)[/green]"
+        f"[green]Mode D: Adaptive heuristic selection ({profile} profile)[/green]"
     )
-    console.print(
-        "[cyan]Strategy: Learning-based heuristic selection with performance tracking[/cyan]"
-    )
+    console.print("[dim]  [repairs: YES, memetic: NO, heuristics: YES (adaptive selection)][/dim]")
     sys.exit(main() or 0)
+
+
+def main_rl():
+    """Mode E: RL-guided hyper-heuristic."""
+    parser = create_parser()
+    args = parser.parse_args()
+
+    profile = args.profile or "test"
+
+    from main import main
+
+    sys.argv = ["main.py", "--config", "configs/rl/e-rl-guided.yaml", "--env", profile]
+    if args.name:
+        sys.argv.extend(["--experiment", args.name])
+
+    console.print(
+        f"[green]Mode E: RL-guided hyper-heuristic ({profile} profile)[/green]"
+    )
+    console.print("[dim]  [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)][/dim]")
+    sys.exit(main() or 0)
+
+    console.print(
+        f"[green]Mode E: RL-guided hyper-heuristic ({profile} profile)[/green]"
+    )
+    console.print("[dim]  [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)][/dim]")
+    sys.exit(main() or 0)
+
+
+def main_roundrobin():
+    """Mode C: Round-robin heuristics (no memetic)."""
+    parser = create_parser()
+    args = parser.parse_args()
+
+    profile = args.profile or "test"
+
+    from main import main
+
+    sys.argv = [
+        "main.py",
+        "--config",
+        "configs/hybrid/c-roundrobin.yaml",
+        "--env",
+        profile,
+    ]
+    if args.name:
+        sys.argv.extend(["--experiment", args.name])
+
+    console.print(
+        f"[green]Mode C: Round-robin heuristics ({profile} profile)[/green]"
+    )
+    console.print("[dim]  [repairs: YES, memetic: NO, heuristics: YES (fixed rotation)][/dim]")
+    sys.exit(main() or 0)
+
+
+
 
 
 # Helper commands (a-z)
@@ -211,10 +278,10 @@ def main_clean():
             if item.name != "experiment_manifest.json":
                 if item.is_dir():
                     shutil.rmtree(item)
-                    console.print(f"  🗑️  Removed: {item.name}/")
+                    console.print(f"  ️  Removed: {item.name}/")
                 else:
                     item.unlink()
-                    console.print(f"  🗑️  Removed: {item.name}")
+                    console.print(f"  ️  Removed: {item.name}")
         console.print("[green]✓ Cleaned consolidated output structure[/green]")
         console.print("[dim]  (experiments, logs, models, analysis all cleared)[/dim]")
     else:

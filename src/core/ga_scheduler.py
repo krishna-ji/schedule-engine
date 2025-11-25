@@ -102,6 +102,9 @@ def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
             # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
             offspring[i], offspring[i + 1] = result
 
+            # CRITICAL FIX: Force fitness invalidation (DEAP bug workaround)
+            # Use invalid fitness tuple (inf, inf) instead of deleting
+            # DEAP requires tuple length to match fitness weights (2 objectives)
             del offspring[i].fitness.values
             del offspring[i + 1].fitness.values
 
@@ -129,6 +132,7 @@ def _parallel_mutation(offspring, mutpb, toolbox, max_workers=None):
             # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
             offspring[i] = result[0]
 
+            # CRITICAL FIX: Force fitness invalidation
             del offspring[i].fitness.values
 
     return offspring
@@ -714,6 +718,7 @@ class GAScheduler:
         Setup round-robin heuristic rotation from enabled heuristics.
 
         Builds ordered list based on priority and category.
+        Includes REPAIR as a pseudo-heuristic for Mode C round-robin.
         """
         from src.heuristics import get_enabled_heuristics
 
@@ -724,12 +729,22 @@ class GAScheduler:
             console.print("[dim]   No heuristics enabled for round-robin[/dim]")
             return
 
-        # Set rotation order in tracker
+        # Build rotation order: interleave REPAIR every N heuristics
         heuristic_names = list(enabled.keys())
-        self.heuristic_tracker.set_heuristic_order(heuristic_names)
+        
+        # Add REPAIR as pseudo-heuristic (every 4th position for balance)
+        repair_interval = 4
+        rotation_with_repair = []
+        for i, h in enumerate(heuristic_names):
+            rotation_with_repair.append(h)
+            if (i + 1) % repair_interval == 0:
+                rotation_with_repair.append("REPAIR")
+        
+        # Set rotation order in tracker
+        self.heuristic_tracker.set_heuristic_order(rotation_with_repair)
 
         console.print(
-            f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics enabled[/dim]"
+            f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics + REPAIR (total {len(rotation_with_repair)} operators)[/dim]"
         )
 
     def _apply_round_robin_heuristics(self, gen: int) -> None:
@@ -767,10 +782,6 @@ class GAScheduler:
         if heuristic_meta.category.value == "construction":
             return
 
-        # Skip repair heuristics (handled by separate repair system)
-        if heuristic_meta.category.value == "repair":
-            return
-
         # Select target individual(s)
         if heuristic_meta.requires_population:
             # Diversity/selection heuristics need full population
@@ -780,6 +791,12 @@ class GAScheduler:
         else:
             # Most heuristics work on single individual
             target_individuals = tools.selBest(self.population, 1)
+
+        # CONSOLE LOG: Show which heuristic is being applied
+        heuristic_start_time = time.time()
+        console.print(
+            f"[cyan]   -> Gen {gen}: Heuristic '{heuristic_name}' ({heuristic_meta.category.value}) -> {len(target_individuals)} ind(s)...[/cyan]"
+        )
 
         # Apply heuristic to each target
         for ind_idx, individual in enumerate(target_individuals):
@@ -844,7 +861,10 @@ class GAScheduler:
                 )
 
             except Exception as e:
-                logger.debug(f"Heuristic '{heuristic_name}' failed at gen {gen}: {e}")
+                logger.warning(f"Heuristic '{heuristic_name}' failed at gen {gen}: {e}")
+                console.print(
+                    f"[yellow]   WARN Gen {gen}: Heuristic '{heuristic_name}' failed: {e}[/yellow]"
+                )
 
                 # Ensure individual has valid fitness (re-evaluate if needed)
                 if (
@@ -872,6 +892,12 @@ class GAScheduler:
                     execution_time=0.0,
                     individual_id=0,
                 )
+        
+        # CONSOLE LOG: Show heuristic completion with timing and improvement
+        total_heuristic_time = time.time() - heuristic_start_time
+        console.print(
+            f"[green]   OK Gen {gen}: '{heuristic_name}' done in {total_heuristic_time:.2f}s[/green]"
+        )
 
     def initialize_population(self):
         """Create and evaluate initial population."""
@@ -1807,32 +1833,89 @@ class GAScheduler:
                             generation_repair_stats["mutation_repairs"] += 1
             profiler.end_phase()
 
-        # Evaluate invalid individuals with GPU acceleration when available
+        # CRITICAL FIX: Comprehensive fitness invalidation check
+        # Check multiple conditions to detect DEAP invalidation bugs
         _before_invalid = time_module.time()
-        invalid = [ind for ind in offspring if not ind.fitness.valid]
+        profiler.start_phase("invalidation_check")
+        
+        invalid = []
+        for ind in offspring:
+            # Multi-condition check (DEAP sometimes leaves fitness.valid=True after delete)
+            is_invalid = (
+                not hasattr(ind, 'fitness') or
+                not hasattr(ind.fitness, 'valid') or
+                not ind.fitness.valid or
+                not hasattr(ind.fitness, 'values') or
+                len(ind.fitness.values) == 0
+            )
+            
+            if is_invalid:
+                invalid.append(ind)
+        
+        profiler.end_phase()
         _invalid_check_time = time_module.time() - _before_invalid
-
+        
+        # Calculate expected invalidation count
+        expected_invalid = int(len(offspring) * (cxpb * 0.75 + mutpb * 0.25))
+        
+        # DEBUG: Log invalidation results (always show for first 5 gens)
+        if gen <= 5:
+            console.print(
+                f"[dim]   Gen {gen}: {len(invalid)}/{len(offspring)} individuals invalidated "
+                f"(expected ~{expected_invalid}, {len(invalid)/len(offspring)*100:.1f}%)[/dim]"
+            )
+        
+        # WARNING: Detect invalidation failure
+        if len(invalid) < expected_invalid * 0.5 and gen > 0:
+            console.print(
+                f"[bold yellow]   WARNING Gen {gen}: Only {len(invalid)}/{len(offspring)} individuals marked invalid! "
+                f"Expected ~{expected_invalid}. Fitness invalidation may be broken.[/bold yellow]"
+            )
+        
+        # PARALLEL FITNESS EVALUATION (PRIMARY PARALLELIZATION TARGET)
         if invalid:
             profiler.start_phase("evaluation", items_to_process=len(invalid))
-
-            # DEBUG: Log how many individuals are being re-evaluated
-            if gen <= 5:  # Only log first few generations
-                console.print(
-                    f"[dim]   DEBUG Gen {gen}: Re-evaluating {len(invalid)} individuals[/dim]"
-                )
-
-            # CPU-only evaluation with multiprocessing parallelization
-            # GPU removed from GA loop - better suited for RL neural networks
+            
+            # Use multiprocessing pool via toolbox.map (32 cores parallelized)
             fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
+            
             for ind, fit in zip(invalid, fitness_values):
                 ind.fitness.values = fit
-
+            
             profiler.end_phase()
-        else:
-            # DEBUG: No individuals to re-evaluate (this is the problem!)
+            
+            # DEBUG: Verify fitness assignment (always show for first 5 gens)
             if gen <= 5:
+                evaluated_count = sum(
+                    1 for ind in invalid 
+                    if hasattr(ind, 'fitness') and hasattr(ind.fitness, 'values') and len(ind.fitness.values) > 0
+                )
                 console.print(
-                    f"[dim]   DEBUG Gen {gen}: NO individuals to re-evaluate - this is the bug![/dim]"
+                    f"[dim]   Gen {gen}: {evaluated_count}/{len(invalid)} individuals evaluated successfully[/dim]"
+                )
+        else:
+            # CRITICAL ERROR: No individuals to evaluate (fitness invalidation completely failed)
+            if gen > 0:  # Skip generation 0 (initial population already evaluated)
+                console.print(
+                    f"[bold red]   ERROR Gen {gen}: NO individuals marked for re-evaluation! "
+                    f"Fitness invalidation is BROKEN. GA is NOT evolving![/bold red]"
+                )
+                console.print(
+                    f"[yellow]   Emergency fallback: Force re-evaluating ALL {len(offspring)} individuals...[/yellow]"
+                )
+                
+                # Emergency fallback: Re-evaluate ENTIRE population
+                profiler.start_phase("evaluation_emergency", items_to_process=len(offspring))
+                
+                fitness_values = list(self.toolbox.map(self.toolbox.evaluate, offspring))
+                
+                for ind, fit in zip(offspring, fitness_values):
+                    ind.fitness.values = fit
+                
+                profiler.end_phase()
+                
+                console.print(
+                    f"[green]   Emergency re-evaluation complete: {len(offspring)} individuals[/green]"
                 )
 
         # Track overhead

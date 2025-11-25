@@ -644,7 +644,7 @@ def create_session_gene_with_conflict_avoidance(
     if assigned_quanta:
         if len(assigned_quanta) != quanta_needed:
             print(
-                f"❌ BUG DETECTED: {course_id} {course_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
+                f" BUG DETECTED: {course_id} {course_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
             )
             print(f"   assigned_quanta={assigned_quanta[:10]}...")
             logging.warning(
@@ -655,7 +655,7 @@ def create_session_gene_with_conflict_avoidance(
     # Repair operators will fix overlaps later - maintaining correct num_quanta is priority
     if not assigned_quanta:
         print(
-            f"⚠️ WRAP-AROUND for {course_id} {course_type}: need {quanta_needed} from {len(context.available_quanta)} available"
+            f"️ WRAP-AROUND for {course_id} {course_type}: need {quanta_needed} from {len(context.available_quanta)} available"
         )
         logging.info(
             f"{course_id}: Using fallback (needed {quanta_needed}, available {len(context.available_quanta)})"
@@ -714,7 +714,7 @@ def create_session_gene_with_conflict_avoidance(
     # DEBUG: Verify num_q matches quanta_needed
     if num_q != quanta_needed:
         print(
-            f"❌ CONVERSION BUG: {course_id} {course_type}: quanta_list_to_contiguous gave num_q={num_q} but quanta_needed={quanta_needed}"
+            f" CONVERSION BUG: {course_id} {course_type}: quanta_list_to_contiguous gave num_q={num_q} but quanta_needed={quanta_needed}"
         )
         print(f"   assigned_quanta length={len(assigned_quanta)}")
 
@@ -881,7 +881,7 @@ def assign_conflict_free_quanta(
     if consecutive_block:
         if len(consecutive_block) != quanta_needed:
             print(
-                f"❌ BUG: _find_consecutive_block returned {len(consecutive_block)} but needed {quanta_needed}"
+                f" BUG: _find_consecutive_block returned {len(consecutive_block)} but needed {quanta_needed}"
             )
         return consecutive_block
 
@@ -891,7 +891,7 @@ def assign_conflict_free_quanta(
     if consecutive_block:
         if len(consecutive_block) != quanta_needed:
             print(
-                f"❌ BUG: _find_consecutive_block (all quanta) returned {len(consecutive_block)} but needed {quanta_needed}"
+                f" BUG: _find_consecutive_block (all quanta) returned {len(consecutive_block)} but needed {quanta_needed}"
             )
         return consecutive_block
 

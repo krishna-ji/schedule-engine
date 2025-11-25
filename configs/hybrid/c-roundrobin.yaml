@@ -1,0 +1,228 @@
+# ================
+# RUNTIME MODE C: Round-Robin Heuristic Selection
+# ================
+# NSGA-II with pure round-robin cycling through heuristics + REPAIR.
+# [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed rotation)]
+# Cycles through all enabled heuristics + REPAIR as pseudo-heuristic.
+# REPAIR is inserted every 4th position (e.g., H1, H2, H3, H4, REPAIR, H5...).
+# Tests: Which operator (heuristic or repair) provides most improvement?
+#
+# NOTE: ngen and pop_size inherit from environment config (test/prod)
+# Test: 30 gens, 10 pop | Prod: 2000 gens, 200 pop
+
+ga:
+  # ngen and pop_size inherit from environment (test.yaml / prod.yaml)
+  cxpb: 0.75
+  mutpb: 0.25
+  elite_preservation: true
+  elite_size: 0.1
+  use_adaptive_probabilities: false # Fixed round-robin
+  use_constraint_guided_mutation: true
+  population_strategy: random # FIXED: Smart init produces worse solutions with many constraints
+  validate_population_integrity: false
+
+# Disable continuous repair (only use stagnation-triggered repair as a round-robin operator)
+repair:
+  enabled: false  # NO automatic repairs - only stagnation trigger
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: false  # NO memetic
+  elite_percentage: 0.05
+  memetic_iterations: 1
+
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: false
+    periodic_trigger:
+      enabled: false
+
+  stagnation_repair:
+    enabled: true  # Acts like a "heuristic" - only triggers on stagnation
+    patience: 8
+    min_generation: 12
+    population_coverage: 0.4
+    max_iterations: 15
+    timeout_seconds: 120
+    cooldown: 5
+
+  selective_repair:
+    enabled: false  # DISABLED: Consumes 52% of runtime (33.98s/min in test, 156s/gen in prod)
+    apply_probability: 0.4
+    apply_after_mutation: false  # Should be FALSE (too expensive)
+    apply_after_crossover: false  # Should be FALSE (too expensive)
+    detection_strategy: hybrid
+
+# Enable LNS-IGLS local search
+lns:
+  enabled: true
+  trigger_interval: 50
+  stagnation_threshold: 10
+  force_trigger_generations: []
+  trigger_before_igls: false
+  max_subproblem_size: 20
+  min_subproblem_size: 4
+  expand_neighborhood_hops: 0
+  igls_max_iterations: 500
+  igls_time_limit: 5.0
+  apply_to_best_n: 1
+  enable_diagnostics: true
+
+# Enable enhancements
+enhancements:
+  master_enabled: true
+  memetic_mode: true
+  increased_population: false
+  frequent_repair: false
+  hypermutation:
+    enabled: true
+    trigger_on_stagnation: true
+    stagnation_window: 10
+    duration_generations: 1
+    mutation_rate: 0.5
+  constraint_priorities:
+    enabled: true
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  greedy_initialization_percent: 0.0 # DISABLED: Construction heuristics create different gene structure (split vs combined groups)
+  population_restart:
+    enabled: true
+    trigger_stagnation_gens: 50
+    restart_percentage: 0.3
+    min_interval_gens: 100
+  violation_heatmap:
+    enabled: true
+    target_hot_genes: true
+    top_n_hotspots: 5
+    persistence_file: "violation_heatmap.json"
+  multi_neighborhood:
+    enabled: true
+    max_combinations: 10
+    fallback_to_single: true
+
+# Enable all Phase 1.5 heuristics (applied in round-robin order by priority)
+heuristics:
+  construction:
+    largest_degree_first:
+      enabled: true
+      priority: 1
+    most_constrained_first:
+      enabled: true
+      priority: 2
+    earliest_deadline_first:
+      enabled: true
+      priority: 3
+
+  perturbation:
+    random_swap:
+      enabled: true
+      priority: 1
+      swap_type: time
+      num_swaps: 1
+    temporal_shift:
+      enabled: true
+      priority: 2
+      delta: null
+      probability: 0.3
+    room_shuffle:
+      enabled: true
+      priority: 3
+      probability: 0.2
+    instructor_reassign:
+      enabled: true
+      priority: 4
+      probability: 0.15
+      prefer_available: true
+    multi_perturbation:
+      enabled: true
+      priority: 5
+
+  improvement:
+    kempe_chain:
+      enabled: true
+      priority: 1
+      max_iterations: 5
+    ejection_chain:
+      enabled: true
+      priority: 2
+      max_chain_length: 5
+      max_iterations: 3
+    variable_depth_search:
+      enabled: true
+      priority: 3
+      max_depth: 3
+      max_iterations: 5
+
+  diversity:
+    distance_preserving_crossover:
+      enabled: true
+      priority: 1
+      preserve_distance: 0.7
+    crowding_mutation:
+      enabled: true
+      priority: 2
+      intensity: 0.3
+    niching_selection:
+      enabled: true
+      priority: 3
+      niche_radius: 0.3
+      select_count: 10
+    adaptive_diversity_maintenance:
+      enabled: true
+      priority: 4
+      diversity_threshold: 0.2
+
+  meta:
+    variable_neighborhood_descent:
+      enabled: false  # DISABLED: Too slow for production (2-3s per application)
+      priority: 1
+      max_neighborhoods: 3
+      max_iterations: 5
+    iterated_local_search:
+      enabled: false  # DISABLED: Too slow for production (3-5s per application)
+      priority: 2
+      num_iterations: 5
+      perturbation_strength: 0.3
+    adaptive_large_neighborhood:
+      enabled: false  # DISABLED: Very slow (10-20s per application)
+      priority: 3
+      num_iterations: 10
+      initial_destroy_rate: 0.3
+    guided_local_search:
+      enabled: false  # DISABLED: Very slow (5-10s per application)
+      priority: 4
+      num_iterations: 10
+      penalty_factor: 0.1
+
+  repair:
+    igls_repair:
+      enabled: true  # Core repair - lightweight IGLS (2 iterations)
+      priority: 1  # High priority - apply early in rotation
+      max_iterations: 2
+    greedy_repair:
+      enabled: true  # First-improving local search
+      priority: 2
+      max_iterations: 5
+    exhaustive_repair:
+      enabled: false  # DISABLED: Steepest descent (very expensive)
+      priority: 3
+      max_neighborhood_size: 10
+    lns_repair:
+      enabled: true  # Large neighborhood search
+      priority: 4
+      subproblem_size: 10
+      max_iterations: 50
+    memetic_repair:
+      enabled: false  # DISABLED: Intensive repair on elite (handled by Mode B)
+      priority: 5
+      elite_percentage: 0.05
+      max_iterations: 10
+
+# Disable RL (using round-robin instead)
+rl:
+  enabled: false
+  mode: disabled

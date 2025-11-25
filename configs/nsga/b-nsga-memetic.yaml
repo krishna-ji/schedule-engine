@@ -1,24 +1,23 @@
 # ================
-# RUNTIME MODE 6: NSGA-II + Round-Robin Heuristic Selection
+# RUNTIME MODE B: NSGA-II + Memetic Local Search
 # ================
-# Full GA with round-robin heuristic selection (no RL).
-# Cycles through all enabled heuristics in fixed order.
-#
-# NOTE: ngen and pop_size inherit from environment config (test/prod)
-# Test: 30 gens, 10 pop | Prod: 2000 gens, 200 pop
+# NSGA-II with repairs and intensive memetic local search on elite.
+# [repairs: YES, memetic: YES, heuristics: NO]
+# Tests: Does intensive local search improve baseline?
 
 ga:
-  # ngen and pop_size inherit from environment (test.yaml / prod.yaml)
+  ngen: 2000
+  pop_size: 200
   cxpb: 0.75
   mutpb: 0.25
   elite_preservation: true
   elite_size: 0.1
-  use_adaptive_probabilities: false # Fixed round-robin
+  use_adaptive_probabilities: false
   use_constraint_guided_mutation: true
-  population_strategy: random # FIXED: Smart init produces worse solutions with many constraints
+  population_strategy: random
   validate_population_integrity: false
 
-# Enable IGLS repair system with memetic mode
+# Enable IGLS repair with memetic mode
 repair:
   enabled: true
   apply_after_mutation: false
@@ -27,7 +26,7 @@ repair:
   detection_strategy: hybrid
   recheck_after_repair: false
   max_iterations: 2
-  memetic_mode: true
+  memetic_mode: true  # Memetic local search enabled
   elite_percentage: 0.05
   memetic_iterations: 1
 
@@ -47,13 +46,9 @@ repair:
     cooldown: 5
 
   selective_repair:
-    enabled: true
-    apply_probability: 0.4
-    apply_after_mutation: true
-    apply_after_crossover: true
-    detection_strategy: hybrid
+    enabled: false
 
-# Enable LNS-IGLS local search
+# Enable LNS local search
 lns:
   enabled: true
   trigger_interval: 50
@@ -71,7 +66,7 @@ lns:
 # Enable enhancements
 enhancements:
   master_enabled: true
-  memetic_mode: true
+  memetic_mode: true  # Memetic enabled
   increased_population: false
   frequent_repair: false
   hypermutation:
@@ -85,7 +80,7 @@ enhancements:
     availability_weight: 0.8
     overlap_weight: 0.15
     other_weight: 0.05
-  greedy_initialization_percent: 0.0 # DISABLED: Construction heuristics create different gene structure (split vs combined groups)
+  greedy_initialization_percent: 0.0
   population_restart:
     enabled: true
     trigger_stagnation_gens: 50
@@ -101,101 +96,57 @@ enhancements:
     max_combinations: 10
     fallback_to_single: true
 
-# Enable all Phase 1.5 heuristics (applied in round-robin order by priority)
+# Disable all heuristics (isolate memetic impact)
 heuristics:
   construction:
     largest_degree_first:
-      enabled: true
-      priority: 1
+      enabled: false
     most_constrained_first:
-      enabled: true
-      priority: 2
+      enabled: false
     earliest_deadline_first:
-      enabled: true
-      priority: 3
+      enabled: false
 
   perturbation:
     random_swap:
-      enabled: true
-      priority: 1
-      swap_type: time
-      num_swaps: 1
+      enabled: false
     temporal_shift:
-      enabled: true
-      priority: 2
-      delta: null
-      probability: 0.3
+      enabled: false
     room_shuffle:
-      enabled: true
-      priority: 3
-      probability: 0.2
+      enabled: false
     instructor_reassign:
-      enabled: true
-      priority: 4
-      probability: 0.15
-      prefer_available: true
+      enabled: false
     multi_perturbation:
-      enabled: true
-      priority: 5
+      enabled: false
 
   improvement:
     kempe_chain:
-      enabled: true
-      priority: 1
-      max_iterations: 5
+      enabled: false
     ejection_chain:
-      enabled: true
-      priority: 2
-      max_chain_length: 5
-      max_iterations: 3
+      enabled: false
     variable_depth_search:
-      enabled: true
-      priority: 3
-      max_depth: 3
-      max_iterations: 5
+      enabled: false
 
   diversity:
     distance_preserving_crossover:
-      enabled: true
-      priority: 1
-      preserve_distance: 0.7
+      enabled: false
     crowding_mutation:
-      enabled: true
-      priority: 2
-      intensity: 0.3
+      enabled: false
     niching_selection:
-      enabled: true
-      priority: 3
-      niche_radius: 0.3
-      select_count: 10
+      enabled: false
     adaptive_diversity_maintenance:
-      enabled: true
-      priority: 4
-      diversity_threshold: 0.2
+      enabled: false
 
   meta:
     variable_neighborhood_descent:
-      enabled: true
-      priority: 1
-      max_neighborhoods: 3
-      max_iterations: 5
+      enabled: false
     iterated_local_search:
-      enabled: true
-      priority: 2
-      num_iterations: 5
-      perturbation_strength: 0.3
+      enabled: false
     adaptive_large_neighborhood:
-      enabled: true
-      priority: 3
-      num_iterations: 10
-      initial_destroy_rate: 0.3
+      enabled: false
     guided_local_search:
-      enabled: true
-      priority: 4
-      num_iterations: 10
-      penalty_factor: 0.1
+      enabled: false
 
-# Disable RL (using round-robin instead)
+# Disable RL
 rl:
   enabled: false
   mode: disabled
