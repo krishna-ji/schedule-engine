@@ -229,19 +229,22 @@ def main():
     console.print(f"  [dim]runtime:[/dim] {duration_seconds:.1f}s")
     console.print()
 
-    # Update experiment run with results
+    # Update experiment run with results (P0 FIX: Always update manifest)
     if experiment_run and runtime_mode:
-        manager.update_run_results(
-            run=experiment_run,
-            duration_seconds=duration_seconds,
-            generations=config.ga.ngen,
-            population_size=config.ga.pop_size,
-            best_hard_violations=abs(hard_viol),
-            best_soft_penalty=soft_pen,
-        )
-        console.print(
-            f"[dim]Experiment logged: {experiment_run.run_id} ({runtime_mode.display_name})[/dim]"
-        )
+        try:
+            manager.update_run_results(
+                run=experiment_run,
+                duration_seconds=duration_seconds,
+                generations=config.ga.ngen,
+                population_size=config.ga.pop_size,
+                best_hard_violations=abs(hard_viol),
+                best_soft_penalty=soft_pen,
+            )
+            console.print(
+                f"[dim]Experiment logged: {experiment_run.run_id} ({runtime_mode.display_name})[/dim]"
+            )
+        except Exception as e:
+            console.print(f"[yellow]Warning: Failed to update manifest: {e}[/yellow]")
         console.print()
 
 

@@ -290,6 +290,35 @@ def main_list():
     console.print(table)
 
 
+def main_archive():
+    """Archive incomplete runs to clean manifest."""
+    from src.workflows.experiment_manager import ExperimentManager
+    
+    manager = ExperimentManager()
+    
+    # Show stats before
+    console.print("[cyan]Before archiving:[/cyan]")
+    manager.print_manifest_stats()
+    
+    # Archive incomplete runs
+    console.print()
+    archived_count = manager.archive_incomplete_runs()
+    
+    # Show stats after
+    if archived_count > 0:
+        console.print()
+        console.print("[cyan]After archiving:[/cyan]")
+        manager.print_manifest_stats()
+
+
+def main_stats():
+    """Show manifest statistics."""
+    from src.workflows.experiment_manager import ExperimentManager
+    
+    manager = ExperimentManager()
+    manager.print_manifest_stats()
+
+
 def main_interactive():
     """Interactive command launcher (TUI menu)."""
     from rich.prompt import Prompt
