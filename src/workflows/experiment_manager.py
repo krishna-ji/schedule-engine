@@ -87,11 +87,26 @@ class ExperimentManager:
     def _load_manifest(self):
         """Load experiment manifest from disk."""
         if self.manifest_path.exists():
-            with open(self.manifest_path) as f:
-                data = json.load(f)
-                self.runs = [ExperimentRun.from_dict(r) for r in data.get("runs", [])]
+            try:
+                with open(self.manifest_path) as f:
+                    content = f.read().strip()
+                    if not content:
+                        # Empty file - initialize with empty manifest
+                        self.runs = []
+                        self._save_manifest()  # Create valid JSON
+                    else:
+                        data = json.loads(content)
+                        self.runs = [ExperimentRun.from_dict(r) for r in data.get("runs", [])]
+            except (json.JSONDecodeError, ValueError) as e:
+                # Corrupted manifest - backup and reinitialize
+                backup_path = self.manifest_path.with_suffix('.json.backup')
+                self.manifest_path.rename(backup_path)
+                console.print(f"[yellow]⚠️  Corrupted manifest backed up to {backup_path}[/yellow]")
+                self.runs = []
+                self._save_manifest()  # Create fresh manifest
         else:
             self.runs = []
+            self._save_manifest()  # Create manifest if it doesn't exist
 
     def _save_manifest(self):
         """Save experiment manifest to disk."""

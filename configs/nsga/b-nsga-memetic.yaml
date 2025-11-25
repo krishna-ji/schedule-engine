@@ -103,6 +103,19 @@ enhancements:
 
 # Disable all heuristics (isolate memetic impact)
 heuristics:
+  # Repair heuristics configuration (memetic uses IGLS)
+  repair:
+    igls_repair:
+      enabled: true  # Core memetic repair
+      priority: 1
+      max_iterations: 5
+    lns_repair:
+      enabled: false  # Disable for Mode B isolation
+    selective_repair:
+      enabled: false  # Disable for Mode B isolation
+    exhaustive_search:
+      enabled: false  # Too expensive
+  
   construction:
     largest_degree_first:
       enabled: false

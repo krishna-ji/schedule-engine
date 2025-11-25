@@ -767,22 +767,23 @@ class GAScheduler:
 
         # ADAPTIVE PRIORITY ADJUSTMENT: Reorder heuristics based on recent effectiveness
         # Check if adaptive priority is enabled and it's time to reorder
-        adaptive_config = self.config.heuristics.adaptive_priority
-        if adaptive_config.enabled:
-            reorder_interval = adaptive_config.reorder_interval
+        full_config = get_config()  # Get full config (not just self.config which is GAConfig)
+        adaptive_config = full_config.heuristics.adaptive_priority
+        if adaptive_config.get("enabled", False):
+            reorder_interval = adaptive_config.get("reorder_interval", 10)
             
             # Reorder every N generations (and at generation 0 after some data)
             if gen > 0 and gen % reorder_interval == 0:
                 order_changed = self.heuristic_tracker.reorder_by_effectiveness(
                     current_generation=gen,
-                    window_size=adaptive_config.evaluation_window,
-                    min_applications=adaptive_config.min_applications,
+                    window_size=adaptive_config.get("evaluation_window", 10),
+                    min_applications=adaptive_config.get("min_applications", 3),
                 )
                 
                 if order_changed:
                     # Show reordered list with effectiveness scores
                     scores = self.heuristic_tracker.get_effectiveness_summary()
-                    console.print(f"[yellow]   📊 Gen {gen}: Reordered heuristics by effectiveness:[/yellow]")
+                    console.print(f"[yellow]    Gen {gen}: Reordered heuristics by effectiveness:[/yellow]")
                     for i, h_name in enumerate(self.heuristic_tracker.heuristic_order[:5], 1):
                         score = scores.get(h_name, 0.0)
                         console.print(f"      {i}. {h_name}: {score:+.3f}")
@@ -2086,9 +2087,9 @@ class GAScheduler:
         #   - Managed through heuristics.repair.* in configs
         #
         # Legacy hardcoded triggers REMOVED:
-        #   ❌ Exhaustive search at gens [3, 25] - use heuristic instead
-        #   ❌ LNS periodic trigger every 50 gens - use heuristic instead
-        #   ❌ Stagnation-triggered repairs - migrate to heuristics (future)
+        #    Exhaustive search at gens [3, 25] - use heuristic instead
+        #    LNS periodic trigger every 50 gens - use heuristic instead
+        #    Stagnation-triggered repairs - migrate to heuristics (future)
         #
         # Migration: Enable via configs/heuristics/repair/*.enabled=true
         # ============

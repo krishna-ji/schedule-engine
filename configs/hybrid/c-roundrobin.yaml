@@ -79,7 +79,7 @@ lns:
 # Enable enhancements
 enhancements:
   master_enabled: true
-  memetic_mode: true
+  memetic_mode: false  # NO memetic in Mode C (round-robin only)
   increased_population: false
   frequent_repair: false
   hypermutation:
@@ -208,24 +208,20 @@ heuristics:
       enabled: true  # Core repair - lightweight IGLS (2 iterations)
       priority: 1  # High priority - apply early in rotation
       max_iterations: 2
-    greedy_repair:
-      enabled: true  # First-improving local search
-      priority: 2
-      max_iterations: 5
-    exhaustive_repair:
-      enabled: false  # DISABLED: Steepest descent (very expensive)
-      priority: 3
-      max_neighborhood_size: 10
     lns_repair:
       enabled: true  # Large neighborhood search
       priority: 4
       subproblem_size: 10
       max_iterations: 50
-    memetic_repair:
-      enabled: false  # DISABLED: Intensive repair on elite (handled by Mode B)
-      priority: 5
-      elite_percentage: 0.05
-      max_iterations: 10
+    selective_repair:
+      enabled: true  # NEW: Targeted repair (Nov 2025)
+      priority: 6
+      max_iterations: 2
+    exhaustive_search:
+      enabled: false  # DISABLED: Steepest descent (very expensive)
+      priority: 10
+      max_neighborhood_size: 50
+      timeout_seconds: 5.0
 
 # Disable RL (using round-robin instead)
 rl:

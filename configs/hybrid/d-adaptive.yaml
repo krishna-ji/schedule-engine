@@ -189,6 +189,24 @@ heuristics:
     guided_local_search:
       enabled: false  # Too slow
 
+  repair:
+    igls_repair:
+      enabled: true  # Lightweight IGLS repair
+      priority: 1
+      max_iterations: 2
+    lns_repair:
+      enabled: true  # Large neighborhood search
+      priority: 4
+      subproblem_size: 10
+      max_iterations: 50
+    selective_repair:
+      enabled: true  # Targeted repair
+      priority: 6
+      max_iterations: 2
+    exhaustive_search:
+      enabled: false  # Too expensive for adaptive mode
+      priority: 10
+
 # Disable RL
 rl:
   enabled: false
