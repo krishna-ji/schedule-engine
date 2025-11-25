@@ -78,6 +78,10 @@ class HeuristicTracker:
         # Round-robin state
         self.current_heuristic_index = 0
         self.heuristic_order: List[str] = []
+        
+        # Adaptive priority adjustment state
+        self.effectiveness_scores: Dict[str, float] = {}  # Live effectiveness tracking
+        self.last_reorder_generation: int = -1  # Track when we last reordered
     
     def set_heuristic_order(self, heuristic_names: List[str]) -> None:
         """Set the order of heuristics for round-robin rotation."""
@@ -92,6 +96,89 @@ class HeuristicTracker:
         heuristic = self.heuristic_order[self.current_heuristic_index]
         self.current_heuristic_index = (self.current_heuristic_index + 1) % len(self.heuristic_order)
         return heuristic
+    
+    def reorder_by_effectiveness(
+        self,
+        current_generation: int,
+        window_size: int = 10,
+        min_applications: int = 3,
+    ) -> bool:
+        """
+        Reorder heuristics based on recent effectiveness.
+        
+        Analyzes performance over the last `window_size` generations and
+        re-sorts the heuristic rotation order to prioritize effective heuristics.
+        
+        Args:
+            current_generation: Current generation number
+            window_size: Number of recent generations to analyze (default: 10)
+            min_applications: Minimum applications required to include in reordering (default: 3)
+        
+        Returns:
+            True if reordering occurred, False if skipped (not enough data)
+        """
+        if not self.heuristic_order:
+            return False
+        
+        # Filter to recent applications within the window
+        window_start = max(0, current_generation - window_size)
+        recent_apps = [
+            app for app in self.applications
+            if window_start <= app.generation <= current_generation
+        ]
+        
+        if not recent_apps:
+            return False
+        
+        # Calculate effectiveness scores for each heuristic
+        heuristic_performance = {}
+        
+        for heuristic_name in self.heuristic_order:
+            heuristic_apps = [
+                app for app in recent_apps
+                if app.heuristic_name == heuristic_name
+            ]
+            
+            # Skip if not enough data
+            if len(heuristic_apps) < min_applications:
+                # Use existing score or 0 if no history
+                heuristic_performance[heuristic_name] = self.effectiveness_scores.get(heuristic_name, 0.0)
+                continue
+            
+            # Calculate average improvement (positive = better)
+            total_improvement = sum(app.improvement for app in heuristic_apps)
+            avg_improvement = total_improvement / len(heuristic_apps)
+            
+            # Store effectiveness score
+            self.effectiveness_scores[heuristic_name] = avg_improvement
+            heuristic_performance[heuristic_name] = avg_improvement
+        
+        # Sort heuristics by effectiveness (descending - best first)
+        old_order = self.heuristic_order.copy()
+        self.heuristic_order.sort(
+            key=lambda h: heuristic_performance.get(h, 0.0),
+            reverse=True
+        )
+        
+        # Reset index to start from new best heuristic
+        self.current_heuristic_index = 0
+        
+        # Update last reorder generation
+        self.last_reorder_generation = current_generation
+        
+        # Check if order actually changed
+        order_changed = old_order != self.heuristic_order
+        
+        return order_changed
+    
+    def get_effectiveness_summary(self) -> Dict[str, float]:
+        """
+        Get current effectiveness scores for all tracked heuristics.
+        
+        Returns:
+            Dictionary mapping heuristic names to effectiveness scores
+        """
+        return self.effectiveness_scores.copy()
     
     def record_application(
         self,

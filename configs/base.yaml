@@ -219,6 +219,13 @@ enhancements:
 
 # Heuristic Toolbox (Phase 1.5)
 heuristics:
+  # Adaptive Priority Adjustment (Dynamic Reordering)
+  adaptive_priority:
+    enabled: false           # Disabled by default (enable in specific modes like d-adaptive)
+    reorder_interval: 10     # Reorder every N generations
+    evaluation_window: 10    # Use last N generations for effectiveness scoring
+    min_applications: 3      # Require at least N applications before reordering
+  
   # Construction heuristics - build schedules greedily
   construction:
     largest_degree_first:

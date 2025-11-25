@@ -765,6 +765,30 @@ class GAScheduler:
         if not self.heuristic_tracker.heuristic_order:
             return
 
+        # ADAPTIVE PRIORITY ADJUSTMENT: Reorder heuristics based on recent effectiveness
+        # Check if adaptive priority is enabled and it's time to reorder
+        adaptive_config = self.config.heuristics.adaptive_priority
+        if adaptive_config.enabled:
+            reorder_interval = adaptive_config.reorder_interval
+            
+            # Reorder every N generations (and at generation 0 after some data)
+            if gen > 0 and gen % reorder_interval == 0:
+                order_changed = self.heuristic_tracker.reorder_by_effectiveness(
+                    current_generation=gen,
+                    window_size=adaptive_config.evaluation_window,
+                    min_applications=adaptive_config.min_applications,
+                )
+                
+                if order_changed:
+                    # Show reordered list with effectiveness scores
+                    scores = self.heuristic_tracker.get_effectiveness_summary()
+                    console.print(f"[yellow]   📊 Gen {gen}: Reordered heuristics by effectiveness:[/yellow]")
+                    for i, h_name in enumerate(self.heuristic_tracker.heuristic_order[:5], 1):
+                        score = scores.get(h_name, 0.0)
+                        console.print(f"      {i}. {h_name}: {score:+.3f}")
+                    if len(self.heuristic_tracker.heuristic_order) > 5:
+                        console.print(f"      ... and {len(self.heuristic_tracker.heuristic_order) - 5} more")
+
         # Get next heuristic in rotation
         heuristic_name = self.heuristic_tracker.get_next_heuristic()
 

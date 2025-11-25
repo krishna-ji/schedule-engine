@@ -103,6 +103,12 @@ enhancements:
 
 # Enable all 19 heuristics with adaptive selection
 heuristics:
+  # Enable adaptive priority adjustment (dynamic reordering)
+  adaptive_priority:
+    enabled: true            # Enable dynamic heuristic reordering
+    reorder_interval: 10     # Reorder every 10 generations
+    evaluation_window: 10    # Evaluate last 10 generations
+    min_applications: 3      # Need 3+ uses before considering
   construction:
     largest_degree_first:
       enabled: true
