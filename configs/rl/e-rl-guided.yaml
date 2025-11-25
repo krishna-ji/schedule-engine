@@ -6,6 +6,11 @@
 # Tests: Can RL beat fixed strategies?
 # RL guides heuristic selection, repair strategies, and local search budget.
 
+metadata:
+  runtime_mode: "e-rl-guided"
+  description: "Mode E: RL-guided hyper-heuristic (full system)"
+  category: "rl"
+
 ga:
   ngen: 2000
   pop_size: 200

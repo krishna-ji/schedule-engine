@@ -116,32 +116,55 @@ class ExperimentManager:
         if timestamp is None:
             timestamp = datetime.now()
 
-        # Parse mode category and name
-        mode_value = runtime_mode.value  # e.g., "1-pure-nsga"
-        mode_number, mode_name = mode_value.split("-", 1)  # "1", "pure-nsga"
-
-        # Map mode to category folder
-        category_map = {
-            "1": "baseline",      # Pure NSGA-II
-            "2": "nsga",          # NSGA + Repairs
-            "3": "nsga",          # NSGA + Heuristics
-            "4": "nsga",          # Full NSGA
-            "5": "rl",            # RL-Guided
-            "6": "hybrid",        # Round-Robin
-            "7": "rl",            # RL Specialists
-            "8": "hybrid",        # Archive Diversity
-            "9": "rl",            # Hierarchical RL
-            "10": "rl",           # Multi-Agent RL
-        }
-        category = category_map.get(mode_number, "other")
-
-        # Build directory path
-        timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
-        dir_name = f"evaluation_{timestamp_str}"
-        if experiment_name:
-            dir_name = f"{dir_name}_{experiment_name}"
-
-        output_path = self.base_dir / category / mode_name / dir_name
+        # Parse mode value
+        mode_value = runtime_mode.value  # e.g., "1-pure-nsga" or "a-pure-nsga"
+        mode_prefix = mode_value.split("-")[0]  # "1" or "a"
+        
+        # Build clean folder name with mode prefix
+        # Progressive modes (a-e): Use simple descriptive names
+        # Numbered modes (1-10): Use original structure with categories
+        if mode_prefix in ["a", "b", "c", "d", "e"]:
+            # Progressive thesis experiments - flat structure with mode prefix
+            folder_map = {
+                "a": "a-baseline-nsga-only",
+                "b": "b-nsga-memetic",
+                "c": "c-roundrobin",
+                "d": "d-adaptive",
+                "e": "e-rl-guided",
+            }
+            mode_folder = folder_map.get(mode_prefix, mode_value)
+            
+            # Build directory path (flat structure)
+            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+            dir_name = f"evaluation_{timestamp_str}"
+            if experiment_name:
+                dir_name = f"{dir_name}_{experiment_name}"
+            
+            output_path = self.base_dir / mode_folder / dir_name
+        else:
+            # Numbered modes (1-10): Keep category-based structure
+            mode_number, mode_name = mode_value.split("-", 1)
+            category_map = {
+                "1": "baseline",
+                "2": "nsga",
+                "3": "nsga",
+                "4": "nsga",
+                "5": "rl",
+                "6": "hybrid",
+                "7": "rl",
+                "8": "hybrid",
+                "9": "rl",
+                "10": "rl",
+            }
+            category = category_map.get(mode_number, "other")
+            
+            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+            dir_name = f"evaluation_{timestamp_str}"
+            if experiment_name:
+                dir_name = f"{dir_name}_{experiment_name}"
+            
+            output_path = self.base_dir / category / mode_name / dir_name
+        
         output_path.mkdir(parents=True, exist_ok=True)
 
         return output_path

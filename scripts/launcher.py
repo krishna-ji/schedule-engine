@@ -91,12 +91,15 @@ def main_train_rl():
     sys.exit(rl_main() or 0)
 
 
-# Progressive Mode Commands (A-E: Increasing complexity)
+# ==================
+# PROGRESSIVE MODE EXPERIMENTS (A→E: Increasing Complexity)
+# ==================
 # Mode A: Pure NSGA-II                           [repairs: NO,  memetic: NO,  heuristics: NO]
 # Mode B: + Memetic local search                 [repairs: YES, memetic: YES, heuristics: NO]
 # Mode C: + Round-robin (heuristics + repair)    [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed)]
 # Mode D: + Adaptive heuristics                  [repairs: YES, memetic: NO,  heuristics: YES (adaptive)]
 # Mode E: + RL-guided (deploys all techniques)   [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
+
 
 def main_baseline():
     """Mode A: Pure NSGA-II baseline (no repairs, no heuristics)."""
@@ -116,7 +119,6 @@ def main_baseline():
     )
     console.print("[dim]  [repairs: NO, memetic: NO, heuristics: NO][/dim]")
     sys.exit(main() or 0)
-
 
 
 def main_memetic():
@@ -140,7 +142,7 @@ def main_memetic():
 
 
 def main_roundrobin():
-    """Mode C: Round-robin heuristics (no memetic)."""
+    """Mode C: Round-robin heuristics + repair (fixed rotation)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -166,7 +168,7 @@ def main_roundrobin():
 
 
 def main_adaptive():
-    """Mode D: Adaptive heuristic selection (no memetic)."""
+    """Mode D: Adaptive heuristic selection."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -192,7 +194,7 @@ def main_adaptive():
 
 
 def main_rl():
-    """Mode E: RL-guided hyper-heuristic."""
+    """Mode E: RL-guided hyper-heuristic (all techniques)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -208,38 +210,6 @@ def main_rl():
         f"[green]Mode E: RL-guided hyper-heuristic ({profile} profile)[/green]"
     )
     console.print("[dim]  [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)][/dim]")
-    sys.exit(main() or 0)
-
-    console.print(
-        f"[green]Mode E: RL-guided hyper-heuristic ({profile} profile)[/green]"
-    )
-    console.print("[dim]  [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)][/dim]")
-    sys.exit(main() or 0)
-
-
-def main_roundrobin():
-    """Mode C: Round-robin heuristics (no memetic)."""
-    parser = create_parser()
-    args = parser.parse_args()
-
-    profile = args.profile or "test"
-
-    from main import main
-
-    sys.argv = [
-        "main.py",
-        "--config",
-        "configs/hybrid/c-roundrobin.yaml",
-        "--env",
-        profile,
-    ]
-    if args.name:
-        sys.argv.extend(["--experiment", args.name])
-
-    console.print(
-        f"[green]Mode C: Round-robin heuristics ({profile} profile)[/green]"
-    )
-    console.print("[dim]  [repairs: YES, memetic: NO, heuristics: YES (fixed rotation)][/dim]")
     sys.exit(main() or 0)
 
 
@@ -328,51 +298,53 @@ def main_interactive():
     import subprocess
 
     commands = [
-        # Group A: Baseline (Pure NSGA-II only)
+        # Mode A: Baseline
         (
-            "baseline",
+            "mode-a",
             [
-                ("a1", "baseline --test", "A: Pure NSGA-II baseline (~2 min)"),
-                ("a2", "baseline --prod", "A: Pure NSGA-II (2000 gens, ~3-5 hrs)"),
+                ("a1", "baseline --test", "Mode A: Pure NSGA-II (~2 min, 30 gens)"),
+                ("a2", "baseline --prod", "Mode A: Pure NSGA-II (~3-5 hrs, 2000 gens)"),
             ],
         ),
-        # Group B: Heuristic Methods
+        # Mode B: Memetic
         (
-            "heuristic",
+            "mode-b",
             [
-                ("b1", "heuristic-roundrobin --test", "B1: Fixed rotation (~3 min)"),
-                (
-                    "b2",
-                    "heuristic-roundrobin --prod",
-                    "B1: Fixed rotation (full run, ~3-5 hrs)",
-                ),
-                (
-                    "b3",
-                    "heuristic-adaptive --test",
-                    "B2: Intelligent selection (~3 min)",
-                ),
-                (
-                    "b4",
-                    "heuristic-adaptive --prod",
-                    "B2: Intelligent selection (full run, ~3-5 hrs)",
-                ),
+                ("b1", "memetic --test", "Mode B: + Memetic (~2 min, 30 gens)"),
+                ("b2", "memetic --prod", "Mode B: + Memetic (~3-5 hrs, 2000 gens)"),
             ],
         ),
-        # Group C: RL-Guided Methods
+        # Mode C: Round-Robin
         (
-            "rl-guided",
+            "mode-c",
             [
-                ("c1", "rl --test", "C: RL-guided selection (~3 min)"),
-                ("c2", "rl --prod", "C: RL-guided selection (full run, ~3-5 hrs)"),
-                ("c3", "train-rl --test", "Train RL agent (10K steps, ~5 min)"),
-                ("c4", "train-rl --prod", "Train RL agent (100K steps, ~1-2 hrs)"),
+                ("c1", "roundrobin --test", "Mode C: + Round-robin (~3 min, 30 gens)"),
+                ("c2", "roundrobin --prod", "Mode C: + Round-robin (~4-6 hrs, 2000 gens)"),
+            ],
+        ),
+        # Mode D: Adaptive
+        (
+            "mode-d",
+            [
+                ("d1", "adaptive --test", "Mode D: + Adaptive (~3 min, 30 gens)"),
+                ("d2", "adaptive --prod", "Mode D: + Adaptive (~4-6 hrs, 2000 gens)"),
+            ],
+        ),
+        # Mode E: RL-Guided
+        (
+            "mode-e",
+            [
+                ("e1", "rl --test", "Mode E: + RL-guided (~3 min, 30 gens)"),
+                ("e2", "rl --prod", "Mode E: + RL-guided (~4-6 hrs, 2000 gens)"),
+                ("e3", "train-rl --test", "Train RL agent (10K steps, ~5 min)"),
+                ("e4", "train-rl --prod", "Train RL agent (100K steps, ~1-2 hrs)"),
             ],
         ),
         # Utilities
         (
             "utilities",
             [
-                ("u1", "analyze-results", "Generate analysis & plots"),
+                ("u1", "analyze-results", "Generate comparison plots"),
                 ("u2", "diagnose", "System diagnostics"),
                 ("u3", "clean", "Clean output directory"),
                 ("u4", "list-experiments", "List experiment history"),
@@ -383,17 +355,26 @@ def main_interactive():
     while True:
         console.clear()
         console.print(
-            "\n[bold cyan]Schedule Engine - Interactive Launcher[/bold cyan]\n"
+            "\n[bold cyan]Schedule Engine - Progressive Experiments (A→E)[/bold cyan]\n"
         )
 
         for category, cmds in commands:
-            # Category header
-            if category == "baseline":
-                console.print("[bold magenta]A: BASELINE (Pure NSGA-II)[/bold magenta]")
-            elif category == "heuristic":
-                console.print("\n[bold magenta]B: HEURISTIC METHODS[/bold magenta]")
-            elif category == "rl-guided":
-                console.print("\n[bold magenta]C: RL-GUIDED METHODS[/bold magenta]")
+            # Category headers with descriptions
+            if category == "mode-a":
+                console.print("[bold magenta]MODE A: BASELINE[/bold magenta]")
+                console.print("[dim]  Pure NSGA-II (no repairs, no heuristics)[/dim]")
+            elif category == "mode-b":
+                console.print("\n[bold magenta]MODE B: + MEMETIC[/bold magenta]")
+                console.print("[dim]  NSGA-II + memetic local search[/dim]")
+            elif category == "mode-c":
+                console.print("\n[bold magenta]MODE C: + ROUND-ROBIN[/bold magenta]")
+                console.print("[dim]  Fixed rotation (19 heuristics + 3 repairs)[/dim]")
+            elif category == "mode-d":
+                console.print("\n[bold magenta]MODE D: + ADAPTIVE[/bold magenta]")
+                console.print("[dim]  Intelligent heuristic selection[/dim]")
+            elif category == "mode-e":
+                console.print("\n[bold magenta]MODE E: + RL-GUIDED[/bold magenta]")
+                console.print("[dim]  RL learns optimal operator timing (24 heuristics)[/dim]")
             elif category == "utilities":
                 console.print("\n[bold magenta]UTILITIES[/bold magenta]")
 
@@ -438,24 +419,20 @@ if __name__ == "__main__":
     # Auto-detect command from script name
     script_name = Path(sys.argv[0]).stem
 
-    # Main GA commands
-    if "nsga" in script_name:
-        main_nsga()
-    elif "train" in script_name and "rl" in script_name:
-        main_train_rl()
-    # Experimental method commands
-    elif "baseline" in script_name:
+    # Progressive experimental modes (A-E)
+    if "baseline" in script_name:
         main_baseline()
-    elif "repairs" in script_name:
-        main_repairs()
-    elif "heuristics" in script_name:
-        main_heuristics()
-    elif "full" in script_name:
-        main_full()
+    elif "memetic" in script_name:
+        main_memetic()
     elif "roundrobin" in script_name:
         main_roundrobin()
+    elif "adaptive" in script_name:
+        main_adaptive()
     elif script_name == "rl":
-        main_rl_guided()
+        main_rl()
+    # RL Training
+    elif "train" in script_name and "rl" in script_name:
+        main_train_rl()
     # Helper commands
     elif "test-gpu" in script_name or "test_gpu" in script_name:
         main_test_gpu()
@@ -465,7 +442,7 @@ if __name__ == "__main__":
         main_clean()
     elif "list" in script_name:
         main_list()
-    elif "launcher" in script_name or "interactive" in script_name:
+    elif "launcher" in script_name or "interactive" in script_name or "run" in script_name:
         main_interactive()
     else:
         print(f"Unknown command: {script_name}")

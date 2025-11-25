@@ -5,6 +5,11 @@
 # [repairs: YES, memetic: YES, heuristics: NO]
 # Tests: Does intensive local search improve baseline?
 
+metadata:
+  runtime_mode: "b-nsga-memetic"
+  description: "Mode B: NSGA-II + memetic local search"
+  category: "nsga"
+
 ga:
   ngen: 2000
   pop_size: 200

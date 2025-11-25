@@ -297,18 +297,20 @@ def repair_group_overlaps_selective(
         if not all([course, instructor, room] + groups):
             continue
 
-        new_quanta = _find_available_slot(
+        # Find available slot using correct function signature (4 params)
+        new_slot = _find_available_slot(
             individual,
             gene,
             gene.num_quanta,
-            instructor,
-            room,
-            groups,
             context.available_quanta,
         )
 
-        if new_quanta:
-            # Update gene and rebuild schedule map
+        if new_slot is not None:
+            # Update gene with new slot
+            gene.start_quanta = new_slot
+            fixes += 1
+
+            # Rebuild schedule map
             from src.ga.quanta_converter import quanta_list_to_contiguous
 
             gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
@@ -368,20 +370,17 @@ def repair_room_conflicts_selective(
         if not all([course, instructor, room] + groups):
             continue
 
-        new_quanta = _find_available_slot(
+        # Find available slot using correct function signature (4 params)
+        new_slot = _find_available_slot(
             individual,
             gene,
             gene.num_quanta,
-            instructor,
-            room,
-            groups,
             context.available_quanta,
         )
 
-        if new_quanta:
-            from src.ga.quanta_converter import quanta_list_to_contiguous
-
-            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
+        if new_slot is not None:
+            # Update gene with new slot
+            gene.start_quanta = new_slot
             fixes += 1
 
             # Rebuild room schedule map
@@ -435,20 +434,17 @@ def repair_instructor_conflicts_selective(
         if not all([course, instructor, room] + groups):
             continue
 
-        new_quanta = _find_available_slot(
+        # Find available slot using correct function signature (4 params)
+        new_slot = _find_available_slot(
             individual,
             gene,
             gene.num_quanta,
-            instructor,
-            room,
-            groups,
             context.available_quanta,
         )
 
-        if new_quanta:
-            from src.ga.quanta_converter import quanta_list_to_contiguous
-
-            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
+        if new_slot is not None:
+            # Update gene with new slot
+            gene.start_quanta = new_slot
             fixes += 1
 
             # Rebuild instructor schedule map

@@ -5,6 +5,11 @@
 # Tests: Can adaptive selection beat fixed round-robin?
 # NOTE: No memetic (isolate heuristic selection strategy impact).
 
+metadata:
+  runtime_mode: "d-adaptive"
+  description: "Mode D: Adaptive heuristic selection"
+  category: "hybrid"
+
 ga:
   ngen: 2000
   pop_size: 200

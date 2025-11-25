@@ -718,7 +718,7 @@ class GAScheduler:
         Setup round-robin heuristic rotation from enabled heuristics.
 
         Builds ordered list based on priority and category.
-        Includes REPAIR as a pseudo-heuristic for Mode C round-robin.
+        Includes REPAIR as a pseudo-heuristic ONLY if repair.enabled=true.
         """
         from src.heuristics import get_enabled_heuristics
 
@@ -729,23 +729,33 @@ class GAScheduler:
             console.print("[dim]   No heuristics enabled for round-robin[/dim]")
             return
 
-        # Build rotation order: interleave REPAIR every N heuristics
+        # Build rotation order: interleave REPAIR every N heuristics (if repair enabled)
         heuristic_names = list(enabled.keys())
         
-        # Add REPAIR as pseudo-heuristic (every 4th position for balance)
-        repair_interval = 4
-        rotation_with_repair = []
-        for i, h in enumerate(heuristic_names):
-            rotation_with_repair.append(h)
-            if (i + 1) % repair_interval == 0:
-                rotation_with_repair.append("REPAIR")
-        
-        # Set rotation order in tracker
-        self.heuristic_tracker.set_heuristic_order(rotation_with_repair)
+        # CRITICAL FIX: Only add REPAIR if repair.enabled=true (respect killswitch)
+        repair_config = get_config().repair
+        if repair_config.enabled:
+            # Add REPAIR as pseudo-heuristic (every 4th position for balance)
+            repair_interval = 4
+            rotation_with_repair = []
+            for i, h in enumerate(heuristic_names):
+                rotation_with_repair.append(h)
+                if (i + 1) % repair_interval == 0:
+                    rotation_with_repair.append("REPAIR")
+            
+            # Set rotation order in tracker
+            self.heuristic_tracker.set_heuristic_order(rotation_with_repair)
 
-        console.print(
-            f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics + REPAIR (total {len(rotation_with_repair)} operators)[/dim]"
-        )
+            console.print(
+                f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics + REPAIR (total {len(rotation_with_repair)} operators)[/dim]"
+            )
+        else:
+            # NO REPAIR - just heuristics
+            self.heuristic_tracker.set_heuristic_order(heuristic_names)
+            
+            console.print(
+                f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics (NO repair)[/dim]"
+            )
 
     def _apply_round_robin_heuristics(self, gen: int) -> None:
         """

@@ -10,6 +10,11 @@
 # NOTE: ngen and pop_size inherit from environment config (test/prod)
 # Test: 30 gens, 10 pop | Prod: 2000 gens, 200 pop
 
+metadata:
+  runtime_mode: "c-roundrobin"
+  description: "Mode C: Round-robin heuristics + repair (fixed rotation)"
+  category: "hybrid"
+
 ga:
   # ngen and pop_size inherit from environment (test.yaml / prod.yaml)
   cxpb: 0.75

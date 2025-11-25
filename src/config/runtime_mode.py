@@ -16,6 +16,8 @@ class RuntimeMode(str, Enum):
     Enum for supported runtime modes.
 
     Each mode represents a different GA configuration for benchmarking:
+    
+    Numbered modes (1-10): Comprehensive experiments
     - BASELINE: Pure NSGA-II (no repairs, no heuristics)
     - NSGA_REPAIRS: NSGA-II + IGLS repairs only
     - NSGA_HEURISTICS: NSGA-II + repairs + Phase 1.5 heuristics
@@ -26,8 +28,16 @@ class RuntimeMode(str, Enum):
     - ARCHIVE_DIVERSITY: Archive-based diversity maintenance (Enhancement #5)
     - RL_HIERARCHICAL: Hierarchical RL with two-level policies (Enhancement #7)
     - RL_MULTIAGENT: Rank-based multi-agent RL (Enhancement #8)
+    
+    Lettered modes (A-E): Progressive thesis experiments
+    - MODE_A: Pure NSGA-II baseline
+    - MODE_B: + Memetic local search
+    - MODE_C: + Round-robin heuristics
+    - MODE_D: + Adaptive selection
+    - MODE_E: + RL-guided (full system)
     """
 
+    # Numbered modes (1-10): Comprehensive experiments
     BASELINE = "1-pure-nsga"
     NSGA_REPAIRS = "2-nsga-repairs"
     NSGA_HEURISTICS = "3-nsga-heuristics"
@@ -38,11 +48,19 @@ class RuntimeMode(str, Enum):
     ARCHIVE_DIVERSITY = "8-archive-diversity"
     RL_HIERARCHICAL = "9-rl-hierarchical"
     RL_MULTIAGENT = "10-rl-multiagent"
+    
+    # Lettered modes (A-E): Progressive thesis experiments
+    MODE_A = "a-pure-nsga"
+    MODE_B = "b-nsga-memetic"
+    MODE_C = "c-roundrobin"
+    MODE_D = "d-adaptive"
+    MODE_E = "e-rl-guided"
 
     @property
     def display_name(self) -> str:
         """Human-readable display name."""
         names = {
+            # Numbered modes (1-10)
             RuntimeMode.BASELINE: "Pure NSGA-II (Baseline)",
             RuntimeMode.NSGA_REPAIRS: "NSGA-II + Repairs",
             RuntimeMode.NSGA_HEURISTICS: "NSGA-II + Repairs + Heuristics",
@@ -53,6 +71,12 @@ class RuntimeMode(str, Enum):
             RuntimeMode.ARCHIVE_DIVERSITY: "Archive-Based Diversity",
             RuntimeMode.RL_HIERARCHICAL: "Hierarchical RL (Two-Level)",
             RuntimeMode.RL_MULTIAGENT: "Rank-Based Multi-Agent RL",
+            # Lettered modes (A-E): Progressive thesis
+            RuntimeMode.MODE_A: "Mode A: Pure NSGA-II",
+            RuntimeMode.MODE_B: "Mode B: + Memetic Local Search",
+            RuntimeMode.MODE_C: "Mode C: + Round-Robin Heuristics",
+            RuntimeMode.MODE_D: "Mode D: + Adaptive Selection",
+            RuntimeMode.MODE_E: "Mode E: + RL-Guided (Full System)",
         }
         return names[self]
 
@@ -65,6 +89,7 @@ class RuntimeMode(str, Enum):
             Path to config YAML file (e.g., configs/baseline/1-pure-nsga.yaml)
         """
         category_map = {
+            # Numbered modes (1-10)
             RuntimeMode.BASELINE: "baseline",
             RuntimeMode.NSGA_REPAIRS: "nsga",
             RuntimeMode.NSGA_HEURISTICS: "nsga",
@@ -75,6 +100,12 @@ class RuntimeMode(str, Enum):
             RuntimeMode.ARCHIVE_DIVERSITY: "rl",
             RuntimeMode.RL_HIERARCHICAL: "rl",
             RuntimeMode.RL_MULTIAGENT: "rl",
+            # Lettered modes (A-E)
+            RuntimeMode.MODE_A: "baseline",
+            RuntimeMode.MODE_B: "nsga",
+            RuntimeMode.MODE_C: "hybrid",
+            RuntimeMode.MODE_D: "hybrid",
+            RuntimeMode.MODE_E: "rl",
         }
         category = category_map[self]
         return Path(f"configs/{category}/{self.value}.yaml")
@@ -83,6 +114,7 @@ class RuntimeMode(str, Enum):
     def description(self) -> str:
         """Detailed description of this runtime mode."""
         descriptions = {
+            # Numbered modes (1-10)
             RuntimeMode.BASELINE: (
                 "Minimal NSGA-II with no repairs, no heuristics, no enhancements. "
                 "Use as baseline for comparing all other modes."
@@ -122,6 +154,27 @@ class RuntimeMode(str, Enum):
             RuntimeMode.RL_MULTIAGENT: (
                 "Rank-based multi-agent RL (4 agents for Pareto ranks 1-4). "
                 "Specialists for elite, good, moderate, and poor solutions."
+            ),
+            # Lettered modes (A-E): Progressive thesis
+            RuntimeMode.MODE_A: (
+                "Pure NSGA-II baseline - no repairs, no heuristics, no enhancements. "
+                "Starting point for progressive thesis experiments."
+            ),
+            RuntimeMode.MODE_B: (
+                "NSGA-II + memetic local search (repairs enabled). "
+                "Adds iterative greedy local search repairs to baseline."
+            ),
+            RuntimeMode.MODE_C: (
+                "NSGA-II + round-robin heuristics (fixed rotation). "
+                "Adds 19 heuristics with round-robin selection."
+            ),
+            RuntimeMode.MODE_D: (
+                "NSGA-II + adaptive heuristic selection (performance-based). "
+                "Heuristics selected adaptively based on past performance."
+            ),
+            RuntimeMode.MODE_E: (
+                "NSGA-II + RL-guided hyper-heuristic (full system). "
+                "Deploys all techniques with RL controlling heuristic selection."
             ),
         }
         return descriptions[self]
@@ -196,6 +249,7 @@ class RuntimeMode(str, Enum):
 
         # Map common aliases
         aliases = {
+            # Numbered modes (1-10)
             "baseline": RuntimeMode.BASELINE,
             "pure-nsga": RuntimeMode.BASELINE,
             "pure": RuntimeMode.BASELINE,
@@ -218,6 +272,19 @@ class RuntimeMode(str, Enum):
             "hierarchical": RuntimeMode.RL_HIERARCHICAL,
             "rl-multiagent": RuntimeMode.RL_MULTIAGENT,
             "multiagent": RuntimeMode.RL_MULTIAGENT,
+            # Lettered modes (A-E): Progressive thesis
+            "mode-a": RuntimeMode.MODE_A,
+            "mode-b": RuntimeMode.MODE_B,
+            "mode-c": RuntimeMode.MODE_C,
+            "mode-d": RuntimeMode.MODE_D,
+            "mode-e": RuntimeMode.MODE_E,
+            "a": RuntimeMode.MODE_A,
+            "b": RuntimeMode.MODE_B,
+            "c": RuntimeMode.MODE_C,
+            "d": RuntimeMode.MODE_D,
+            "e": RuntimeMode.MODE_E,
+            "memetic": RuntimeMode.MODE_B,
+            "adaptive": RuntimeMode.MODE_D,
         }
 
         if normalized in aliases:
