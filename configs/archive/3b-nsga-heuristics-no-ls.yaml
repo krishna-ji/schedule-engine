@@ -14,7 +14,7 @@ ga:
   elite_size: 0.1
   use_adaptive_probabilities: false # Fixed probabilities
   use_constraint_guided_mutation: true
-  population_strategy: hybrid
+  population_strategy: random # Random init for fair comparison (smart init produces worse solutions)
   validate_population_integrity: false
 
 # Enable IGLS repair system (NO memetic mode)

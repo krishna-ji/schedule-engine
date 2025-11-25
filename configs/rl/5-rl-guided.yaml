@@ -13,7 +13,7 @@ ga:
   elite_size: 0.1
   use_adaptive_probabilities: true # RL may override this dynamically
   use_constraint_guided_mutation: true
-  population_strategy: hybrid
+  population_strategy: random # FIXED: Smart init produces worse solutions with many constraints
   validate_population_integrity: false
 
 # Enable IGLS repair system with memetic mode

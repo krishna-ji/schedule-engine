@@ -13,7 +13,7 @@ ga:
   elite_size: 0.1
   use_adaptive_probabilities: false
   use_constraint_guided_mutation: true # Constraint-guided mutation enabled
-  population_strategy: hybrid # 25% greedy, 50% smart, 25% random
+  population_strategy: random # Random init for fair comparison (smart init produces worse solutions)
   validate_population_integrity: false
 
 # Enable IGLS repair system
