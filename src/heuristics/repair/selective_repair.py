@@ -48,4 +48,12 @@ def selective_repair(
         max_iterations=max_iterations
     )
     
-    return stats.get('total_fixes', 0)
+    # Handle both dict and None return types
+    if stats is None:
+        return 0
+    if isinstance(stats, dict):
+        return stats.get('total_fixes', 0)
+    # If it returns an integer directly
+    if isinstance(stats, int):
+        return stats
+    return 0

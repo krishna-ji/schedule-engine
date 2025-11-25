@@ -426,9 +426,10 @@ def _apply_kempe_swap(chain: List[SessionGene]) -> bool:
     gene2.time_quantum = time1
 
     # Double-check after assignment that no quanta exceed bounds
-    # (time_quantum setter shifts all quanta)
+    # (time_quantum setter shifts all quanta via __post_init__)
     for gene in chain:
-        if gene.quanta and (gene.start_quanta + gene.num_quanta - 1) >= qts.total_quanta:
+        # Check if end quantum exceeds valid range (end_quanta is exclusive)
+        if gene.end_quanta > qts.total_quanta:
             # Revert the swap
             gene1.time_quantum = time1
             gene2.time_quantum = time2

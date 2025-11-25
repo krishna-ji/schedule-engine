@@ -819,11 +819,34 @@ class GAScheduler:
                 if heuristic_meta.requires_population:
                     # Pass population for diversity heuristics
                     # NOTE: Pass individual directly (not copy) for in-place modification
-                    result = heuristic_meta.function(
-                        individual=individual,
-                        population=[list(ind) for ind in self.population],
-                        context=self.context,
-                    )
+                    
+                    # Special handling for crossover-type heuristics that need two parents
+                    if heuristic_name == "distance_preserving_crossover":
+                        # Select second parent for crossover
+                        from deap import tools
+                        parent2 = tools.selRandom(self.population, 1)[0]
+                        result = heuristic_meta.function(
+                            parent1=individual,
+                            parent2=parent2,
+                            context=self.context,
+                        )
+                        # Distance preserving crossover returns TWO offspring - use first one
+                        if isinstance(result, tuple) and len(result) == 2:
+                            individual[:] = result[0]
+                    elif heuristic_name == "adaptive_diversity_maintenance":
+                        # Pass generation parameter for adaptive diversity
+                        result = heuristic_meta.function(
+                            individual=individual,
+                            population=[list(ind) for ind in self.population],
+                            context=self.context,
+                            generation=gen,
+                        )
+                    else:
+                        result = heuristic_meta.function(
+                            individual=individual,
+                            population=[list(ind) for ind in self.population],
+                            context=self.context,
+                        )
 
                     # Update individual if modified and heuristic returns new list
                     if heuristic_meta.modifies_individual and isinstance(result, list):

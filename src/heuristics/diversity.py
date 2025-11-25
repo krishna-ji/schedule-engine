@@ -88,25 +88,12 @@ def distance_preserving_crossover(
     offspring1 = [copy.copy(gene) for gene in offspring1]
     offspring2 = [copy.copy(gene) for gene in offspring2]
 
-    # Fix any invalid quanta that exceed valid range after crossover
-    from src.encoder.quantum_time_system import QuantumTimeSystem
-
-    time_system = QuantumTimeSystem()
-    max_valid_quantum = time_system.total_quanta
-
+    # Validate all genes after crossover (SessionGene.__post_init__ handles bounds checking)
     for gene in offspring1:
-        if gene.quanta and (gene.start_quanta + gene.num_quanta - 1) >= max_valid_quantum:
-            # Session extends beyond valid range - shift it back
-            max_start = max_valid_quantum - gene.duration_quanta
-            if max_start >= 0:
-                gene.time_quantum = min(gene.time_quantum, max_start)
+        gene.__post_init__()  # Re-validate quantum ranges
 
     for gene in offspring2:
-        if gene.quanta and (gene.start_quanta + gene.num_quanta - 1) >= max_valid_quantum:
-            # Session extends beyond valid range - shift it back
-            max_start = max_valid_quantum - gene.duration_quanta
-            if max_start >= 0:
-                gene.time_quantum = min(gene.time_quantum, max_start)
+        gene.__post_init__()  # Re-validate quantum ranges
 
     # Calculate distances
     dist_off1_p1 = _calculate_individual_distance(offspring1, parent1)

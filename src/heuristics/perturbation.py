@@ -94,9 +94,18 @@ def random_swap(
 
         if swap_type == "time" or swap_type == "both":
             # Swap entire time blocks (quanta) between sessions
-            original_quanta_gene1 = gene1.quanta[:]
-            gene1.quanta = gene2.quanta[:]
-            gene2.quanta = original_quanta_gene1
+            # Use new contiguous block representation (start_quanta, num_quanta)
+            original_start_gene1 = gene1.start_quanta
+            original_num_gene1 = gene1.num_quanta
+            
+            gene1.start_quanta = gene2.start_quanta
+            gene1.num_quanta = gene2.num_quanta
+            gene1.__post_init__()  # Re-validate after swap
+            
+            gene2.start_quanta = original_start_gene1
+            gene2.num_quanta = original_num_gene1
+            gene2.__post_init__()  # Re-validate after swap
+            
             swaps_performed += 1
 
         if swap_type == "room" or swap_type == "both":
