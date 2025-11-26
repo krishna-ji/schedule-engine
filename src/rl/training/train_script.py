@@ -246,8 +246,6 @@ def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) ->
         # Apply profile-specific caps for stability
         if args.profile == "test":
             args.n_envs = 1  # Test: always 1 env (fast startup)
-        elif args.profile == "med":
-            args.n_envs = min(detected_cores, 8)  # Med: cap at 8 for stability
         else:
             args.n_envs = detected_cores  # Prod/custom: use all cores
 

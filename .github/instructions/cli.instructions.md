@@ -25,19 +25,16 @@ The unified CLI launcher system provides a clean, consistent interface for runni
 
 ## Profile System
 
-**Three-tier hierarchy** (DRY principle):
+**Two-tier hierarchy** (DRY principle):
 ```
 base.yaml (shared config)
   ↓
 --test (smoke test: 30 gens, 10K steps, ~2-10 min)
-  ↓
---med (medium: 200 gens, 50K steps, ~30-45 min)
-  ↓
 --prod (production: 2000 gens, 100K steps, ~1-5 hours)
 ```
 
 **Implementation**:
-- Profiles passed as CLI flags: `--test`, `--med`, `--prod`
+- Profiles passed as CLI flags: `--test`, `--prod`
 - Config files inherit from lower tiers
 - Launcher maps profile → environment name → config file
 
@@ -51,7 +48,7 @@ base.yaml (shared config)
 def create_parser() -> argparse.ArgumentParser:
     """Create argument parser with profile support."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('--profile', choices=['test', 'med', 'prod'])
+    parser.add_argument('--profile', choices=['test', 'prod'])
     return parser
 
 def main_nsga():
@@ -84,13 +81,17 @@ def main_train_rl():
 nsga = "scripts.launcher:main_nsga"
 train-rl = "scripts.launcher:main_train_rl"
 
+# Progressive experiment shortcuts (Mode A-E)
+baseline = "scripts.launcher:main_baseline"
+memetic = "scripts.launcher:main_memetic"
+roundrobin = "scripts.launcher:main_roundrobin"
+adaptive = "scripts.launcher:main_adaptive"
+rl = "scripts.launcher:main_rl"
+
 # Helper commands (a-z)
 diagnose = "scripts.launcher:main_diagnose"
 clean = "scripts.launcher:main_clean"
 list-experiments = "scripts.launcher:main_list_experiments"
-
-# Backward compatibility (optional)
-baseline = "scripts.launcher:main_nsga"  # Alias
 ```
 
 **Rules**:
@@ -128,10 +129,7 @@ uv run diagnose
 # 2. Smoke test locally
 uv run nsga --test
 
-# 3. Medium validation
-uv run nsga --med
-
-# 4. Production on VM
+# 3. Production on VM
 uv run nsga --prod --name "thesis-baseline-r01"
 ```
 
@@ -139,9 +137,6 @@ uv run nsga --prod --name "thesis-baseline-r01"
 ```bash
 # Override config
 uv run nsga --prod --config path/to/custom.yaml
-
-# Named experiment
-uv run train-rl --med --name "curriculum-test"
 
 # Combine flags
 uv run nsga --test --mode full --name "quick-test"
@@ -154,11 +149,6 @@ PROFILE_MAP = {
         'env': 'test',
         'config': 'configs/test.yaml',
         'desc': 'Smoke test (30 gens, ~2 min)'
-    },
-    'med': {
-        'env': 'med',
-        'config': 'configs/med.yaml',
-        'desc': 'Medium run (200 gens, ~30 min)'
     },
     'prod': {
         'env': 'prod',
@@ -208,7 +198,7 @@ uv run new-command --test
 ```python
 if profile not in PROFILE_MAP:
     console.print(f"[red]Unknown profile: {profile}[/red]")
-    console.print("Available: test, med, prod")
+    console.print("Available: test, prod")
     sys.exit(1)
 ```
 
@@ -232,7 +222,6 @@ console.print(f"[yellow]Using profile: {profile}[/yellow]")
 ```bash
 # Test each profile
 uv run nsga --test
-uv run nsga --med
 uv run nsga --prod
 
 # Test each command
@@ -302,8 +291,8 @@ def main_nsga():
 ```python
 parser.add_argument(
     '--profile',
-    choices=['test', 'med', 'prod'],
-    help='Experiment profile: test (2 min), med (30 min), prod (3-5 hrs)'
+    choices=['test', 'prod'],
+    help='Experiment profile: test (2 min) or prod (3-5 hrs)'
 )
 ```
 

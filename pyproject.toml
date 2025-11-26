@@ -61,12 +61,13 @@ analysis = [
 # UNIFIED CLI LAUNCHER
 # Convention: Main commands (0-99+) = numbers, Helpers (a-z) = letters
 # Usage: uv run <command> --<profile>
-# Profiles: --test (smoke), --med (medium), --prod (full)
+# Profiles: --test (smoke), --prod (full)
 # ==================
 
 # Interactive launcher (TUI menu)
 launcher = "scripts.launcher:main_interactive"
 run = "scripts.launcher:main_interactive"
+nsga = "scripts.launcher:main_nsga"
 
 # ==================
 # PROGRESSIVE MODE EXPERIMENTS (A→E: Increasing Complexity)

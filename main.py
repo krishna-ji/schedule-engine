@@ -35,7 +35,7 @@ def main():
 
     Configuration:
         Loaded from YAML files in configs/ directory.
-        Use --env {test|dev|prod} to select configuration.
+        Use --env {test|prod} to select configuration.
 
     Results:
         Saved to output/evaluation_<timestamp>/
@@ -67,8 +67,10 @@ def main():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["baseline", "rl"],
-        help="Runtime mode: baseline (pure NSGA-II) or rl (RL-guided heuristics)",
+        help=(
+            "Runtime mode alias (e.g., nsga-full, mode-a, round-robin). "
+            "See docs/02-user-guides/runtime-modes.md for the full list."
+        ),
     )
     parser.add_argument(
         "--config",
@@ -79,7 +81,7 @@ def main():
         "--env",
         type=str,
         choices=["test", "prod"],
-        help="Environment: test (smoke test), prod (best quality)",
+        help="Environment: test (smoke) or prod (best quality)",
     )
     parser.add_argument(
         "--experiment",
@@ -102,6 +104,7 @@ def main():
     # CRITICAL: Set environment FIRST before any config loading
     # This ensures config loader sees the correct environment
     import os
+
     if args.env:
         os.environ["ENVIRONMENT"] = args.env
     elif "ENVIRONMENT" not in os.environ:
@@ -136,7 +139,7 @@ def main():
     # Use automatic experiment naming - no interactive prompt needed
     if exp_name is None:
         exp_name = "auto_generated"
-    
+
     exp_name = sanitize_experiment_name(exp_name)
 
     # Initialize experiment manager
@@ -147,17 +150,21 @@ def main():
     try:
         if args.config:
             # Explicit config path: base → config → environment
-            console.print(f"[dim]Loading: {args.config} + {os.environ['ENVIRONMENT']}.yaml[/dim]")
+            console.print(
+                f"[dim]Loading: {args.config} + {os.environ['ENVIRONMENT']}.yaml[/dim]"
+            )
             config = load_config(args.config)
         elif runtime_mode:
             # Runtime mode: base → mode → environment
-            console.print(f"[dim]Loading: {runtime_mode.value} + {os.environ['ENVIRONMENT']}.yaml[/dim]")
+            console.print(
+                f"[dim]Loading: {runtime_mode.value} + {os.environ['ENVIRONMENT']}.yaml[/dim]"
+            )
             config = load_config(runtime_mode=runtime_mode)
         else:
             # Default: base → environment only
             console.print(f"[dim]Loading: {os.environ['ENVIRONMENT']}.yaml[/dim]")
             config = load_config(None)
-        
+
         # Initialize global config singleton
         init_config(config_obj=config)
 
@@ -177,7 +184,7 @@ def main():
         except (ValueError, AttributeError):
             # Fallback to baseline if mode cannot be determined
             runtime_mode = RuntimeMode.BASELINE
-    
+
     output_dir = manager.create_output_dir(runtime_mode, exp_name)
     console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
     console.print()

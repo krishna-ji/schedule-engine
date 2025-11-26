@@ -5,14 +5,17 @@ Unified CLI Launcher for Schedule Engine
 Convention:
 - Main commands: 0-99+ (nsga, train-rl, curriculum, etc.)
 - Helper commands: a-z (diagnose, clean, test-gpu, etc.)
-- Profiles: --test, --med, --prod
-- Configs: DRY hierarchy (test < med < prod)
+     - Profiles: --test, --prod
+     - Configs: DRY hierarchy (test < prod)
 """
 
 import sys
 import os
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict, Optional
+
 from rich.console import Console
 
 # Add project root to path
@@ -22,55 +25,115 @@ sys.path.insert(0, str(project_root))
 console = Console()
 
 
-def create_parser():
-    """Create minimal argument parser."""
+@dataclass(frozen=True)
+class ProfileConfig:
+    """Metadata describing a CLI execution profile."""
+
+    env: str
+    config: Path
+    desc: str
+
+
+PROFILE_MAP: Dict[str, ProfileConfig] = {
+    "test": ProfileConfig(
+        env="test",
+        config=Path("configs/test.yaml"),
+        desc="Smoke test (~30 gens, 10 pop, 2-5 min)",
+    ),
+    "prod": ProfileConfig(
+        env="prod",
+        config=Path("configs/prod.yaml"),
+        desc="Production (~2000 gens, 1000 pop, multi-hour)",
+    ),
+}
+
+PROFILE_CHOICES = tuple(PROFILE_MAP.keys())
+DEFAULT_PROFILE = "test"
+
+
+def _resolve_profile(profile: Optional[str]) -> str:
+    """Validate profile value and fallback to default when missing."""
+
+    value = profile or DEFAULT_PROFILE
+    if value not in PROFILE_MAP:
+        console.print(
+            f"[bold red][!err] Unknown profile '{value}'. "
+            f"Valid options: {', '.join(PROFILE_CHOICES)}[/bold red]"
+        )
+        sys.exit(1)
+    return value
+
+
+def _env_for_profile(profile: str) -> str:
+    """Return environment name associated with a CLI profile."""
+
+    return PROFILE_MAP[profile].env
+
+
+def _profile_banner(profile: str) -> str:
+    """Format profile description for console output."""
+
+    cfg = PROFILE_MAP[profile]
+    return f"{profile} ({cfg.desc})"
+
+
+def create_parser() -> argparse.ArgumentParser:
+    """Create shared CLI parser with unified profile/config flags."""
+
     parser = argparse.ArgumentParser(
         description="Schedule Engine", add_help=False  # No --help drama
     )
 
-    # Profile selection
+    # Profile selection (explicit flag + shorthand toggles)
+    parser.add_argument(
+        "--profile",
+        choices=PROFILE_CHOICES,
+        help="Profile selector: test (smoke) or prod (full)",
+    )
     profile_group = parser.add_mutually_exclusive_group()
     profile_group.add_argument(
         "--test", action="store_const", const="test", dest="profile"
     )
     profile_group.add_argument(
-        "--med", action="store_const", const="med", dest="profile"
-    )
-    profile_group.add_argument(
         "--prod", action="store_const", const="prod", dest="profile"
     )
 
-    # Options
+    # Options shared across commands
     parser.add_argument("--curriculum", action="store_true")
     parser.add_argument("--repair-after-every-generation", action="store_true")
     parser.add_argument("--name")
-    parser.add_argument("--mode")
-    parser.add_argument("--config")
+    parser.add_argument(
+        "--mode",
+        help=(
+            "Runtime mode alias (e.g., nsga-full, mode-a, round-robin). "
+            "See docs/02-user-guides/runtime-modes.md"
+        ),
+    )
+    parser.add_argument("--config", help="Explicit config path override")
 
     return parser
 
 
 def main_train_rl():
-    """RL training launcher with profile support."""
+    """Launch RL training script with unified profile handling."""
     parser = create_parser()
     args = parser.parse_args()
 
-    profile = args.profile or "test"
+    profile = _resolve_profile(args.profile)
 
     # Ensure downstream config loader uses the matching environment profile.
     # GA/RL share the same YAML hierarchy (configs/test.yaml, configs/prod.yaml).
     # Map RL profiles onto those environments so every worker process
     # inherits the correct settings instead of falling back to test.
-    env_profile = "test" if profile == "test" else "prod"
-    schedule_config_path = (
-        "configs/test.yaml" if env_profile == "test" else "configs/prod.yaml"
-    )
+    env_profile = profile_cfg.env
+    schedule_config_path = str(profile_cfg.config)
 
     os.environ["ENVIRONMENT"] = env_profile
     os.environ["SCHEDULE_CONFIG"] = schedule_config_path
 
     console.print(
-        f"[dim]ENVIRONMENT set to[/dim] {env_profile} [dim]for RL profile[/dim] {profile}"
+        "[dim]ENVIRONMENT set to[/dim] "
+        f"{env_profile} [dim]for RL profile[/dim] {_profile_banner(profile)}"
     )
     console.print(f"[dim]SCHEDULE_CONFIG ->[/dim] {schedule_config_path}")
 
@@ -85,7 +148,7 @@ def main_train_rl():
         sys.argv.append("--curriculum")
     else:
         # Map profile to timesteps (if not using curriculum)
-        timestep_map = {"test": 500, "med": 50000, "prod": 100000}
+        timestep_map = {"test": 10_000, "prod": 100_000}
         sys.argv.extend(["--timesteps", str(timestep_map[profile])])
 
     sys.exit(rl_main() or 0)
@@ -102,51 +165,66 @@ def main_train_rl():
 
 
 def main_baseline():
-    """Mode A: Pure NSGA-II baseline (no repairs, no heuristics)."""
+    """Run Mode A (pure NSGA-II) experiment with profile-aware config."""
     parser = create_parser()
     args = parser.parse_args()
 
-    profile = args.profile or "test"
+    profile = _resolve_profile(args.profile)
+    env = _env_for_profile(profile)
 
     from main import main
 
-    sys.argv = ["main.py", "--config", "configs/baseline/a-pure-nsga.yaml", "--env", profile]
+    sys.argv = [
+        "main.py",
+        "--config",
+        "configs/baseline/a-pure-nsga.yaml",
+        "--env",
+        env,
+    ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Mode A: Pure NSGA-II baseline ({profile} profile)[/green]"
+        f"[green]Mode A: Pure NSGA-II baseline ({_profile_banner(profile)})[/green]"
     )
     console.print("[dim]  [repairs: NO, memetic: NO, heuristics: NO][/dim]")
     sys.exit(main() or 0)
 
 
 def main_memetic():
-    """Mode B: NSGA-II + memetic local search (no heuristics)."""
+    """Run Mode B experiment (NSGA-II + memetic local search)."""
     parser = create_parser()
     args = parser.parse_args()
 
-    profile = args.profile or "test"
+    profile = _resolve_profile(args.profile)
+    env = _env_for_profile(profile)
 
     from main import main
 
-    sys.argv = ["main.py", "--config", "configs/nsga/b-nsga-memetic.yaml", "--env", profile]
+    sys.argv = [
+        "main.py",
+        "--config",
+        "configs/nsga/b-nsga-memetic.yaml",
+        "--env",
+        env,
+    ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Mode B: NSGA-II + memetic local search ({profile} profile)[/green]"
+        f"[green]Mode B: NSGA-II + memetic local search ({_profile_banner(profile)})[/green]"
     )
     console.print("[dim]  [repairs: YES, memetic: YES, heuristics: NO][/dim]")
     sys.exit(main() or 0)
 
 
 def main_roundrobin():
-    """Mode C: Round-robin heuristics + repair (fixed rotation)."""
+    """Run Mode C experiment (round-robin heuristics + repair)."""
     parser = create_parser()
     args = parser.parse_args()
 
-    profile = args.profile or "test"
+    profile = _resolve_profile(args.profile)
+    env = _env_for_profile(profile)
 
     from main import main
 
@@ -155,24 +233,27 @@ def main_roundrobin():
         "--config",
         "configs/hybrid/c-roundrobin.yaml",
         "--env",
-        profile,
+        env,
     ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Mode C: Round-robin heuristics + repair ({profile} profile)[/green]"
+        f"[green]Mode C: Round-robin heuristics + repair ({_profile_banner(profile)})[/green]"
     )
-    console.print("[dim]  [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed rotation)][/dim]")
+    console.print(
+        "[dim]  [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed rotation)][/dim]"
+    )
     sys.exit(main() or 0)
 
 
 def main_adaptive():
-    """Mode D: Adaptive heuristic selection."""
+    """Run Mode D experiment (adaptive heuristic selection)."""
     parser = create_parser()
     args = parser.parse_args()
 
-    profile = args.profile or "test"
+    profile = _resolve_profile(args.profile)
+    env = _env_for_profile(profile)
 
     from main import main
 
@@ -181,39 +262,83 @@ def main_adaptive():
         "--config",
         "configs/hybrid/d-adaptive.yaml",
         "--env",
-        profile,
+        env,
     ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Mode D: Adaptive heuristic selection ({profile} profile)[/green]"
+        f"[green]Mode D: Adaptive heuristic selection ({_profile_banner(profile)})[/green]"
     )
-    console.print("[dim]  [repairs: YES, memetic: NO, heuristics: YES (adaptive selection)][/dim]")
+    console.print(
+        "[dim]  [repairs: YES, memetic: NO, heuristics: YES (adaptive selection)][/dim]"
+    )
     sys.exit(main() or 0)
 
 
 def main_rl():
-    """Mode E: RL-guided hyper-heuristic (all techniques)."""
+    """Run Mode E experiment (RL-guided hyper-heuristic)."""
     parser = create_parser()
     args = parser.parse_args()
 
-    profile = args.profile or "test"
+    profile = _resolve_profile(args.profile)
+    env = _env_for_profile(profile)
 
     from main import main
 
-    sys.argv = ["main.py", "--config", "configs/rl/e-rl-guided.yaml", "--env", profile]
+    sys.argv = [
+        "main.py",
+        "--config",
+        "configs/rl/e-rl-guided.yaml",
+        "--env",
+        env,
+    ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Mode E: RL-guided hyper-heuristic ({profile} profile)[/green]"
+        f"[green]Mode E: RL-guided hyper-heuristic ({_profile_banner(profile)})[/green]"
     )
-    console.print("[dim]  [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)][/dim]")
+    console.print(
+        "[dim]  [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)][/dim]"
+    )
     sys.exit(main() or 0)
 
 
+def main_nsga():
+    """Unified NSGA-II launcher honoring runtime modes and profiles."""
 
+    parser = create_parser()
+    args = parser.parse_args()
+
+    profile = _resolve_profile(args.profile)
+    env = _env_for_profile(profile)
+
+    from main import main
+
+    sys.argv = ["main.py"]
+
+    if args.config:
+        sys.argv.extend(["--config", args.config])
+    else:
+        runtime_mode = args.mode or "nsga-full"
+        sys.argv.extend(["--mode", runtime_mode])
+
+    sys.argv.extend(["--env", env])
+
+    if args.name:
+        sys.argv.extend(["--experiment", args.name])
+
+    descriptor = (
+        f"mode={args.mode or 'nsga-full'}"
+        if not args.config
+        else f"config={args.config}"
+    )
+    console.print(
+        f"[green]NSGA-II launcher ({_profile_banner(profile)}) — {descriptor}[/green]"
+    )
+
+    sys.exit(main() or 0)
 
 
 # Helper commands (a-z)
@@ -225,13 +350,15 @@ def main_diagnose():
 
 
 def main_test_gpu():
-    """Quick GPU/CUDA detection test."""
-    import subprocess
-    import sys
+    """Run lightweight CUDA sanity checks without full diagnostics."""
 
-    console.print("[cyan]Testing GPU/CUDA availability...[/cyan]\n")
-    result = subprocess.run([sys.executable, "test_gpu.py"], check=False)
-    sys.exit(result.returncode)
+    from scripts.diagnostics import diagnose_gpu
+
+    console.print("[cyan]Running quick GPU sanity check...[/cyan]\n")
+    cuda_ok = diagnose_gpu.check_cuda_availability()
+    ops_ok = diagnose_gpu.test_gpu_operations() if cuda_ok else False
+
+    sys.exit(0 if cuda_ok and ops_ok else 1)
 
 
 def main_clean():
@@ -293,17 +420,17 @@ def main_list():
 def main_archive():
     """Archive incomplete runs to clean manifest."""
     from src.workflows.experiment_manager import ExperimentManager
-    
+
     manager = ExperimentManager()
-    
+
     # Show stats before
     console.print("[cyan]Before archiving:[/cyan]")
     manager.print_manifest_stats()
-    
+
     # Archive incomplete runs
     console.print()
     archived_count = manager.archive_incomplete_runs()
-    
+
     # Show stats after
     if archived_count > 0:
         console.print()
@@ -314,7 +441,7 @@ def main_archive():
 def main_stats():
     """Show manifest statistics."""
     from src.workflows.experiment_manager import ExperimentManager
-    
+
     manager = ExperimentManager()
     manager.print_manifest_stats()
 
@@ -348,7 +475,11 @@ def main_interactive():
             "mode-c",
             [
                 ("c1", "roundrobin --test", "Mode C: + Round-robin (~3 min, 30 gens)"),
-                ("c2", "roundrobin --prod", "Mode C: + Round-robin (~4-6 hrs, 2000 gens)"),
+                (
+                    "c2",
+                    "roundrobin --prod",
+                    "Mode C: + Round-robin (~4-6 hrs, 2000 gens)",
+                ),
             ],
         ),
         # Mode D: Adaptive
@@ -403,7 +534,9 @@ def main_interactive():
                 console.print("[dim]  Intelligent heuristic selection[/dim]")
             elif category == "mode-e":
                 console.print("\n[bold magenta]MODE E: + RL-GUIDED[/bold magenta]")
-                console.print("[dim]  RL learns optimal operator timing (24 heuristics)[/dim]")
+                console.print(
+                    "[dim]  RL learns optimal operator timing (24 heuristics)[/dim]"
+                )
             elif category == "utilities":
                 console.print("\n[bold magenta]UTILITIES[/bold magenta]")
 
@@ -471,7 +604,11 @@ if __name__ == "__main__":
         main_clean()
     elif "list" in script_name:
         main_list()
-    elif "launcher" in script_name or "interactive" in script_name or "run" in script_name:
+    elif (
+        "launcher" in script_name
+        or "interactive" in script_name
+        or "run" in script_name
+    ):
         main_interactive()
     else:
         print(f"Unknown command: {script_name}")
