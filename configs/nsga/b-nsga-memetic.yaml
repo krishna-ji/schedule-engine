@@ -1,0 +1,170 @@
+# ================
+# RUNTIME MODE B: NSGA-II + Memetic Local Search
+# ================
+# NSGA-II with repairs and intensive memetic local search on elite.
+# [repairs: YES, memetic: YES, heuristics: NO]
+# Tests: Does intensive local search improve baseline?
+
+metadata:
+  runtime_mode: "b-nsga-memetic"
+  description: "Mode B: NSGA-II + memetic local search"
+  category: "nsga"
+
+ga:
+  ngen: 2000
+  pop_size: 200
+  cxpb: 0.75
+  mutpb: 0.25
+  elite_preservation: true
+  elite_size: 0.1
+  use_adaptive_probabilities: false
+  use_constraint_guided_mutation: true
+  population_strategy: random
+  validate_population_integrity: false
+
+# Enable IGLS repair with memetic mode
+repair:
+  enabled: true
+  apply_after_mutation: false
+  apply_after_crossover: false
+  selective_mode: true
+  detection_strategy: hybrid
+  recheck_after_repair: false
+  max_iterations: 2
+  memetic_mode: true  # Memetic local search enabled
+  elite_percentage: 0.05
+  memetic_iterations: 1
+
+  adaptive_repair:
+    stagnation_trigger:
+      enabled: false
+    periodic_trigger:
+      enabled: false
+
+  stagnation_repair:
+    enabled: true
+    patience: 8
+    min_generation: 12
+    population_coverage: 0.4
+    max_iterations: 15
+    timeout_seconds: 120
+    cooldown: 5
+
+  selective_repair:
+    enabled: false
+
+# Enable LNS local search
+lns:
+  enabled: true
+  trigger_interval: 50
+  stagnation_threshold: 10
+  force_trigger_generations: []
+  trigger_before_igls: false
+  max_subproblem_size: 20
+  min_subproblem_size: 4
+  expand_neighborhood_hops: 0
+  igls_max_iterations: 500
+  igls_time_limit: 5.0
+  apply_to_best_n: 1
+  enable_diagnostics: true
+
+# Enable enhancements
+enhancements:
+  master_enabled: true
+  memetic_mode: true  # Memetic enabled
+  increased_population: false
+  frequent_repair: false
+  hypermutation:
+    enabled: true
+    trigger_on_stagnation: true
+    stagnation_window: 10
+    duration_generations: 1
+    mutation_rate: 0.5
+  constraint_priorities:
+    enabled: true
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
+  greedy_initialization_percent: 0.0
+  population_restart:
+    enabled: true
+    trigger_stagnation_gens: 50
+    restart_percentage: 0.3
+    min_interval_gens: 100
+  violation_heatmap:
+    enabled: true
+    target_hot_genes: true
+    top_n_hotspots: 5
+    persistence_file: "violation_heatmap.json"
+  multi_neighborhood:
+    enabled: true
+    max_combinations: 10
+    fallback_to_single: true
+
+# Disable all heuristics (isolate memetic impact)
+heuristics:
+  # Repair heuristics configuration (memetic uses IGLS)
+  repair:
+    igls_repair:
+      enabled: true  # Core memetic repair
+      priority: 1
+      max_iterations: 5
+    lns_repair:
+      enabled: false  # Disable for Mode B isolation
+    selective_repair:
+      enabled: false  # Disable for Mode B isolation
+    exhaustive_search:
+      enabled: false  # Too expensive
+  
+  construction:
+    largest_degree_first:
+      enabled: false
+    most_constrained_first:
+      enabled: false
+    earliest_deadline_first:
+      enabled: false
+
+  perturbation:
+    random_swap:
+      enabled: false
+    temporal_shift:
+      enabled: false
+    room_shuffle:
+      enabled: false
+    instructor_reassign:
+      enabled: false
+    multi_perturbation:
+      enabled: false
+
+  improvement:
+    kempe_chain:
+      enabled: false
+    ejection_chain:
+      enabled: false
+    variable_depth_search:
+      enabled: false
+
+  diversity:
+    distance_preserving_crossover:
+      enabled: false
+    crowding_mutation:
+      enabled: false
+    niching_selection:
+      enabled: false
+    adaptive_diversity_maintenance:
+      enabled: false
+
+  meta:
+    variable_neighborhood_descent:
+      enabled: false
+    iterated_local_search:
+      enabled: false
+    adaptive_large_neighborhood:
+      enabled: false
+    guided_local_search:
+      enabled: false
+
+# Disable RL
+rl:
+  enabled: false
+  mode: disabled

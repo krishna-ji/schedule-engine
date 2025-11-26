@@ -34,7 +34,7 @@ lns:
 # IGLS Exhaustive Search - Production triggers (NO overlap with LNS intervals)
 repair:
   exhaustive_search:
-    # enabled: true  <-- Controlled by Runtime Mode
+    enabled: false  # DISABLED: Takes 9.7 min per trigger (wastes 19.3 min total)
     generations: [3, 30, 150, 250, 350, 450, 550, 650, 750, 850, 950]
     population_coverage: 0.15 # Top 15% (15 individuals)
     max_neighborhood_size: 120

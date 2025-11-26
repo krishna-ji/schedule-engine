@@ -1,31 +1,41 @@
 # ================
-# RUNTIME MODE 4: NSGA-II + Repairs + Heuristics + Local Search
+# RUNTIME MODE C: Round-Robin Heuristic Selection
 # ================
-# Full GA with repairs, heuristics, and LNS-IGLS local search.
-# This is the "best GA" configuration without RL.
+# NSGA-II with pure round-robin cycling through heuristics + REPAIR.
+# [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed rotation)]
+# Cycles through all enabled heuristics + REPAIR as pseudo-heuristic.
+# REPAIR is inserted every 4th position (e.g., H1, H2, H3, H4, REPAIR, H5...).
+# Tests: Which operator (heuristic or repair) provides most improvement?
+#
+# NOTE: ngen and pop_size inherit from environment config (test/prod)
+# Test: 30 gens, 10 pop | Prod: 2000 gens, 200 pop
+
+metadata:
+  runtime_mode: "c-roundrobin"
+  description: "Mode C: Round-robin heuristics + repair (fixed rotation)"
+  category: "hybrid"
 
 ga:
-  ngen: 2000
-  pop_size: 200
+  # ngen and pop_size inherit from environment (test.yaml / prod.yaml)
   cxpb: 0.75
   mutpb: 0.25
   elite_preservation: true
   elite_size: 0.1
-  use_adaptive_probabilities: true # Adaptive probabilities enabled
+  use_adaptive_probabilities: false # Fixed round-robin
   use_constraint_guided_mutation: true
   population_strategy: random # FIXED: Smart init produces worse solutions with many constraints
   validate_population_integrity: false
 
-# Enable IGLS repair system with memetic mode
+# Disable continuous repair (only use stagnation-triggered repair as a round-robin operator)
 repair:
-  enabled: true
+  enabled: false  # NO automatic repairs - only stagnation trigger
   apply_after_mutation: false
   apply_after_crossover: false
   selective_mode: true
   detection_strategy: hybrid
   recheck_after_repair: false
   max_iterations: 2
-  memetic_mode: true # Memetic local search enabled
+  memetic_mode: false  # NO memetic
   elite_percentage: 0.05
   memetic_iterations: 1
 
@@ -36,7 +46,7 @@ repair:
       enabled: false
 
   stagnation_repair:
-    enabled: true
+    enabled: true  # Acts like a "heuristic" - only triggers on stagnation
     patience: 8
     min_generation: 12
     population_coverage: 0.4
@@ -45,10 +55,10 @@ repair:
     cooldown: 5
 
   selective_repair:
-    enabled: true
+    enabled: false  # DISABLED: Consumes 52% of runtime (33.98s/min in test, 156s/gen in prod)
     apply_probability: 0.4
-    apply_after_mutation: true
-    apply_after_crossover: true
+    apply_after_mutation: false  # Should be FALSE (too expensive)
+    apply_after_crossover: false  # Should be FALSE (too expensive)
     detection_strategy: hybrid
 
 # Enable LNS-IGLS local search
@@ -69,7 +79,7 @@ lns:
 # Enable enhancements
 enhancements:
   master_enabled: true
-  memetic_mode: true
+  memetic_mode: false  # NO memetic in Mode C (round-robin only)
   increased_population: false
   frequent_repair: false
   hypermutation:
@@ -99,7 +109,7 @@ enhancements:
     max_combinations: 10
     fallback_to_single: true
 
-# Enable all Phase 1.5 heuristics
+# Enable all Phase 1.5 heuristics (applied in round-robin order by priority)
 heuristics:
   construction:
     largest_degree_first:
@@ -173,27 +183,47 @@ heuristics:
 
   meta:
     variable_neighborhood_descent:
-      enabled: true
+      enabled: false  # DISABLED: Too slow for production (2-3s per application)
       priority: 1
       max_neighborhoods: 3
       max_iterations: 5
     iterated_local_search:
-      enabled: true
+      enabled: false  # DISABLED: Too slow for production (3-5s per application)
       priority: 2
       num_iterations: 5
       perturbation_strength: 0.3
     adaptive_large_neighborhood:
-      enabled: true
+      enabled: false  # DISABLED: Very slow (10-20s per application)
       priority: 3
       num_iterations: 10
       initial_destroy_rate: 0.3
     guided_local_search:
-      enabled: true
+      enabled: false  # DISABLED: Very slow (5-10s per application)
       priority: 4
       num_iterations: 10
       penalty_factor: 0.1
 
-# Disable RL
+  repair:
+    igls_repair:
+      enabled: true  # Core repair - lightweight IGLS (2 iterations)
+      priority: 1  # High priority - apply early in rotation
+      max_iterations: 2
+    lns_repair:
+      enabled: true  # Large neighborhood search
+      priority: 4
+      subproblem_size: 10
+      max_iterations: 50
+    selective_repair:
+      enabled: true  # NEW: Targeted repair (Nov 2025)
+      priority: 6
+      max_iterations: 2
+    exhaustive_search:
+      enabled: false  # DISABLED: Steepest descent (very expensive)
+      priority: 10
+      max_neighborhood_size: 50
+      timeout_seconds: 5.0
+
+# Disable RL (using round-robin instead)
 rl:
   enabled: false
   mode: disabled

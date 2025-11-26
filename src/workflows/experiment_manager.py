@@ -51,6 +51,15 @@ class ExperimentRun:
         """Load from dictionary."""
         return cls(**data)
 
+    @property
+    def is_complete(self) -> bool:
+        """Check if run has complete results (not just registered)."""
+        return (
+            self.duration_seconds is not None
+            and self.best_hard_violations is not None
+            and self.best_soft_penalty is not None
+        )
+
 
 class ExperimentManager:
     """
@@ -78,11 +87,26 @@ class ExperimentManager:
     def _load_manifest(self):
         """Load experiment manifest from disk."""
         if self.manifest_path.exists():
-            with open(self.manifest_path) as f:
-                data = json.load(f)
-                self.runs = [ExperimentRun.from_dict(r) for r in data.get("runs", [])]
+            try:
+                with open(self.manifest_path) as f:
+                    content = f.read().strip()
+                    if not content:
+                        # Empty file - initialize with empty manifest
+                        self.runs = []
+                        self._save_manifest()  # Create valid JSON
+                    else:
+                        data = json.loads(content)
+                        self.runs = [ExperimentRun.from_dict(r) for r in data.get("runs", [])]
+            except (json.JSONDecodeError, ValueError) as e:
+                # Corrupted manifest - backup and reinitialize
+                backup_path = self.manifest_path.with_suffix('.json.backup')
+                self.manifest_path.rename(backup_path)
+                console.print(f"[yellow]⚠️  Corrupted manifest backed up to {backup_path}[/yellow]")
+                self.runs = []
+                self._save_manifest()  # Create fresh manifest
         else:
             self.runs = []
+            self._save_manifest()  # Create manifest if it doesn't exist
 
     def _save_manifest(self):
         """Save experiment manifest to disk."""
@@ -116,32 +140,55 @@ class ExperimentManager:
         if timestamp is None:
             timestamp = datetime.now()
 
-        # Parse mode category and name
-        mode_value = runtime_mode.value  # e.g., "1-pure-nsga"
-        mode_number, mode_name = mode_value.split("-", 1)  # "1", "pure-nsga"
-
-        # Map mode to category folder
-        category_map = {
-            "1": "baseline",      # Pure NSGA-II
-            "2": "nsga",          # NSGA + Repairs
-            "3": "nsga",          # NSGA + Heuristics
-            "4": "nsga",          # Full NSGA
-            "5": "rl",            # RL-Guided
-            "6": "hybrid",        # Round-Robin
-            "7": "rl",            # RL Specialists
-            "8": "hybrid",        # Archive Diversity
-            "9": "rl",            # Hierarchical RL
-            "10": "rl",           # Multi-Agent RL
-        }
-        category = category_map.get(mode_number, "other")
-
-        # Build directory path
-        timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
-        dir_name = f"evaluation_{timestamp_str}"
-        if experiment_name:
-            dir_name = f"{dir_name}_{experiment_name}"
-
-        output_path = self.base_dir / category / mode_name / dir_name
+        # Parse mode value
+        mode_value = runtime_mode.value  # e.g., "1-pure-nsga" or "a-pure-nsga"
+        mode_prefix = mode_value.split("-")[0]  # "1" or "a"
+        
+        # Build clean folder name with mode prefix
+        # Progressive modes (a-e): Use simple descriptive names
+        # Numbered modes (1-10): Use original structure with categories
+        if mode_prefix in ["a", "b", "c", "d", "e"]:
+            # Progressive thesis experiments - flat structure with mode prefix
+            folder_map = {
+                "a": "a-baseline-nsga-only",
+                "b": "b-nsga-memetic",
+                "c": "c-roundrobin",
+                "d": "d-adaptive",
+                "e": "e-rl-guided",
+            }
+            mode_folder = folder_map.get(mode_prefix, mode_value)
+            
+            # Build directory path (flat structure)
+            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+            dir_name = f"evaluation_{timestamp_str}"
+            if experiment_name:
+                dir_name = f"{dir_name}_{experiment_name}"
+            
+            output_path = self.base_dir / mode_folder / dir_name
+        else:
+            # Numbered modes (1-10): Keep category-based structure
+            mode_number, mode_name = mode_value.split("-", 1)
+            category_map = {
+                "1": "baseline",
+                "2": "nsga",
+                "3": "nsga",
+                "4": "nsga",
+                "5": "rl",
+                "6": "hybrid",
+                "7": "rl",
+                "8": "hybrid",
+                "9": "rl",
+                "10": "rl",
+            }
+            category = category_map.get(mode_number, "other")
+            
+            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+            dir_name = f"evaluation_{timestamp_str}"
+            if experiment_name:
+                dir_name = f"{dir_name}_{experiment_name}"
+            
+            output_path = self.base_dir / category / mode_name / dir_name
+        
         output_path.mkdir(parents=True, exist_ok=True)
 
         return output_path
@@ -225,17 +272,64 @@ class ExperimentManager:
 
         self._save_manifest()
 
-    def get_runs_by_mode(self, runtime_mode: RuntimeMode) -> List[ExperimentRun]:
+    def get_runs_by_mode(self, runtime_mode: RuntimeMode, complete_only: bool = False) -> List[ExperimentRun]:
         """
         Get all runs for a specific runtime mode.
 
         Args:
             runtime_mode: Runtime mode to filter by
+            complete_only: If True, only return runs with complete results
 
         Returns:
             List of ExperimentRun objects
         """
-        return [r for r in self.runs if r.runtime_mode == runtime_mode.value]
+        runs = [r for r in self.runs if r.runtime_mode == runtime_mode.value]
+        if complete_only:
+            runs = [r for r in runs if r.is_complete]
+        return runs
+
+    def get_complete_runs(self) -> List[ExperimentRun]:
+        """Get all runs with complete results."""
+        return [r for r in self.runs if r.is_complete]
+
+    def get_incomplete_runs(self) -> List[ExperimentRun]:
+        """Get all runs with incomplete results."""
+        return [r for r in self.runs if not r.is_complete]
+
+    def archive_incomplete_runs(self) -> int:
+        """
+        Archive incomplete runs to separate file and remove from main manifest.
+
+        This cleans up the manifest by moving runs that were started but never
+        completed (missing duration/fitness data) to an archive file.
+
+        Returns:
+            Number of runs archived
+        """
+        incomplete = self.get_incomplete_runs()
+        if not incomplete:
+            console.print("[green]No incomplete runs to archive.[/green]")
+            return 0
+
+        # Save incomplete runs to archive
+        archive_path = self.base_dir / "experiment_manifest_incomplete.json"
+        archive_data = {"runs": [run.to_dict() for run in incomplete], "version": "1.0"}
+
+        with open(archive_path, "w") as f:
+            json.dump(archive_data, f, indent=2)
+
+        # Keep only complete runs in main manifest
+        self.runs = self.get_complete_runs()
+        self._save_manifest()
+
+        console.print(
+            f"[yellow]Archived {len(incomplete)} incomplete runs to:[/yellow] {archive_path}"
+        )
+        console.print(
+            f"[green]Main manifest now has {len(self.runs)} complete runs.[/green]"
+        )
+
+        return len(incomplete)
 
     def get_latest_run(
         self, runtime_mode: Optional[RuntimeMode] = None
@@ -320,6 +414,53 @@ class ExperimentManager:
             )
 
         return table
+
+    def get_manifest_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about the current manifest.
+
+        Returns:
+            Dictionary with manifest statistics
+        """
+        complete = self.get_complete_runs()
+        incomplete = self.get_incomplete_runs()
+
+        stats = {
+            "total_runs": len(self.runs),
+            "complete_runs": len(complete),
+            "incomplete_runs": len(incomplete),
+            "completion_rate": f"{len(complete) / len(self.runs) * 100:.1f}%" if self.runs else "N/A",
+        }
+
+        # Per-mode statistics
+        mode_stats = {}
+        for mode in RuntimeMode:
+            mode_runs = self.get_runs_by_mode(mode)
+            if mode_runs:
+                mode_complete = [r for r in mode_runs if r.is_complete]
+                mode_stats[mode.value] = {
+                    "total": len(mode_runs),
+                    "complete": len(mode_complete),
+                    "incomplete": len(mode_runs) - len(mode_complete),
+                }
+
+        stats["by_mode"] = mode_stats
+        return stats
+
+    def print_manifest_stats(self):
+        """Print manifest statistics to console."""
+        stats = self.get_manifest_stats()
+
+        console.print("\n[bold cyan]Manifest Statistics[/bold cyan]")
+        console.print(f"  Total runs: {stats['total_runs']}")
+        console.print(f"  Complete: {stats['complete_runs']} [green]✓[/green]")
+        console.print(f"  Incomplete: {stats['incomplete_runs']} [yellow]![/yellow]")
+        console.print(f"  Completion rate: {stats['completion_rate']}")
+
+        if stats["incomplete_runs"] > 0:
+            console.print(
+                f"\n[yellow]Tip:[/yellow] Run [cyan]manager.archive_incomplete_runs()[/cyan] to clean manifest."
+            )
 
     def export_comparison_csv(
         self, output_path: Path, modes: Optional[List[RuntimeMode]] = None

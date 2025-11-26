@@ -61,26 +61,30 @@ analysis = [
 # UNIFIED CLI LAUNCHER
 # Convention: Main commands (0-99+) = numbers, Helpers (a-z) = letters
 # Usage: uv run <command> --<profile>
-# Profiles: --test (smoke), --med (medium), --prod (full)
+# Profiles: --test (smoke), --prod (full)
 # ==================
 
 # Interactive launcher (TUI menu)
 launcher = "scripts.launcher:main_interactive"
 run = "scripts.launcher:main_interactive"
+nsga = "scripts.launcher:main_nsga"
 
 # ==================
-# A→B→C THESIS EXPERIMENTS (Clean Structure)
+# PROGRESSIVE MODE EXPERIMENTS (A→E: Increasing Complexity)
 # ==================
+# Mode A: Pure NSGA-II                           [repairs: NO,  memetic: NO,  heuristics: NO]
+# Mode B: + Memetic local search                 [repairs: YES, memetic: YES, heuristics: NO]
+# Mode C: + Round-robin (heuristics + repair)    [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed)]
+# Mode D: + Adaptive heuristics                  [repairs: YES, memetic: NO,  heuristics: YES (adaptive)]
+# Mode E: + RL-guided (deploys all techniques)   [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
 
-# Group A: Baseline (Pure NSGA-II only)
-baseline = "scripts.launcher:main_baseline"           # A: Pure NSGA-II
+baseline = "scripts.launcher:main_baseline"           # Mode A: Pure NSGA-II
+memetic = "scripts.launcher:main_memetic"             # Mode B: + Memetic local search
+roundrobin = "scripts.launcher:main_roundrobin"       # Mode C: + Round-robin heuristics
+adaptive = "scripts.launcher:main_adaptive"           # Mode D: + Adaptive selection
+rl = "scripts.launcher:main_rl"                       # Mode E: + RL-guided
 
-# Group B: Heuristic Methods
-heuristic-roundrobin = "scripts.launcher:main_heuristic_roundrobin"  # B1: Fixed heuristic rotation
-heuristic-adaptive = "scripts.launcher:main_heuristic_adaptive"      # B2: Intelligent heuristic selection
-
-# Group C: RL-Guided Methods
-rl = "scripts.launcher:main_rl_guided"                # C: RL-guided heuristic selection
+# RL Training
 train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
 
 # ==================
@@ -88,9 +92,11 @@ train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
 # ==================
 
 analyze-results = "scripts.analysis.compare_experiments:main"  # Generate comparison plots
+archive = "scripts.launcher:main_archive"             # Archive incomplete runs
 clean = "scripts.launcher:main_clean"                 # Clean output directory
 diagnose = "scripts.launcher:main_diagnose"           # System diagnostics
 list-experiments = "scripts.launcher:main_list"       # List experiment history
+stats = "scripts.launcher:main_stats"                 # Show manifest statistics
 organize-output = "scripts.utilities.organize_output:main"  # Reorganize output structure
 
 [[tool.uv.index]]

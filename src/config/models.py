@@ -553,6 +553,15 @@ class HeuristicsConfig(BaseModel):
     Heuristics are integrated via decorator-based registry (like constraints).
     """
 
+    adaptive_priority: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "enabled": False,
+            "reorder_interval": 10,
+            "evaluation_window": 10,
+            "min_applications": 3,
+        },
+        description="Adaptive priority adjustment (dynamic heuristic reordering)",
+    )
     construction: Dict[str, Any] = Field(
         default_factory=dict,
         description="Construction heuristics for greedy schedule building",

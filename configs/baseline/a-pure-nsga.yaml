@@ -1,8 +1,14 @@
 # ================
-# RUNTIME MODE 1: Pure NSGA-II Only (Baseline)
+# RUNTIME MODE A: Pure NSGA-II Baseline
 # ================
 # Minimal GA with no repairs, no heuristics, no enhancements.
+# [repairs: NO, memetic: NO, heuristics: NO]
 # Use this as the baseline for comparing all other modes.
+
+metadata:
+  runtime_mode: "a-pure-nsga"
+  description: "Mode A: Pure NSGA-II baseline (no repairs, no heuristics)"
+  category: "baseline"
 
 ga:
   ngen: 2000
@@ -106,6 +112,20 @@ heuristics:
     adaptive_large_neighborhood:
       enabled: false
     guided_local_search:
+      enabled: false
+
+  repair:
+    igls_repair:
+      enabled: false
+    greedy_repair:
+      enabled: false
+    exhaustive_repair:
+      enabled: false
+    lns_repair:
+      enabled: false
+    memetic_repair:
+      enabled: false
+    selective_repair:
       enabled: false
 
 # Disable RL

@@ -2,7 +2,7 @@
 __pycache__/
 *.log
 *.logs
-# *.md
+*.md
 !README.md
 output/
 TEMPFILESWORKING/

@@ -219,6 +219,13 @@ enhancements:
 
 # Heuristic Toolbox (Phase 1.5)
 heuristics:
+  # Adaptive Priority Adjustment (Dynamic Reordering)
+  adaptive_priority:
+    enabled: false           # Disabled by default (enable in specific modes like d-adaptive)
+    reorder_interval: 10     # Reorder every N generations
+    evaluation_window: 10    # Use last N generations for effectiveness scoring
+    min_applications: 3      # Require at least N applications before reordering
+  
   # Construction heuristics - build schedules greedily
   construction:
     largest_degree_first:
@@ -314,6 +321,31 @@ heuristics:
       priority: 4
       num_iterations: 10
       penalty_factor: 0.1
+
+  # Repair heuristics - constraint violation restoration (Nov 2025: Unified with toolbox)
+  # ALL repair operators are now equal citizens in the heuristic system
+  # Enable/disable via these flags - no hardcoded generation triggers
+  repair:
+    igls_repair:
+      enabled: true # Iterative Greedy Local Search - fast, lightweight
+      priority: 5
+      max_iterations: 100
+      timeout_seconds: 1.0
+    lns_repair:
+      enabled: true # Large Neighborhood Search - handles complex conflicts
+      priority: 7
+      max_subproblem_size: 20
+      timeout_seconds: 5.0
+    selective_repair:
+      enabled: true # Targeted repair of violated genes only
+      priority: 3
+      max_iterations: 2
+    exhaustive_search:
+      enabled: false # INTENSIVE steepest descent - expensive, disable by default
+      priority: 10 # High priority when enabled (apply last)
+      max_neighborhood_size: 50
+      timeout_seconds: 5.0
+
 
 # RL Integration (Phase 2)
 rl:

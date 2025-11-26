@@ -102,6 +102,9 @@ def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
             # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
             offspring[i], offspring[i + 1] = result
 
+            # CRITICAL FIX: Force fitness invalidation (DEAP bug workaround)
+            # Use invalid fitness tuple (inf, inf) instead of deleting
+            # DEAP requires tuple length to match fitness weights (2 objectives)
             del offspring[i].fitness.values
             del offspring[i + 1].fitness.values
 
@@ -129,6 +132,7 @@ def _parallel_mutation(offspring, mutpb, toolbox, max_workers=None):
             # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
             offspring[i] = result[0]
 
+            # CRITICAL FIX: Force fitness invalidation
             del offspring[i].fitness.values
 
     return offspring
@@ -714,6 +718,7 @@ class GAScheduler:
         Setup round-robin heuristic rotation from enabled heuristics.
 
         Builds ordered list based on priority and category.
+        Includes REPAIR as a pseudo-heuristic ONLY if repair.enabled=true.
         """
         from src.heuristics import get_enabled_heuristics
 
@@ -724,13 +729,23 @@ class GAScheduler:
             console.print("[dim]   No heuristics enabled for round-robin[/dim]")
             return
 
-        # Set rotation order in tracker
+        # Build rotation order from all enabled heuristics
         heuristic_names = list(enabled.keys())
+        
+        # Set rotation order in tracker (includes repair heuristics if enabled)
         self.heuristic_tracker.set_heuristic_order(heuristic_names)
-
-        console.print(
-            f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics enabled[/dim]"
-        )
+        
+        # Count repair heuristics for display
+        repair_heuristics = [h for h in heuristic_names if 'repair' in h.lower()]
+        
+        if repair_heuristics:
+            console.print(
+                f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics (including {len(repair_heuristics)} repair operators)[/dim]"
+            )
+        else:
+            console.print(
+                f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics (NO repair)[/dim]"
+            )
 
     def _apply_round_robin_heuristics(self, gen: int) -> None:
         """
@@ -750,6 +765,31 @@ class GAScheduler:
         if not self.heuristic_tracker.heuristic_order:
             return
 
+        # ADAPTIVE PRIORITY ADJUSTMENT: Reorder heuristics based on recent effectiveness
+        # Check if adaptive priority is enabled and it's time to reorder
+        full_config = get_config()  # Get full config (not just self.config which is GAConfig)
+        adaptive_config = full_config.heuristics.adaptive_priority
+        if adaptive_config.get("enabled", False):
+            reorder_interval = adaptive_config.get("reorder_interval", 10)
+            
+            # Reorder every N generations (and at generation 0 after some data)
+            if gen > 0 and gen % reorder_interval == 0:
+                order_changed = self.heuristic_tracker.reorder_by_effectiveness(
+                    current_generation=gen,
+                    window_size=adaptive_config.get("evaluation_window", 10),
+                    min_applications=adaptive_config.get("min_applications", 3),
+                )
+                
+                if order_changed:
+                    # Show reordered list with effectiveness scores
+                    scores = self.heuristic_tracker.get_effectiveness_summary()
+                    console.print(f"[yellow]    Gen {gen}: Reordered heuristics by effectiveness:[/yellow]")
+                    for i, h_name in enumerate(self.heuristic_tracker.heuristic_order[:5], 1):
+                        score = scores.get(h_name, 0.0)
+                        console.print(f"      {i}. {h_name}: {score:+.3f}")
+                    if len(self.heuristic_tracker.heuristic_order) > 5:
+                        console.print(f"      ... and {len(self.heuristic_tracker.heuristic_order) - 5} more")
+
         # Get next heuristic in rotation
         heuristic_name = self.heuristic_tracker.get_next_heuristic()
 
@@ -767,10 +807,6 @@ class GAScheduler:
         if heuristic_meta.category.value == "construction":
             return
 
-        # Skip repair heuristics (handled by separate repair system)
-        if heuristic_meta.category.value == "repair":
-            return
-
         # Select target individual(s)
         if heuristic_meta.requires_population:
             # Diversity/selection heuristics need full population
@@ -780,6 +816,12 @@ class GAScheduler:
         else:
             # Most heuristics work on single individual
             target_individuals = tools.selBest(self.population, 1)
+
+        # CONSOLE LOG: Show which heuristic is being applied
+        heuristic_start_time = time.time()
+        console.print(
+            f"[cyan]   -> Gen {gen}: Heuristic '{heuristic_name}' ({heuristic_meta.category.value}) -> {len(target_individuals)} ind(s)...[/cyan]"
+        )
 
         # Apply heuristic to each target
         for ind_idx, individual in enumerate(target_individuals):
@@ -792,15 +834,41 @@ class GAScheduler:
                 if heuristic_meta.requires_population:
                     # Pass population for diversity heuristics
                     # NOTE: Pass individual directly (not copy) for in-place modification
-                    result = heuristic_meta.function(
-                        individual=individual,
-                        population=[list(ind) for ind in self.population],
-                        context=self.context,
-                    )
-
-                    # Update individual if modified and heuristic returns new list
-                    if heuristic_meta.modifies_individual and isinstance(result, list):
-                        individual[:] = result
+                    
+                    # Special handling for crossover-type heuristics that need two parents
+                    if heuristic_name == "distance_preserving_crossover":
+                        # Select second parent for crossover
+                        parent2 = tools.selRandom(self.population, 1)[0]
+                        result = heuristic_meta.function(
+                            parent1=individual,
+                            parent2=parent2,
+                            context=self.context,
+                        )
+                        # Distance preserving crossover returns TWO offspring - use first one
+                        if isinstance(result, tuple) and len(result) >= 2:
+                            offspring = result[0]
+                            if isinstance(offspring, list):
+                                individual[:] = offspring
+                    elif heuristic_name == "adaptive_diversity_maintenance":
+                        # Pass generation parameter for adaptive diversity
+                        result = heuristic_meta.function(
+                            individual=individual,
+                            population=[list(ind) for ind in self.population],
+                            context=self.context,
+                            generation=gen,
+                        )
+                        # Handle list return (modified individual)
+                        if heuristic_meta.modifies_individual and isinstance(result, list):
+                            individual[:] = result
+                    else:
+                        result = heuristic_meta.function(
+                            individual=individual,
+                            population=[list(ind) for ind in self.population],
+                            context=self.context,
+                        )
+                        # Update individual if modified and heuristic returns new list
+                        if heuristic_meta.modifies_individual and isinstance(result, list):
+                            individual[:] = result
                 else:
                     # Standard heuristic (individual + context)
                     # NOTE: Pass individual directly (not copy) for in-place modification
@@ -844,7 +912,10 @@ class GAScheduler:
                 )
 
             except Exception as e:
-                logger.debug(f"Heuristic '{heuristic_name}' failed at gen {gen}: {e}")
+                logger.warning(f"Heuristic '{heuristic_name}' failed at gen {gen}: {e}")
+                console.print(
+                    f"[yellow]   WARN Gen {gen}: Heuristic '{heuristic_name}' failed: {e}[/yellow]"
+                )
 
                 # Ensure individual has valid fitness (re-evaluate if needed)
                 if (
@@ -872,6 +943,12 @@ class GAScheduler:
                     execution_time=0.0,
                     individual_id=0,
                 )
+        
+        # CONSOLE LOG: Show heuristic completion with timing and improvement
+        total_heuristic_time = time.time() - heuristic_start_time
+        console.print(
+            f"[green]   OK Gen {gen}: '{heuristic_name}' done in {total_heuristic_time:.2f}s[/green]"
+        )
 
     def initialize_population(self):
         """Create and evaluate initial population."""
@@ -1807,32 +1884,89 @@ class GAScheduler:
                             generation_repair_stats["mutation_repairs"] += 1
             profiler.end_phase()
 
-        # Evaluate invalid individuals with GPU acceleration when available
+        # CRITICAL FIX: Comprehensive fitness invalidation check
+        # Check multiple conditions to detect DEAP invalidation bugs
         _before_invalid = time_module.time()
-        invalid = [ind for ind in offspring if not ind.fitness.valid]
+        profiler.start_phase("invalidation_check")
+        
+        invalid = []
+        for ind in offspring:
+            # Multi-condition check (DEAP sometimes leaves fitness.valid=True after delete)
+            is_invalid = (
+                not hasattr(ind, 'fitness') or
+                not hasattr(ind.fitness, 'valid') or
+                not ind.fitness.valid or
+                not hasattr(ind.fitness, 'values') or
+                len(ind.fitness.values) == 0
+            )
+            
+            if is_invalid:
+                invalid.append(ind)
+        
+        profiler.end_phase()
         _invalid_check_time = time_module.time() - _before_invalid
-
+        
+        # Calculate expected invalidation count
+        expected_invalid = int(len(offspring) * (cxpb * 0.75 + mutpb * 0.25))
+        
+        # DEBUG: Log invalidation results (always show for first 5 gens)
+        if gen <= 5:
+            console.print(
+                f"[dim]   Gen {gen}: {len(invalid)}/{len(offspring)} individuals invalidated "
+                f"(expected ~{expected_invalid}, {len(invalid)/len(offspring)*100:.1f}%)[/dim]"
+            )
+        
+        # WARNING: Detect invalidation failure
+        if len(invalid) < expected_invalid * 0.5 and gen > 0:
+            console.print(
+                f"[bold yellow]   WARNING Gen {gen}: Only {len(invalid)}/{len(offspring)} individuals marked invalid! "
+                f"Expected ~{expected_invalid}. Fitness invalidation may be broken.[/bold yellow]"
+            )
+        
+        # PARALLEL FITNESS EVALUATION (PRIMARY PARALLELIZATION TARGET)
         if invalid:
             profiler.start_phase("evaluation", items_to_process=len(invalid))
-
-            # DEBUG: Log how many individuals are being re-evaluated
-            if gen <= 5:  # Only log first few generations
-                console.print(
-                    f"[dim]   DEBUG Gen {gen}: Re-evaluating {len(invalid)} individuals[/dim]"
-                )
-
-            # CPU-only evaluation with multiprocessing parallelization
-            # GPU removed from GA loop - better suited for RL neural networks
+            
+            # Use multiprocessing pool via toolbox.map (32 cores parallelized)
             fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
+            
             for ind, fit in zip(invalid, fitness_values):
                 ind.fitness.values = fit
-
+            
             profiler.end_phase()
-        else:
-            # DEBUG: No individuals to re-evaluate (this is the problem!)
+            
+            # DEBUG: Verify fitness assignment (always show for first 5 gens)
             if gen <= 5:
+                evaluated_count = sum(
+                    1 for ind in invalid 
+                    if hasattr(ind, 'fitness') and hasattr(ind.fitness, 'values') and len(ind.fitness.values) > 0
+                )
                 console.print(
-                    f"[dim]   DEBUG Gen {gen}: NO individuals to re-evaluate - this is the bug![/dim]"
+                    f"[dim]   Gen {gen}: {evaluated_count}/{len(invalid)} individuals evaluated successfully[/dim]"
+                )
+        else:
+            # CRITICAL ERROR: No individuals to evaluate (fitness invalidation completely failed)
+            if gen > 0:  # Skip generation 0 (initial population already evaluated)
+                console.print(
+                    f"[bold red]   ERROR Gen {gen}: NO individuals marked for re-evaluation! "
+                    f"Fitness invalidation is BROKEN. GA is NOT evolving![/bold red]"
+                )
+                console.print(
+                    f"[yellow]   Emergency fallback: Force re-evaluating ALL {len(offspring)} individuals...[/yellow]"
+                )
+                
+                # Emergency fallback: Re-evaluate ENTIRE population
+                profiler.start_phase("evaluation_emergency", items_to_process=len(offspring))
+                
+                fitness_values = list(self.toolbox.map(self.toolbox.evaluate, offspring))
+                
+                for ind, fit in zip(offspring, fitness_values):
+                    ind.fitness.values = fit
+                
+                profiler.end_phase()
+                
+                console.print(
+                    f"[green]   Emergency re-evaluation complete: {len(offspring)} individuals[/green]"
                 )
 
         # Track overhead
@@ -1943,203 +2077,21 @@ class GAScheduler:
             + generation_repair_stats["memetic_repairs"]
         )
         generation_repair_stats["total_fixes"] = max(category_total, phase_total)
-
         # ============
-        # NEW: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
+        # HEURISTIC TOOLBOX ARCHITECTURE (Nov 2025)
         # ============
-        # Three-tier repair strategy with priority resolution:
-        #   Tier 1: Exhaustive search (fixed generations: 3, 25)
-        #   Tier 2: Greedy full search (stagnation-triggered)
-        #   Tier 3: Selective probabilistic (post-mutation cleanup)
-        # ============
-
-        repair_triggered = None  # Track which repair was applied
-        igls_metrics = {}
-
-        # TIER 1: Exhaustive Search (Fixed Generations)
-        if (
-            igls_config.exhaustive_search.enabled
-            and gen in igls_config.exhaustive_search.generations
-        ):
-            console.print(
-                f"\n[bold red][!info] exhaustive search triggered on  gen {gen}: "
-                f"(steepest descent on top {igls_config.exhaustive_search.population_coverage*100:.0f}%)[/bold red]"
-            )
-
-            from src.ga.operators.intensive_local_search import apply_exhaustive_search
-
-            profiler.start_phase("igls_exhaustive")
-            self.population, igls_metrics = apply_exhaustive_search(
-                population=self.population,
-                context=self.context,
-                population_coverage=igls_config.exhaustive_search.population_coverage,
-                max_neighborhood_size=igls_config.exhaustive_search.max_neighborhood_size,
-                timeout_seconds=igls_config.exhaustive_search.timeout_seconds,
-            )
-            profiler.end_phase()
-
-            # Re-evaluate population after exhaustive search
-            fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
-            for ind, fit in zip(self.population, fitnesses):
-                ind.fitness.values = fit
-
-            repair_triggered = "exhaustive"
-            event_tracker.add("igls_exhaustive_search")
-
-            console.print(
-                f"[bold green][!done] exhaustive search complete: "
-                f"{igls_metrics['genes_improved']} genes improved, "
-                f"total reduction: {igls_metrics['total_improvement']}, "
-                f"time: {igls_metrics['execution_time']:.1f}s"
-                f"{' [TIMED OUT]' if igls_metrics.get('timed_out') else ''}[/bold green]"
-            )
-
-        # TIER 2: Greedy Full Search (Stagnation-Triggered)
-        elif (
-            igls_config.stagnation_repair.enabled
-            and gen >= igls_config.stagnation_repair.min_generation
-            and self.stagnation_counter >= igls_config.stagnation_repair.patience
-            and (gen - getattr(self, "_last_stagnation_repair_gen", -999))
-            >= igls_config.stagnation_repair.cooldown
-        ):
-            console.print(
-                f"\n[bold yellow] [!info] Gen {gen}: STAGNATION REPAIR triggered "
-                f"(greedy search on top {igls_config.stagnation_repair.population_coverage*100:.0f}%, "
-                f"{self.stagnation_counter} gens stagnant)[/bold yellow]"
-            )
-
-            from src.ga.operators.intensive_local_search import apply_greedy_search
-
-            profiler.start_phase("igls_greedy")
-            self.population, igls_metrics = apply_greedy_search(
-                population=self.population,
-                context=self.context,
-                population_coverage=igls_config.stagnation_repair.population_coverage,
-                max_iterations=igls_config.stagnation_repair.max_iterations,
-                timeout_seconds=igls_config.stagnation_repair.timeout_seconds,
-            )
-            profiler.end_phase()
-
-            # Re-evaluate population after greedy search
-            fitnesses = self.toolbox.map(self.toolbox.evaluate, self.population)
-            for ind, fit in zip(self.population, fitnesses):
-                ind.fitness.values = fit
-
-            repair_triggered = "greedy_stagnation"
-            event_tracker.add("igls_stagnation_repair")
-
-            # Reset stagnation counter and update last repair generation
-            self.stagnation_counter = 0
-            self._last_stagnation_repair_gen = gen
-
-            console.print(
-                f"[bold green]   ✓ Stagnation repair complete: "
-                f"{igls_metrics['genes_improved']} genes improved, "
-                f"total reduction: {igls_metrics['total_improvement']}, "
-                f"time: {igls_metrics['execution_time']:.1f}s"
-                f"{' [TIMED OUT]' if igls_metrics.get('timed_out') else ''}[/bold green]"
-            )
-
-        # Store IGLS metrics if repair was triggered
-        if repair_triggered:
-            igls_metrics["repair_type"] = repair_triggered
-            igls_metrics["generation"] = gen
-            if not hasattr(self.metrics, "igls_history"):
-                self.metrics.igls_history = []
-            self.metrics.igls_history.append(igls_metrics)
-
-        # ============
-        # END: INTENSIVE GLOBAL LOCAL SEARCH (IGLS) SYSTEM
-        # ============
-
-        # ============
-        # LNS-IGLS REPAIR SYSTEM
-        # ============
-        # Apply LNS-IGLS repair to best individuals when triggered
-        lns_config = get_config().lns
-        if lns_config.enabled:
-            from src.lns.lns_operator import should_trigger_lns_repair, lns_igls_repair
-
-            # Check if LNS should be triggered
-            should_trigger = should_trigger_lns_repair(
-                generation=gen,
-                trigger_interval=lns_config.trigger_interval,
-                stagnation_counter=self.stagnation_counter,
-                stagnation_threshold=lns_config.stagnation_threshold,
-                force_trigger_generations=lns_config.force_trigger_generations,
-            )
-
-            if should_trigger:
-                event_tracker.add("lns_repair_triggered")
-                console.print(
-                    f"\n[bold blue][!info] LNS-IGLS repair triggered on gen {gen}[/bold blue]"
-                )
-
-                profiler.start_phase("lns_repair")
-                # Get best individuals
-                num_to_repair = min(lns_config.apply_to_best_n, len(self.population))
-                best_individuals = tools.selBest(self.population, num_to_repair)
-
-                # Apply LNS-IGLS repair to each
-                repaired_count = 0
-                for idx, individual in enumerate(best_individuals):
-                    console.print(
-                        f"[dim]   Repairing individual {idx+1}/{num_to_repair}...[/dim]"
-                    )
-
-                    repaired = lns_igls_repair(
-                        individual=individual,
-                        courses=self.context.courses,
-                        instructors=self.context.instructors,
-                        groups=self.context.groups,
-                        rooms=self.context.rooms,
-                        max_subproblem_size=lns_config.max_subproblem_size,
-                        min_subproblem_size=lns_config.min_subproblem_size,
-                        expand_hops=lns_config.expand_neighborhood_hops,
-                        igls_max_iterations=lns_config.igls_max_iterations,
-                        igls_time_limit=lns_config.igls_time_limit,
-                        enable_diagnostics=lns_config.enable_diagnostics,
-                    )
-
-                    # If repair was successful (returned different individual), update
-                    if repaired is not individual:
-                        # Replace in population
-                        pop_idx = self.population.index(individual)
-                        self.population[pop_idx] = repaired
-                        repaired_count += 1
-                        # Invalidate fitness
-                        del repaired.fitness.values
-
-                # Re-evaluate repaired individuals
-                if repaired_count > 0:
-                    # Optimized: direct list comprehension (fitness.valid is boolean attribute)
-                    invalid = [ind for ind in self.population if not ind.fitness.valid]
-                    fitness_values = list(
-                        self.toolbox.map(self.toolbox.evaluate, invalid)
-                    )
-                    for ind, fit in zip(invalid, fitness_values):
-                        ind.fitness.values = fit
-
-                    event_tracker.add("lns_igls_repair_applied")
-                    console.print(
-                        f"[bold green]   ✓ LNS-IGLS repair complete: "
-                        f"{repaired_count}/{num_to_repair} individuals repaired[/bold green]"
-                    )
-
-                    # Reset stagnation counter after successful repair
-                    # This prevents immediate re-triggering on next generation
-                    self.stagnation_counter = 0
-                    logger.info(
-                        f"Stagnation counter reset after LNS-IGLS repair (gen {gen})"
-                    )
-                else:
-                    console.print(
-                        "[yellow]   LNS-IGLS repair: no improvements found[/yellow]"
-                    )
-                profiler.end_phase()
-
-        # ============
-        # END: LNS-IGLS REPAIR SYSTEM
+        # ALL repair/improvement operations are now unified heuristics:
+        #   - igls_repair, lns_repair, selective_repair, exhaustive_search
+        #   - Applied via round-robin rotation OR RL-guided selection
+        #   - No hardcoded generation triggers - mode-specific configuration
+        #   - Managed through heuristics.repair.* in configs
+        #
+        # Legacy hardcoded triggers REMOVED:
+        #    Exhaustive search at gens [3, 25] - use heuristic instead
+        #    LNS periodic trigger every 50 gens - use heuristic instead
+        #    Stagnation-triggered repairs - migrate to heuristics (future)
+        #
+        # Migration: Enable via configs/heuristics/repair/*.enabled=true
         # ============
 
         # Store generation repair stats

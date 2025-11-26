@@ -1,19 +1,24 @@
 # ================
-# RUNTIME MODE 6: NSGA-II + Round-Robin Heuristic Selection
+# RUNTIME MODE E: RL-Guided Hyper-Heuristic
 # ================
-# Full GA with round-robin heuristic selection (no RL).
-# Cycles through all enabled heuristics in fixed order.
-#
-# NOTE: ngen and pop_size inherit from environment config (test/prod)
-# Test: 30 gens, 10 pop | Prod: 2000 gens, 200 pop
+# NSGA-II with RL agent deploying all techniques intelligently.
+# [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
+# Tests: Can RL beat fixed strategies?
+# RL guides heuristic selection, repair strategies, and local search budget.
+
+metadata:
+  runtime_mode: "e-rl-guided"
+  description: "Mode E: RL-guided hyper-heuristic (full system)"
+  category: "rl"
 
 ga:
-  # ngen and pop_size inherit from environment (test.yaml / prod.yaml)
+  ngen: 2000
+  pop_size: 200
   cxpb: 0.75
   mutpb: 0.25
   elite_preservation: true
   elite_size: 0.1
-  use_adaptive_probabilities: false # Fixed round-robin
+  use_adaptive_probabilities: true # RL may override this dynamically
   use_constraint_guided_mutation: true
   population_strategy: random # FIXED: Smart init produces worse solutions with many constraints
   validate_population_integrity: false
@@ -85,7 +90,7 @@ enhancements:
     availability_weight: 0.8
     overlap_weight: 0.15
     other_weight: 0.05
-  greedy_initialization_percent: 0.0 # DISABLED: Construction heuristics create different gene structure (split vs combined groups)
+  greedy_initialization_percent: 0.25
   population_restart:
     enabled: true
     trigger_stagnation_gens: 50
@@ -101,7 +106,7 @@ enhancements:
     max_combinations: 10
     fallback_to_single: true
 
-# Enable all Phase 1.5 heuristics (applied in round-robin order by priority)
+# Enable all Phase 1.5 heuristics (RL will select from these)
 heuristics:
   construction:
     largest_degree_first:
@@ -195,7 +200,76 @@ heuristics:
       num_iterations: 10
       penalty_factor: 0.1
 
-# Disable RL (using round-robin instead)
+  repair:
+    igls_repair:
+      enabled: true  # RL learns when to apply IGLS repair
+      priority: 1
+      max_iterations: 2
+    greedy_repair:
+      enabled: true  # RL learns when first-improving search helps
+      priority: 2
+      max_iterations: 5
+    exhaustive_repair:
+      enabled: true  # RL learns when expensive steepest descent is worth it
+      priority: 3
+      max_neighborhood_size: 10
+    lns_repair:
+      enabled: true  # RL learns when to use large neighborhood search
+      priority: 4
+      subproblem_size: 10
+      max_iterations: 50
+    memetic_repair:
+      enabled: true  # RL learns when to intensively repair elite individuals
+      priority: 5
+      elite_percentage: 0.05
+      max_iterations: 10
+
+# Enable RL in inference mode (use trained model)
 rl:
-  enabled: false
-  mode: disabled
+  enabled: true
+  mode: inference # Options: training, inference, hybrid
+
+  environment:
+    max_steps_per_episode: 20
+    observation_history_size: 10
+    render_mode: null
+
+  # ENHANCEMENT #2: Constraint-specific state representation
+  state:
+    type: constraint_specific # Use per-constraint breakdown
+    enable_constraint_breakdown: true # 8 hard + 4 soft = 12 additional features
+    history_size: 10
+    normalize: true
+
+  # ENHANCEMENT #1: Multi-objective reward (start with scalar, can switch to hypervolume)
+  reward:
+    type: scalar # Options: scalar, hypervolume, decomposed, adaptive
+    normalize: true
+
+    scalar:
+      hard_weight: 100.0
+      soft_weight: 1.0
+      cost_weight: 0.01
+
+  agent:
+    type: ppo # Trained PPO agent
+    model_path: models/rl_agents/best_model.zip
+    device: cpu # CPU-only inference
+
+  inference:
+    batch_prediction: false
+    timeout_ms: 10
+    fallback_on_timeout: true
+    cache_predictions: false
+
+  hybrid:
+    mode: rl_primary
+    fallback_strategy: greedy
+    rl_probability: 0.9
+    enable_action_masking: true
+
+  logging:
+    log_heuristic_usage: true
+    log_rewards: true
+    log_state_transitions: false
+    log_inference_time: true

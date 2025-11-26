@@ -26,12 +26,10 @@ uv run diagnose
 ```bash
 # NSGA-II Experiments (Main Command 0)
 uv run nsga --test      # Smoke test (30 gens, ~2 min)
-uv run nsga --med       # Medium (200 gens, ~30 min)
 uv run nsga --prod      # Production (2000 gens, ~3-5 hours)
 
 # RL Training (Main Command 5)
 uv run train-rl --test  # Smoke test (10K steps, ~5-10 min)
-uv run train-rl --med   # Medium (50K steps, ~30-45 min)
 uv run train-rl --prod  # Production (100K steps, ~1-2 hours)
 
 # Helper Commands
@@ -165,11 +163,9 @@ Runtime mode configs support automatic killswitch validation.
 ```bash
 # Main Commands (0-9)
 uv run nsga --test       # NSGA-II smoke test (30 gens, ~2 min)
-uv run nsga --med        # NSGA-II medium (200 gens, ~30 min)
 uv run nsga --prod       # NSGA-II production (2000 gens, ~3-5 hours)
 
 uv run train-rl --test   # RL training smoke test (10K steps, ~5-10 min)
-uv run train-rl --med    # RL training medium (50K steps, ~30-45 min)
 uv run train-rl --prod   # RL training production (100K steps, ~1-2 hours)
 
 # Helper Commands (a-z)
@@ -179,7 +175,7 @@ uv run list-experiments  # Show experiment history
 
 # Custom options
 uv run nsga --prod --name "my-experiment"
-uv run train-rl --med --curriculum
+uv run train-rl --prod --curriculum
 ```
 
 ### Legacy Commands (Backward Compatible)
@@ -203,8 +199,6 @@ base.yaml (common settings)
   ↓
 test.yaml (30 gens, 10 pop) - smoke test
   ↓
-med.yaml (200 gens, 100 pop) - medium validation
-  ↓
 prod.yaml (2000 gens, 500 pop) - full production
 ```
 
@@ -215,7 +209,7 @@ prod.yaml (2000 gens, 500 pop) - full production
 **Command Structure**:
 - **Main Commands (0-9)**: Primary experiments (NSGA-II, RL training)
 - **Helper Commands (a-z)**: Utilities (diagnose, clean, list)
-- **Profiles**: `--test` (smoke), `--med` (medium), `--prod` (full)
+- **Profiles**: `--test` (smoke), `--prod` (full)
 
 **Key Files**:
 - `scripts/launcher.py` - Unified CLI launcher with profile routing
@@ -233,7 +227,7 @@ uv run nsga --prod       # 3-5 hours
 uv run train-rl --prod   # 1-2 hours
 ```
 
-**DRY Principle**: Configs inherit hierarchically (base → test → med → prod).
+**DRY Principle**: Configs inherit hierarchically (base → test → prod).
 
 ## Architecture
 
