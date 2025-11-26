@@ -47,7 +47,7 @@ from src.heuristics.registry import diversity_heuristic
     description="Crossover operator that maintains phenotypic distance between parents",
     priority=1,
     enabled_by_default=True,
-    requires_population=False,
+    requires_population=True,
     modifies_individual=False,
 )
 def distance_preserving_crossover(
