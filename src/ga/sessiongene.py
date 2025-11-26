@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -34,16 +34,7 @@ class SessionGene:
 
     def __post_init__(self):
         """Validate quantum range and continuity constraints."""
-        try:
-            from src.encoder.quantum_time_system import QuantumTimeSystem
-
-            qts = QuantumTimeSystem()
-            total_quanta = qts.total_quanta
-            quanta_per_day = qts.quanta_per_day
-        except Exception:
-            # Fallback for tests or incomplete initialization
-            total_quanta = 70  # 7 days * 10 hours
-            quanta_per_day = 10
+        qts, total_quanta = _get_time_system_metadata()
 
         # Range validation
         if self.start_quanta < 0:
@@ -61,17 +52,16 @@ class SessionGene:
         # Smart day boundary validation: Only allow multi-day if duration exceeds single day capacity
         # Prevents illogical midnight wraps (e.g., 2-hour session spanning Mon 4PM - Tue 8AM)
         # Allows multi-day courses when necessary (e.g., AR701=30hrs needs ~4-5 days)
-        if self.num_quanta > quanta_per_day:
-            # Course requires multiple days (e.g., AR701 practical = 30 quanta)
-            # Allow it to span days naturally via continuous quantum indices
-            pass
-        else:
-            # Course fits within single day - enforce day boundary
-            start_day = self.start_quanta // quanta_per_day
-            end_day = (self.start_quanta + self.num_quanta - 1) // quanta_per_day
-            if start_day != end_day:
-                # Session would wrap to next day unnecessarily - clip to end of current day
-                self.num_quanta = (start_day + 1) * quanta_per_day - self.start_quanta
+        if qts is not None:
+            day_bounds = _get_day_bounds(qts, self.start_quanta)
+            if day_bounds is not None:
+                day_offset, day_quanta = day_bounds
+                end_of_day = day_offset + day_quanta
+                if (
+                    self.num_quanta <= day_quanta
+                    and self.start_quanta + self.num_quanta > end_of_day
+                ):
+                    self.start_quanta = max(day_offset, end_of_day - self.num_quanta)
 
     # ========== UTILITY METHODS ==========
 
@@ -128,3 +118,40 @@ class SessionGene:
             self.end_quanta <= other.start_quanta
             or other.end_quanta <= self.start_quanta
         )
+
+
+def _get_time_system_metadata() -> Tuple[Optional["QuantumTimeSystem"], int]:
+    """Fetch QuantumTimeSystem info with safe fallbacks."""
+    global _SESSION_GENE_QTS
+
+    if _SESSION_GENE_QTS is None:
+        try:
+            from src.encoder.quantum_time_system import QuantumTimeSystem
+
+            _SESSION_GENE_QTS = QuantumTimeSystem()
+        except Exception:
+            _SESSION_GENE_QTS = None
+
+    if _SESSION_GENE_QTS is None:
+        # Fallback for tests or incomplete initialization
+        return None, 70
+
+    qts = _SESSION_GENE_QTS
+    return qts, qts.total_quanta
+
+
+def _get_day_bounds(
+    qts: "QuantumTimeSystem", quantum: int
+) -> Optional[Tuple[int, int]]:
+    """Return (day_offset, day_quanta_count) for the given quantum."""
+    for day in qts.DAY_NAMES:
+        day_offset = qts.day_quanta_offset.get(day)
+        day_quanta = qts.day_quanta_count.get(day, 0)
+        if day_offset is None or day_quanta <= 0:
+            continue
+        if day_offset <= quantum < day_offset + day_quanta:
+            return day_offset, day_quanta
+    return None
+
+
+_SESSION_GENE_QTS: Optional["QuantumTimeSystem"] = None
