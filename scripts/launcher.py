@@ -120,6 +120,7 @@ def main_train_rl():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
+    profile_cfg = PROFILE_MAP[profile]
 
     # Ensure downstream config loader uses the matching environment profile.
     # GA/RL share the same YAML hierarchy (configs/test.yaml, configs/prod.yaml).
@@ -136,6 +137,10 @@ def main_train_rl():
         f"{env_profile} [dim]for RL profile[/dim] {_profile_banner(profile)}"
     )
     console.print(f"[dim]SCHEDULE_CONFIG ->[/dim] {schedule_config_path}")
+    console.print(f"[green]Mode E: RL training ({_profile_banner(profile)})[/green]")
+    console.print(
+        "[dim]  Train PPO/DQN agents with optional curriculum (add --curriculum).[/dim]"
+    )
 
     # Import RL training
     from src.rl.training.train_script import main as rl_main
@@ -151,7 +156,16 @@ def main_train_rl():
         timestep_map = {"test": 10_000, "prod": 100_000}
         sys.argv.extend(["--timesteps", str(timestep_map[profile])])
 
-    sys.exit(rl_main() or 0)
+    exit_code = rl_main() or 0
+
+    if exit_code == 0:
+        console.print("[green]RL training finished successfully.[/green]")
+        console.print(
+            "[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
+            "and launch the GA via Mode F: 'uv run rl --%s'.[/dim]" % profile
+        )
+
+    sys.exit(exit_code)
 
 
 # ==================
@@ -161,7 +175,8 @@ def main_train_rl():
 # Mode B: + Memetic local search                 [repairs: YES, memetic: YES, heuristics: NO]
 # Mode C: + Round-robin (heuristics + repair)    [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed)]
 # Mode D: + Adaptive heuristics                  [repairs: YES, memetic: NO,  heuristics: YES (adaptive)]
-# Mode E: + RL-guided (deploys all techniques)   [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
+# Mode E: RL training (curriculum-ready)         [train PPO/DQN agents, optional curriculum stages]
+# Mode F: RL-guided inference (deploy agents)    [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
 
 
 def main_baseline():
@@ -277,7 +292,7 @@ def main_adaptive():
 
 
 def main_rl():
-    """Run Mode E experiment (RL-guided hyper-heuristic)."""
+    """Run Mode F experiment (RL-guided inference run)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -297,10 +312,13 @@ def main_rl():
         sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Mode E: RL-guided hyper-heuristic ({_profile_banner(profile)})[/green]"
+        f"[green]Mode F: RL-guided inference ({_profile_banner(profile)})[/green]"
     )
     console.print(
-        "[dim]  [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)][/dim]"
+        "[dim]  Deploy trained agents for heuristic control (repairs+memetic+RL).[/dim]"
+    )
+    console.print(
+        "[dim]  Uses rl.agent.model_path from configs/rl/e-rl-guided.yaml. Update it to point to your promoted model before running.[/dim]"
     )
     sys.exit(main() or 0)
 
@@ -490,14 +508,30 @@ def main_interactive():
                 ("d2", "adaptive --prod", "Mode D: + Adaptive (~4-6 hrs, 2000 gens)"),
             ],
         ),
-        # Mode E: RL-Guided
+        # Mode E: RL Training (with curriculum options)
         (
-            "mode-e",
+            "mode-e-training",
             [
-                ("e1", "rl --test", "Mode E: + RL-guided (~3 min, 30 gens)"),
-                ("e2", "rl --prod", "Mode E: + RL-guided (~4-6 hrs, 2000 gens)"),
-                ("e3", "train-rl --test", "Train RL agent (10K steps, ~5 min)"),
-                ("e4", "train-rl --prod", "Train RL agent (100K steps, ~1-2 hrs)"),
+                ("e1", "train-rl --test", "Mode E: RL training (10K steps, ~5-10 min)"),
+                ("e2", "train-rl --prod", "Mode E: RL training (100K steps, ~1-2 hrs)"),
+                (
+                    "e3",
+                    "train-rl --test --curriculum",
+                    "Mode E: Curriculum smoke (multi-stage, ~15 min)",
+                ),
+                (
+                    "e4",
+                    "train-rl --prod --curriculum",
+                    "Mode E: Curriculum full run (~2-3 hrs)",
+                ),
+            ],
+        ),
+        # Mode F: RL-guided inference
+        (
+            "mode-f",
+            [
+                ("f1", "rl --test", "Mode F: RL-guided GA (~3 min, 30 gens)"),
+                ("f2", "rl --prod", "Mode F: RL-guided GA (~4-6 hrs, 2000 gens)"),
             ],
         ),
         # Utilities
@@ -515,7 +549,7 @@ def main_interactive():
     while True:
         console.clear()
         console.print(
-            "\n[bold cyan]Schedule Engine - Progressive Experiments (A→E)[/bold cyan]\n"
+            "\n[bold cyan]Schedule Engine - Progressive Experiments (A→F)[/bold cyan]\n"
         )
 
         for category, cmds in commands:
@@ -532,10 +566,15 @@ def main_interactive():
             elif category == "mode-d":
                 console.print("\n[bold magenta]MODE D: + ADAPTIVE[/bold magenta]")
                 console.print("[dim]  Intelligent heuristic selection[/dim]")
-            elif category == "mode-e":
-                console.print("\n[bold magenta]MODE E: + RL-GUIDED[/bold magenta]")
+            elif category == "mode-e-training":
+                console.print("\n[bold magenta]MODE E: RL TRAINING[/bold magenta]")
                 console.print(
-                    "[dim]  RL learns optimal operator timing (24 heuristics)[/dim]"
+                    "[dim]  Train PPO/DQN agents; add --curriculum for staged runs[/dim]"
+                )
+            elif category == "mode-f":
+                console.print("\n[bold magenta]MODE F: RL-GUIDED RUN[/bold magenta]")
+                console.print(
+                    "[dim]  Deploy trained agents for heuristic control[/dim]"
                 )
             elif category == "utilities":
                 console.print("\n[bold magenta]UTILITIES[/bold magenta]")
@@ -581,7 +620,7 @@ if __name__ == "__main__":
     # Auto-detect command from script name
     script_name = Path(sys.argv[0]).stem
 
-    # Progressive experimental modes (A-E)
+    # Progressive experimental modes (A-F)
     if "baseline" in script_name:
         main_baseline()
     elif "memetic" in script_name:
