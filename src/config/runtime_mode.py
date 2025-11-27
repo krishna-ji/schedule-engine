@@ -16,7 +16,7 @@ class RuntimeMode(str, Enum):
     Enum for supported runtime modes.
 
     Each mode represents a different GA configuration for benchmarking:
-    
+
     Numbered modes (1-10): Comprehensive experiments
     - BASELINE: Pure NSGA-II (no repairs, no heuristics)
     - NSGA_REPAIRS: NSGA-II + IGLS repairs only
@@ -28,7 +28,7 @@ class RuntimeMode(str, Enum):
     - ARCHIVE_DIVERSITY: Archive-based diversity maintenance (Enhancement #5)
     - RL_HIERARCHICAL: Hierarchical RL with two-level policies (Enhancement #7)
     - RL_MULTIAGENT: Rank-based multi-agent RL (Enhancement #8)
-    
+
     Lettered modes (A-E): Progressive thesis experiments
     - MODE_A: Pure NSGA-II baseline
     - MODE_B: + Memetic local search
@@ -48,7 +48,7 @@ class RuntimeMode(str, Enum):
     ARCHIVE_DIVERSITY = "8-archive-diversity"
     RL_HIERARCHICAL = "9-rl-hierarchical"
     RL_MULTIAGENT = "10-rl-multiagent"
-    
+
     # Lettered modes (A-E): Progressive thesis experiments
     MODE_A = "a-pure-nsga"
     MODE_B = "b-nsga-memetic"
@@ -107,6 +107,23 @@ class RuntimeMode(str, Enum):
             RuntimeMode.MODE_D: "hybrid",
             RuntimeMode.MODE_E: "rl",
         }
+        overrides = {
+            # Progressive A–E configs already live under their canonical paths
+            RuntimeMode.BASELINE: Path("configs/baseline/a-pure-nsga.yaml"),
+            RuntimeMode.NSGA_FULL: Path("configs/nsga/5-nsga-full.yaml"),
+            RuntimeMode.RL_GUIDED: Path("configs/rl/e-rl-guided.yaml"),
+            RuntimeMode.ROUND_ROBIN: Path("configs/hybrid/c-roundrobin.yaml"),
+            RuntimeMode.RL_SPECIALISTS: Path("configs/archive/7-rl-specialists.yaml"),
+            RuntimeMode.ARCHIVE_DIVERSITY: Path(
+                "configs/archive/8-archive-diversity.yaml"
+            ),
+            RuntimeMode.RL_HIERARCHICAL: Path("configs/archive/9-rl-hierarchical.yaml"),
+            RuntimeMode.RL_MULTIAGENT: Path("configs/archive/10-rl-multiagent.yaml"),
+        }
+
+        if self in overrides:
+            return overrides[self]
+
         category = category_map[self]
         return Path(f"configs/{category}/{self.value}.yaml")
 
@@ -315,11 +332,13 @@ class RuntimeMode(str, Enum):
             ValueError: If mode cannot be determined from config
         """
         # Convert Pydantic model to dict if needed
-        if hasattr(config, 'model_dump'):
+        if hasattr(config, "model_dump"):
             config = config.model_dump()
         elif not isinstance(config, dict):
-            raise ValueError(f"Config must be dict or Pydantic model, got {type(config)}")
-        
+            raise ValueError(
+                f"Config must be dict or Pydantic model, got {type(config)}"
+            )
+
         # Try to extract mode from metadata first
         if "metadata" in config and "runtime_mode" in config["metadata"]:
             mode_str = config["metadata"]["runtime_mode"]
@@ -327,18 +346,30 @@ class RuntimeMode(str, Enum):
 
         # Otherwise infer from config features
         rl_enabled = config.get("rl", {}).get("enabled", False)
-        repair_enabled = config.get("repair", {}).get("enabled") is not False  # True or None = enabled
+        repair_enabled = (
+            config.get("repair", {}).get("enabled") is not False
+        )  # True or None = enabled
         adaptive_probs = config.get("ga", {}).get("use_adaptive_probabilities", False)
         enhancements = config.get("enhancements", {}).get("master_enabled", False)
-        
+
         # Check if heuristics are enabled (any category with enabled heuristics)
         heuristics_config = config.get("heuristics", {})
         heuristics_enabled = False
         if heuristics_config:
-            for category in ["construction", "perturbation", "improvement", "diversity", "meta"]:
+            for category in [
+                "construction",
+                "perturbation",
+                "improvement",
+                "diversity",
+                "meta",
+            ]:
                 if category in heuristics_config:
-                    for heuristic_name, heuristic_cfg in heuristics_config[category].items():
-                        if isinstance(heuristic_cfg, dict) and heuristic_cfg.get("enabled", False):
+                    for heuristic_name, heuristic_cfg in heuristics_config[
+                        category
+                    ].items():
+                        if isinstance(heuristic_cfg, dict) and heuristic_cfg.get(
+                            "enabled", False
+                        ):
                             heuristics_enabled = True
                             break
                 if heuristics_enabled:
@@ -358,7 +389,11 @@ class RuntimeMode(str, Enum):
                 return RuntimeMode.RL_GUIDED
         elif enhancements and repair_enabled and heuristics_enabled and not rl_enabled:
             # Full GA with heuristics enabled (modes 3, 4, 6, 8)
-            if config.get("enhancements", {}).get("archive_diversity", {}).get("enabled", False):
+            if (
+                config.get("enhancements", {})
+                .get("archive_diversity", {})
+                .get("enabled", False)
+            ):
                 return RuntimeMode.ARCHIVE_DIVERSITY  # Mode 8
             elif not adaptive_probs:
                 return RuntimeMode.ROUND_ROBIN  # Mode 6: Fixed round-robin
