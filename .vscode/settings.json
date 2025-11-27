@@ -7,8 +7,9 @@
         "source.organizeImports": "explicit",
         "source.fixAll": "explicit"
     },
-    "editor.rulers": [88],
-    
+    "editor.rulers": [
+        88
+    ],
     // ==================
     // LANGUAGE-SPECIFIC FORMATTING
     // ==================
@@ -27,33 +28,30 @@
         "editor.insertSpaces": true,
         "editor.tabSize": 2
     },
-    
     // ==================
     // PYTHON CONFIGURATION
     // ==================
     "python.terminal.activateEnvironment": true,
     "python.terminal.activateEnvInCurrentTerminal": true,
-    "python.analysis.extraPaths": ["./src"],
+    "python.analysis.extraPaths": [
+        "./src"
+    ],
     "python.analysis.typeCheckingMode": "off",
-    
     // Black formatter settings
     "black-formatter.args": [
         "--line-length=88",
         "--preview"
     ],
-    
     // Ruff linter settings
     "ruff.enable": true,
     "ruff.lint.enable": true,
     "ruff.organizeImports": true,
     "ruff.fixAll": true,
     "ruff.lint.args": [],
-    
     // MyPy type checker
     "mypy-type-checker.args": [
         "--python-version=3.12"
     ],
-    
     // ==================
     // FILE EXCLUSIONS
     // ==================
@@ -69,12 +67,10 @@
         ".pytest_cache/": true,
         ".data": true
     },
-    
     // ==================
     // TERMINAL SETTINGS
     // ==================
     "terminal.integrated.defaultProfile.windows": "PowerShell",
-    
     // ==================
     // COPILOT SETTINGS
     // ==================
@@ -86,7 +82,6 @@
             "text": "Commit messages should use hybrid academic–software format. Include experiment context, dataset version, or model scope when relevant."
         }
     ],
-    
     // ==================
     // TOKEN CUSTOMIZATION
     // ==================
