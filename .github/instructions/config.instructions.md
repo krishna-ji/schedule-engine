@@ -21,9 +21,11 @@ applyTo: "configs/**/*.yaml"
    - Keep minimal (environment-specific settings only)
 
 2. **Runtime Mode Configs** (`configs/{category}/{mode}.yaml`)
-   - Full standalone configs
+   - Organized by category: `baseline/`, `nsga/`, `hybrid/`, `rl/`
+   - Named with letter prefix (a-e) for progressive modes
    - Document purpose in header comment
    - Include killswitch states explicitly
+   - Examples: `baseline/a-pure-nsga.yaml`, `hybrid/c-roundrobin.yaml`, `rl/e-rl-guided.yaml`
 
 3. **Base Config** (`configs/base.yaml`)
    - All common settings

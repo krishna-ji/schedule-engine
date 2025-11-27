@@ -84,7 +84,7 @@ When adding major experimental features:
 ### 3. Runtime Mode Registration
 - Add enum entry: `src/config/runtime_mode.py`
 - Register UV shortcut: `pyproject.toml` `[project.scripts]`
-- Add CLI entry point: `main.py` (e.g., `main_myfeature()`)
+- Add CLI entry point: `scripts/launcher.py` (e.g., `def main_myfeature():`)
 - Document in user guide: `docs/02-user-guides/runtime-modes.md`
 
 ### 4. Experiment Tracking
@@ -105,15 +105,15 @@ When adding major experimental features:
 
 1. **Config structure**:
    - `configs/base.yaml` → `rl.enabled: false`
-   - `configs/rl/5-rl-guided.yaml` → `rl.enabled: true`
+   - `configs/rl/e-rl-guided.yaml` → `rl.enabled: true`
 
 2. **Runtime mode**:
    - `src/config/runtime_mode.py` → `RL_GUIDED = auto()`
-   - Validation: Check `rl.enabled == True` for mode 5
+   - Validation: Check `rl.enabled == True` for RL mode
 
 3. **UV shortcut**:
-   - `pyproject.toml` → `rl = "main:main_rl"`
-   - `main.py` → `def main_rl(): ...`
+   - `pyproject.toml` → `rl = "scripts.launcher:main_rl"`
+   - `scripts/launcher.py` → `def main_rl(): ...`
 
 4. **Experiment tracking**:
    ```python
