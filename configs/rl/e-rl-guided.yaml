@@ -90,7 +90,7 @@ enhancements:
     availability_weight: 0.8
     overlap_weight: 0.15
     other_weight: 0.05
-  greedy_initialization_percent: 0.25
+  greedy_initialization_percent: 0.0
   population_restart:
     enabled: true
     trigger_stagnation_gens: 50
@@ -202,24 +202,24 @@ heuristics:
 
   repair:
     igls_repair:
-      enabled: true  # RL learns when to apply IGLS repair
+      enabled: true # RL learns when to apply IGLS repair
       priority: 1
       max_iterations: 2
     greedy_repair:
-      enabled: true  # RL learns when first-improving search helps
+      enabled: true # RL learns when first-improving search helps
       priority: 2
       max_iterations: 5
     exhaustive_repair:
-      enabled: true  # RL learns when expensive steepest descent is worth it
+      enabled: true # RL learns when expensive steepest descent is worth it
       priority: 3
       max_neighborhood_size: 10
     lns_repair:
-      enabled: true  # RL learns when to use large neighborhood search
+      enabled: true # RL learns when to use large neighborhood search
       priority: 4
       subproblem_size: 10
       max_iterations: 50
     memetic_repair:
-      enabled: true  # RL learns when to intensively repair elite individuals
+      enabled: true # RL learns when to intensively repair elite individuals
       priority: 5
       elite_percentage: 0.05
       max_iterations: 10
