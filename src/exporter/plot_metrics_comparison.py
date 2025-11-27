@@ -10,17 +10,19 @@ Generates statistical comparison plots for multiple runs:
 Essential for thesis/paper reporting to demonstrate algorithm reliability.
 """
 
-import os
 import csv
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
+
 from .thesis_style import (
     apply_thesis_style,
-    get_color,
-    save_figure,
     create_thesis_figure,
     format_axis,
+    get_color,
+    save_figure,
 )
 
 # Apply thesis styling
@@ -71,7 +73,7 @@ def plot_metrics_boxplot(runs_data: dict, output_dir: str, generation: int = -1)
 
     positions = list(range(len(metrics_values)))
     box_data = list(metrics_values.values())
-    labels = [name.replace("_", " ").title() for name in metrics_values.keys()]
+    labels = [name.replace("_", " ").title() for name in metrics_values]
 
     bp = ax.boxplot(
         box_data,

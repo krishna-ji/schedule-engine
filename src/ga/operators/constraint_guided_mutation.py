@@ -16,15 +16,15 @@ Expected Impact: 20-30% faster convergence to zero violations.
 """
 
 import random
-from typing import List, Dict, Tuple
+
+from src.core.types import SchedulingContext
 from src.decoder.individual_decoder import decode_individual
 from src.entities.decoded_session import CourseSession
-from src.core.types import SchedulingContext
 
 
 def constraint_guided_mutation(
     individual, context: SchedulingContext
-) -> Tuple[list, Dict]:
+) -> tuple[list, dict]:
     """
     Mutate genes corresponding to sessions with violations.
 
@@ -63,8 +63,8 @@ def constraint_guided_mutation(
 
 
 def _find_violating_sessions(
-    decoded_sessions: List[CourseSession], context: SchedulingContext
-) -> List[int]:
+    decoded_sessions: list[CourseSession], context: SchedulingContext
+) -> list[int]:
     """
     Identify indices of sessions causing hard constraint violations.
 
@@ -122,7 +122,7 @@ def _is_instructor_qualified(
 
 
 def _has_group_overlap(
-    session: CourseSession, all_sessions: List[CourseSession], current_idx: int
+    session: CourseSession, all_sessions: list[CourseSession], current_idx: int
 ) -> bool:
     """Check if group has overlapping sessions."""
     for idx, other in enumerate(all_sessions):
@@ -148,7 +148,7 @@ def _has_group_overlap(
 
 
 def _has_room_conflict(
-    session: CourseSession, all_sessions: List[CourseSession], current_idx: int
+    session: CourseSession, all_sessions: list[CourseSession], current_idx: int
 ) -> bool:
     """Check if room is double-booked."""
     for idx, other in enumerate(all_sessions):
@@ -164,7 +164,7 @@ def _has_room_conflict(
 
 
 def _has_instructor_conflict(
-    session: CourseSession, all_sessions: List[CourseSession], current_idx: int
+    session: CourseSession, all_sessions: list[CourseSession], current_idx: int
 ) -> bool:
     """Check if instructor is double-booked."""
     for idx, other in enumerate(all_sessions):
@@ -199,7 +199,6 @@ def _mutate_session(gene, context: SchedulingContext):
         num_quanta = gene.num_quanta
         if num_quanta > 0 and len(available_quanta_list) >= num_quanta:
             # Find a random valid start time that allows contiguous block
-            from src.ga.quanta_converter import quanta_list_to_contiguous
 
             valid_starts = [
                 q

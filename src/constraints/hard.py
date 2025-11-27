@@ -1,9 +1,9 @@
-from typing import Dict, List
+from collections import defaultdict
+
+from src.constraints.registry import hard_constraint
+from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.entities.course import Course
 from src.entities.decoded_session import CourseSession
-from collections import defaultdict
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.constraints.registry import hard_constraint
 
 # Time system singleton
 _QTS = QuantumTimeSystem()
@@ -15,7 +15,7 @@ _QTS = QuantumTimeSystem()
     default_weight=3.0,
     needs_courses=False,
 )
-def student_group_exclusivity(sessions: List[CourseSession]) -> int:
+def student_group_exclusivity(sessions: list[CourseSession]) -> int:
     """
     Ensures each student group can only be in one session at a time.
 
@@ -51,7 +51,7 @@ def student_group_exclusivity(sessions: List[CourseSession]) -> int:
     default_weight=3.0,
     needs_courses=False,
 )
-def instructor_exclusivity(sessions: List[CourseSession]) -> int:
+def instructor_exclusivity(sessions: list[CourseSession]) -> int:
     """
     Ensures each instructor can only teach one session at a time.
 
@@ -79,7 +79,7 @@ def instructor_exclusivity(sessions: List[CourseSession]) -> int:
     needs_courses=True,
 )
 def instructor_qualifications(
-    sessions: List[CourseSession], course_map: Dict[tuple, Course]
+    sessions: list[CourseSession], course_map: dict[tuple, Course]
 ) -> int:
     """
     Ensures instructors are qualified to teach their assigned courses.
@@ -141,7 +141,7 @@ def instructor_qualifications(
     default_weight=2.5,
     needs_courses=False,
 )
-def room_suitability(sessions: List[CourseSession]) -> int:
+def room_suitability(sessions: list[CourseSession]) -> int:
     """
     Ensures rooms are suitable for the type of course being taught.
 
@@ -218,7 +218,7 @@ def _room_type_matches(required: str, room_type: str) -> bool:
     default_weight=3.0,
     needs_courses=False,
 )
-def instructor_time_availability(sessions: List[CourseSession]) -> int:
+def instructor_time_availability(sessions: list[CourseSession]) -> int:
     """
     Ensures instructors only teach during their available time slots.
 
@@ -256,7 +256,7 @@ def instructor_time_availability(sessions: List[CourseSession]) -> int:
     default_weight=2.5,
     needs_courses=False,
 )
-def room_time_availability(sessions: List[CourseSession]) -> int:
+def room_time_availability(sessions: list[CourseSession]) -> int:
     """
     Ensures rooms are only used during their available time slots.
 
@@ -291,7 +291,7 @@ def room_time_availability(sessions: List[CourseSession]) -> int:
     needs_courses=True,
 )
 def course_completeness(
-    sessions: List[CourseSession], course_map: Dict[tuple, Course]
+    sessions: list[CourseSession], course_map: dict[tuple, Course]
 ) -> int:
     """
     Ensures each course is scheduled for exactly the required number of sessions.
@@ -352,7 +352,7 @@ def course_completeness(
     default_weight=3.0,
     needs_courses=False,
 )
-def room_exclusivity(sessions: List[CourseSession]) -> int:
+def room_exclusivity(sessions: list[CourseSession]) -> int:
     """
     Ensures each room can only host one session at a time.
 

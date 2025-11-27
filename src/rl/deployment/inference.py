@@ -8,11 +8,11 @@ Provides fast, reliable action prediction with:
 - Error handling and fallback
 """
 
-from typing import Optional, List, Dict, Any
 import time
-import numpy as np
 from collections import deque
+from typing import Any
 
+import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
 
 from src.utils.logging_config import get_logger
@@ -61,7 +61,7 @@ class RLInference:
         state: np.ndarray,
         deterministic: bool = True,
         validate: bool = True,
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         Predict action from state with timeout protection.
 
@@ -120,7 +120,7 @@ class RLInference:
         self,
         states: np.ndarray,
         deterministic: bool = True,
-    ) -> List[Optional[int]]:
+    ) -> list[int | None]:
         """
         Predict actions for batch of states.
 
@@ -196,7 +196,7 @@ class RLInference:
             return 0.0
         return float(np.median(self.prediction_times))
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get inference statistics."""
         stats = {
             "prediction_count": self.prediction_count,
@@ -227,7 +227,7 @@ class RLInference:
         self.error_count = 0
         logger.debug("Reset inference statistics")
 
-    def benchmark(self, state: np.ndarray, runs: int = 1000) -> Dict[str, float]:
+    def benchmark(self, state: np.ndarray, runs: int = 1000) -> dict[str, float]:
         """
         Benchmark inference latency.
 
@@ -265,7 +265,7 @@ class RLInference:
             "p99_ms": float(np.percentile(times, 99)),
         }
 
-        logger.info(f"Benchmark results:")
+        logger.info("Benchmark results:")
         logger.info(f"  Mean: {results['mean_ms']:.2f}ms")
         logger.info(f"  Median: {results['median_ms']:.2f}ms")
         logger.info(f"  P95: {results['p95_ms']:.2f}ms")

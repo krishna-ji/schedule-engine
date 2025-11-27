@@ -8,12 +8,12 @@ Provides utilities for:
 - Checkpoint versioning and reproducibility
 """
 
-from typing import Dict, Any, Optional, List
-from pathlib import Path
-from dataclasses import dataclass, asdict
-from datetime import datetime
-import json
 import hashlib
+import json
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from src.utils.logging_config import get_logger
 
@@ -43,11 +43,11 @@ class CheckpointMetadata:
     model_path: str
     timestep: int
     timestamp: str
-    stage: Optional[str] = None
-    seed: Optional[int] = None
-    config_hash: Optional[str] = None
-    validation_metrics: Dict[str, float] = None
-    training_metrics: Dict[str, float] = None
+    stage: str | None = None
+    seed: int | None = None
+    config_hash: str | None = None
+    validation_metrics: dict[str, float] = None
+    training_metrics: dict[str, float] = None
     status: str = "checkpoint"
     notes: str = ""
 
@@ -80,13 +80,13 @@ class CheckpointManager:
         self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Load existing manifest
-        self.checkpoints: List[CheckpointMetadata] = self._load_manifest()
+        self.checkpoints: list[CheckpointMetadata] = self._load_manifest()
 
         logger.info(
             f"Initialized CheckpointManager with {len(self.checkpoints)} existing checkpoints"
         )
 
-    def _load_manifest(self) -> List[CheckpointMetadata]:
+    def _load_manifest(self) -> list[CheckpointMetadata]:
         """Load manifest from file."""
         if not self.manifest_path.exists():
             logger.info(f"No existing manifest found at {self.manifest_path}")
@@ -120,11 +120,11 @@ class CheckpointManager:
         self,
         model_path: str,
         timestep: int,
-        stage: Optional[str] = None,
-        seed: Optional[int] = None,
-        config: Optional[Dict[str, Any]] = None,
-        validation_metrics: Optional[Dict[str, float]] = None,
-        training_metrics: Optional[Dict[str, float]] = None,
+        stage: str | None = None,
+        seed: int | None = None,
+        config: dict[str, Any] | None = None,
+        validation_metrics: dict[str, float] | None = None,
+        training_metrics: dict[str, float] | None = None,
         notes: str = "",
     ) -> CheckpointMetadata:
         """
@@ -180,12 +180,12 @@ class CheckpointManager:
         base = Path(model_path).stem
         return f"{base}_t{timestep}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    def _hash_config(self, config: Dict[str, Any]) -> str:
+    def _hash_config(self, config: dict[str, Any]) -> str:
         """Generate hash of configuration for reproducibility."""
         config_str = json.dumps(config, sort_keys=True)
         return hashlib.sha256(config_str.encode()).hexdigest()[:16]
 
-    def get_checkpoint(self, checkpoint_id: str) -> Optional[CheckpointMetadata]:
+    def get_checkpoint(self, checkpoint_id: str) -> CheckpointMetadata | None:
         """Get checkpoint by ID."""
         for cp in self.checkpoints:
             if cp.checkpoint_id == checkpoint_id:
@@ -194,11 +194,11 @@ class CheckpointManager:
 
     def query_checkpoints(
         self,
-        stage: Optional[str] = None,
-        status: Optional[str] = None,
-        min_timestep: Optional[int] = None,
-        max_timestep: Optional[int] = None,
-    ) -> List[CheckpointMetadata]:
+        stage: str | None = None,
+        status: str | None = None,
+        min_timestep: int | None = None,
+        max_timestep: int | None = None,
+    ) -> list[CheckpointMetadata]:
         """
         Query checkpoints by criteria.
 
@@ -230,10 +230,10 @@ class CheckpointManager:
     def get_best_checkpoint(
         self,
         metric_name: str = "mean_reward",
-        stage: Optional[str] = None,
+        stage: str | None = None,
         status: str = "checkpoint",
         maximize: bool = True,
-    ) -> Optional[CheckpointMetadata]:
+    ) -> CheckpointMetadata | None:
         """
         Select best checkpoint based on validation metric.
 
@@ -271,7 +271,7 @@ class CheckpointManager:
         self,
         checkpoint_id: str,
         new_status: str,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ):
         """
         Update checkpoint status.
@@ -297,7 +297,7 @@ class CheckpointManager:
 
         logger.info(f"Updated checkpoint {checkpoint_id}: {old_status} -> {new_status}")
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get checkpoint statistics."""
         total = len(self.checkpoints)
 
@@ -326,7 +326,7 @@ class CheckpointManager:
 def create_checkpoint_metadata(
     model_path: str,
     timestep: int,
-    validation_metrics: Dict[str, float],
+    validation_metrics: dict[str, float],
     **kwargs,
 ) -> CheckpointMetadata:
     """

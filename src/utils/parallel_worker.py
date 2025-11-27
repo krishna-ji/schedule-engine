@@ -6,13 +6,13 @@ This avoids pickling large objects (SchedulingContext) by reloading data in each
 """
 
 import os
-import sys
 import random
-from typing import Dict, Any, Optional
+import sys
 from io import StringIO
+from typing import Any
 
 # Global worker context (set once per worker process)
-_WORKER_CONTEXT: Optional[Dict[str, Any]] = None
+_WORKER_CONTEXT: dict[str, Any] | None = None
 
 
 def init_worker(data_dir: str, seed: int):
@@ -36,17 +36,18 @@ def init_worker(data_dir: str, seed: int):
     sys.stdout = StringIO()
 
     try:
-        from deap import creator, base
+        from deap import base, creator
+
+        from src.core.types import SchedulingContext
         from src.encoder.input_encoder import (
+            link_courses_and_groups,
+            link_courses_and_instructors,
             load_courses,
             load_groups,
             load_instructors,
             load_rooms,
-            link_courses_and_groups,
-            link_courses_and_instructors,
         )
         from src.encoder.quantum_time_system import QuantumTimeSystem
-        from src.core.types import SchedulingContext
 
         # Set up DEAP creator types (required for Windows spawn)
         if not hasattr(creator, "FitnessMulti"):
@@ -120,7 +121,7 @@ def init_worker(data_dir: str, seed: int):
         pass
 
 
-def get_worker_context() -> Dict[str, Any]:
+def get_worker_context() -> dict[str, Any]:
     """
     Get the global worker context.
 

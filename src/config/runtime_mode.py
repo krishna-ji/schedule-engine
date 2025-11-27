@@ -5,10 +5,10 @@ Provides enum-based runtime mode selection with killswitch validation
 and modular config loading for research experiments.
 """
 
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
+from typing import Any
 
 
 class RuntimeMode(str, Enum):
@@ -196,7 +196,7 @@ class RuntimeMode(str, Enum):
         }
         return descriptions[self]
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: dict[str, Any]) -> bool:
         """
         Validate that config matches expected killswitches for this mode.
 
@@ -318,7 +318,7 @@ class RuntimeMode(str, Enum):
         )
 
     @classmethod
-    def from_config(cls, config: Dict[str, Any]) -> "RuntimeMode":
+    def from_config(cls, config: dict[str, Any]) -> "RuntimeMode":
         """
         Infer runtime mode from loaded config dictionary.
 
@@ -439,10 +439,10 @@ class ExperimentConfig:
 
     mode: RuntimeMode
     config_path: Path
-    experiment_name: Optional[str] = None
-    output_dir: Optional[str] = None
+    experiment_name: str | None = None
+    output_dir: str | None = None
     seed: int = 69
-    notes: Optional[str] = None
+    notes: str | None = None
 
     def __post_init__(self):
         """Validate config path exists."""
@@ -460,7 +460,7 @@ class ExperimentConfig:
     def summary(self) -> str:
         """Get human-readable summary of experiment config."""
         lines = [
-            f"Experiment Configuration:",
+            "Experiment Configuration:",
             f"  Mode: {self.mode.display_name}",
             f"  Config: {self.config_path}",
         ]

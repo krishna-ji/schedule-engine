@@ -3,8 +3,9 @@ Pydantic configuration models for Schedule Engine.
 All configs loaded from YAML files with full validation.
 """
 
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Dict, Optional, Literal, Any, List
 
 
 class GAConfig(BaseModel):
@@ -33,9 +34,9 @@ class ParallelConfig(BaseModel):
     """Multiprocessing settings"""
 
     use_multiprocessing: bool = True
-    num_workers: Optional[int] = Field(
-        default=None, 
-        description="Number of workers: None=CPU*2 (auto), >0=explicit count"
+    num_workers: int | None = Field(
+        default=None,
+        description="Number of workers: None=CPU*2 (auto), >0=explicit count",
     )
 
 
@@ -94,7 +95,7 @@ class ExhaustiveSearchConfig(BaseModel):
     """Exhaustive local search configuration (fixed generations)"""
 
     enabled: bool = True
-    generations: List[int] = Field(
+    generations: list[int] = Field(
         default=[3, 25],
         description="Generations to trigger exhaustive search (e.g., [3, 25])",
     )
@@ -167,7 +168,7 @@ class LNSConfig(BaseModel):
     )
     trigger_interval: int = Field(default=50, ge=1, le=1000)
     stagnation_threshold: int = Field(default=10, ge=1, le=100)
-    force_trigger_generations: List[int] = Field(
+    force_trigger_generations: list[int] = Field(
         default_factory=list,
         description="Force LNS trigger on these specific generations (e.g., [6, 50] for testing/validation)",
     )
@@ -231,12 +232,12 @@ class RepairConfig(BaseModel):
     memetic_mode: bool = False
     elite_percentage: float = Field(default=0.1, ge=0.0, le=1.0)
     memetic_iterations: int = Field(default=5, ge=1, le=20)
-    violation_threshold: Optional[int] = None
+    violation_threshold: int | None = None
     selective_mode: bool = True
     detection_strategy: Literal["fast", "full", "hybrid"] = "hybrid"
     recheck_after_repair: bool = True
-    adaptive_repair: Dict[str, Any] = Field(default_factory=dict)
-    heuristics: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    adaptive_repair: dict[str, Any] = Field(default_factory=dict)
+    heuristics: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     # NEW: IGLS System
     exhaustive_search: ExhaustiveSearchConfig = Field(
@@ -285,12 +286,12 @@ class SoftConstraintConfigWithPenalty(BaseModel):
 
     enabled: bool = True
     weight: float = Field(ge=0.0)
-    gap_penalty_per_quantum: Optional[int] = Field(
+    gap_penalty_per_quantum: int | None = Field(
         default=None,
         ge=0,
         description="Penalty per gap quantum (for gap-based constraints)",
     )
-    distance_penalty_per_quantum: Optional[int] = Field(
+    distance_penalty_per_quantum: int | None = Field(
         default=None,
         ge=0,
         description="Penalty per quantum distance (for distance-based constraints)",
@@ -332,7 +333,7 @@ class FeasibilityConfig(BaseModel):
     generate_report: bool = True
     show_console_output: bool = True
     save_report_on_success: bool = True
-    checks: Dict[str, Dict[str, Any]] = Field(
+    checks: dict[str, dict[str, Any]] = Field(
         default_factory=lambda: {
             "instructor_workload": {"enabled": True, "severity": "critical"},
             "instructor_qualification_bottleneck": {
@@ -405,7 +406,7 @@ class CalendarConfig(BaseModel):
 class ColorPaletteConfig(BaseModel):
     """Color palette for visualization"""
 
-    course_colors: Dict[str, str] = Field(default_factory=dict)
+    course_colors: dict[str, str] = Field(default_factory=dict)
 
 
 class HypermutationConfig(BaseModel):
@@ -553,7 +554,7 @@ class HeuristicsConfig(BaseModel):
     Heuristics are integrated via decorator-based registry (like constraints).
     """
 
-    adaptive_priority: Dict[str, Any] = Field(
+    adaptive_priority: dict[str, Any] = Field(
         default_factory=lambda: {
             "enabled": False,
             "reorder_interval": 10,
@@ -562,27 +563,27 @@ class HeuristicsConfig(BaseModel):
         },
         description="Adaptive priority adjustment (dynamic heuristic reordering)",
     )
-    construction: Dict[str, Any] = Field(
+    construction: dict[str, Any] = Field(
         default_factory=dict,
         description="Construction heuristics for greedy schedule building",
     )
-    perturbation: Dict[str, Any] = Field(
+    perturbation: dict[str, Any] = Field(
         default_factory=dict,
         description="Perturbation heuristics for diversification",
     )
-    improvement: Dict[str, Any] = Field(
+    improvement: dict[str, Any] = Field(
         default_factory=dict,
         description="Improvement heuristics for local search",
     )
-    diversity: Dict[str, Any] = Field(
+    diversity: dict[str, Any] = Field(
         default_factory=dict,
         description="Diversity heuristics for population maintenance",
     )
-    meta: Dict[str, Any] = Field(
+    meta: dict[str, Any] = Field(
         default_factory=dict,
         description="Meta-heuristics for high-level search strategies",
     )
-    repair: Dict[str, Any] = Field(
+    repair: dict[str, Any] = Field(
         default_factory=dict,
         description="Repair heuristics for constraint violation fixes",
     )
@@ -593,7 +594,7 @@ class RLEnvironmentConfig(BaseModel):
 
     max_steps_per_episode: int = Field(default=100, ge=1, le=1000)
     observation_history_size: int = Field(default=10, ge=1, le=50)
-    render_mode: Optional[Literal["ansi", "human"]] = None
+    render_mode: Literal["ansi", "human"] | None = None
 
 
 class RLRewardConfig(BaseModel):
@@ -663,7 +664,7 @@ class RLTrainingConfig(BaseModel):
     checkpoint_dir: str = "models/rl_agents/checkpoints"
     save_dir: str = "models/rl_agents"
     verbose: int = Field(default=1, ge=0, le=2)
-    curriculum: List[Dict[str, Any]] = Field(default_factory=list)
+    curriculum: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RLInferenceConfig(BaseModel):
@@ -687,7 +688,7 @@ class RLHybridConfig(BaseModel):
 class RLEvaluationConfig(BaseModel):
     """RL evaluation configuration"""
 
-    baseline_strategies: List[str] = Field(
+    baseline_strategies: list[str] = Field(
         default_factory=lambda: ["random", "round_robin", "greedy", "fixed_priority"]
     )
     num_evaluation_episodes: int = Field(default=10, ge=1)
@@ -756,7 +757,7 @@ class Config(BaseModel):
         """Load config from YAML file"""
         import yaml
 
-        with open(path, "r") as f:
+        with open(path) as f:
             data = yaml.safe_load(f)
         return cls(**data)
 

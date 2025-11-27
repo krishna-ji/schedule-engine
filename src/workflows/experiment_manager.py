@@ -7,10 +7,11 @@ experiment logging, and comparison tools for research workflows.
 
 import json
 import shutil
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass, asdict
+from typing import Any
+
 from rich.table import Table
 
 from src.config.runtime_mode import RuntimeMode
@@ -29,25 +30,25 @@ class ExperimentRun:
 
     run_id: str  # Unique identifier (timestamp-based)
     runtime_mode: str  # RuntimeMode value (e.g., "1-pure-nsga")
-    experiment_name: Optional[str]  # User-provided name
+    experiment_name: str | None  # User-provided name
     config_path: str  # Path to config file used
     output_path: str  # Path to output directory
     seed: int  # Random seed
     timestamp: str  # ISO format timestamp
-    duration_seconds: Optional[float] = None  # Total runtime
-    generations: Optional[int] = None  # Number of generations
-    population_size: Optional[int] = None  # Population size
-    best_hard_violations: Optional[float] = None  # Best hard constraint violations
-    best_soft_penalty: Optional[float] = None  # Best soft penalty
-    final_hypervolume: Optional[float] = None  # Final hypervolume (if available)
-    notes: Optional[str] = None  # Optional notes
+    duration_seconds: float | None = None  # Total runtime
+    generations: int | None = None  # Number of generations
+    population_size: int | None = None  # Population size
+    best_hard_violations: float | None = None  # Best hard constraint violations
+    best_soft_penalty: float | None = None  # Best soft penalty
+    final_hypervolume: float | None = None  # Final hypervolume (if available)
+    notes: str | None = None  # Optional notes
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExperimentRun":
+    def from_dict(cls, data: dict[str, Any]) -> "ExperimentRun":
         """Load from dictionary."""
         return cls(**data)
 
@@ -96,12 +97,16 @@ class ExperimentManager:
                         self._save_manifest()  # Create valid JSON
                     else:
                         data = json.loads(content)
-                        self.runs = [ExperimentRun.from_dict(r) for r in data.get("runs", [])]
-            except (json.JSONDecodeError, ValueError) as e:
+                        self.runs = [
+                            ExperimentRun.from_dict(r) for r in data.get("runs", [])
+                        ]
+            except (json.JSONDecodeError, ValueError):
                 # Corrupted manifest - backup and reinitialize
-                backup_path = self.manifest_path.with_suffix('.json.backup')
+                backup_path = self.manifest_path.with_suffix(".json.backup")
                 self.manifest_path.rename(backup_path)
-                console.print(f"[yellow]⚠️  Corrupted manifest backed up to {backup_path}[/yellow]")
+                console.print(
+                    f"[yellow]⚠️  Corrupted manifest backed up to {backup_path}[/yellow]"
+                )
                 self.runs = []
                 self._save_manifest()  # Create fresh manifest
         else:
@@ -117,8 +122,8 @@ class ExperimentManager:
     def create_output_dir(
         self,
         runtime_mode: RuntimeMode,
-        experiment_name: Optional[str] = None,
-        timestamp: Optional[datetime] = None,
+        experiment_name: str | None = None,
+        timestamp: datetime | None = None,
     ) -> Path:
         """
         Create structured output directory for experiment.
@@ -143,7 +148,7 @@ class ExperimentManager:
         # Parse mode value
         mode_value = runtime_mode.value  # e.g., "1-pure-nsga" or "a-pure-nsga"
         mode_prefix = mode_value.split("-")[0]  # "1" or "a"
-        
+
         # Build clean folder name with mode prefix
         # Progressive modes (a-e): Use simple descriptive names
         # Numbered modes (1-10): Use original structure with categories
@@ -157,13 +162,13 @@ class ExperimentManager:
                 "e": "e-rl-guided",
             }
             mode_folder = folder_map.get(mode_prefix, mode_value)
-            
+
             # Build directory path (flat structure)
             timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
             dir_name = f"evaluation_{timestamp_str}"
             if experiment_name:
                 dir_name = f"{dir_name}_{experiment_name}"
-            
+
             output_path = self.base_dir / mode_folder / dir_name
         else:
             # Numbered modes (1-10): Keep category-based structure
@@ -181,14 +186,14 @@ class ExperimentManager:
                 "10": "rl",
             }
             category = category_map.get(mode_number, "other")
-            
+
             timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
             dir_name = f"evaluation_{timestamp_str}"
             if experiment_name:
                 dir_name = f"{dir_name}_{experiment_name}"
-            
+
             output_path = self.base_dir / category / mode_name / dir_name
-        
+
         output_path.mkdir(parents=True, exist_ok=True)
 
         return output_path
@@ -198,9 +203,9 @@ class ExperimentManager:
         runtime_mode: RuntimeMode,
         config_path: Path,
         output_path: Path,
-        experiment_name: Optional[str] = None,
+        experiment_name: str | None = None,
         seed: int = 69,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> ExperimentRun:
         """
         Register a new experiment run.
@@ -238,12 +243,12 @@ class ExperimentManager:
     def update_run_results(
         self,
         run: ExperimentRun,
-        duration_seconds: Optional[float] = None,
-        generations: Optional[int] = None,
-        population_size: Optional[int] = None,
-        best_hard_violations: Optional[float] = None,
-        best_soft_penalty: Optional[float] = None,
-        final_hypervolume: Optional[float] = None,
+        duration_seconds: float | None = None,
+        generations: int | None = None,
+        population_size: int | None = None,
+        best_hard_violations: float | None = None,
+        best_soft_penalty: float | None = None,
+        final_hypervolume: float | None = None,
     ):
         """
         Update experiment run with results.
@@ -272,7 +277,9 @@ class ExperimentManager:
 
         self._save_manifest()
 
-    def get_runs_by_mode(self, runtime_mode: RuntimeMode, complete_only: bool = False) -> List[ExperimentRun]:
+    def get_runs_by_mode(
+        self, runtime_mode: RuntimeMode, complete_only: bool = False
+    ) -> list[ExperimentRun]:
         """
         Get all runs for a specific runtime mode.
 
@@ -288,11 +295,11 @@ class ExperimentManager:
             runs = [r for r in runs if r.is_complete]
         return runs
 
-    def get_complete_runs(self) -> List[ExperimentRun]:
+    def get_complete_runs(self) -> list[ExperimentRun]:
         """Get all runs with complete results."""
         return [r for r in self.runs if r.is_complete]
 
-    def get_incomplete_runs(self) -> List[ExperimentRun]:
+    def get_incomplete_runs(self) -> list[ExperimentRun]:
         """Get all runs with incomplete results."""
         return [r for r in self.runs if not r.is_complete]
 
@@ -332,8 +339,8 @@ class ExperimentManager:
         return len(incomplete)
 
     def get_latest_run(
-        self, runtime_mode: Optional[RuntimeMode] = None
-    ) -> Optional[ExperimentRun]:
+        self, runtime_mode: RuntimeMode | None = None
+    ) -> ExperimentRun | None:
         """
         Get most recent experiment run.
 
@@ -349,7 +356,7 @@ class ExperimentManager:
         return max(runs, key=lambda r: r.timestamp)
 
     def compare_modes(
-        self, modes: Optional[List[RuntimeMode]] = None, top_n: int = 5
+        self, modes: list[RuntimeMode] | None = None, top_n: int = 5
     ) -> Table:
         """
         Generate comparison table for runtime modes.
@@ -415,7 +422,7 @@ class ExperimentManager:
 
         return table
 
-    def get_manifest_stats(self) -> Dict[str, Any]:
+    def get_manifest_stats(self) -> dict[str, Any]:
         """
         Get statistics about the current manifest.
 
@@ -429,7 +436,9 @@ class ExperimentManager:
             "total_runs": len(self.runs),
             "complete_runs": len(complete),
             "incomplete_runs": len(incomplete),
-            "completion_rate": f"{len(complete) / len(self.runs) * 100:.1f}%" if self.runs else "N/A",
+            "completion_rate": (
+                f"{len(complete) / len(self.runs) * 100:.1f}%" if self.runs else "N/A"
+            ),
         }
 
         # Per-mode statistics
@@ -459,11 +468,11 @@ class ExperimentManager:
 
         if stats["incomplete_runs"] > 0:
             console.print(
-                f"\n[yellow]Tip:[/yellow] Run [cyan]manager.archive_incomplete_runs()[/cyan] to clean manifest."
+                "\n[yellow]Tip:[/yellow] Run [cyan]manager.archive_incomplete_runs()[/cyan] to clean manifest."
             )
 
     def export_comparison_csv(
-        self, output_path: Path, modes: Optional[List[RuntimeMode]] = None
+        self, output_path: Path, modes: list[RuntimeMode] | None = None
     ):
         """
         Export comparison data to CSV for analysis.
@@ -515,7 +524,7 @@ class ExperimentManager:
         console.print(f"[green]Exported comparison data to {output_path}[/green]")
 
     def clean_old_runs(
-        self, keep_last_n: int = 10, runtime_mode: Optional[RuntimeMode] = None
+        self, keep_last_n: int = 10, runtime_mode: RuntimeMode | None = None
     ):
         """
         Clean up old experiment outputs to save disk space.

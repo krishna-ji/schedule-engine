@@ -17,12 +17,12 @@ All repair operators are now registered as heuristics in the repair category,
 providing unified management and RL integration.
 """
 
-from src.heuristics.repair.igls_repair import igls_repair
-from src.heuristics.repair.greedy_repair import greedy_repair
-from src.heuristics.repair.selective_repair import selective_repair
-from src.heuristics.repair.lns_repair import lns_repair
 from src.heuristics.repair.exhaustive_repair import exhaustive_repair
+from src.heuristics.repair.greedy_repair import greedy_repair
+from src.heuristics.repair.igls_repair import igls_repair
+from src.heuristics.repair.lns_repair import lns_repair
 from src.heuristics.repair.memetic_repair import memetic_repair
+from src.heuristics.repair.selective_repair import selective_repair
 
 __all__ = [
     "igls_repair",

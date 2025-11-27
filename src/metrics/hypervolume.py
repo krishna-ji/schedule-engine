@@ -14,14 +14,13 @@ Key properties:
 Performance: pymoo's HV is 10-100x faster than pure Python implementations.
 """
 
-from typing import List, Tuple
-from deap import tools
 import numpy as np
+from deap import tools
 from pymoo.indicators.hv import HV
 
 
 def calculate_hypervolume(
-    population: List, ref_point: Tuple[float, float] = None
+    population: list, ref_point: tuple[float, float] = None
 ) -> float:
     """
     Calculate hypervolume indicator for a population's Pareto front using pymoo.
@@ -96,7 +95,7 @@ def calculate_hypervolume(
 
 
 def calculate_hypervolume_with_reference(
-    population: List, reference_front: List
+    population: list, reference_front: list
 ) -> float:
     """
     Calculate hypervolume using a reference Pareto front's worst point.
@@ -129,7 +128,7 @@ def calculate_hypervolume_with_reference(
     return calculate_hypervolume(population, ref_point)
 
 
-def calculate_hypervolume_contribution(population: List, individual) -> float:
+def calculate_hypervolume_contribution(population: list, individual) -> float:
     """
     Calculate the hypervolume contribution of a specific individual.
 
@@ -161,8 +160,8 @@ def calculate_hypervolume_contribution(population: List, individual) -> float:
 
 
 def get_hypervolume_reference_point(
-    population: List, margin: float = 0.1
-) -> Tuple[float, float]:
+    population: list, margin: float = 0.1
+) -> tuple[float, float]:
     """
     Compute appropriate reference point for hypervolume calculation.
 
@@ -196,8 +195,8 @@ def get_hypervolume_reference_point(
 
 
 def track_hypervolume_over_generations(
-    populations: List[List], ref_point: Tuple[float, float] = None
-) -> List[float]:
+    populations: list[list], ref_point: tuple[float, float] = None
+) -> list[float]:
     """
     Calculate hypervolume for each generation's population.
 

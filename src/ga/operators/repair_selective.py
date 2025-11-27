@@ -23,19 +23,17 @@ Usage:
     # Automatically detects and repairs only violated genes
 """
 
-from typing import List, Set
 from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.ga.operators.violation_detector import detect_violated_genes
 
 # Import original repair functions to reuse helper logic
 from src.ga.operators.repair import (
-    _find_instructor_available_slot,
     _find_available_slot,
+    _find_instructor_available_slot,
 )
-
+from src.ga.operators.violation_detector import detect_violated_genes
+from src.ga.sessiongene import SessionGene
 
 # ================
 # SELECTIVE REPAIR WRAPPER - Main Entry Point
@@ -43,7 +41,7 @@ from src.ga.operators.repair import (
 
 
 def repair_individual_selective(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_iterations: int = 2,
     detection_strategy: str = "hybrid",
@@ -187,8 +185,8 @@ def _get_selective_repair_function(repair_name: str):
 
 
 def repair_instructor_availability_selective(
-    individual: List[SessionGene],
-    violated_indices: Set[int],
+    individual: list[SessionGene],
+    violated_indices: set[int],
     context: SchedulingContext,
 ) -> int:
     """
@@ -241,8 +239,8 @@ def repair_instructor_availability_selective(
 
 
 def repair_group_overlaps_selective(
-    individual: List[SessionGene],
-    violated_indices: Set[int],
+    individual: list[SessionGene],
+    violated_indices: set[int],
     context: SchedulingContext,
 ) -> int:
     """
@@ -321,8 +319,8 @@ def repair_group_overlaps_selective(
 
 
 def repair_room_conflicts_selective(
-    individual: List[SessionGene],
-    violated_indices: Set[int],
+    individual: list[SessionGene],
+    violated_indices: set[int],
     context: SchedulingContext,
 ) -> int:
     """
@@ -385,8 +383,8 @@ def repair_room_conflicts_selective(
 
 
 def repair_instructor_conflicts_selective(
-    individual: List[SessionGene],
-    violated_indices: Set[int],
+    individual: list[SessionGene],
+    violated_indices: set[int],
     context: SchedulingContext,
 ) -> int:
     """
@@ -449,8 +447,8 @@ def repair_instructor_conflicts_selective(
 
 
 def repair_instructor_qualifications_selective(
-    individual: List[SessionGene],
-    violated_indices: Set[int],
+    individual: list[SessionGene],
+    violated_indices: set[int],
     context: SchedulingContext,
 ) -> int:
     """
@@ -490,8 +488,8 @@ def repair_instructor_qualifications_selective(
 
 
 def repair_room_type_mismatches_selective(
-    individual: List[SessionGene],
-    violated_indices: Set[int],
+    individual: list[SessionGene],
+    violated_indices: set[int],
     context: SchedulingContext,
 ) -> int:
     """
@@ -534,8 +532,8 @@ def repair_room_type_mismatches_selective(
 
 
 def repair_session_clustering_selective(
-    individual: List[SessionGene],
-    violated_indices: Set[int],
+    individual: list[SessionGene],
+    violated_indices: set[int],
     context: SchedulingContext,
 ) -> int:
     """

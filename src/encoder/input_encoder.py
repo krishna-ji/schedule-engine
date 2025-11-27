@@ -15,16 +15,15 @@ Functions:
 """
 
 import json
-from typing import Dict
 
+from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.entities.course import Course
 from src.entities.group import Group
 from src.entities.instructor import Instructor
 from src.entities.room import Room
-from src.encoder.quantum_time_system import QuantumTimeSystem
 
 
-def encode_availability(availability_dict: Dict, qts: QuantumTimeSystem) -> set:
+def encode_availability(availability_dict: dict, qts: QuantumTimeSystem) -> set:
     """
     Converts human-readable availability into a set of quantum indices.
     Automatically clips availability periods to operating hours.
@@ -103,7 +102,7 @@ def encode_availability(availability_dict: Dict, qts: QuantumTimeSystem) -> set:
     return quanta
 
 
-def load_instructors(path: str, qts: QuantumTimeSystem) -> Dict[str, Instructor]:
+def load_instructors(path: str, qts: QuantumTimeSystem) -> dict[str, Instructor]:
     """
     Loads instructor data from JSON file and encodes their availability.
 
@@ -157,7 +156,7 @@ def load_instructors(path: str, qts: QuantumTimeSystem) -> Dict[str, Instructor]
     return instructors
 
 
-def load_courses(path: str) -> Dict[tuple, Course]:
+def load_courses(path: str) -> dict[tuple, Course]:
     """
     Loads courses from FullSyllabusAll format and creates separate theory/practical course objects.
 
@@ -242,7 +241,7 @@ def load_courses(path: str) -> Dict[tuple, Course]:
     return courses
 
 
-def load_groups(path: str, qts: QuantumTimeSystem) -> Dict[str, Group]:
+def load_groups(path: str, qts: QuantumTimeSystem) -> dict[str, Group]:
     """
     Loads student group data and encodes availability.
 
@@ -309,7 +308,7 @@ def load_groups(path: str, qts: QuantumTimeSystem) -> Dict[str, Group]:
     return groups
 
 
-def load_rooms(path: str, qts: QuantumTimeSystem) -> Dict[str, Room]:
+def load_rooms(path: str, qts: QuantumTimeSystem) -> dict[str, Room]:
     """
     Loads room data from JSON and encodes availability.
 
@@ -354,7 +353,7 @@ def load_rooms(path: str, qts: QuantumTimeSystem) -> Dict[str, Room]:
 
 
 def link_courses_and_groups(
-    courses: Dict[tuple, Course], groups: Dict[str, Group]
+    courses: dict[tuple, Course], groups: dict[str, Group]
 ) -> None:
     """
     Links courses and groups based on group enrollment.
@@ -420,7 +419,7 @@ def link_courses_and_groups(
 
 
 def link_courses_and_instructors(
-    courses: Dict[tuple, Course], instructors: Dict[str, Instructor]
+    courses: dict[tuple, Course], instructors: dict[str, Instructor]
 ) -> None:
     """
     Links instructors to the courses they are qualified to teach.

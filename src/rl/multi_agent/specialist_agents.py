@@ -5,7 +5,8 @@ ENHANCEMENT #4: Task-specific RL agents with coordinator.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -39,7 +40,7 @@ class SpecialistAgent(ABC):
 
     @abstractmethod
     def should_activate(
-        self, population: List[Individual], state: Dict[str, Any]
+        self, population: list[Individual], state: dict[str, Any]
     ) -> bool:
         """
         Determine if this specialist should be activated.
@@ -110,7 +111,7 @@ class RepairAgent(SpecialistAgent):
         self.hard_violation_threshold = 1.0  # Activate if any hard violations
 
     def should_activate(
-        self, population: List[Individual], state: Dict[str, Any]
+        self, population: list[Individual], state: dict[str, Any]
     ) -> bool:
         """Activate if population has infeasible solutions."""
         # Check if best solution has hard violations
@@ -148,7 +149,7 @@ class OptimizerAgent(SpecialistAgent):
         super().__init__("OptimizerAgent", model_path)
 
     def should_activate(
-        self, population: List[Individual], state: Dict[str, Any]
+        self, population: list[Individual], state: dict[str, Any]
     ) -> bool:
         """Activate if population is feasible but not optimal."""
         if not population:
@@ -187,7 +188,7 @@ class ExplorerAgent(SpecialistAgent):
         self.stagnation_threshold = 10  # Activate after 10 gens without improvement
 
     def should_activate(
-        self, population: List[Individual], state: Dict[str, Any]
+        self, population: list[Individual], state: dict[str, Any]
     ) -> bool:
         """Activate if search is stagnated."""
         stagnation = state.get("generations_without_improvement", 0)
@@ -220,7 +221,7 @@ class IntensifierAgent(SpecialistAgent):
         self.elite_threshold = 10.0  # Activate if best soft < 10
 
     def should_activate(
-        self, population: List[Individual], state: Dict[str, Any]
+        self, population: list[Individual], state: dict[str, Any]
     ) -> bool:
         """Activate if population has elite solutions needing refinement."""
         if not population:

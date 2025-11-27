@@ -29,12 +29,11 @@ Usage:
     print(f"Shifted {modifications} sessions")
 """
 
-from typing import List, Optional
 import random
 from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import perturbation_heuristic
 from src.heuristics.utils import (
     estimate_session_student_count,
@@ -45,7 +44,6 @@ from src.heuristics.utils import (
     is_instructor_available,
     move_gene_to_time_if_valid,
 )
-
 
 # ================
 # RANDOM SWAP (Exchange time/room between two sessions)
@@ -61,7 +59,7 @@ from src.heuristics.utils import (
     modifies_individual=True,
 )
 def random_swap(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     swap_type: str = "time",
     num_swaps: int = 1,
@@ -97,15 +95,15 @@ def random_swap(
             # Use new contiguous block representation (start_quanta, num_quanta)
             original_start_gene1 = gene1.start_quanta
             original_num_gene1 = gene1.num_quanta
-            
+
             gene1.start_quanta = gene2.start_quanta
             gene1.num_quanta = gene2.num_quanta
             gene1.__post_init__()  # Re-validate after swap
-            
+
             gene2.start_quanta = original_start_gene1
             gene2.num_quanta = original_num_gene1
             gene2.__post_init__()  # Re-validate after swap
-            
+
             swaps_performed += 1
 
         if swap_type == "room" or swap_type == "both":
@@ -154,9 +152,9 @@ def random_swap(
     modifies_individual=True,
 )
 def temporal_shift(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
-    delta: Optional[int] = None,
+    delta: int | None = None,
     probability: float = 0.3,
 ) -> int:
     """
@@ -221,7 +219,7 @@ def temporal_shift(
     modifies_individual=True,
 )
 def room_shuffle(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     probability: float = 0.2,
 ) -> int:
@@ -293,7 +291,7 @@ def room_shuffle(
     modifies_individual=True,
 )
 def instructor_reassign(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     probability: float = 0.15,
     prefer_available: bool = True,
@@ -377,9 +375,9 @@ def instructor_reassign(
     modifies_individual=True,
 )
 def multi_perturbation(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
-    operators: Optional[List[str]] = None,
+    operators: list[str] | None = None,
 ) -> int:
     """
     Apply multiple perturbation operators in sequence.

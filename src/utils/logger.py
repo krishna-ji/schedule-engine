@@ -7,7 +7,6 @@ Provides detailed runtime analysis for each GA run.
 
 import os
 from datetime import datetime
-from typing import Dict, List
 
 
 class GALogger:
@@ -20,7 +19,7 @@ class GALogger:
     - Runtime statistics (total time, avg time per generation, etc.)
     """
 
-    def __init__(self, output_dir: str, config: Dict):
+    def __init__(self, output_dir: str, config: dict):
         """
         Initialize logger.
 
@@ -31,7 +30,7 @@ class GALogger:
         self.output_dir = output_dir
         self.log_path = os.path.join(output_dir, "run.log")
         self.config = config
-        self.generation_logs: List[Dict] = []
+        self.generation_logs: list[dict] = []
         self.start_time = None
         self.end_time = None
 

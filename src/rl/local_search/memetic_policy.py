@@ -4,7 +4,6 @@ Memetic policy for RL-guided local search budget allocation.
 ENHANCEMENT #6: RL learns when/where/how much to apply local search.
 """
 
-from typing import List, Dict
 import numpy as np
 from numpy.typing import NDArray
 
@@ -32,7 +31,7 @@ class MemeticPolicy:
     - Computational budget remaining
     """
 
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: dict = None):
         """
         Initialize memetic policy.
 
@@ -76,7 +75,7 @@ class MemeticPolicy:
     def compute_state(
         self,
         individual: Individual,
-        population: List[Individual],
+        population: list[Individual],
         generation: int,
         max_generations: int,
     ) -> NDArray[np.float32]:

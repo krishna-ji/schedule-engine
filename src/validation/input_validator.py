@@ -5,9 +5,8 @@ Validates loaded data for consistency before GA execution.
 Fails fast with clear error messages to prevent cryptic runtime failures.
 """
 
-from typing import List
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from src.utils.system_info import get_cpu_count
+
 from src.core.types import SchedulingContext
 from src.exceptions import DataValidationError
 from src.utils.console_service import get_console
@@ -61,10 +60,10 @@ class InputValidator:
             context: SchedulingContext to validate
         """
         self.context = context
-        self.errors: List[ValidationError] = []
-        self.warnings: List[ValidationError] = []
+        self.errors: list[ValidationError] = []
+        self.warnings: list[ValidationError] = []
 
-    def validate(self, parallel: bool = True) -> List[ValidationError]:
+    def validate(self, parallel: bool = True) -> list[ValidationError]:
         """
         Run all validation checks.
 
@@ -375,8 +374,8 @@ class InputValidator:
 
         # Report errors if found
         if courses_without_instructors:
-            from rich.table import Table
             from rich.panel import Panel
+            from rich.table import Table
 
             # Create table for better visualization
             table = Table(

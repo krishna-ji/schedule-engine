@@ -1,7 +1,7 @@
 import random
-from src.ga.sessiongene import SessionGene
+
 from src.core.types import SchedulingContext
-from typing import List
+from src.ga.sessiongene import SessionGene
 
 
 def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
@@ -83,7 +83,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     )
 
 
-def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
+def mutate_time_quanta(gene: SessionGene, course, context) -> list[int]:
     """
     Intelligently mutate time quanta while PRESERVING quanta count.
 
@@ -138,7 +138,7 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> List[int]:
 
 def find_suitable_rooms_for_course(
     course_id: str, group_id: str, context: SchedulingContext
-) -> List[str]:
+) -> list[str]:
     """
     Find rooms suitable for a specific course and group combination.
     Takes into account group size, course requirements, and room features.

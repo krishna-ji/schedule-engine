@@ -1,26 +1,24 @@
-from typing import List, Dict, Tuple
-from src.decoder.individual_decoder import decode_individual
-from src.ga.sessiongene import SessionGene
-from src.entities.course import Course
-from src.entities.instructor import Instructor
-from src.entities.group import Group
-from src.entities.room import Room
-
 # Constraint Registry
 from src.constraints.registry import (
+    constraint_needs_courses,
     get_enabled_hard_constraints,
     get_enabled_soft_constraints,
-    constraint_needs_courses,
 )
+from src.decoder.individual_decoder import decode_individual
+from src.entities.course import Course
+from src.entities.group import Group
+from src.entities.instructor import Instructor
+from src.entities.room import Room
+from src.ga.sessiongene import SessionGene
 
 
 def evaluate_detailed(
-    individual: List[SessionGene],
-    courses: Dict[tuple, Course],  # Keys are (course_code, course_type) tuples
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room] = None,
-) -> Tuple[Dict[str, int], Dict[str, int]]:
+    individual: list[SessionGene],
+    courses: dict[tuple, Course],  # Keys are (course_code, course_type) tuples
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room] = None,
+) -> tuple[dict[str, int], dict[str, int]]:
     """
     Evaluates a timetable individual with detailed constraint breakdown.
 
@@ -69,8 +67,8 @@ def evaluate_detailed(
 
 
 def evaluate_from_detailed(
-    hard_details: Dict[str, int], soft_details: Dict[str, int]
-) -> Tuple[int, int]:
+    hard_details: dict[str, int], soft_details: dict[str, int]
+) -> tuple[int, int]:
     """
     Convert detailed constraint breakdown to total penalties.
 

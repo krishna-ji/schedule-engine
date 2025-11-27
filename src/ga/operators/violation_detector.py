@@ -29,18 +29,17 @@ Usage:
     # Repair only: violated_indices instead of entire individual
 """
 
-from typing import Dict, List
 from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 
 
 def detect_violated_genes(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     strategy: str = "hybrid",
-) -> Dict[int, List[str]]:
+) -> dict[int, list[str]]:
     """
     Detect genes with constraint violations.
 
@@ -76,7 +75,7 @@ def detect_violated_genes(
     return dict(violations)
 
 
-def _detect_fast(individual: List[SessionGene]) -> Dict[int, List[str]]:
+def _detect_fast(individual: list[SessionGene]) -> dict[int, list[str]]:
     """
     Fast detection without decoding.
 
@@ -107,7 +106,7 @@ def _detect_fast(individual: List[SessionGene]) -> Dict[int, List[str]]:
         # Check 3: Invalid quantum values
         if gene.num_quanta > 0:
             min_q = gene.start_quanta
-            max_q = (gene.start_quanta + gene.num_quanta - 1)
+            max_q = gene.start_quanta + gene.num_quanta - 1
             # Assuming max quantum is around 527 (6 days * 11 slots * 8 quanta per slot)
             if min_q < 0 or max_q > 600:  # Upper bound safety margin
                 issues.append("invalid_quanta")
@@ -119,8 +118,8 @@ def _detect_fast(individual: List[SessionGene]) -> Dict[int, List[str]]:
 
 
 def _detect_full(
-    individual: List[SessionGene], context: SchedulingContext
-) -> Dict[int, List[str]]:
+    individual: list[SessionGene], context: SchedulingContext
+) -> dict[int, list[str]]:
     """
     Full constraint-based detection.
 
@@ -191,9 +190,12 @@ def _detect_full(
             continue
 
         # Check room type compatibility (Room uses 'room_features' not 'room_type')
-        if course.course_type == "practical" and room.room_features != "lab":
-            violations[idx].append("room_suitability")
-        elif course.course_type == "theory" and room.room_features == "lab":
+        if (
+            course.course_type == "practical"
+            and room.room_features != "lab"
+            or course.course_type == "theory"
+            and room.room_features == "lab"
+        ):
             violations[idx].append("room_suitability")
 
     # Detect instructor availability violations
@@ -212,7 +214,7 @@ def _detect_full(
     return dict(violations)
 
 
-def _build_group_schedule_map(individual: List[SessionGene]) -> Dict:
+def _build_group_schedule_map(individual: list[SessionGene]) -> dict:
     """
     Build map of group schedules for overlap detection.
 
@@ -229,7 +231,7 @@ def _build_group_schedule_map(individual: List[SessionGene]) -> Dict:
     return schedule
 
 
-def _build_room_schedule_map(individual: List[SessionGene]) -> Dict:
+def _build_room_schedule_map(individual: list[SessionGene]) -> dict:
     """
     Build map of room schedules for conflict detection.
 
@@ -245,7 +247,7 @@ def _build_room_schedule_map(individual: List[SessionGene]) -> Dict:
     return schedule
 
 
-def _build_instructor_schedule_map(individual: List[SessionGene]) -> Dict:
+def _build_instructor_schedule_map(individual: list[SessionGene]) -> dict:
     """
     Build map of instructor schedules for conflict detection.
 

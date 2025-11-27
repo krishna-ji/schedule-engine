@@ -38,9 +38,8 @@ CSV Columns:
 - notes: Optional notes (e.g., "Initial population", "Perfect solution")
 """
 
-import os
 import csv
-from typing import Dict, Optional, List
+import os
 
 
 class ConstraintLogger:
@@ -62,8 +61,8 @@ class ConstraintLogger:
     def __init__(
         self,
         output_dir: str,
-        hard_constraint_names: List[str],
-        soft_constraint_names: List[str],
+        hard_constraint_names: list[str],
+        soft_constraint_names: list[str],
     ):
         """
         Initialize constraint logger.
@@ -144,16 +143,16 @@ class ConstraintLogger:
         generation: int,
         hard_total: float,
         soft_total: float,
-        hard_breakdown: Dict[str, float],
-        soft_breakdown: Dict[str, float],
+        hard_breakdown: dict[str, float],
+        soft_breakdown: dict[str, float],
         diversity: float,
         time_seconds: float,
         hypervolume: float = 0.0,
         spacing: float = 0.0,
         igd: float = 0.0,
         spread: float = 0.0,
-        repair_stats: Optional[Dict[str, int]] = None,
-        events: Optional[List[str]] = None,
+        repair_stats: dict[str, int] | None = None,
+        events: list[str] | None = None,
         notes: str = "",
     ):
         """
@@ -256,7 +255,7 @@ class ConstraintLogger:
 
         # Read all rows
         try:
-            with open(self.log_path, "r", newline="", encoding="utf-8") as f:
+            with open(self.log_path, newline="", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 rows = list(reader)
 
@@ -321,7 +320,7 @@ class EventTracker:
     """
 
     def __init__(self):
-        self.events: List[str] = []
+        self.events: list[str] = []
 
     def add(self, event: str):
         """Add an event to the tracker."""
@@ -331,7 +330,7 @@ class EventTracker:
         """Check if any events were recorded."""
         return len(self.events) > 0
 
-    def get_events(self) -> List[str]:
+    def get_events(self) -> list[str]:
         """Get list of events."""
         return self.events
 

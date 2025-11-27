@@ -4,12 +4,14 @@ Enables simultaneous application of heuristics to multiple individuals,
 achieving 10-16x speedup by fully utilizing all CPU cores.
 """
 
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from typing import List, Callable, Any
-from src.utils.system_info import get_cpu_count
 import logging
 import random
-from src.utils.parallel_worker import init_worker, get_worker_context
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from typing import Any
+
+from src.utils.parallel_worker import get_worker_context, init_worker
+from src.utils.system_info import get_cpu_count
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +44,10 @@ class ParallelHeuristicExecutor:
     def apply_parallel(
         self,
         heuristic_func: Callable,
-        individuals: List,
+        individuals: list,
         context: Any,
         chunk_size: int = None,
-    ) -> List:
+    ) -> list:
         """Apply heuristic to population in parallel.
 
         Args:
@@ -137,7 +139,7 @@ class ParallelHeuristicExecutor:
             return [heuristic_func(ind, context) for ind in individuals]
 
     @staticmethod
-    def _apply_to_chunk(heuristic_func: Callable, chunk: List, context: Any) -> List:
+    def _apply_to_chunk(heuristic_func: Callable, chunk: list, context: Any) -> list:
         """Apply heuristic to a chunk of individuals.
 
         This runs in a separate process/thread.
@@ -167,7 +169,7 @@ class ParallelHeuristicExecutor:
         return results
 
     def apply_batch(
-        self, heuristic_funcs: List[Callable], individual: Any, context: Any
+        self, heuristic_funcs: list[Callable], individual: Any, context: Any
     ) -> Any:
         """Apply multiple heuristics to single individual in parallel.
 

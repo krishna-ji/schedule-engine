@@ -11,14 +11,16 @@ These plots provide holistic view of algorithm performance.
 """
 
 import os
+
 import matplotlib.pyplot as plt
 import numpy as np
+
 from .thesis_style import (
     apply_thesis_style,
-    get_color,
-    save_figure,
     create_thesis_figure,
     format_axis,
+    get_color,
+    save_figure,
 )
 
 # Apply thesis styling

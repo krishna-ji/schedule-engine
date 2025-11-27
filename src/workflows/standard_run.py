@@ -8,38 +8,38 @@ Extracted from main.py for better testability and reusability.
 import os
 import random
 from datetime import datetime
-from typing import Dict, Optional
-from src.utils.system_info import get_cpu_count
+
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    BarColumn,
     TextColumn,
     TimeElapsedColumn,
 )
 
+from src.core.ga_scheduler import GAConfig, GAScheduler
+from src.core.types import SchedulingContext
+from src.decoder.individual_decoder import decode_individual
 from src.encoder.input_encoder import (
+    link_courses_and_groups,
+    link_courses_and_instructors,
     load_courses,
     load_groups,
     load_instructors,
     load_rooms,
-    link_courses_and_groups,
-    link_courses_and_instructors,
 )
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.decoder.individual_decoder import decode_individual
-from src.core.types import SchedulingContext
-from src.core.ga_scheduler import GAScheduler, GAConfig
+from src.utils.console_service import get_console
+from src.utils.constraint_logger import ConstraintLogger
+from src.utils.logger import GALogger
+from src.utils.performance_profiler import cleanup_profiler, init_profiler
+from src.utils.system_info import get_cpu_count
 from src.validation import validate_input
 from src.validation.feasibility_checker import (
     check_feasibility,
     generate_feasibility_report_file,
 )
 from src.workflows.reporting import generate_reports
-from src.utils.logger import GALogger
-from src.utils.constraint_logger import ConstraintLogger
-from src.utils.console_service import get_console
-from src.utils.performance_profiler import init_profiler, cleanup_profiler
 
 console = get_console()
 
@@ -50,11 +50,11 @@ def run_standard_workflow(
     crossover_prob: float = 0.7,
     mutation_prob: float = 0.2,
     data_dir: str = "data",
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
     seed: int = 69,
     validate: bool = True,
-    config: Optional[object] = None,
-) -> Dict:
+    config: object | None = None,
+) -> dict:
     """
     Execute standard GA scheduling workflow.
 
@@ -166,7 +166,7 @@ def run_standard_workflow(
                 config.output.output_dir = output_dir
             else:
                 # Some configs only have base_dir - create a new attribute for runtime
-                setattr(config.output, "output_dir", output_dir)
+                config.output.output_dir = output_dir
     except Exception:
         # Don't fail the run if mutation fails; fall back to passing output_dir
         console.print(
@@ -262,6 +262,7 @@ def run_standard_workflow(
 
     if config.parallel.use_multiprocessing:
         import multiprocessing
+
         from src.utils.parallel_worker import init_worker
 
         # Determine worker count: None = CPU count (Windows handle limit safe)
@@ -563,7 +564,7 @@ def run_standard_workflow(
 
 def load_input_data(
     data_dir: str,
-    config: Optional[object] = None,
+    config: object | None = None,
 ) -> tuple[QuantumTimeSystem, SchedulingContext]:
     """
     Load and link all input entities.
@@ -580,8 +581,8 @@ def load_input_data(
     Returns:
         Tuple of (QuantumTimeSystem, SchedulingContext)
     """
-    from concurrent.futures import ThreadPoolExecutor
     import time
+    from concurrent.futures import ThreadPoolExecutor
 
     start_time = time.time()
 

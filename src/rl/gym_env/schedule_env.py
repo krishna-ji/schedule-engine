@@ -6,21 +6,21 @@ effective heuristics at each step.
 """
 
 import copy
-import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
-import numpy as np
-from numpy.typing import NDArray
+from collections.abc import Callable
+from typing import Any
+
 import gymnasium as gym
+import numpy as np
 from gymnasium import spaces
+from numpy.typing import NDArray
 
 from src.core.types import Individual, SchedulingContext
-from src.rl.gym_env.state_encoder import StateEncoder
 from src.rl.gym_env.action_space import ActionMapper
 from src.rl.gym_env.reward_calculator import RewardCalculator
+from src.rl.gym_env.state_encoder import StateEncoder
 from src.utils.performance_profiler import PerformanceProfiler
 from src.utils.structured_logger import StructuredLogger
-
 
 logger = StructuredLogger.get_logger(__name__)
 
@@ -51,11 +51,11 @@ class ScheduleEnv(gym.Env):
 
     def __init__(
         self,
-        initial_population: List[Individual],
+        initial_population: list[Individual],
         context: SchedulingContext,
         max_generations: int = 2000,
         max_steps_per_episode: int = 20,
-        render_mode: Optional[str] = None,
+        render_mode: str | None = None,
         fast_evaluation: bool = True,
         debug_logging: bool = True,
         env_rank: int = 0,
@@ -110,7 +110,7 @@ class ScheduleEnv(gym.Env):
         # Episode state
         # CRITICAL: Deep copy individuals to avoid shared references across episodes!
         # shallow copy() would share Individual objects = memory corruption
-        self.population: List[Individual] = [
+        self.population: list[Individual] = [
             self._clone_individual(ind) for ind in initial_population
         ]
         self._initial_population = [
@@ -120,11 +120,11 @@ class ScheduleEnv(gym.Env):
         self.current_step = 0
         self.generations_without_improvement = 0
         self.best_fitness_ever = float("inf")
-        self.episode_heuristic_counts: Dict[int, int] = {}
+        self.episode_heuristic_counts: dict[int, int] = {}
 
         # Render buffer
-        self.render_buffer: List[str] = []
-        self._fitness_evaluator: Optional[Callable] = None
+        self.render_buffer: list[str] = []
+        self._fitness_evaluator: Callable | None = None
         self._last_debug_step = -1
 
         # Step counter for debug logging
@@ -143,9 +143,9 @@ class ScheduleEnv(gym.Env):
 
     def reset(
         self,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[NDArray[np.float32], dict[str, Any]]:
         """
         Reset environment to initial state.
 
@@ -215,7 +215,7 @@ class ScheduleEnv(gym.Env):
 
     def step(
         self, action: int
-    ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+    ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
         """
         Execute one environment step.
 
@@ -323,7 +323,7 @@ class ScheduleEnv(gym.Env):
             else working_individual
         )
 
-        evaluated_candidate: Optional[Individual] = None
+        evaluated_candidate: Individual | None = None
 
         if success:
             # Phase 4: Ensure DEAP individual format
@@ -447,7 +447,7 @@ class ScheduleEnv(gym.Env):
         hard, soft = best_ind.fitness.values
         return abs(hard) * 100 + abs(soft)
 
-    def _get_info(self) -> Dict[str, Any]:
+    def _get_info(self) -> dict[str, Any]:
         """Get episode info dictionary."""
         return {
             "generation": self.current_generation,
@@ -458,7 +458,7 @@ class ScheduleEnv(gym.Env):
             "population_size": len(self.population),
         }
 
-    def render(self) -> Optional[str]:
+    def render(self) -> str | None:
         """Render environment state."""
         if self.render_mode == "ansi":
             return self._render_ansi()
@@ -470,12 +470,12 @@ class ScheduleEnv(gym.Env):
     def _render_ansi(self) -> str:
         """Render state as ANSI string."""
         lines = []
-        lines.append(f"=== Schedule Optimization Environment ===")
+        lines.append("=== Schedule Optimization Environment ===")
         lines.append(f"Generation: {self.current_generation}/{self.max_generations}")
         lines.append(f"Step: {self.current_step}/{self.max_steps_per_episode}")
         lines.append(f"Best Fitness: {self._get_best_fitness():.2f}")
         lines.append(f"Stagnation: {self.generations_without_improvement} generations")
-        lines.append(f"\nHeuristic Usage:")
+        lines.append("\nHeuristic Usage:")
         for action_id, count in sorted(self.episode_heuristic_counts.items()):
             action_info = self.action_mapper.get_action_info(action_id)
             if action_info:
@@ -568,7 +568,7 @@ class ScheduleEnv(gym.Env):
 
         return cloned
 
-    def get_profiling_summary(self) -> Dict[str, Any]:
+    def get_profiling_summary(self) -> dict[str, Any]:
         """
         Get comprehensive profiling statistics for this environment.
 
@@ -591,11 +591,11 @@ class ScheduleEnv(gym.Env):
 
 
 def create_schedule_env(
-    initial_population: List[Individual],
+    initial_population: list[Individual],
     context: SchedulingContext,
     max_generations: int = 2000,
     max_steps_per_episode: int = 20,
-    render_mode: Optional[str] = None,
+    render_mode: str | None = None,
     fast_evaluation: bool = True,
     debug_logging: bool = False,
     env_rank: int = 0,

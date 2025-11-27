@@ -8,50 +8,50 @@ PARALLELIZATION: Uses ThreadPoolExecutor to generate plots concurrently.
 Expected speedup: 5-10x on multi-core systems.
 """
 
-from typing import List, Dict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
-from src.utils.system_info import get_cpu_count
-from src.entities.decoded_session import CourseSession
-from src.entities.course import Course
-from src.encoder.quantum_time_system import QuantumTimeSystem
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from src.core.ga_scheduler import GAMetrics
+from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.entities.course import Course
+from src.entities.decoded_session import CourseSession
 from src.exporter.exporter import export_everything
-from src.exporter.violation_reporter import generate_violation_report
-from src.exporter.plotdiversity import plot_diversity_trend
-from src.exporter.plothard import plot_hard_constraint_violation_over_generation
-from src.exporter.plotsoft import plot_soft_constraint_violation_over_generation
-from src.exporter.plotpareto import plot_pareto_front
+from src.exporter.plot_convergence import (
+    plot_constraint_satisfaction_evolution,
+    plot_convergence_dashboard,
+    plot_convergence_rate,
+    plot_multi_metric_convergence,
+)
 from src.exporter.plot_detailed_constraints import (
+    plot_constraint_summary,
     plot_individual_hard_constraints,
     plot_individual_soft_constraints,
-    plot_constraint_summary,
 )
 
 # NEW: Import advanced evaluation metric plotting modules
 from src.exporter.plot_hypervolume import plot_hypervolume_trend
 from src.exporter.plot_spacing import (
-    plot_spacing_trend,
     plot_spacing_distribution,
+    plot_spacing_trend,
     plot_spacing_with_pareto,
 )
-from src.exporter.plot_convergence import (
-    plot_multi_metric_convergence,
-    plot_convergence_dashboard,
-    plot_convergence_rate,
-    plot_constraint_satisfaction_evolution,
-)
-from src.lns.lns_operator import get_lns_stats
+from src.exporter.plotdiversity import plot_diversity_trend
+from src.exporter.plothard import plot_hard_constraint_violation_over_generation
+from src.exporter.plotpareto import plot_pareto_front
+from src.exporter.plotsoft import plot_soft_constraint_violation_over_generation
+from src.exporter.violation_reporter import generate_violation_report
 from src.ga.heuristic_tracker import HeuristicTracker
+from src.lns.lns_operator import get_lns_stats
+from src.utils.system_info import get_cpu_count
 
 
 def generate_reports(
-    decoded_schedule: List[CourseSession],
+    decoded_schedule: list[CourseSession],
     metrics: GAMetrics,
-    population: List,
+    population: list,
     qts: QuantumTimeSystem,
     output_dir: str,
-    course_map: Dict[tuple, Course] = None,
+    course_map: dict[tuple, Course] = None,
     heuristic_tracker: HeuristicTracker = None,
 ):
     """
@@ -126,12 +126,16 @@ def generate_reports(
         print("  [+] Generating heuristic tracking reports...")
         heuristic_tracker.export_json(output_dir)
         heuristic_tracker.generate_plots(output_dir)
-        
+
         # Print summary
         summary = heuristic_tracker.get_summary()
-        print(f"      [!info] Tracked {summary['total_applications']} heuristic applications")
+        print(
+            f"      [!info] Tracked {summary['total_applications']} heuristic applications"
+        )
         print(f"      [!info] Success rate: {summary['success_rate_percent']:.1f}%")
-        print(f"      [!info] Best heuristic: {summary['best_heuristic']} (improvement: {summary['best_heuristic_improvement']:.2f})")
+        print(
+            f"      [!info] Best heuristic: {summary['best_heuristic']} (improvement: {summary['best_heuristic_improvement']:.2f})"
+        )
 
     # Generate violation report - sequential (depends on export)
     if course_map:

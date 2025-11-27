@@ -8,13 +8,11 @@ Provides Stable-Baselines3 compatible callbacks:
 - ManifestCallback: Track checkpoints in manifest.json
 """
 
-from typing import Optional, Dict, Any
-from pathlib import Path
-import time
-import numpy as np
 import json
 from datetime import datetime
+from pathlib import Path
 
+import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import VecEnv
 
@@ -37,7 +35,7 @@ class PeriodicEvaluationCallback(BaseCallback):
         eval_freq: int = 5000,
         n_eval_episodes: int = 5,
         deterministic: bool = True,
-        log_path: Optional[str] = None,
+        log_path: str | None = None,
         verbose: int = 1,
     ):
         """
@@ -297,8 +295,8 @@ class ManifestCallback(BaseCallback):
         self,
         manifest_path: str = "models/rl_agents/manifest.json",
         checkpoint_freq: int = 10000,
-        stage_name: Optional[str] = None,
-        seed: Optional[int] = None,
+        stage_name: str | None = None,
+        seed: int | None = None,
         verbose: int = 1,
     ):
         """
@@ -375,8 +373,8 @@ def create_training_callbacks(
     save_freq: int = 10000,
     n_eval_episodes: int = 5,
     patience: int = 5,
-    stage_name: Optional[str] = None,
-    seed: Optional[int] = None,
+    stage_name: str | None = None,
+    seed: int | None = None,
     verbose: int = 1,
 ) -> list:
     """

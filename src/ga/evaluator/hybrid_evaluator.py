@@ -4,10 +4,10 @@ Intelligently chooses between GPU (for large batches) and CPU multiprocessing
 (for small batches) to maximize performance across all population sizes.
 """
 
-from typing import List, Tuple, Callable
-from src.ga.sessiongene import SessionGene
-from src.ga.evaluator.gpu_batch_evaluator import get_gpu_evaluator
 import logging
+from collections.abc import Callable
+
+from src.ga.evaluator.gpu_batch_evaluator import get_gpu_evaluator
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +55,10 @@ class HybridEvaluator:
 
     def evaluate_population(
         self,
-        population: List,
+        population: list,
         cpu_evaluate_func: Callable,
         batch_size: int = None,
-    ) -> List[Tuple[int, int]]:
+    ) -> list[tuple[int, int]]:
         """Evaluate population using optimal strategy.
 
         Args:

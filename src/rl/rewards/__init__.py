@@ -8,10 +8,10 @@ ENHANCEMENT #1: Multi-objective reward functions
 - Adaptive preferences - dynamic weighting
 """
 
-from src.rl.rewards.scalar_reward import ScalarReward
-from src.rl.rewards.hypervolume_reward import HypervolumeReward
-from src.rl.rewards.decomposed_reward import DecomposedReward
 from src.rl.rewards.adaptive_reward import AdaptiveReward
+from src.rl.rewards.decomposed_reward import DecomposedReward
+from src.rl.rewards.hypervolume_reward import HypervolumeReward
+from src.rl.rewards.scalar_reward import ScalarReward
 
 __all__ = [
     "ScalarReward",

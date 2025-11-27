@@ -7,17 +7,18 @@ IMPORTANT: Uses CONTINUOUS quantum system. All time conversions must go through
 QuantumTimeSystem. Never use QUANTA_PER_DAY or day = q // QUANTA_PER_DAY.
 """
 
-import numpy as np
-from typing import List
 from collections import defaultdict
-from src.entities.decoded_session import CourseSession
+
+import numpy as np
+
+from src.config import get_config
+from src.constraints.registry import soft_constraint
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.entities.decoded_session import CourseSession
 from src.utils.time_helpers import (
     get_midday_break_quanta,
     quantum_to_day_and_within_day,
 )
-from src.config import get_config
-from src.constraints.registry import soft_constraint
 
 # Global QuantumTimeSystem instance (initialized once)
 _QTS = QuantumTimeSystem()
@@ -29,7 +30,7 @@ _QTS = QuantumTimeSystem()
     default_weight=1.5,
     needs_courses=False,
 )
-def student_schedule_compactness(sessions: List[CourseSession]) -> int:
+def student_schedule_compactness(sessions: list[CourseSession]) -> int:
     """
     Encourages compact student schedules by minimizing idle time gaps.
 
@@ -94,7 +95,7 @@ def student_schedule_compactness(sessions: List[CourseSession]) -> int:
     default_weight=1.0,
     needs_courses=False,
 )
-def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
+def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
     """
     Encourages compact instructor schedules by minimizing idle time gaps.
 
@@ -158,7 +159,7 @@ def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
     default_weight=1.2,
     needs_courses=False,
 )
-def student_lunch_break(sessions: List[CourseSession]) -> int:
+def student_lunch_break(sessions: list[CourseSession]) -> int:
     """
     Encourages students to have free time during the midday break period.
 
@@ -216,7 +217,7 @@ def student_lunch_break(sessions: List[CourseSession]) -> int:
     default_weight=2.0,
     needs_courses=False,
 )
-def session_continuity(sessions: List[CourseSession]) -> int:
+def session_continuity(sessions: list[CourseSession]) -> int:
     """
     Encourages sessions to be scheduled in continuous, appropriately-sized blocks.
 

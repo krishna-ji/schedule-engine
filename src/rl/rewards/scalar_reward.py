@@ -4,7 +4,6 @@ Scalar reward calculator (weighted sum of objectives).
 Traditional approach: reward = w1 * hard_improvement + w2 * soft_improvement
 """
 
-from typing import List
 from src.core.types import Individual
 from src.rl.rewards.base_reward import BaseRewardCalculator
 
@@ -40,8 +39,8 @@ class ScalarReward(BaseRewardCalculator):
 
     def calculate(
         self,
-        prev_population: List[Individual],
-        current_population: List[Individual],
+        prev_population: list[Individual],
+        current_population: list[Individual],
         action_cost: float = 0.0,
     ) -> float:
         """
@@ -79,8 +78,8 @@ class ScalarReward(BaseRewardCalculator):
 
     def calculate_with_avg(
         self,
-        prev_population: List[Individual],
-        current_population: List[Individual],
+        prev_population: list[Individual],
+        current_population: list[Individual],
         action_cost: float = 0.0,
     ) -> float:
         """

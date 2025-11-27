@@ -12,7 +12,6 @@ matplotlib.use("Agg")  # Non-interactive backend for file generation
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
 # Seaborn-inspired color palette
 COLORS = {
     "blue": "#4C72B0",  # Primary blue

@@ -35,35 +35,36 @@ Usage:
         return individual
 """
 
+# Import heuristic implementations to trigger decorator registration
+from src.heuristics import (
+    construction,
+    diversity,
+    improvement,
+    meta,
+    perturbation,
+    repair,
+)
 from src.heuristics.registry import (
     # Decorators
     construction_heuristic,
-    perturbation_heuristic,
-    improvement_heuristic,
     diversity_heuristic,
-    meta_heuristic,
-    repair_heuristic,
     # Registry access
     get_all_heuristics,
-    get_enabled_heuristics,
-    get_heuristic_by_name,
-    list_all_heuristics,
     # Category access
     get_construction_heuristics,
-    get_perturbation_heuristics,
-    get_improvement_heuristics,
     get_diversity_heuristics,
+    get_enabled_heuristics,
+    get_heuristic_by_name,
+    get_improvement_heuristics,
     get_meta_heuristics,
+    get_perturbation_heuristics,
     get_repair_heuristics,
+    improvement_heuristic,
+    list_all_heuristics,
+    meta_heuristic,
+    perturbation_heuristic,
+    repair_heuristic,
 )
-
-# Import heuristic implementations to trigger decorator registration
-from src.heuristics import construction
-from src.heuristics import perturbation
-from src.heuristics import improvement
-from src.heuristics import diversity
-from src.heuristics import meta
-from src.heuristics import repair
 
 __all__ = [
     # Decorators

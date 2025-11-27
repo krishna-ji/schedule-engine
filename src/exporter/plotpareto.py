@@ -1,15 +1,17 @@
-import os
 import csv
+import os
+
 import matplotlib.pyplot as plt
-from deap import tools
 import numpy as np
+from deap import tools
+
 from .thesis_style import (
-    apply_thesis_style,
-    get_color,
     PALETTE,
-    save_figure,
+    apply_thesis_style,
     create_thesis_figure,
     format_axis,
+    get_color,
+    save_figure,
 )
 
 # Apply thesis styling

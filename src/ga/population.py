@@ -1,17 +1,16 @@
-from typing import List, Tuple
 import random
 from concurrent.futures import ProcessPoolExecutor
+
+from src.core.types import SchedulingContext
+from src.ga.course_group_pairs import generate_course_group_pairs
+from src.ga.group_hierarchy import analyze_group_hierarchy
+from src.ga.individual import create_individual
+from src.ga.sessiongene import SessionGene
+from src.utils.console_service import get_console
 from src.utils.system_info import get_cpu_count
 
-from src.ga.sessiongene import SessionGene
-from src.ga.individual import create_individual
-from src.ga.group_hierarchy import analyze_group_hierarchy
-from src.ga.course_group_pairs import generate_course_group_pairs
-from src.core.types import SchedulingContext
-from src.utils.console_service import get_console
 
-
-def get_subsession_durations(quanta_per_week: int, course_type: str) -> List[int]:
+def get_subsession_durations(quanta_per_week: int, course_type: str) -> list[int]:
     """
     Break course duration into subsessions based on pedagogical requirements.
 
@@ -45,7 +44,7 @@ def get_subsession_durations(quanta_per_week: int, course_type: str) -> List[int
             return blocks
 
 
-from src.utils.parallel_worker import init_worker, get_worker_context
+from src.utils.parallel_worker import get_worker_context, init_worker
 
 console = get_console()
 
@@ -54,7 +53,7 @@ def generate_pure_random_population(
     n: int,
     context: SchedulingContext,
     parallel: bool = True,
-) -> List:
+) -> list:
     """
     Generate population with PURE RANDOM initialization (no heuristics).
 
@@ -77,7 +76,7 @@ def generate_pure_random_population(
     # Generate population sequentially (parallel requires data_dir approach like other functions)
     # TODO: Implement parallel version using data_dir + worker loading pattern
     population = []
-    
+
     for i in range(n):
         genes = []
         for course_id, group_ids, session_type, num_quanta in course_group_pairs:
@@ -142,7 +141,7 @@ def _create_pure_random_gene(course_id, group_ids, num_quanta, course, context):
 
     # course_id is tuple (course_code, course_type)
     course_code, course_type = course_id
-    
+
     # Random instructor from qualified instructors
     qualified_instructors = [
         instr_id
@@ -244,7 +243,7 @@ def generate_course_group_aware_population(
     n: int,
     context: SchedulingContext,
     parallel: bool = True,  # NEW: Enable/disable parallelization
-) -> List:
+) -> list:
     """
     Generate population using simple course-group enrollment structure.
 
@@ -405,7 +404,7 @@ def generate_course_group_aware_population(
 
 def extract_course_group_relationships(
     context: SchedulingContext,
-) -> List[Tuple[str, str]]:
+) -> list[tuple[str, str]]:
     """
     Extract valid course-group enrollment pairs from the context.
 
@@ -440,7 +439,7 @@ def extract_course_group_relationships(
 
 def create_course_component_sessions(
     course_id: str, group_id: str, course, context: SchedulingContext
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """
     Create session genes for a course-group combination.
 
@@ -492,7 +491,7 @@ def create_course_component_sessions_with_conflict_avoidance(
     used_quanta: set,
     instructor_schedule: dict,
     group_schedule: dict,
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """
     Create session genes while avoiding time conflicts.
 
@@ -545,7 +544,7 @@ def create_course_component_sessions_with_conflict_avoidance(
 
 def create_session_gene_with_conflict_avoidance(
     course_id: str,
-    group_ids: List[str],
+    group_ids: list[str],
     session_type: str,
     num_quanta: int,
     course,
@@ -846,8 +845,8 @@ def create_component_session_with_conflict_avoidance(
 
 
 def assign_conflict_free_quanta(
-    quanta_needed: int, available_quanta: List, used_quanta: set
-) -> List:
+    quanta_needed: int, available_quanta: list, used_quanta: set
+) -> list:
     """
     Assign time quanta while avoiding conflicts with already used quanta.
 
@@ -899,7 +898,7 @@ def assign_conflict_free_quanta(
     return None
 
 
-def _find_consecutive_block(free_quanta: List, block_size: int) -> List:
+def _find_consecutive_block(free_quanta: list, block_size: int) -> list:
     """
     Find a single consecutive block of specified size.
     Returns None if not found.
@@ -1023,7 +1022,7 @@ def create_component_session(
     return session_gene
 
 
-def find_qualified_instructors(course_id, context: SchedulingContext) -> List:
+def find_qualified_instructors(course_id, context: SchedulingContext) -> list:
     """
     Find instructors qualified to teach this course.
 
@@ -1047,7 +1046,7 @@ def find_suitable_rooms(
     component_type: str,
     context: SchedulingContext,
     require_special_room: bool = False,
-) -> List:
+) -> list:
     """
     Find rooms suitable for this course component with intelligent prioritization.
 
@@ -1154,7 +1153,7 @@ def find_suitable_rooms(
     return result
 
 
-def assign_intelligent_quanta(quanta_needed: int, available_quanta: List) -> List:
+def assign_intelligent_quanta(quanta_needed: int, available_quanta: list) -> list:
     """
     Assign time quanta with clustering intelligence to minimize fragmentation.
     CLUSTER-AWARE: Uses same logic as assign_conflict_free_quanta.
@@ -1234,7 +1233,7 @@ def generate_random_gene(
 
 def generate_population(
     n: int, session_count: int = None, context: SchedulingContext = None
-) -> List:
+) -> list:
     """
     Wrapper function for backward compatibility.
     Now uses course-group aware generation instead of random.

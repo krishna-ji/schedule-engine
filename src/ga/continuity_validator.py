@@ -7,12 +7,11 @@ Validation now just checks:
 2. Day boundary compliance (no midnight wrap)
 """
 
-from typing import List, Tuple
-from src.ga.sessiongene import SessionGene
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.ga.sessiongene import SessionGene
 
 
-def validate_continuity(individual: List[SessionGene]) -> Tuple[bool, List[str]]:
+def validate_continuity(individual: list[SessionGene]) -> tuple[bool, list[str]]:
     """
     Verify all SessionGenes have valid contiguous quanta.
 

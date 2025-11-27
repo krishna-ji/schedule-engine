@@ -3,8 +3,8 @@ Time configuration helper functions.
 These are used across the codebase for time calculations.
 """
 
-from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.config import get_config
+from src.encoder.quantum_time_system import QuantumTimeSystem
 
 
 def get_midday_break_quanta(qts: QuantumTimeSystem):

@@ -4,8 +4,8 @@ Credit assignment system for tracking operator success.
 ENHANCEMENT #3: Tracks which probability settings lead to good offspring.
 """
 
-from typing import Dict, List, Tuple
-from collections import deque, defaultdict
+from collections import defaultdict, deque
+
 import numpy as np
 
 
@@ -36,8 +36,8 @@ class CreditAssignmentTracker:
         self.history: deque = deque(maxlen=history_size)
 
         # Success statistics by probability bucket
-        self.success_counts: Dict[Tuple[float, float], int] = defaultdict(int)
-        self.attempt_counts: Dict[Tuple[float, float], int] = defaultdict(int)
+        self.success_counts: dict[tuple[float, float], int] = defaultdict(int)
+        self.attempt_counts: dict[tuple[float, float], int] = defaultdict(int)
 
         # Running statistics
         self.total_attempts = 0
@@ -48,8 +48,8 @@ class CreditAssignmentTracker:
         self,
         cxpb: float,
         mutpb: float,
-        parent_fitness: Tuple[float, float],
-        offspring_fitness: Tuple[float, float],
+        parent_fitness: tuple[float, float],
+        offspring_fitness: tuple[float, float],
         was_feasibility_transition: bool = False,
     ) -> None:
         """
@@ -153,7 +153,7 @@ class CreditAssignmentTracker:
 
     def get_best_probabilities(
         self, metric: str = "success_rate", min_attempts: int = 10
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Get best probability setting based on historical performance.
 
@@ -188,7 +188,7 @@ class CreditAssignmentTracker:
         best_bucket = max(scores.items(), key=lambda x: x[1])[0]
         return best_bucket
 
-    def get_statistics(self) -> Dict[str, float]:
+    def get_statistics(self) -> dict[str, float]:
         """
         Get overall statistics.
 

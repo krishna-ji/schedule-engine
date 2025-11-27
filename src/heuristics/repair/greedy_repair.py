@@ -6,10 +6,8 @@ fast hill-climbing repair that quickly addresses obvious constraint
 violations without the overhead of exhaustive search.
 """
 
-from typing import List
-
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 
@@ -22,7 +20,7 @@ from src.heuristics.registry import repair_heuristic
     modifies_individual=True,
 )
 def greedy_repair(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_iterations: int = 5,
 ) -> int:

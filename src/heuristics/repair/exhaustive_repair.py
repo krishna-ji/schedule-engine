@@ -6,10 +6,8 @@ gene in an individual. Extremely expensive but finds high-quality local
 optima when other repair passes stall.
 """
 
-from typing import List
-
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 
@@ -22,7 +20,7 @@ from src.heuristics.registry import repair_heuristic
     modifies_individual=True,
 )
 def exhaustive_repair(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_neighborhood_size: int = 25,
     timeout_seconds: float = 10.0,

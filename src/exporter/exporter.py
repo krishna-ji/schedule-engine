@@ -1,23 +1,21 @@
-import os
 import json
-from typing import List, Dict
-from datetime import datetime
+import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from src.entities.decoded_session import CourseSession
-from src.encoder.quantum_time_system import QuantumTimeSystem
-
 # Config values (used internally only)
 from src.config.calendar_config import (
+    EXCAL_DEFAULT_OUTPUT_PDF,
+    EXCAL_END_HOUR,
     EXCAL_QUANTUM_MINUTES,
     EXCAL_START_HOUR,
-    EXCAL_END_HOUR,
-    EXCAL_DEFAULT_OUTPUT_PDF,
 )
+from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.entities.decoded_session import CourseSession
 
 
 def _format_course_name_with_type(course_id: str, course_type: str) -> str:
@@ -37,8 +35,8 @@ def _format_course_name_with_type(course_id: str, course_type: str) -> str:
 
 
 def _get_time_schedule_format(
-    qts: QuantumTimeSystem, quanta: List[int]
-) -> Dict[str, List[Dict[str, str]]]:
+    qts: QuantumTimeSystem, quanta: list[int]
+) -> dict[str, list[dict[str, str]]]:
     """Converts a list of quanta into the required schedule format.
 
     Args:
@@ -60,7 +58,7 @@ def _get_time_schedule_format(
 
 
 def _save_schedule_as_json(
-    schedule: List[CourseSession], output_path: str, qts: QuantumTimeSystem
+    schedule: list[CourseSession], output_path: str, qts: QuantumTimeSystem
 ) -> str:
     """Saves a list of CourseSession objects as a JSON file.
 
@@ -94,7 +92,9 @@ def _save_schedule_as_json(
                 "original_course_id": session.course_id,  # Keep original for reference
                 "course_type": session.course_type,  # Include course type
                 "instructor_id": session.instructor_id,
-                "group_ids": session.group_ids,  # Export as list for multi-group support
+                "group_ids": (
+                    session.group_ids
+                ),  # Export as list for multi-group support
                 "room_id": session.room_id,
                 "time": time_schedule,
             }
@@ -284,7 +284,7 @@ def _save_json_schedule_as_pdf(
 
 
 def export_everything(
-    schedule: List[CourseSession],
+    schedule: list[CourseSession],
     output_path: str,
     qts: QuantumTimeSystem,
     parallel: bool = True,

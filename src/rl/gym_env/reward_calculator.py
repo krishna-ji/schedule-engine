@@ -9,8 +9,9 @@ Computes rewards based on:
 ENHANCEMENT #1: Multi-objective reward shaping using hypervolume indicator.
 """
 
-from typing import Tuple, Dict, Any, List, Optional
 from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -52,7 +53,7 @@ class RewardCalculator:
         time_weight: float = 0.01,
         normalize: bool = True,
         use_hypervolume: bool = False,
-        reference_point: Optional[NDArray[np.float64]] = None,
+        reference_point: NDArray[np.float64] | None = None,
         hypervolume_scale: float = 1000.0,
     ):
         """
@@ -94,7 +95,7 @@ class RewardCalculator:
         self.prev_best_fitness: float | None = None
         self.prev_avg_fitness: float | None = None
         self.prev_diversity: float | None = None
-        self.prev_pareto_front: Optional[NDArray[np.float64]] = None
+        self.prev_pareto_front: NDArray[np.float64] | None = None
 
     def calculate_reward(
         self,
@@ -102,8 +103,8 @@ class RewardCalculator:
         new_individual: Individual,
         population_diversity: float,
         generation: int,
-        population: Optional[List[Individual]] = None,
-    ) -> Tuple[float, RewardComponents]:
+        population: list[Individual] | None = None,
+    ) -> tuple[float, RewardComponents]:
         """
         Calculate reward for a single action.
 
@@ -201,7 +202,7 @@ class RewardCalculator:
         """
         return 0.001 * generation  # Small linear penalty
 
-    def _calculate_hypervolume_reward(self, population: List[Individual]) -> float:
+    def _calculate_hypervolume_reward(self, population: list[Individual]) -> float:
         """
         Calculate hypervolume-based reward (ENHANCEMENT #1).
 
@@ -300,7 +301,7 @@ class RewardCalculator:
         self.prev_diversity = None
         self.prev_pareto_front = None  # ENHANCEMENT #1
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         """Get reward calculator configuration."""
         config = {
             "fitness_weight": self.fitness_weight,

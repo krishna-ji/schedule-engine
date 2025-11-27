@@ -1,9 +1,10 @@
 """System information utilities for resource detection."""
 
+import logging
+import os
+
 from rich.console import Console
 from rich.text import Text
-import os
-import logging
 
 console = Console()
 logger = logging.getLogger(__name__)

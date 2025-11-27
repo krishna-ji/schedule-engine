@@ -8,10 +8,11 @@ Ensures safe model promotion with rollback capability.
 import json
 import shutil
 import threading
-from pathlib import Path
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any
+
 import yaml
 
 from src.utils.logging_config import get_logger
@@ -27,19 +28,19 @@ class ModelRegistration:
     model_path: str
     agent_type: str
     deployed_at: str
-    promoted_from_checkpoint: Optional[str]
-    validation_metrics: Dict[str, float]
-    config_snapshot: Dict[str, Any]
+    promoted_from_checkpoint: str | None
+    validation_metrics: dict[str, float]
+    config_snapshot: dict[str, Any]
     deployed_by: str
     notes: str = ""
     status: str = "active"  # active, deprecated, rolled_back
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ModelRegistration":
+    def from_dict(cls, data: dict[str, Any]) -> "ModelRegistration":
         """Create from dictionary."""
         return cls(**data)
 
@@ -91,10 +92,10 @@ class ModelRegistry:
         self,
         model_path: str | Path,
         agent_type: str,
-        validation_metrics: Dict[str, float],
+        validation_metrics: dict[str, float],
         promoted_by: str,
         notes: str = "",
-        checkpoint_id: Optional[str] = None,
+        checkpoint_id: str | None = None,
     ) -> ModelRegistration:
         """
         Promote a model to production with atomic config update.
@@ -130,7 +131,7 @@ class ModelRegistry:
                 raise FileNotFoundError(f"Model file not found: {model_path}")
 
             # Load current prod config
-            with open(self.prod_config_path, "r") as f:
+            with open(self.prod_config_path) as f:
                 config = yaml.safe_load(f)
 
             # Backup current config
@@ -189,7 +190,7 @@ class ModelRegistry:
 
             return registration
 
-    def rollback_to_previous(self) -> Optional[ModelRegistration]:
+    def rollback_to_previous(self) -> ModelRegistration | None:
         """
         Rollback to previous deployment.
 
@@ -239,7 +240,7 @@ class ModelRegistry:
             logger.info(f"Rolled back to {previous.model_id}")
             return registration
 
-    def get_active_deployment(self) -> Optional[ModelRegistration]:
+    def get_active_deployment(self) -> ModelRegistration | None:
         """Get currently active deployment."""
         registry_data = self._load_registry()
         for dep in registry_data["deployments"]:
@@ -247,7 +248,7 @@ class ModelRegistry:
                 return ModelRegistration.from_dict(dep)
         return None
 
-    def get_deployment_history(self, limit: int = 10) -> List[ModelRegistration]:
+    def get_deployment_history(self, limit: int = 10) -> list[ModelRegistration]:
         """
         Get deployment history (most recent first).
 
@@ -262,15 +263,15 @@ class ModelRegistry:
         deployments.reverse()
         return [ModelRegistration.from_dict(d) for d in deployments]
 
-    def _load_registry(self) -> Dict[str, Any]:
+    def _load_registry(self) -> dict[str, Any]:
         """Load registry from JSON file."""
         if not self.registry_path.exists():
             return {"deployments": [], "rollback_history": []}
 
-        with open(self.registry_path, "r") as f:
+        with open(self.registry_path) as f:
             return json.load(f)
 
-    def _save_registry(self, data: Dict[str, Any]) -> None:
+    def _save_registry(self, data: dict[str, Any]) -> None:
         """Save registry to JSON file (atomic write)."""
         temp_path = self.registry_path.with_suffix(".json.tmp")
         with open(temp_path, "w") as f:

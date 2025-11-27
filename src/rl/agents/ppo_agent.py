@@ -4,22 +4,23 @@ PPO agent wrapper for Stable-Baselines3.
 Provides pre-configured PPO agent for heuristic selection.
 """
 
-from typing import Optional, Dict, Any
+from typing import Any
+
+import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
-import gymnasium as gym
 
 from src.config import get_config
 
 
 def create_ppo_agent(
     env: gym.Env,
-    learning_rate: Optional[float] = None,
-    n_steps: Optional[int] = None,
-    batch_size: Optional[int] = None,
-    n_epochs: Optional[int] = None,
-    gamma: Optional[float] = None,
-    tensorboard_log: Optional[str] = None,
+    learning_rate: float | None = None,
+    n_steps: int | None = None,
+    batch_size: int | None = None,
+    n_epochs: int | None = None,
+    gamma: float | None = None,
+    tensorboard_log: str | None = None,
     verbose: int = 1,
     **kwargs,
 ) -> PPO:
@@ -100,7 +101,7 @@ def create_ppo_agent(
 
 def load_ppo_agent(
     model_path: str,
-    env: Optional[gym.Env] = None,
+    env: gym.Env | None = None,
     device: str = "cpu",
 ) -> PPO:
     """
@@ -127,7 +128,7 @@ def load_ppo_agent(
     return model
 
 
-def get_ppo_config() -> Dict[str, Any]:
+def get_ppo_config() -> dict[str, Any]:
     """Get current PPO configuration from config."""
     config = get_config()
     return {

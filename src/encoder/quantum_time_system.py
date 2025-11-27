@@ -28,9 +28,9 @@ Then quantum indices are:
   (No indices for Sunday 00:00-07:59, 20:00-23:59, etc.)
 """
 
-from dataclasses import dataclass
-from typing import Dict, List, Set, Tuple, Optional, ClassVar
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import ClassVar
 
 
 @dataclass
@@ -70,7 +70,7 @@ class QuantumTimeSystem:
     UNIT_SESSION_DURATION_QUANTA: ClassVar[int] = 1  # One quantum per session
 
     # Day configuration
-    DAY_NAMES: ClassVar[List[str]] = [
+    DAY_NAMES: ClassVar[list[str]] = [
         "Sunday",
         "Monday",
         "Tuesday",
@@ -80,7 +80,7 @@ class QuantumTimeSystem:
         "Saturday",
     ]
 
-    DEFAULT_OPERATING_HOURS: ClassVar[Dict[str, Optional[Tuple[str, str]]]] = {
+    DEFAULT_OPERATING_HOURS: ClassVar[dict[str, tuple[str, str] | None]] = {
         "Sunday": ("10:00", "17:00"),  # Closed by default
         "Monday": ("10:00", "17:00"),
         "Tuesday": ("10:00", "17:00"),
@@ -206,7 +206,7 @@ class QuantumTimeSystem:
         # Return continuous quantum index
         return quanta_offset + quantum_in_day
 
-    def quanta_to_time(self, quantum: int) -> Tuple[str, str]:
+    def quanta_to_time(self, quantum: int) -> tuple[str, str]:
         """
         Convert CONTINUOUS quantum index back to (day, HH:MM) format.
 
@@ -258,7 +258,7 @@ class QuantumTimeSystem:
         raise ValueError(f"Could not decode quantum {quantum}")
 
     def set_operating_hours(
-        self, day: str, start_time: Optional[str], end_time: Optional[str]
+        self, day: str, start_time: str | None, end_time: str | None
     ) -> None:
         """
 
@@ -290,7 +290,7 @@ class QuantumTimeSystem:
         """Check if a day has operating hours"""
         return self.operating_hours.get(day.capitalize()) is not None
 
-    def encode_schedule(self, schedule_json: Dict) -> Set[int]:
+    def encode_schedule(self, schedule_json: dict) -> set[int]:
         """
         Convert JSON schedule to quantum set
 
@@ -310,7 +310,7 @@ class QuantumTimeSystem:
 
         return occupied_quanta
 
-    def _get_period_quanta(self, day: str, period: Dict) -> range:
+    def _get_period_quanta(self, day: str, period: dict) -> range:
         """
         Get quantum index range for a single period
 
@@ -325,7 +325,7 @@ class QuantumTimeSystem:
         end = self.time_to_quanta(day, period["end"])  # Exclusive
         return range(start, end)
 
-    def decode_schedule(self, quanta_set: Set[int]) -> Dict[str, List[Dict]]:
+    def decode_schedule(self, quanta_set: set[int]) -> dict[str, list[dict]]:
         """
         Converts a set of continuous quantum indices back to readable JSON schedule.
 
@@ -344,7 +344,7 @@ class QuantumTimeSystem:
 
         return {day: periods for day, periods in schedule.items() if periods}
 
-    def _group_quanta_by_day(self, quanta_set: Set[int]) -> Dict[str, List[int]]:
+    def _group_quanta_by_day(self, quanta_set: set[int]) -> dict[str, list[int]]:
         """
         Group continuous quanta by their corresponding days.
 
@@ -372,7 +372,7 @@ class QuantumTimeSystem:
 
         return day_groups
 
-    def _merge_consecutive_quanta(self, quanta_list: List[int]) -> List[Dict]:
+    def _merge_consecutive_quanta(self, quanta_list: list[int]) -> list[dict]:
         """
         Merge consecutive continuous quanta into time periods.
 
@@ -401,7 +401,7 @@ class QuantumTimeSystem:
         periods.append(self._create_period(current_start, current_end))
         return periods
 
-    def get_all_operating_quanta(self) -> Set[int]:
+    def get_all_operating_quanta(self) -> set[int]:
         """
         Get all quantum time slots during operating hours across all days.
 
@@ -418,7 +418,7 @@ class QuantumTimeSystem:
 
         return all_quanta
 
-    def _create_period(self, start: int, end: int) -> Dict:
+    def _create_period(self, start: int, end: int) -> dict:
         """
         Converts start and end continuous quantum indices into a period dictionary.
 

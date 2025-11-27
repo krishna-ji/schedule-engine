@@ -5,14 +5,13 @@ Records constraint violations during fitness evaluation.
 Integrates with ViolationHeatmap to track hot genes.
 """
 
-from typing import List
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 from src.metrics.violation_heatmap import ViolationHeatmap
 
 
 def record_violations_to_heatmap(
-    individual: List[SessionGene], context: SchedulingContext, heatmap: ViolationHeatmap
+    individual: list[SessionGene], context: SchedulingContext, heatmap: ViolationHeatmap
 ):
     """
     Evaluate individual and record all violations to heatmap.

@@ -27,15 +27,13 @@ Usage:
     individual = largest_degree_first(context)
 """
 
-from typing import List, Dict, Tuple, Set
 import random
 from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import construction_heuristic
-
 
 # ================
 # LARGEST DEGREE FIRST (Schedule most conflicting courses first)
@@ -50,7 +48,7 @@ from src.heuristics.registry import construction_heuristic
     requires_population=False,
     modifies_individual=False,
 )
-def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
+def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most conflicting courses first.
 
@@ -174,7 +172,7 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
     requires_population=False,
     modifies_individual=False,
 )
-def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
+def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most constrained sessions first.
 
@@ -310,7 +308,7 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
     requires_population=False,
     modifies_individual=False,
 )
-def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
+def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule prioritizing courses with higher session frequency.
 
@@ -419,7 +417,7 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
 # ================
 
 
-def _calculate_conflict_degrees(context: SchedulingContext) -> Dict[str, int]:
+def _calculate_conflict_degrees(context: SchedulingContext) -> dict[str, int]:
     """Calculate conflict degree for each course (for largest degree first)."""
     degrees = {}
 
@@ -454,7 +452,7 @@ def _calculate_conflict_degrees(context: SchedulingContext) -> Dict[str, int]:
     return degrees
 
 
-def _calculate_urgency_scores(context: SchedulingContext) -> Dict[str, float]:
+def _calculate_urgency_scores(context: SchedulingContext) -> dict[str, float]:
     """Calculate urgency score for each course (for earliest deadline first)."""
     urgency = {}
 
@@ -483,20 +481,22 @@ def _count_valid_time_slots(
     context: SchedulingContext,
     course,
     time_system: QuantumTimeSystem,
-    assigned_times: Dict,
-    assigned_rooms: Dict,
+    assigned_times: dict,
+    assigned_rooms: dict,
     required_duration: int = None,  # NEW: subsession duration
 ) -> int:
     """
     Count number of valid time slots for a course session.
-    
+
     Args:
         required_duration: Duration in quanta for THIS subsession.
                           If None, uses course.quanta_per_week.
     """
     # Use subsession duration if provided, otherwise full course duration
-    duration = required_duration if required_duration is not None else course.quanta_per_week
-    
+    duration = (
+        required_duration if required_duration is not None else course.quanta_per_week
+    )
+
     valid_count = 0
 
     for time_quantum in context.available_quanta:
@@ -523,20 +523,22 @@ def _find_earliest_valid_time(
     context: SchedulingContext,
     course,
     time_system: QuantumTimeSystem,
-    assigned_times: Dict,
-    assigned_rooms: Dict,
+    assigned_times: dict,
+    assigned_rooms: dict,
     required_duration: int = None,  # NEW: subsession duration
 ) -> int:
     """
     Find earliest valid time slot for a course session.
-    
+
     Args:
         required_duration: Duration in quanta for THIS subsession (not full course).
                           If None, uses course.quanta_per_week.
     """
     # Use subsession duration if provided, otherwise full course duration
-    duration = required_duration if required_duration is not None else course.quanta_per_week
-    
+    duration = (
+        required_duration if required_duration is not None else course.quanta_per_week
+    )
+
     for time_quantum in context.available_quanta:
         # Check if slot is long enough for the subsession
         if time_quantum + duration > max(context.available_quanta):
@@ -562,7 +564,7 @@ def _find_suitable_room(
     context: SchedulingContext,
     course,
     time_quantum: int,
-    assigned_rooms: Dict,
+    assigned_rooms: dict,
 ) -> str:
     """Find suitable room for course session."""
     time_range = range(time_quantum, time_quantum + course.quanta_per_week)
@@ -587,7 +589,7 @@ def _select_qualified_instructor(
     context: SchedulingContext,
     course,
     time_quantum: int,
-    assigned_times: Dict,
+    assigned_times: dict,
 ) -> str:
     """Select qualified instructor for course session."""
     time_range = range(time_quantum, time_quantum + course.quanta_per_week)

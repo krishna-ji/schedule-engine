@@ -3,7 +3,6 @@ Room entity model for the timetabling system.
 Represents a room with its capacity, type, and availability.
 """
 
-from typing import Set
 from dataclasses import dataclass
 
 
@@ -24,7 +23,7 @@ class Room:
     name: str
     capacity: int
     room_features: str
-    available_quanta: Set[int]
+    available_quanta: set[int]
 
     def __post_init__(self):
         """Validate room data after initialization."""

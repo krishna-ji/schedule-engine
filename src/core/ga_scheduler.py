@@ -5,43 +5,43 @@ Encapsulates NSGA-II genetic algorithm execution for course scheduling.
 Extracted from monolithic main.py for better testability and separation of concerns.
 """
 
-from typing import List, Dict, Optional
-from dataclasses import dataclass, field
-from pathlib import Path
-from deap import base, tools
 import random
 import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
 import numpy as np
+from deap import base, tools
+from rich.live import Live
 from rich.progress import (
-    Progress,
-    SpinnerColumn,
     BarColumn,
+    Progress,
+    ProgressColumn,
+    SpinnerColumn,
+    Task,
     TextColumn,
     TimeElapsedColumn,
-    ProgressColumn,
-    Task,
 )
 from rich.table import Table
-from rich.live import Live
 from rich.text import Text
 
-# from concurrent.futures import ThreadPoolExecutor  # Removed: GIL limits CPU parallelism
-
-from src.ga.population import generate_course_group_aware_population
-from src.ga.operators.crossover import crossover_course_group_aware
-from src.ga.operators.mutation import mutate_individual
-from src.ga.evaluator.fitness import evaluate
 from src.config import get_config
-from src.ga.evaluator.detailed_fitness import evaluate_detailed
 from src.constraints.registry import (
     get_enabled_hard_constraints,
     get_enabled_soft_constraints,
 )
-from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
-from src.utils.console_service import get_console
+from src.ga.evaluator.detailed_fitness import evaluate_detailed
+from src.ga.evaluator.fitness import evaluate
+from src.ga.operators.crossover import crossover_course_group_aware
+from src.ga.operators.mutation import mutate_individual
+
+# from concurrent.futures import ThreadPoolExecutor  # Removed: GIL limits CPU parallelism
+from src.ga.population import generate_course_group_aware_population
 from src.heuristics.parallel_executor import get_parallel_executor
 from src.heuristics.registry import get_heuristic_statistics_template
+from src.metrics.diversity import average_pairwise_diversity
+from src.utils.console_service import get_console
 from src.utils.parallel_worker import get_worker_context
 from src.utils.performance_profiler import get_profiler
 from src.utils.structured_logger import StructuredLogger
@@ -233,7 +233,7 @@ class GAConfig:
     generations: int
     crossover_prob: float
     mutation_prob: float
-    repair_config: Dict = field(default_factory=dict)
+    repair_config: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -256,25 +256,25 @@ class GAMetrics:
         feasibility_rate: Percentage of feasible solutions per generation
     """
 
-    hard_violations: List[float] = field(default_factory=list)
-    soft_penalties: List[float] = field(default_factory=list)
-    diversity: List[float] = field(default_factory=list)
-    detailed_hard: Dict[str, List[float]] = field(default_factory=dict)
-    detailed_soft: Dict[str, List[float]] = field(default_factory=dict)
-    repair_stats: List[Dict] = field(default_factory=list)
+    hard_violations: list[float] = field(default_factory=list)
+    soft_penalties: list[float] = field(default_factory=list)
+    diversity: list[float] = field(default_factory=list)
+    detailed_hard: dict[str, list[float]] = field(default_factory=dict)
+    detailed_soft: dict[str, list[float]] = field(default_factory=dict)
+    repair_stats: list[dict] = field(default_factory=list)
 
     # Phase 1: Essential metrics
-    hypervolume: List[float] = field(default_factory=list)
-    spacing: List[float] = field(default_factory=list)
-    feasibility_rate: List[float] = field(default_factory=list)
-    pareto_front_size: List[int] = field(default_factory=list)
+    hypervolume: list[float] = field(default_factory=list)
+    spacing: list[float] = field(default_factory=list)
+    feasibility_rate: list[float] = field(default_factory=list)
+    pareto_front_size: list[int] = field(default_factory=list)
 
     # Phase 2: Advanced metrics
-    igd: List[float] = field(default_factory=list)
-    spread: List[float] = field(default_factory=list)
+    igd: list[float] = field(default_factory=list)
+    spread: list[float] = field(default_factory=list)
 
     # Reference front for IGD calculation (set once, used throughout)
-    reference_front: List = field(default_factory=list)
+    reference_front: list = field(default_factory=list)
 
 
 class GAScheduler:
@@ -311,12 +311,12 @@ class GAScheduler:
         self,
         config: GAConfig,
         context: SchedulingContext,
-        hard_constraint_names: List[str],
-        soft_constraint_names: List[str],
+        hard_constraint_names: list[str],
+        soft_constraint_names: list[str],
         pool=None,  # NEW: Optional multiprocessing Pool
         logger=None,  # NEW: Optional GALogger for runtime logging
         constraint_logger=None,  # NEW: Optional ConstraintLogger for detailed constraint logging
-        seed: Optional[int] = None,  # NEW: Random seed for worker initialization
+        seed: int | None = None,  # NEW: Random seed for worker initialization
     ):
         """
         Initialize GA scheduler with adaptive repair tracking.
@@ -527,11 +527,11 @@ class GAScheduler:
 
         try:
             # Import RL components (lazy import to avoid dependency issues)
-            from src.rl.gym_env.state_encoder import StateEncoder
-            from src.rl.gym_env.action_space import ActionMapper
-            from src.rl.hybrid.hybrid_controller import HybridController
-            from src.rl.deployment.model_loader import ModelLoader
             from src.rl.deployment.inference import RLInference
+            from src.rl.deployment.model_loader import ModelLoader
+            from src.rl.gym_env.action_space import ActionMapper
+            from src.rl.gym_env.state_encoder import StateEncoder
+            from src.rl.hybrid.hybrid_controller import HybridController
 
             console.print("[cyan]Initializing RL Components...[/cyan]")
 
@@ -609,7 +609,7 @@ class GAScheduler:
         except FileNotFoundError as e:
             console.print(f"[yellow]RL model not found: {e}[/yellow]")
             console.print(
-                f"[dim]   Train model first: python src/rl/training/train_script.py[/dim]"
+                "[dim]   Train model first: python src/rl/training/train_script.py[/dim]"
             )
             return False
         except Exception as e:
@@ -774,9 +774,11 @@ class GAScheduler:
         Args:
             gen: Current generation number
         """
-        from src.heuristics import get_enabled_heuristics
-        from deap import tools
         import time
+
+        from deap import tools
+
+        from src.heuristics import get_enabled_heuristics
 
         # Check if any heuristics are enabled
         if not self.heuristic_tracker.heuristic_order:
@@ -833,9 +835,11 @@ class GAScheduler:
             return
 
         # Select target individual(s)
-        if heuristic_meta.requires_population:
-            target_size = min(4, len(self.population))
-        elif heuristic_meta.modifies_individual and len(self.population) > 1:
+        if (
+            heuristic_meta.requires_population
+            or heuristic_meta.modifies_individual
+            and len(self.population) > 1
+        ):
             target_size = min(4, len(self.population))
         else:
             target_size = 1
@@ -1502,7 +1506,7 @@ class GAScheduler:
                     or abs(computed_sc - fitness_sc) > 0.01
                 ):
                     console.print(
-                        f"[bold red]WARNING: Fitness mismatch detected![/bold red]"
+                        "[bold red]WARNING: Fitness mismatch detected![/bold red]"
                     )
                     console.print(
                         f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc-computed_hc):.2f})"
@@ -2326,17 +2330,17 @@ class GAScheduler:
             return
 
         # Import new metrics modules
+        from src.metrics.convergence import calculate_constraint_satisfaction_rate
         from src.metrics.hypervolume import (
             calculate_hypervolume,
             get_hypervolume_reference_point,
         )
         from src.metrics.pareto_metrics import (
-            calculate_spacing,
             calculate_inverted_generational_distance,
+            calculate_spacing,
             calculate_spread,
             get_pareto_front_size,
         )
-        from src.metrics.convergence import calculate_constraint_satisfaction_rate
 
         # Determine if this is a tracked generation for expensive metrics
         metrics_config = get_config().metrics
@@ -2556,7 +2560,7 @@ class GAScheduler:
         #     self._log_generation_details(gen, best, hard_details, soft_details)
 
     def _log_generation_details(
-        self, gen: int, best, hard_details: Dict, soft_details: Dict
+        self, gen: int, best, hard_details: dict, soft_details: dict
     ):
         """Print detailed constraint breakdown."""
         console.print(
@@ -2612,7 +2616,7 @@ class GAScheduler:
                 if value > 0:
                     console.print(f"      • {name}: {value:.2f}")
 
-    def _accumulate_repair_stats(self, agg: Dict, stats: Dict) -> None:
+    def _accumulate_repair_stats(self, agg: dict, stats: dict) -> None:
         """
         Accumulate repair stats from a single repair call into generation totals.
 

@@ -3,7 +3,6 @@ Course entity model for the timetabling system.
 Represents a course with its attributes and requirements.
 """
 
-from typing import List, Set
 from dataclasses import dataclass
 
 
@@ -26,8 +25,8 @@ class Course:
     name: str
     quanta_per_week: int
     required_room_features: str
-    enrolled_group_ids: List[str]
-    qualified_instructor_ids: List[str]
+    enrolled_group_ids: list[str]
+    qualified_instructor_ids: list[str]
     course_type: str = "theory"  # Default to theory
     L: int = 0  # Lecture hours (for theory type)
     T: int = 0  # Tutorial hours (for theory type)
@@ -50,6 +49,6 @@ class Course:
         """Check if a group is enrolled in this course."""
         return group_id in self.enrolled_group_ids
 
-    def get_enrolled_groups(self) -> Set[str]:
+    def get_enrolled_groups(self) -> set[str]:
         """Get set of enrolled group IDs."""
         return set(self.enrolled_group_ids)

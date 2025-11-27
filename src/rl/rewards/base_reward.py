@@ -5,7 +5,7 @@ All reward calculators implement this interface for consistent usage.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+
 from src.core.types import Individual
 
 
@@ -29,8 +29,8 @@ class BaseRewardCalculator(ABC):
     @abstractmethod
     def calculate(
         self,
-        prev_population: List[Individual],
-        current_population: List[Individual],
+        prev_population: list[Individual],
+        current_population: list[Individual],
         action_cost: float = 0.0,
     ) -> float:
         """
@@ -47,8 +47,8 @@ class BaseRewardCalculator(ABC):
         pass
 
     def get_fitness_values(
-        self, population: List[Individual]
-    ) -> List[Tuple[float, float]]:
+        self, population: list[Individual]
+    ) -> list[tuple[float, float]]:
         """
         Extract fitness values from population.
 
@@ -60,7 +60,7 @@ class BaseRewardCalculator(ABC):
         """
         return [ind.fitness.values for ind in population]
 
-    def get_best_fitness(self, population: List[Individual]) -> Tuple[float, float]:
+    def get_best_fitness(self, population: list[Individual]) -> tuple[float, float]:
         """
         Get best fitness in population (lowest violations).
 
@@ -78,7 +78,7 @@ class BaseRewardCalculator(ABC):
         best = min(fitness_values, key=lambda x: (x[0], x[1]))
         return best
 
-    def get_avg_fitness(self, population: List[Individual]) -> Tuple[float, float]:
+    def get_avg_fitness(self, population: list[Individual]) -> tuple[float, float]:
         """
         Get average fitness in population.
 

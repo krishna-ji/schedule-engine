@@ -1,25 +1,62 @@
 {
+    // ==================
+    // EDITOR SETTINGS
+    // ==================
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll": "explicit"
+    },
+    "editor.rulers": [88],
+    
+    // ==================
+    // LANGUAGE-SPECIFIC FORMATTING
+    // ==================
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
-        "editor.formatOnSave": true
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports.ruff": "explicit",
+            "source.fixAll.ruff": "explicit"
+        }
     },
-    "editor.tokenColorCustomizations": {
-        "textMateRules": [
-            {
-                "scope": "docstring.heading.placeholder",
-                "settings": {
-                    "fontStyle": "bold underline",
-                    "foreground": "#569cd6"
-                }
-            }
-        ]
+    "[yaml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2
     },
-    "python.formatting.provider": "black",
+    
+    // ==================
+    // PYTHON CONFIGURATION
+    // ==================
     "python.terminal.activateEnvironment": true,
     "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.analysis.extraPaths": ["./src"],
+    "python.analysis.typeCheckingMode": "off",
+    
+    // Black formatter settings
+    "black-formatter.args": [
+        "--line-length=88",
+        "--preview"
+    ],
+    
+    // Ruff linter settings
+    "ruff.enable": true,
+    "ruff.lint.enable": true,
+    "ruff.organizeImports": true,
+    "ruff.fixAll": true,
+    "ruff.lint.args": [],
+    
+    // MyPy type checker
+    "mypy-type-checker.args": [
+        "--python-version=3.12"
+    ],
+    
+    // ==================
+    // FILE EXCLUSIONS
+    // ==================
     "files.exclude": {
         "**/.ipynb_checkpoints": true,
         "__pycache__": true,
@@ -30,16 +67,17 @@
         "**/*.db": true,
         "**/*.sqlite3": true,
         ".pytest_cache/": true,
-        // "logs/": true,
-        ".data": true,
-        // "**/*.md": true,
-        // "docs/": true,
-        // "data/bin/": true,
+        ".data": true
     },
-    "python.analysis.extraPaths": [
-        "./src"
-    ],
+    
+    // ==================
+    // TERMINAL SETTINGS
+    // ==================
     "terminal.integrated.defaultProfile.windows": "PowerShell",
+    
+    // ==================
+    // COPILOT SETTINGS
+    // ==================
     "github.copilot.chat.commitMessageGeneration.instructions": [
         {
             "file": ".github/copilot-instructions.md"
@@ -47,5 +85,21 @@
         {
             "text": "Commit messages should use hybrid academic–software format. Include experiment context, dataset version, or model scope when relevant."
         }
-    ]
+    ],
+    
+    // ==================
+    // TOKEN CUSTOMIZATION
+    // ==================
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": "docstring.heading.placeholder",
+                "settings": {
+                    "fontStyle": "bold underline",
+                    "foreground": "#569cd6"
+                }
+            }
+        ]
+    }
+}
 }

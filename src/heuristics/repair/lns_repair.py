@@ -5,20 +5,12 @@ Large Neighborhood Search repair operator integrated as a heuristic.
 This operator uses conflict detection and subproblem solving for repair.
 """
 
-from typing import List, Optional, Dict
-
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.entities.course import Course
-from src.entities.instructor import Instructor
-from src.entities.group import Group
-from src.entities.room import Room
+from src.ga.sessiongene import SessionGene
+from src.heuristics.registry import repair_heuristic
 
 # Import the original LNS repair logic
 from src.lns.lns_operator import lns_igls_repair
-
-
-from src.heuristics.registry import repair_heuristic
 
 
 @repair_heuristic(
@@ -30,7 +22,7 @@ from src.heuristics.registry import repair_heuristic
     modifies_individual=True,
 )
 def lns_repair(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_subproblem_size: int = 20,
     min_subproblem_size: int = 4,

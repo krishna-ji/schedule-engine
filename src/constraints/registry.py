@@ -26,8 +26,9 @@ Benefits:
     - Supports dynamic config generation
 """
 
-from typing import Callable, Dict, Optional, List, Any
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -58,8 +59,8 @@ class ConstraintMetadata:
 # GLOBAL REGISTRIES
 # ================
 
-_HARD_CONSTRAINTS: Dict[str, ConstraintMetadata] = {}
-_SOFT_CONSTRAINTS: Dict[str, ConstraintMetadata] = {}
+_HARD_CONSTRAINTS: dict[str, ConstraintMetadata] = {}
+_SOFT_CONSTRAINTS: dict[str, ConstraintMetadata] = {}
 
 
 # ================
@@ -184,7 +185,7 @@ def soft_constraint(
 # ================
 
 
-def get_all_hard_constraints() -> Dict[str, ConstraintMetadata]:
+def get_all_hard_constraints() -> dict[str, ConstraintMetadata]:
     """
     Get all registered hard constraints with their metadata.
 
@@ -194,7 +195,7 @@ def get_all_hard_constraints() -> Dict[str, ConstraintMetadata]:
     return _HARD_CONSTRAINTS.copy()
 
 
-def get_all_soft_constraints() -> Dict[str, ConstraintMetadata]:
+def get_all_soft_constraints() -> dict[str, ConstraintMetadata]:
     """
     Get all registered soft constraints with their metadata.
 
@@ -204,7 +205,7 @@ def get_all_soft_constraints() -> Dict[str, ConstraintMetadata]:
     return _SOFT_CONSTRAINTS.copy()
 
 
-def get_constraint_metadata(name: str) -> Optional[ConstraintMetadata]:
+def get_constraint_metadata(name: str) -> ConstraintMetadata | None:
     """
     Get constraint metadata by name (searches both hard and soft).
 
@@ -217,7 +218,7 @@ def get_constraint_metadata(name: str) -> Optional[ConstraintMetadata]:
     return _HARD_CONSTRAINTS.get(name) or _SOFT_CONSTRAINTS.get(name)
 
 
-def get_hard_constraint_function(name: str) -> Optional[Callable]:
+def get_hard_constraint_function(name: str) -> Callable | None:
     """
     Get hard constraint evaluation function by name.
 
@@ -231,7 +232,7 @@ def get_hard_constraint_function(name: str) -> Optional[Callable]:
     return metadata.function if metadata else None
 
 
-def get_soft_constraint_function(name: str) -> Optional[Callable]:
+def get_soft_constraint_function(name: str) -> Callable | None:
     """
     Get soft constraint evaluation function by name.
 
@@ -273,7 +274,7 @@ def get_constraint_description(name: str) -> str:
     return metadata.description if metadata else "Unknown constraint"
 
 
-def get_all_constraint_names() -> Dict[str, List[str]]:
+def get_all_constraint_names() -> dict[str, list[str]]:
     """
     Get all constraint names organized by type.
 
@@ -291,7 +292,7 @@ def get_all_constraint_names() -> Dict[str, List[str]]:
 # ================
 
 
-def get_constraints_needing_courses() -> List[str]:
+def get_constraints_needing_courses() -> list[str]:
     """
     Get list of all constraint names that need courses parameter.
 
@@ -308,7 +309,7 @@ def get_constraints_needing_courses() -> List[str]:
     return constraints
 
 
-def generate_constraint_config_template() -> Dict[str, Any]:
+def generate_constraint_config_template() -> dict[str, Any]:
     """
     Generate a configuration template from registered constraints.
 
@@ -407,7 +408,7 @@ def get_enabled_soft_constraints():
     return enabled
 
 
-def get_registry_stats() -> Dict[str, Any]:
+def get_registry_stats() -> dict[str, Any]:
     """
     Get statistics about registered constraints.
 

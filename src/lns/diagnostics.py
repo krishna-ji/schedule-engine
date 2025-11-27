@@ -5,15 +5,14 @@ This module provides tools to diagnose why CP-SAT fails (INFEASIBLE) and
 to pre-check subproblem feasibility before invoking expensive solvers.
 """
 
-from typing import List, Dict, Tuple, Set
-from collections import defaultdict
 import logging
+from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.entities.course import Course
-from src.entities.instructor import Instructor
 from src.entities.group import Group
+from src.entities.instructor import Instructor
 from src.entities.room import Room
+from src.ga.sessiongene import SessionGene
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +22,12 @@ class SubproblemDiagnostics:
 
     def __init__(
         self,
-        conflicted_sessions: List[SessionGene],
-        partial_schedule: List[SessionGene],
-        courses: Dict[tuple, Course],
-        instructors: Dict[str, Instructor],
-        groups: Dict[str, Group],
-        rooms: Dict[str, Room],
+        conflicted_sessions: list[SessionGene],
+        partial_schedule: list[SessionGene],
+        courses: dict[tuple, Course],
+        instructors: dict[str, Instructor],
+        groups: dict[str, Group],
+        rooms: dict[str, Room],
     ):
         self.conflicted_sessions = conflicted_sessions
         self.partial_schedule = partial_schedule
@@ -37,7 +36,7 @@ class SubproblemDiagnostics:
         self.groups = groups
         self.rooms = rooms
 
-    def compute_domain_sizes(self) -> Dict[int, Dict[str, int]]:
+    def compute_domain_sizes(self) -> dict[int, dict[str, int]]:
         """Compute domain sizes for each conflicted session.
 
         Returns:
@@ -107,7 +106,9 @@ class SubproblemDiagnostics:
                     suitable_rooms += 1
 
             domain_info[idx] = {
-                "available_quanta": num_available,  # Total available quanta (can be non-contiguous)
+                "available_quanta": (
+                    num_available
+                ),  # Total available quanta (can be non-contiguous)
                 "required_quanta": session_duration,  # Quanta needed for session
                 "room_options": suitable_rooms,
                 "instructor_available": len(instructor_quanta) > 0,
@@ -116,7 +117,7 @@ class SubproblemDiagnostics:
 
         return domain_info
 
-    def pre_check_feasibility(self) -> Tuple[bool, str]:
+    def pre_check_feasibility(self) -> tuple[bool, str]:
         """Run pre-feasibility check before invoking CP-SAT.
 
         Returns:
@@ -210,12 +211,12 @@ class SubproblemDiagnostics:
 
 
 def build_conflict_graph(
-    individual: List[SessionGene],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-) -> Dict[int, Set[int]]:
+    individual: list[SessionGene],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+) -> dict[int, set[int]]:
     """Build conflict graph for the entire schedule.
 
     Nodes: session indices
@@ -274,11 +275,11 @@ def build_conflict_graph(
 
 
 def expand_neighborhood_bfs(
-    initial_indices: List[int],
-    conflict_graph: Dict[int, Set[int]],
+    initial_indices: list[int],
+    conflict_graph: dict[int, set[int]],
     max_size: int,
     hops: int = 1,
-) -> List[int]:
+) -> list[int]:
     """Expand neighborhood using BFS on conflict graph.
 
     Args:

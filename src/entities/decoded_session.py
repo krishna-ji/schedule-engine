@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import List
-from src.entities.instructor import Instructor
+
 from src.entities.group import Group
+from src.entities.instructor import Instructor
 from src.entities.room import Room
 
 
@@ -29,9 +29,9 @@ class CourseSession:
 
     course_id: str
     instructor_id: str
-    group_ids: List[str]
+    group_ids: list[str]
     room_id: str
-    session_quanta: List[int]
+    session_quanta: list[int]
     required_room_features: str
     course_type: str = "theory"
     instructor: Instructor = None

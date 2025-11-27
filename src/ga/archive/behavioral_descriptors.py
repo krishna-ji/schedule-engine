@@ -4,7 +4,6 @@ Behavioral descriptors for archive-based diversity.
 ENHANCEMENT #5: Extract behavioral features from schedules.
 """
 
-from typing import List, Dict
 import numpy as np
 from numpy.typing import NDArray
 
@@ -51,7 +50,7 @@ class BehavioralDescriptors:
         ]
 
     def extract(
-        self, individual: Individual, sessions: List[CourseSession] = None
+        self, individual: Individual, sessions: list[CourseSession] = None
     ) -> NDArray[np.float64]:
         """
         Extract behavioral descriptor from individual.
@@ -86,7 +85,7 @@ class BehavioralDescriptors:
         return features
 
     def _temporal_distribution(
-        self, sessions: List[CourseSession]
+        self, sessions: list[CourseSession]
     ) -> NDArray[np.float64]:
         """Percentage of sessions per day (Mon-Sun)."""
         day_counts = np.zeros(7)
@@ -101,7 +100,7 @@ class BehavioralDescriptors:
         return day_counts / max(total_sessions, 1)
 
     def _time_slot_distribution(
-        self, sessions: List[CourseSession]
+        self, sessions: list[CourseSession]
     ) -> NDArray[np.float64]:
         """Percentage of sessions in morning/afternoon/evening."""
         time_counts = np.zeros(3)  # [morning, afternoon, evening]
@@ -116,22 +115,22 @@ class BehavioralDescriptors:
 
         return time_counts / max(total_sessions, 1)
 
-    def _room_utilization(self, sessions: List[CourseSession]) -> NDArray[np.float64]:
+    def _room_utilization(self, sessions: list[CourseSession]) -> NDArray[np.float64]:
         """Room utilization by type (small/medium/large)."""
         # TODO: Calculate room utilization by capacity
         return np.array([0.5, 0.5, 0.5])
 
-    def _load_balance(self, sessions: List[CourseSession]) -> NDArray[np.float64]:
+    def _load_balance(self, sessions: list[CourseSession]) -> NDArray[np.float64]:
         """Standard deviation of load (instructor/student)."""
         # TODO: Calculate load distribution
         return np.array([0.0, 0.0])
 
-    def _session_compactness(self, sessions: List[CourseSession]) -> float:
+    def _session_compactness(self, sessions: list[CourseSession]) -> float:
         """Average compactness of schedules."""
         # TODO: Calculate avg gap between sessions per group
         return 0.5
 
-    def _cross_day_spreading(self, sessions: List[CourseSession]) -> float:
+    def _cross_day_spreading(self, sessions: list[CourseSession]) -> float:
         """How spread out sessions are across days."""
         # TODO: Calculate Shannon entropy of day distribution
         return 0.5

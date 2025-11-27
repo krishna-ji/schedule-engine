@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Set
+from collections.abc import Iterable
 
 from src.core.types import SchedulingContext
 from src.ga.sessiongene import SessionGene
@@ -48,9 +48,9 @@ def get_room_feature(room) -> str:
     """Normalize room type/feature attribute used by heuristics."""
 
     if hasattr(room, "room_type"):
-        return getattr(room, "room_type")
+        return room.room_type
     if hasattr(room, "room_features"):
-        return getattr(room, "room_features")
+        return room.room_features
     return "lecture"
 
 
@@ -58,7 +58,7 @@ def get_course_room_requirement(course) -> str:
     """Return the normalized room requirement string for a course."""
 
     if hasattr(course, "required_room_features"):
-        return getattr(course, "required_room_features")
+        return course.required_room_features
     return getattr(course, "required_room_type", "lecture")
 
 
@@ -94,7 +94,7 @@ def is_instructor_available(
 def move_gene_to_time_if_valid(
     gene: SessionGene,
     new_start: int,
-    valid_quanta: Set[int],
+    valid_quanta: set[int],
 ) -> bool:
     """Shift a gene to a new start time only if all quanta remain valid."""
 

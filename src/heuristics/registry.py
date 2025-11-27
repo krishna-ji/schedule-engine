@@ -26,7 +26,7 @@ Usage:
         return individual
 """
 
-from typing import Callable, Dict, Optional, List
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 
@@ -72,21 +72,21 @@ class HeuristicMetadata:
 # GLOBAL HEURISTIC REGISTRIES (by category)
 # ================
 
-_CONSTRUCTION_HEURISTICS: Dict[str, HeuristicMetadata] = {}
-_PERTURBATION_HEURISTICS: Dict[str, HeuristicMetadata] = {}
-_IMPROVEMENT_HEURISTICS: Dict[str, HeuristicMetadata] = {}
-_DIVERSITY_HEURISTICS: Dict[str, HeuristicMetadata] = {}
-_META_HEURISTICS: Dict[str, HeuristicMetadata] = {}
-_REPAIR_HEURISTICS: Dict[str, HeuristicMetadata] = {}
+_CONSTRUCTION_HEURISTICS: dict[str, HeuristicMetadata] = {}
+_PERTURBATION_HEURISTICS: dict[str, HeuristicMetadata] = {}
+_IMPROVEMENT_HEURISTICS: dict[str, HeuristicMetadata] = {}
+_DIVERSITY_HEURISTICS: dict[str, HeuristicMetadata] = {}
+_META_HEURISTICS: dict[str, HeuristicMetadata] = {}
+_REPAIR_HEURISTICS: dict[str, HeuristicMetadata] = {}
 
 # Track global registration metadata to guard against duplicates
-_GLOBAL_HEURISTIC_NAMES: Dict[str, HeuristicCategory] = {}
-_CATEGORY_PRIORITIES: Dict[HeuristicCategory, Dict[int, str]] = {
+_GLOBAL_HEURISTIC_NAMES: dict[str, HeuristicCategory] = {}
+_CATEGORY_PRIORITIES: dict[HeuristicCategory, dict[int, str]] = {
     category: {} for category in HeuristicCategory
 }
 
 
-def _get_registry(category: HeuristicCategory) -> Dict[str, HeuristicMetadata]:
+def _get_registry(category: HeuristicCategory) -> dict[str, HeuristicMetadata]:
     """Get the registry for a specific category."""
     registries = {
         HeuristicCategory.CONSTRUCTION: _CONSTRUCTION_HEURISTICS,
@@ -186,7 +186,7 @@ repair_heuristic = _heuristic_decorator(HeuristicCategory.REPAIR)
 # ================
 
 
-def get_all_heuristics() -> Dict[str, HeuristicMetadata]:
+def get_all_heuristics() -> dict[str, HeuristicMetadata]:
     """Get all registered heuristics across all categories."""
     all_heuristics = {}
     for category in HeuristicCategory:
@@ -197,50 +197,50 @@ def get_all_heuristics() -> Dict[str, HeuristicMetadata]:
 
 def get_heuristics_by_category(
     category: HeuristicCategory,
-) -> Dict[str, HeuristicMetadata]:
+) -> dict[str, HeuristicMetadata]:
     """Get all heuristics in a specific category."""
     return _get_registry(category).copy()
 
 
-def get_construction_heuristics() -> Dict[str, HeuristicMetadata]:
+def get_construction_heuristics() -> dict[str, HeuristicMetadata]:
     """Get all construction heuristics."""
     return get_heuristics_by_category(HeuristicCategory.CONSTRUCTION)
 
 
-def get_perturbation_heuristics() -> Dict[str, HeuristicMetadata]:
+def get_perturbation_heuristics() -> dict[str, HeuristicMetadata]:
     """Get all perturbation heuristics."""
     return get_heuristics_by_category(HeuristicCategory.PERTURBATION)
 
 
-def get_improvement_heuristics() -> Dict[str, HeuristicMetadata]:
+def get_improvement_heuristics() -> dict[str, HeuristicMetadata]:
     """Get all improvement heuristics."""
     return get_heuristics_by_category(HeuristicCategory.IMPROVEMENT)
 
 
-def get_diversity_heuristics() -> Dict[str, HeuristicMetadata]:
+def get_diversity_heuristics() -> dict[str, HeuristicMetadata]:
     """Get all diversity heuristics."""
     return get_heuristics_by_category(HeuristicCategory.DIVERSITY)
 
 
-def get_meta_heuristics() -> Dict[str, HeuristicMetadata]:
+def get_meta_heuristics() -> dict[str, HeuristicMetadata]:
     """Get all meta-heuristics."""
     return get_heuristics_by_category(HeuristicCategory.META)
 
 
-def get_repair_heuristics() -> Dict[str, HeuristicMetadata]:
+def get_repair_heuristics() -> dict[str, HeuristicMetadata]:
     """Get all repair heuristics."""
     return get_heuristics_by_category(HeuristicCategory.REPAIR)
 
 
-def get_heuristic_by_name(name: str) -> Optional[HeuristicMetadata]:
+def get_heuristic_by_name(name: str) -> HeuristicMetadata | None:
     """Get heuristic metadata by name (searches all categories)."""
     all_heuristics = get_all_heuristics()
     return all_heuristics.get(name)
 
 
 def get_enabled_heuristics(
-    category: Optional[HeuristicCategory] = None,
-) -> Dict[str, HeuristicMetadata]:
+    category: HeuristicCategory | None = None,
+) -> dict[str, HeuristicMetadata]:
     """
     Get enabled heuristics from config, sorted by priority.
 
@@ -344,7 +344,7 @@ def list_all_heuristics() -> None:
 # ================
 
 
-def get_heuristic_statistics_template() -> Dict[str, int]:
+def get_heuristic_statistics_template() -> dict[str, int]:
     """Returns template for heuristic statistics tracking."""
     all_heuristics = get_all_heuristics()
 

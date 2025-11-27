@@ -4,7 +4,6 @@ Probability policy for adaptive operator probabilities.
 ENHANCEMENT #3: RL learns to tune crossover/mutation probabilities dynamically.
 """
 
-from typing import Tuple, Dict
 import numpy as np
 from numpy.typing import NDArray
 
@@ -27,7 +26,7 @@ class ProbabilityPolicy:
     - Converged: Reduce both to avoid disruption
     """
 
-    def __init__(self, mode: str = "discrete", config: Dict = None):
+    def __init__(self, mode: str = "discrete", config: dict = None):
         """
         Initialize probability policy.
 
@@ -60,7 +59,7 @@ class ProbabilityPolicy:
 
     def action_to_probabilities(
         self, action: int | NDArray[np.float32]
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Convert RL action to (cxpb, mutpb) probabilities.
 
@@ -92,7 +91,7 @@ class ProbabilityPolicy:
 
         return (cxpb, mutpb)
 
-    def get_current_probabilities(self) -> Tuple[float, float]:
+    def get_current_probabilities(self) -> tuple[float, float]:
         """
         Get current operator probabilities.
 
@@ -103,7 +102,7 @@ class ProbabilityPolicy:
 
     def get_exploration_bonus(
         self, diversity: float, stagnation: int
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Calculate exploration bonus for probabilities.
 
@@ -132,7 +131,7 @@ class ProbabilityPolicy:
 
         return (cxpb_bonus, mutpb_bonus)
 
-    def apply_constraints(self, cxpb: float, mutpb: float) -> Tuple[float, float]:
+    def apply_constraints(self, cxpb: float, mutpb: float) -> tuple[float, float]:
         """
         Apply constraints to probabilities.
 
@@ -184,7 +183,7 @@ class ProbabilitySchedule:
 
     def get_probabilities(
         self, generation: int, max_generations: int
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Get probabilities based on generation progress.
 

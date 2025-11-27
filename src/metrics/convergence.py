@@ -15,14 +15,13 @@ These metrics help:
 - Assess reliability across multiple runs
 """
 
-from typing import List, Tuple
 import numpy as np
 from scipy import stats
 
 
 def calculate_convergence_rate(
-    metric_history: List[float], window: int = 10
-) -> List[float]:
+    metric_history: list[float], window: int = 10
+) -> list[float]:
     """
     Calculate convergence rate (improvement per generation) over sliding window.
 
@@ -60,7 +59,7 @@ def calculate_convergence_rate(
     return rates
 
 
-def calculate_constraint_satisfaction_rate(population: List) -> float:
+def calculate_constraint_satisfaction_rate(population: list) -> float:
     """
     Calculate percentage of population with zero hard constraint violations.
 
@@ -92,8 +91,8 @@ def calculate_constraint_satisfaction_rate(population: List) -> float:
 
 
 def detect_stagnation(
-    metric_history: List[float], window: int = 10, threshold: float = 0.01
-) -> Tuple[bool, int]:
+    metric_history: list[float], window: int = 10, threshold: float = 0.01
+) -> tuple[bool, int]:
     """
     Detect if optimization has stagnated (no significant improvement).
 
@@ -165,7 +164,7 @@ def calculate_improvement_percentage(initial_value: float, final_value: float) -
 
 
 def calculate_run_statistics(
-    runs_data: List[List[float]], generation: int = -1
+    runs_data: list[list[float]], generation: int = -1
 ) -> dict:
     """
     Calculate statistical measures across multiple independent runs.
@@ -243,7 +242,7 @@ def calculate_run_statistics(
 
 
 def calculate_success_rate(
-    runs_data: List[List[float]], threshold: float = 0.0
+    runs_data: list[list[float]], threshold: float = 0.0
 ) -> float:
     """
     Calculate percentage of runs that found solutions below threshold.
@@ -276,7 +275,7 @@ def calculate_success_rate(
 
 
 def compare_algorithm_performance(
-    algo1_data: List[List[float]], algo2_data: List[List[float]], generation: int = -1
+    algo1_data: list[list[float]], algo2_data: list[list[float]], generation: int = -1
 ) -> dict:
     """
     Statistically compare two algorithm configurations.
@@ -376,7 +375,7 @@ def _interpret_effect_size(cohens_d: float) -> str:
 
 
 def calculate_generation_to_target(
-    metric_history: List[float], target_value: float
+    metric_history: list[float], target_value: float
 ) -> int:
     """
     Calculate how many generations needed to reach target metric value.
@@ -401,7 +400,7 @@ def calculate_generation_to_target(
     return -1
 
 
-def calculate_area_under_curve(metric_history: List[float]) -> float:
+def calculate_area_under_curve(metric_history: list[float]) -> float:
     """
     Calculate area under convergence curve.
 

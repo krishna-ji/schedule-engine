@@ -5,16 +5,16 @@ Generates detailed human-readable reports of all constraint violations
 in a schedule. Outputs to violations.log in the output directory.
 """
 
-from typing import List, Dict
 from collections import defaultdict
-from src.entities.decoded_session import CourseSession
-from src.entities.course import Course
+
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.entities.course import Course
+from src.entities.decoded_session import CourseSession
 
 
 def generate_violation_report(
-    sessions: List[CourseSession],
-    course_map: Dict[str, Course],
+    sessions: list[CourseSession],
+    course_map: dict[str, Course],
     qts: QuantumTimeSystem,
     output_path: str,
 ) -> None:
@@ -114,8 +114,8 @@ def generate_violation_report(
 
 
 def _check_group_overlaps(
-    sessions: List[CourseSession], qts: QuantumTimeSystem
-) -> List[Dict]:
+    sessions: list[CourseSession], qts: QuantumTimeSystem
+) -> list[dict]:
     """Check for groups scheduled at the same time."""
     violations = []
     group_time_map = defaultdict(list)
@@ -150,8 +150,8 @@ def _check_group_overlaps(
 
 
 def _check_instructor_conflicts(
-    sessions: List[CourseSession], qts: QuantumTimeSystem
-) -> List[Dict]:
+    sessions: list[CourseSession], qts: QuantumTimeSystem
+) -> list[dict]:
     """Check for instructors scheduled at the same time."""
     violations = []
     instructor_time_map = defaultdict(list)
@@ -185,8 +185,8 @@ def _check_instructor_conflicts(
 
 
 def _check_room_conflicts(
-    sessions: List[CourseSession], qts: QuantumTimeSystem
-) -> List[Dict]:
+    sessions: list[CourseSession], qts: QuantumTimeSystem
+) -> list[dict]:
     """Check for rooms scheduled at the same time."""
     violations = []
     room_time_map = defaultdict(list)
@@ -220,8 +220,8 @@ def _check_room_conflicts(
 
 
 def _check_instructor_qualifications(
-    sessions: List[CourseSession], course_map: Dict[tuple, Course]
-) -> List[Dict]:
+    sessions: list[CourseSession], course_map: dict[tuple, Course]
+) -> list[dict]:
     """Check for unqualified instructors."""
     violations = []
 
@@ -249,7 +249,7 @@ def _check_instructor_qualifications(
     return violations
 
 
-def _check_room_type_mismatches(sessions: List[CourseSession]) -> List[Dict]:
+def _check_room_type_mismatches(sessions: list[CourseSession]) -> list[dict]:
     """Check for room type mismatches."""
     violations = []
 
@@ -282,8 +282,8 @@ def _check_room_type_mismatches(sessions: List[CourseSession]) -> List[Dict]:
 
 
 def _check_availability_violations(
-    sessions: List[CourseSession], qts: QuantumTimeSystem
-) -> List[Dict]:
+    sessions: list[CourseSession], qts: QuantumTimeSystem
+) -> list[dict]:
     """Check for availability violations."""
     violations = []
 
@@ -349,8 +349,8 @@ def _check_availability_violations(
 
 
 def _check_incomplete_schedules(
-    sessions: List[CourseSession], course_map: Dict[str, Course]
-) -> List[Dict]:
+    sessions: list[CourseSession], course_map: dict[str, Course]
+) -> list[dict]:
     """Check for incomplete or over-scheduled courses."""
     violations = []
     course_group_quanta = defaultdict(int)
@@ -389,7 +389,7 @@ def _check_incomplete_schedules(
 
 
 # Formatting functions
-def _format_group_violations(violations: List[Dict]) -> List[str]:
+def _format_group_violations(violations: list[dict]) -> list[str]:
     """Format group overlap violations."""
     lines = []
     lines.append("-" * 80)
@@ -415,7 +415,7 @@ def _format_group_violations(violations: List[Dict]) -> List[str]:
     return lines
 
 
-def _format_instructor_violations(violations: List[Dict]) -> List[str]:
+def _format_instructor_violations(violations: list[dict]) -> list[str]:
     """Format instructor conflict violations."""
     lines = []
     lines.append("-" * 80)
@@ -441,7 +441,7 @@ def _format_instructor_violations(violations: List[Dict]) -> List[str]:
     return lines
 
 
-def _format_room_violations(violations: List[Dict]) -> List[str]:
+def _format_room_violations(violations: list[dict]) -> list[str]:
     """Format room conflict violations."""
     lines = []
     lines.append("-" * 80)
@@ -467,7 +467,7 @@ def _format_room_violations(violations: List[Dict]) -> List[str]:
     return lines
 
 
-def _format_qualification_violations(violations: List[Dict]) -> List[str]:
+def _format_qualification_violations(violations: list[dict]) -> list[str]:
     """Format instructor qualification violations."""
     lines = []
     lines.append("-" * 80)
@@ -485,7 +485,7 @@ def _format_qualification_violations(violations: List[Dict]) -> List[str]:
     return lines
 
 
-def _format_room_type_violations(violations: List[Dict]) -> List[str]:
+def _format_room_type_violations(violations: list[dict]) -> list[str]:
     """Format room type mismatch violations."""
     lines = []
     lines.append("-" * 80)
@@ -505,7 +505,7 @@ def _format_room_type_violations(violations: List[Dict]) -> List[str]:
     return lines
 
 
-def _format_availability_violations(violations: List[Dict]) -> List[str]:
+def _format_availability_violations(violations: list[dict]) -> list[str]:
     """Format availability violations."""
     lines = []
     lines.append("-" * 80)
@@ -533,7 +533,7 @@ def _format_availability_violations(violations: List[Dict]) -> List[str]:
     return lines
 
 
-def _format_schedule_violations(violations: List[Dict]) -> List[str]:
+def _format_schedule_violations(violations: list[dict]) -> list[str]:
     """Format schedule completeness violations."""
     lines = []
     lines.append("-" * 80)

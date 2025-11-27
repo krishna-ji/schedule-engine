@@ -20,7 +20,6 @@ Mathematical Definition:
     solutions S to d-dimensional behavior space.
 """
 
-from typing import Dict, List
 import numpy as np
 from numpy.typing import NDArray
 
@@ -108,7 +107,7 @@ def extract_behavioral_features(
     return np.array(features, dtype=np.float64)
 
 
-def _compute_sessions_per_day(sessions: List) -> List[float]:
+def _compute_sessions_per_day(sessions: list) -> list[float]:
     """
     Compute number of sessions per day of week.
 
@@ -133,8 +132,8 @@ def _compute_sessions_per_day(sessions: List) -> List[float]:
 
 
 def _compute_room_utilization(
-    sessions: List, context: SchedulingContext
-) -> List[float]:
+    sessions: list, context: SchedulingContext
+) -> list[float]:
     """
     Compute room utilization metrics.
 
@@ -146,7 +145,7 @@ def _compute_room_utilization(
     - Lecture hall usage ratio
     - Lab usage ratio
     """
-    room_usage = {room_id: 0 for room_id in context.rooms.keys()}
+    room_usage = dict.fromkeys(context.rooms.keys(), 0)
     room_capacities = []
     group_sizes = []
 
@@ -197,8 +196,8 @@ def _compute_room_utilization(
 
 
 def _compute_instructor_workload(
-    sessions: List, context: SchedulingContext
-) -> List[float]:
+    sessions: list, context: SchedulingContext
+) -> list[float]:
     """
     Compute instructor workload metrics.
 
@@ -208,7 +207,7 @@ def _compute_instructor_workload(
     - Max instructor load
     - Instructor idle time (proportion of instructors not assigned)
     """
-    instructor_loads = {inst_id: 0 for inst_id in context.instructors.keys()}
+    instructor_loads = dict.fromkeys(context.instructors.keys(), 0)
 
     for session in sessions:
         if session.instructor_id in instructor_loads:
@@ -228,8 +227,8 @@ def _compute_instructor_workload(
 
 
 def _compute_course_distribution(
-    sessions: List, context: SchedulingContext
-) -> List[float]:
+    sessions: list, context: SchedulingContext
+) -> list[float]:
     """
     Compute course distribution metrics.
 
@@ -279,7 +278,7 @@ def _compute_course_distribution(
     return [mean_sessions, std_sessions, mean_gap, mean_spread]
 
 
-def _compute_constraint_profile(individual: Individual) -> List[float]:
+def _compute_constraint_profile(individual: Individual) -> list[float]:
     """
     Compute constraint violation profile.
 

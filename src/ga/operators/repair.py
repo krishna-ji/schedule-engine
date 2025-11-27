@@ -45,16 +45,11 @@ Usage:
     print(f"Fixed {stats['total_fixes']} violations")
 """
 
-from typing import List, Dict, Set, Tuple, Optional
-import random
 from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.ga.operators.repair_wrappers import repair_operator
-from src.ga.quanta_converter import quanta_list_to_contiguous
-
+from src.ga.sessiongene import SessionGene
 
 # ================
 # 1. INSTRUCTOR AVAILABILITY REPAIR (Priority 1)
@@ -68,7 +63,7 @@ from src.ga.quanta_converter import quanta_list_to_contiguous
     modifies_length=False,
 )
 def repair_instructor_availability(
-    individual: List[SessionGene], context: SchedulingContext
+    individual: list[SessionGene], context: SchedulingContext
 ) -> int:
     """
     Fix instructor availability violations by shifting genes to valid time slots.
@@ -114,12 +109,12 @@ def repair_instructor_availability(
 
 
 def _find_instructor_available_slot(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     current_gene: SessionGene,
     duration: int,
     instructor,
-    available_quanta: List[int],
-) -> Optional[int]:
+    available_quanta: list[int],
+) -> int | None:
     """
     Find a valid start quantum where instructor is available and no conflicts exist.
 
@@ -186,7 +181,7 @@ def _find_instructor_available_slot(
     modifies_length=False,
 )
 def repair_group_overlaps(
-    individual: List[SessionGene], context: SchedulingContext
+    individual: list[SessionGene], context: SchedulingContext
 ) -> int:
     """
     Resolve time conflicts where same group is scheduled in multiple sessions.
@@ -237,7 +232,7 @@ def repair_group_overlaps(
     modifies_length=False,
 )
 def repair_room_conflicts(
-    individual: List[SessionGene], context: SchedulingContext
+    individual: list[SessionGene], context: SchedulingContext
 ) -> int:
     """Resolve room conflicts by moving sessions or selecting compatible rooms."""
     fixes = 0
@@ -285,7 +280,7 @@ def repair_room_conflicts(
     modifies_length=False,
 )
 def repair_instructor_conflicts(
-    individual: List[SessionGene], context: SchedulingContext
+    individual: list[SessionGene], context: SchedulingContext
 ) -> int:
     """Resolve instructor conflicts by finding conflict-free slots."""
     fixes = 0
@@ -322,7 +317,7 @@ def repair_instructor_conflicts(
     modifies_length=False,
 )
 def repair_instructor_qualifications(
-    individual: List[SessionGene], context: SchedulingContext
+    individual: list[SessionGene], context: SchedulingContext
 ) -> int:
     """Ensure instructors assigned to sessions are properly qualified."""
     fixes = 0
@@ -358,7 +353,7 @@ def repair_instructor_qualifications(
     modifies_length=False,
 )
 def repair_room_type_mismatches(
-    individual: List[SessionGene], context: SchedulingContext
+    individual: list[SessionGene], context: SchedulingContext
 ) -> int:
     """Swap rooms when course type and room features disagree."""
     fixes = 0
@@ -386,10 +381,10 @@ def repair_room_type_mismatches(
 
 
 def _find_conflict_free_slot(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     current_gene: SessionGene,
-    available_quanta: List[int],
-) -> Optional[int]:
+    available_quanta: list[int],
+) -> int | None:
     """Find a time slot with no group/room/instructor conflicts."""
     occupied = _build_occupied_quanta_map(individual, current_gene)
     duration = current_gene.num_quanta
@@ -423,11 +418,11 @@ def _find_conflict_free_slot(
 
 
 def _find_available_slot(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     current_gene: SessionGene,
     duration: int,
-    available_quanta: List[int],
-) -> Optional[int]:
+    available_quanta: list[int],
+) -> int | None:
     """
     Find a valid time slot with specified duration (used by repair_selective).
 
@@ -438,11 +433,11 @@ def _find_available_slot(
 
 
 def _find_available_instructor(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     current_gene: SessionGene,
     context: SchedulingContext,
-    course_key: Tuple[str, str],
-) -> Optional[str]:
+    course_key: tuple[str, str],
+) -> str | None:
     """Find a qualified instructor who is available for the session window."""
     occupied = _build_occupied_quanta_map(individual, current_gene)
     duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
@@ -469,11 +464,11 @@ def _find_available_instructor(
 
 
 def _find_compatible_room(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     current_gene: SessionGene,
     context: SchedulingContext,
     needs_lab: bool,
-) -> Optional[str]:
+) -> str | None:
     """Find a room matching lab/theory requirement without conflicts."""
     occupied = _build_occupied_quanta_map(individual, current_gene)
     duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
@@ -503,8 +498,8 @@ def _find_compatible_room(
 
 
 def _build_occupied_quanta_map(
-    individual: List[SessionGene], exclude_gene: SessionGene = None
-) -> Dict[str, Dict[int, Set[str]]]:
+    individual: list[SessionGene], exclude_gene: SessionGene = None
+) -> dict[str, dict[int, set[str]]]:
     """
     Build occupation map for detecting conflicts.
 
@@ -542,11 +537,11 @@ def _build_occupied_quanta_map(
 
 
 def repair_individual_unified(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     selective: bool = True,
     max_iterations: int = 3,
-) -> Dict:
+) -> dict:
     """
     Apply enabled repair heuristics using registry pattern.
 
@@ -561,8 +556,8 @@ def repair_individual_unified(
     """
     if selective:
         try:
-            from src.ga.operators.repair_selective import repair_individual_selective
             from src.config import get_config
+            from src.ga.operators.repair_selective import repair_individual_selective
 
             detection_strategy = get_config().repair.detection_strategy
             selective_stats = repair_individual_selective(
@@ -612,10 +607,10 @@ def repair_individual_unified(
 
 # Alias for backward compatibility
 def repair_individual(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_iterations: int = 3,
-) -> Dict:
+) -> dict:
     """Legacy interface - calls repair_individual_unified."""
     return repair_individual_unified(
         individual, context, selective=True, max_iterations=max_iterations

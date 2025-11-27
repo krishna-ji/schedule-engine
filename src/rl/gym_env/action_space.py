@@ -5,13 +5,13 @@ Maps discrete action indices to heuristic function calls.
 Action space: 20 discrete actions (19 heuristics + 1 no-op)
 """
 
-import signal
 import logging
-from typing import Callable, List, Tuple, Optional
+import signal
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from src.heuristics import get_enabled_heuristics
 from src.core.types import Individual, SchedulingContext
+from src.heuristics import get_enabled_heuristics
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class ActionInfo:
     action_id: int
     name: str
     category: str
-    function: Optional[Callable] = None
+    function: Callable | None = None
     enabled: bool = True
     modifies_individual: bool = False
 
@@ -52,7 +52,7 @@ class ActionMapper:
         """
         self.use_config = use_config
         self.timeout_seconds = timeout_seconds
-        self.actions: List[ActionInfo] = []
+        self.actions: list[ActionInfo] = []
         self._build_action_space()
 
     def _build_action_space(self) -> None:
@@ -92,9 +92,9 @@ class ActionMapper:
         action: int,
         individual: Individual,
         context: SchedulingContext,
-        population: Optional[List[Individual]] = None,
-        generation: Optional[int] = None,
-    ) -> Tuple[Individual, bool]:
+        population: list[Individual] | None = None,
+        generation: int | None = None,
+    ) -> tuple[Individual, bool]:
         """
         Apply selected action to individual.
 
@@ -108,8 +108,8 @@ class ActionMapper:
         Returns:
             (modified_individual, success)
         """
-        import logging
         import copy
+        import logging
 
         logger = logging.getLogger(__name__)
 
@@ -276,8 +276,9 @@ class ActionMapper:
         Returns:
             Dict of keyword arguments to pass to heuristic function
         """
-        from src.config import get_config
         import inspect
+
+        from src.config import get_config
 
         config = get_config()
         heuristics_config = getattr(config, "heuristics", None)
@@ -395,7 +396,7 @@ class ActionMapper:
             return False
         return self.actions[action].enabled
 
-    def get_action_mask(self) -> List[bool]:
+    def get_action_mask(self) -> list[bool]:
         """
         Get action mask for masking invalid actions.
 
@@ -404,13 +405,13 @@ class ActionMapper:
         """
         return [action.enabled for action in self.actions]
 
-    def get_action_info(self, action: int) -> Optional[ActionInfo]:
+    def get_action_info(self, action: int) -> ActionInfo | None:
         """Get information about an action."""
         if 0 <= action < len(self.actions):
             return self.actions[action]
         return None
 
-    def get_action_by_name(self, name: str) -> Optional[int]:
+    def get_action_by_name(self, name: str) -> int | None:
         """Get action ID by heuristic name."""
         for action in self.actions:
             if action.name == name:
@@ -423,7 +424,7 @@ class ActionMapper:
         return len(self.actions)
 
     @property
-    def enabled_actions(self) -> List[int]:
+    def enabled_actions(self) -> list[int]:
         """List of enabled action IDs."""
         return [a.action_id for a in self.actions if a.enabled]
 

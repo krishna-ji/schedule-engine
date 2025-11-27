@@ -4,7 +4,6 @@ Solution selector for local search targeting.
 ENHANCEMENT #6: Selects which solutions to apply local search to.
 """
 
-from typing import List
 import numpy as np
 
 from src.core.types import Individual
@@ -36,7 +35,7 @@ class SolutionSelector:
         self.solution_attempts = {}
         self.solution_improvements = {}
 
-    def select(self, population: List[Individual]) -> List[Individual]:
+    def select(self, population: list[Individual]) -> list[Individual]:
         """
         Select solutions for local search.
 
@@ -60,12 +59,12 @@ class SolutionSelector:
         else:
             return population[: self.num_solutions]
 
-    def _select_elite(self, population: List[Individual]) -> List[Individual]:
+    def _select_elite(self, population: list[Individual]) -> list[Individual]:
         """Select best N solutions."""
         sorted_pop = sorted(population, key=lambda ind: ind.fitness.values)
         return sorted_pop[: self.num_solutions]
 
-    def _select_diverse(self, population: List[Individual]) -> List[Individual]:
+    def _select_diverse(self, population: list[Individual]) -> list[Individual]:
         """Select diverse solutions using greedy diversification."""
         selected = []
         candidates = list(population)
@@ -93,8 +92,8 @@ class SolutionSelector:
         return selected
 
     def _select_ucb(
-        self, population: List[Individual], exploration_param: float = 1.0
-    ) -> List[Individual]:
+        self, population: list[Individual], exploration_param: float = 1.0
+    ) -> list[Individual]:
         """
         Select using Upper Confidence Bound.
 
@@ -124,7 +123,7 @@ class SolutionSelector:
         top_indices = np.argsort(ucb_scores)[-self.num_solutions :]
         return [population[i] for i in top_indices]
 
-    def _select_stochastic(self, population: List[Individual]) -> List[Individual]:
+    def _select_stochastic(self, population: list[Individual]) -> list[Individual]:
         """Select with probability proportional to fitness quality."""
         # Calculate selection probabilities (better fitness = higher probability)
         fitness_values = np.array([ind.fitness.values for ind in population])

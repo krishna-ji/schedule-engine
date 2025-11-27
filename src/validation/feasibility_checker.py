@@ -22,22 +22,23 @@ Usage:
 """
 
 import sys
-from typing import Dict, List, Tuple, Any
-from dataclasses import dataclass, field
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from rich.table import Table
-from rich.panel import Panel
-from rich import box
+from dataclasses import dataclass, field
+from typing import Any
 
-from src.utils.system_info import get_cpu_count
+from rich import box
+from rich.panel import Panel
+from rich.table import Table
+
+from src.config import get_config
+from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.entities.course import Course
+from src.entities.group import Group
 from src.entities.instructor import Instructor
 from src.entities.room import Room
-from src.entities.group import Group
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.config import get_config
 from src.utils.console_service import get_console
+from src.utils.system_info import get_cpu_count
 
 console = get_console()
 
@@ -50,8 +51,8 @@ class FeasibilityResult:
     passed: bool
     severity: str
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
-    recommendations: List[str] = field(default_factory=list)
+    details: dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -59,25 +60,25 @@ class FeasibilityReport:
     """Complete feasibility analysis report."""
 
     is_feasible: bool
-    results: List[FeasibilityResult]
-    summary: Dict[str, Any]
+    results: list[FeasibilityResult]
+    summary: dict[str, Any]
 
-    def get_failed_checks(self) -> List[FeasibilityResult]:
+    def get_failed_checks(self) -> list[FeasibilityResult]:
         """Get all failed checks."""
         return [r for r in self.results if not r.passed]
 
-    def get_critical_failures(self) -> List[FeasibilityResult]:
+    def get_critical_failures(self) -> list[FeasibilityResult]:
         """Get all critical failures."""
         return [r for r in self.results if not r.passed and r.severity == "critical"]
 
 
 def check_feasibility(
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    rooms: Dict[str, Room],
-    groups: Dict[str, Group],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    rooms: dict[str, Room],
+    groups: dict[str, Group],
     qts: QuantumTimeSystem,
-) -> Tuple[bool, FeasibilityReport]:
+) -> tuple[bool, FeasibilityReport]:
     """
     Performs comprehensive feasibility analysis on the scheduling problem.
 
@@ -157,7 +158,6 @@ def check_feasibility(
 
     # Execute all checks concurrently
     results = []
-    from src.utils.system_info import get_cpu_count
 
     max_workers = get_cpu_count()  # Auto-detect all cores
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -231,8 +231,8 @@ def check_feasibility(
 
 
 def _check_instructor_workload(
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -312,8 +312,8 @@ def _check_instructor_workload(
 
 
 def _check_instructor_qualification_bottleneck(
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -422,9 +422,9 @@ def _check_instructor_qualification_bottleneck(
 
 
 def _check_room_capacity_bottleneck(
-    courses: Dict[tuple, Course],
-    rooms: Dict[str, Room],
-    groups: Dict[str, Group],
+    courses: dict[tuple, Course],
+    rooms: dict[str, Room],
+    groups: dict[str, Group],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -569,8 +569,8 @@ def _check_room_capacity_bottleneck(
 
 
 def _check_room_feature_bottleneck(
-    courses: Dict[tuple, Course],
-    rooms: Dict[str, Room],
+    courses: dict[tuple, Course],
+    rooms: dict[str, Room],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -662,8 +662,8 @@ def _check_room_feature_bottleneck(
 
 
 def _check_group_pigeonhole(
-    courses: Dict[tuple, Course],
-    groups: Dict[str, Group],
+    courses: dict[tuple, Course],
+    groups: dict[str, Group],
     total_operating_quanta: int,
 ) -> FeasibilityResult:
     """

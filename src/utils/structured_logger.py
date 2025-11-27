@@ -10,14 +10,12 @@ Provides clean, readable logs with:
 """
 
 import logging
-import sys
-from pathlib import Path
-from typing import Optional, Dict, Any
 from datetime import datetime
+from pathlib import Path
+from typing import Any
+
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.text import Text
-
 
 console = Console()
 
@@ -71,13 +69,13 @@ class StructuredLogger:
         >>> logger.debug("Step completed", action="heuristic_1", reward=0.5)
     """
 
-    _loggers: Dict[str, logging.Logger] = {}
-    _context_stack: Dict[str, Dict[str, Any]] = {}
+    _loggers: dict[str, logging.Logger] = {}
+    _context_stack: dict[str, dict[str, Any]] = {}
 
     @classmethod
     def setup(
         cls,
-        log_file: Optional[Path] = None,
+        log_file: Path | None = None,
         console_level: str = "DEBUG",
         file_level: str = "DEBUG",
         show_time: bool = True,
@@ -163,13 +161,13 @@ class StructuredLogger:
         """Initialize structured logger (use get_logger() instead)."""
         self.name = name
         self._logger = logging.getLogger(name)
-        self._context: Dict[str, Any] = {}
+        self._context: dict[str, Any] = {}
 
     def set_context(
         self,
-        env_rank: Optional[int] = None,
-        generation: Optional[int] = None,
-        step: Optional[int] = None,
+        env_rank: int | None = None,
+        generation: int | None = None,
+        step: int | None = None,
         **kwargs,
     ) -> None:
         """
@@ -263,7 +261,7 @@ class StructuredLogger:
         diversity: float,
         stagnation: int,
         duration_ms: float,
-        improvement: Optional[float] = None,
+        improvement: float | None = None,
         **kwargs,
     ) -> None:
         """
@@ -297,7 +295,7 @@ class StructuredLogger:
 
 
 # Module-level convenience functions
-_default_logger: Optional[StructuredLogger] = None
+_default_logger: StructuredLogger | None = None
 
 
 def get_logger(name: str = "schedule_engine") -> StructuredLogger:
@@ -306,7 +304,7 @@ def get_logger(name: str = "schedule_engine") -> StructuredLogger:
 
 
 def setup_logging(
-    log_file: Optional[Path] = None,
+    log_file: Path | None = None,
     console_level: str = "DEBUG",
     file_level: str = "DEBUG",
     **kwargs,

@@ -4,7 +4,6 @@ Hierarchical RL controller for two-level heuristic selection.
 ENHANCEMENT #7: High-level selects category, low-level selects specific heuristic.
 """
 
-from typing import Dict, List, Optional
 import numpy as np
 from numpy.typing import NDArray
 
@@ -23,7 +22,7 @@ class HighLevelPolicy:
     Reduces action space from 19 → 5 for faster learning.
     """
 
-    def __init__(self, model_path: Optional[str] = None):
+    def __init__(self, model_path: str | None = None):
         """
         Initialize high-level policy.
 
@@ -87,7 +86,7 @@ class LowLevelPolicy:
     - Meta: 4 heuristics
     """
 
-    def __init__(self, category: str, model_path: Optional[str] = None):
+    def __init__(self, category: str, model_path: str | None = None):
         """
         Initialize low-level policy for category.
 
@@ -185,7 +184,7 @@ class HierarchicalController:
     - More interpretable decisions
     """
 
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: dict = None):
         """
         Initialize hierarchical controller.
 
@@ -206,7 +205,7 @@ class HierarchicalController:
         }
 
         # Statistics
-        self.category_counts = {cat: 0 for cat in self.high_level.categories}
+        self.category_counts = dict.fromkeys(self.high_level.categories, 0)
         self.heuristic_counts = {}
 
     def select_heuristic(
@@ -236,7 +235,7 @@ class HierarchicalController:
 
         return heuristic_id
 
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> dict:
         """Get usage statistics."""
         return {
             "category_counts": self.category_counts,
@@ -246,5 +245,5 @@ class HierarchicalController:
 
     def reset_statistics(self) -> None:
         """Reset usage statistics."""
-        self.category_counts = {cat: 0 for cat in self.high_level.categories}
+        self.category_counts = dict.fromkeys(self.high_level.categories, 0)
         self.heuristic_counts = {}

@@ -6,7 +6,7 @@ Encodes 15+ features capturing population quality, diversity, and progress.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Any
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -43,10 +43,10 @@ class StateFeatures:
     violation_std: float
 
     # ENHANCEMENT #2: Per-constraint breakdown (8 hard + 4 soft = 12 features)
-    constraint_breakdown: Dict[str, float]  # Per-constraint violation counts
+    constraint_breakdown: dict[str, float]  # Per-constraint violation counts
 
     # Heuristic history (dynamic)
-    recent_heuristic_ids: List[int]  # Last N heuristic applications
+    recent_heuristic_ids: list[int]  # Last N heuristic applications
 
 
 class StateEncoder:
@@ -113,11 +113,11 @@ class StateEncoder:
         self.prev_avg_fitness: float | None = None
 
         # Heuristic application history
-        self.heuristic_history: List[int] = []
+        self.heuristic_history: list[int] = []
 
     def encode(
         self,
-        population: List[Individual],
+        population: list[Individual],
         current_generation: int,
         generations_without_improvement: int,
     ) -> NDArray[np.float32]:
@@ -145,7 +145,7 @@ class StateEncoder:
 
     def _extract_features(
         self,
-        population: List[Individual],
+        population: list[Individual],
         current_generation: int,
         generations_without_improvement: int,
     ) -> StateFeatures:
@@ -214,7 +214,7 @@ class StateEncoder:
             recent_heuristic_ids=self.heuristic_history[-self.history_size :],
         )
 
-    def _calculate_diversity(self, population: List[Individual]) -> float:
+    def _calculate_diversity(self, population: list[Individual]) -> float:
         """Calculate population diversity using fitness distance (optimized with scipy)."""
         if len(population) < 2:
             return 0.0
@@ -227,7 +227,7 @@ class StateEncoder:
 
         return float(np.mean(distances)) if len(distances) > 0 else 0.0
 
-    def _calculate_genotype_diversity(self, population: List[Individual]) -> float:
+    def _calculate_genotype_diversity(self, population: list[Individual]) -> float:
         """
         Calculate genotype diversity (unique chromosome structures).
 
@@ -248,7 +248,7 @@ class StateEncoder:
         max_diversity = len(population) * len(population[0])
         return len(unique_assignments) / max(max_diversity, 1)
 
-    def _calculate_phenotype_diversity(self, population: List[Individual]) -> float:
+    def _calculate_phenotype_diversity(self, population: list[Individual]) -> float:
         """
         Calculate phenotype diversity (unique fitness outcomes).
 
@@ -280,7 +280,7 @@ class StateEncoder:
 
         return min(avg_distance / (fitness_range + 1e-6), 1.0)
 
-    def _calculate_unique_fitness_ratio(self, population: List[Individual]) -> float:
+    def _calculate_unique_fitness_ratio(self, population: list[Individual]) -> float:
         """
         Calculate ratio of unique fitness values in population.
 
@@ -322,8 +322,8 @@ class StateEncoder:
         return improvement / (abs(self.prev_best_fitness) + 1e-6)
 
     def _calculate_constraint_breakdown(
-        self, population: List[Individual]
-    ) -> Dict[str, float]:
+        self, population: list[Individual]
+    ) -> dict[str, float]:
         """
         Calculate average violation count for each constraint across population.
 
@@ -335,8 +335,8 @@ class StateEncoder:
         Returns:
             Dictionary mapping constraint names to average violation counts.
         """
-        constraint_counts = {name: 0.0 for name in self.HARD_CONSTRAINT_NAMES}
-        constraint_counts.update({name: 0.0 for name in self.SOFT_CONSTRAINT_NAMES})
+        constraint_counts = dict.fromkeys(self.HARD_CONSTRAINT_NAMES, 0.0)
+        constraint_counts.update(dict.fromkeys(self.SOFT_CONSTRAINT_NAMES, 0.0))
 
         # Extract from individual metadata if available
         # (This is populated during fitness evaluation in core/ga_scheduler.py)
@@ -461,11 +461,9 @@ class StateEncoder:
         """Return zero features for empty population."""
         zero_constraint_breakdown = {}
         if self.enable_constraint_breakdown:
-            zero_constraint_breakdown = {
-                name: 0.0 for name in self.HARD_CONSTRAINT_NAMES
-            }
+            zero_constraint_breakdown = dict.fromkeys(self.HARD_CONSTRAINT_NAMES, 0.0)
             zero_constraint_breakdown.update(
-                {name: 0.0 for name in self.SOFT_CONSTRAINT_NAMES}
+                dict.fromkeys(self.SOFT_CONSTRAINT_NAMES, 0.0)
             )
 
         return StateFeatures(

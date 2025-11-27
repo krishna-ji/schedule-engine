@@ -5,16 +5,15 @@ Tracks detailed timing and resource usage for each generation phase.
 Shows micro-breakdown of execution time and CPU core allocation.
 """
 
-import time
-import threading
-import psutil
 import os
-from typing import Dict, List, Optional
-from dataclasses import dataclass, field
+import threading
+import time
 from collections import defaultdict
+from dataclasses import dataclass, field
+
+import psutil
 from rich.console import Console
 from rich.table import Table
-from rich.text import Text
 
 
 @dataclass
@@ -27,8 +26,8 @@ class PhaseProfile:
     duration: float = 0.0
     cpu_percent: float = 0.0
     memory_mb: float = 0.0
-    thread_id: Optional[int] = None
-    worker_id: Optional[int] = None
+    thread_id: int | None = None
+    worker_id: int | None = None
     items_processed: int = 0
 
     def format_duration(self) -> str:
@@ -46,7 +45,7 @@ class GenerationProfile:
     """Complete profile for one generation."""
 
     generation: int
-    phases: Dict[str, PhaseProfile] = field(default_factory=dict)
+    phases: dict[str, PhaseProfile] = field(default_factory=dict)
     total_duration: float = 0.0
     cpu_usage_peak: float = 0.0
     memory_usage_mb: float = 0.0
@@ -79,7 +78,7 @@ class PerformanceProfiler:
     def __init__(
         self,
         enabled: bool = True,
-        console: Optional[Console] = None,
+        console: Console | None = None,
         verbose: bool = False,
     ):
         """
@@ -93,9 +92,9 @@ class PerformanceProfiler:
         self.enabled = enabled
         self.verbose = verbose
         self.console = console or Console()
-        self.current_generation: Optional[int] = None
-        self.current_phase: Optional[PhaseProfile] = None
-        self.generation_profiles: List[GenerationProfile] = []
+        self.current_generation: int | None = None
+        self.current_phase: PhaseProfile | None = None
+        self.generation_profiles: list[GenerationProfile] = []
         self.process = psutil.Process(os.getpid())
 
         # Thread-local storage for worker tracking
@@ -123,7 +122,7 @@ class PerformanceProfiler:
         self.current_generation = None
 
     def start_phase(
-        self, name: str, items_to_process: int = 0, worker_id: Optional[int] = None
+        self, name: str, items_to_process: int = 0, worker_id: int | None = None
     ):
         """
         Start profiling a phase.
@@ -215,7 +214,7 @@ class PerformanceProfiler:
 
         self.console.print(f"[{color}]      {breakdown}[/{color}]")
 
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> dict:
         """
         Get aggregate statistics across all generations.
 
@@ -297,7 +296,7 @@ class PerformanceProfiler:
 
 
 # Global profiler instance (can be accessed from anywhere)
-_global_profiler: Optional[PerformanceProfiler] = None
+_global_profiler: PerformanceProfiler | None = None
 
 
 def get_profiler() -> PerformanceProfiler:
@@ -309,7 +308,7 @@ def get_profiler() -> PerformanceProfiler:
 
 
 def init_profiler(
-    enabled: bool = True, console: Optional[Console] = None, verbose: bool = False
+    enabled: bool = True, console: Console | None = None, verbose: bool = False
 ):
     """
     Initialize global profiler.

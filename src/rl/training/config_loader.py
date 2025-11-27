@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any
 
 import yaml
 
@@ -13,7 +14,7 @@ BASE_CONFIG_PATH = TRAIN_CONFIG_DIR / "base.yaml"
 DEFAULT_PROFILE = "test"
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
+def _load_yaml(path: Path) -> dict[str, Any]:
     """Read a YAML file and return its content as a dictionary."""
     if not path.exists():
         raise FileNotFoundError(f"Training config not found: {path}")
@@ -23,7 +24,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     return data
 
 
-def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge two dictionaries."""
     merged = dict(base)
     for key, value in override.items():
@@ -49,7 +50,7 @@ def list_training_profiles() -> Iterable[str]:
 def load_training_config(
     profile: str | None = None,
     custom_path: str | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Load RL training configuration by merging base + profile + optional custom file.
     """

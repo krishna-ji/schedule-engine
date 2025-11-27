@@ -8,7 +8,6 @@ Each RL agent in an ensemble optimizes a different weighted combination,
 collectively exploring the entire Pareto front.
 """
 
-from typing import List
 import numpy as np
 from numpy.typing import NDArray
 
@@ -63,8 +62,8 @@ class DecomposedReward(BaseRewardCalculator):
 
     def calculate(
         self,
-        prev_population: List[Individual],
-        current_population: List[Individual],
+        prev_population: list[Individual],
+        current_population: list[Individual],
         action_cost: float = 0.0,
     ) -> float:
         """
@@ -117,7 +116,7 @@ class DecomposedReward(BaseRewardCalculator):
         else:
             raise ValueError(f"Unknown scalarization: {self.scalarization}")
 
-    def update_ideal_point(self, population: List[Individual]) -> None:
+    def update_ideal_point(self, population: list[Individual]) -> None:
         """
         Update ideal point with best values from population.
 
@@ -133,7 +132,7 @@ class DecomposedReward(BaseRewardCalculator):
         self.ideal_point = np.minimum(self.ideal_point, best)
 
     @staticmethod
-    def generate_weight_vectors(n_agents: int) -> List[NDArray[np.float64]]:
+    def generate_weight_vectors(n_agents: int) -> list[NDArray[np.float64]]:
         """
         Generate uniformly distributed weight vectors for ensemble.
 

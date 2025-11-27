@@ -1,6 +1,5 @@
-from typing import List, Set, Dict, Tuple
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -27,10 +26,10 @@ class Instructor:
 
     instructor_id: str
     name: str
-    qualified_courses: List[str]
+    qualified_courses: list[str]
     is_full_time: bool = True
-    available_quanta: Set[int] = field(default_factory=set)
-    booked_quanta: Set[int] = field(default_factory=set)
+    available_quanta: set[int] = field(default_factory=set)
+    booked_quanta: set[int] = field(default_factory=set)
     max_hours_per_week: int = 40
 
     def __post_init__(self):
@@ -70,7 +69,7 @@ class Instructor:
 
     def get_available_quanta_ranges(
         self, time_system
-    ) -> Dict[str, List[Tuple[int, int]]]:
+    ) -> dict[str, list[tuple[int, int]]]:
         """
         Get available time ranges grouped by day.
 
@@ -110,7 +109,7 @@ class Instructor:
 
     def _get_full_time_availability(
         self, time_system
-    ) -> Dict[str, List[Tuple[int, int]]]:
+    ) -> dict[str, list[tuple[int, int]]]:
         """Get all operating hours as available ranges for full-time instructors."""
         ranges = defaultdict(list)
 
@@ -124,6 +123,6 @@ class Instructor:
 
         return dict(ranges)
 
-    def get_qualification_set(self) -> Set[str]:
+    def get_qualification_set(self) -> set[str]:
         """Get set of qualified course IDs."""
         return set(self.qualified_courses)

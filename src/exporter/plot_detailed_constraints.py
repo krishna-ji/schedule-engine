@@ -1,15 +1,16 @@
-import matplotlib.pyplot as plt
 import os
-from typing import Dict, List
+
+import matplotlib.pyplot as plt
+
 from .thesis_style import (
-    apply_thesis_style,
-    get_color,
-    PALETTE,
     LINE_STYLES,
     MARKERS,
-    save_figure,
+    PALETTE,
+    apply_thesis_style,
     create_thesis_figure,
     format_axis,
+    get_color,
+    save_figure,
 )
 
 # Apply thesis styling
@@ -17,7 +18,7 @@ apply_thesis_style()
 
 
 def plot_individual_hard_constraints(
-    hard_trends: Dict[str, List[int]], output_dir: str
+    hard_trends: dict[str, list[int]], output_dir: str
 ):
     """
     Plots each hard constraint trend separately and saves them in plots/constraints/hard/ subdirectory.
@@ -184,7 +185,7 @@ def plot_individual_hard_constraints(
 
 
 def plot_individual_soft_constraints(
-    soft_trends: Dict[str, List[int]], output_dir: str
+    soft_trends: dict[str, list[int]], output_dir: str
 ):
     """
     Plots each soft constraint trend separately and saves them in plots/constraints/soft/ subdirectory.
@@ -351,8 +352,8 @@ def plot_individual_soft_constraints(
 
 
 def plot_constraint_summary(
-    hard_trends: Dict[str, List[int]],
-    soft_trends: Dict[str, List[int]],
+    hard_trends: dict[str, list[int]],
+    soft_trends: dict[str, list[int]],
     output_dir: str,
 ):
     """
@@ -420,7 +421,7 @@ def plot_constraint_summary(
     )
     ax3.set_xticks(range(len(final_hard)))
     ax3.set_xticklabels(
-        [name.replace("_", "\n") for name in final_hard.keys()], rotation=45, ha="right"
+        [name.replace("_", "\n") for name in final_hard], rotation=45, ha="right"
     )
 
     # Final soft constraint values (bar chart)
@@ -442,7 +443,7 @@ def plot_constraint_summary(
     )
     ax4.set_xticks(range(len(final_soft)))
     ax4.set_xticklabels(
-        [name.replace("_", "\n") for name in final_soft.keys()], rotation=45, ha="right"
+        [name.replace("_", "\n") for name in final_soft], rotation=45, ha="right"
     )
 
     plt.tight_layout()

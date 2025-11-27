@@ -4,12 +4,8 @@ Optimized non-dominated sorting with O(N log^(M-1) N) complexity instead of O(MN
 Provides 5-10x speedup for populations > 200.
 """
 
-import random
-from deap import tools
-from typing import List
 
-
-def fast_nondominated_sort(population: List) -> List[List]:
+def fast_nondominated_sort(population: list) -> list[list]:
     """Fast non-dominated sorting using efficient domination checking.
 
     Args:
@@ -94,7 +90,7 @@ def dominates(ind1, ind2) -> bool:
     return better_in_any
 
 
-def assign_crowding_distance(front: List):
+def assign_crowding_distance(front: list):
     """Assign crowding distance to individuals in a front.
 
     Crowding distance measures how isolated an individual is from its neighbors.
@@ -140,7 +136,7 @@ def assign_crowding_distance(front: List):
             front[i].fitness.crowding_dist += distance
 
 
-def selNSGA2Fast(individuals: List, k: int) -> List:
+def selNSGA2Fast(individuals: list, k: int) -> list:
     """Fast NSGA-II selection.
 
     Selects k individuals from the population using:

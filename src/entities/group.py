@@ -3,7 +3,6 @@ Group entity model for the timetabling system.
 Represents a student group with enrollment information.
 """
 
-from typing import List, Set
 from dataclasses import dataclass
 
 
@@ -23,8 +22,8 @@ class Group:
     group_id: str
     name: str
     student_count: int
-    enrolled_courses: List[str]
-    available_quanta: Set[int]
+    enrolled_courses: list[str]
+    available_quanta: set[int]
 
     def __post_init__(self):
         """Validate group data after initialization."""
@@ -37,7 +36,7 @@ class Group:
         """Check if group is enrolled in a specific course."""
         return course_id in self.enrolled_courses
 
-    def get_enrolled_courses_set(self) -> Set[str]:
+    def get_enrolled_courses_set(self) -> set[str]:
         """Get set of enrolled course IDs."""
         return set(self.enrolled_courses)
 

@@ -7,10 +7,9 @@ import random
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
-from rich.logging import RichHandler
 
 # Add project root to path
 project_root = Path(__file__).resolve().parents[3]
@@ -24,8 +23,8 @@ from src.rl.training.config_loader import (
     load_training_config,
 )
 from src.utils.structured_logger import StructuredLogger, setup_logging
-from src.workflows.standard_run import load_input_data
 from src.utils.system_info import get_cpu_count
+from src.workflows.standard_run import load_input_data
 
 logger = StructuredLogger.get_logger(__name__)
 
@@ -199,10 +198,10 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def apply_profile_defaults(args: argparse.Namespace, profile: Dict[str, Any]) -> None:
+def apply_profile_defaults(args: argparse.Namespace, profile: dict[str, Any]) -> None:
     """Fill argparse values using profile defaults when not provided."""
 
-    def pick(field: str, default: Optional[Any] = None):
+    def pick(field: str, default: Any | None = None):
         value = getattr(args, field, None)
         if value is not None:
             return value
@@ -379,34 +378,35 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     Returns:
         Vectorized environment
     """
-    from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
     import os
 
-    logger.info(f"")
-    logger.info(f"=" * 80)
+    from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+
+    logger.info("")
+    logger.info("=" * 80)
     logger.info(f"IMPORTANT: Creating {n_envs} parallel environments")
-    logger.info(f"=" * 80)
+    logger.info("=" * 80)
     logger.info(
         f"Environment type: {'SubprocVecEnv (true parallelism)' if use_subproc else 'DummyVecEnv (sequential)'}"
     )
     logger.info(f"Population size per env: {args.population_size}")
-    logger.info(f"")
-    logger.info(f"EXPECTED TIME:")
-    logger.info(f"   - Each environment needs 30-60 seconds to initialize")
+    logger.info("")
+    logger.info("EXPECTED TIME:")
+    logger.info("   - Each environment needs 30-60 seconds to initialize")
     logger.info(
         f"   - With {n_envs} envs running in parallel, expect 1-2 MINUTES total"
     )
     logger.info(
         f"   - Total work: {n_envs} envs x {args.population_size} individuals = {n_envs * args.population_size} fitness evaluations"
     )
-    logger.info(f"")
+    logger.info("")
     if use_subproc:
-        logger.info(f"WARNING: SubprocVecEnv worker logs won't appear in console!")
-        logger.info(f"   - Workers run in separate processes (no console output)")
-        logger.info(f"   - This will appear FROZEN for 1-2 minutes - BE PATIENT!")
-        logger.info(f"   - Check logs/training/*.log for worker activity")
-    logger.info(f"=" * 80)
-    logger.info(f"")
+        logger.info("WARNING: SubprocVecEnv worker logs won't appear in console!")
+        logger.info("   - Workers run in separate processes (no console output)")
+        logger.info("   - This will appear FROZEN for 1-2 minutes - BE PATIENT!")
+        logger.info("   - Check logs/training/*.log for worker activity")
+    logger.info("=" * 80)
+    logger.info("")
 
     sys.stdout.flush()
 
@@ -449,7 +449,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     logger.info(
         f"Environment factories created. Now spawning {n_envs} worker processes..."
     )
-    logger.info(f"THIS WILL TAKE 1-2 MINUTES WITH NO OUTPUT - PLEASE WAIT!")
+    logger.info("THIS WILL TAKE 1-2 MINUTES WITH NO OUTPUT - PLEASE WAIT!")
 
     import time
 
@@ -460,7 +460,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     # Create vectorized environment
     if use_subproc:
         logger.info(
-            f"Calling SubprocVecEnv(start_method='spawn')... (workers initializing)"
+            "Calling SubprocVecEnv(start_method='spawn')... (workers initializing)"
         )
         sys.stdout.flush()
         vec_env = SubprocVecEnv(env_fns, start_method="spawn")
@@ -473,7 +473,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     logger.info(
         f"[OK] Parallel environments ready ({n_envs} workers, took {elapsed:.1f}s)"
     )
-    logger.info(f"Workers are initialized and ready for training!")
+    logger.info("Workers are initialized and ready for training!")
     return vec_env
 
 
@@ -610,8 +610,8 @@ def main() -> None:
         logger.info("STEP 3.5: Start TensorBoard")
         logger.info("=" * 60)
 
-        import subprocess
         import socket
+        import subprocess
 
         # Check if TensorBoard is already running
         def is_port_in_use(port):

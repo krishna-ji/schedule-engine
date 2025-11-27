@@ -7,15 +7,11 @@ Key Functions:
 - build_availability_grid(): Track resource usage across quanta
 """
 
-from typing import List, Set, Dict, Optional, Tuple
 from dataclasses import dataclass
-from collections import defaultdict
-import random
 
-from src.entities.course import Course
-from src.core.types import SchedulingContext
-from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.config import get_config
+from src.core.types import SchedulingContext
+from src.entities.course import Course
 
 
 @dataclass
@@ -39,7 +35,7 @@ class ContinuityHelper:
         self.qts = context.quantum_time_system
         self.config = get_config()
 
-    def calculate_session_durations(self, course: Course) -> List[SessionDuration]:
+    def calculate_session_durations(self, course: Course) -> list[SessionDuration]:
         """
         Calculate required durations for all sessions of a course.
 
@@ -113,11 +109,11 @@ class ContinuityHelper:
     def find_contiguous_window(
         self,
         duration: SessionDuration,
-        used_quanta: Dict[str, Set[int]],
+        used_quanta: dict[str, set[int]],
         instructor_id: str,
         room_id: str,
-        group_ids: List[str],
-    ) -> Optional[int]:
+        group_ids: list[str],
+    ) -> int | None:
         """
         Find a valid starting quantum for a session with given duration.
 
@@ -163,10 +159,10 @@ class ContinuityHelper:
         self,
         start_q: int,
         duration: int,
-        used_quanta: Dict[str, Set[int]],
+        used_quanta: dict[str, set[int]],
         instructor_id: str,
         room_id: str,
-        group_ids: List[str],
+        group_ids: list[str],
     ) -> bool:
         """Check if time window is available for all resources."""
         window = range(start_q, start_q + duration)

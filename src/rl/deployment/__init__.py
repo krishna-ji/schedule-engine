@@ -9,8 +9,8 @@ Provides fast model loading and inference for production use:
 - Atomic config updates and rollback
 """
 
-from src.rl.deployment.model_loader import ModelLoader
 from src.rl.deployment.inference import RLInference
-from src.rl.deployment.registry import ModelRegistry, ModelRegistration
+from src.rl.deployment.model_loader import ModelLoader
+from src.rl.deployment.registry import ModelRegistration, ModelRegistry
 
 __all__ = ["ModelLoader", "RLInference", "ModelRegistry", "ModelRegistration"]

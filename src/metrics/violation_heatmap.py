@@ -20,9 +20,8 @@ Usage:
         print(f"{gene_key}: {total_violations} violations")
 """
 
-from typing import Dict, List, Tuple
-from collections import defaultdict
 import json
+from collections import defaultdict
 from pathlib import Path
 
 from src.ga.sessiongene import SessionGene
@@ -91,7 +90,7 @@ class ViolationHeatmap:
         }
         self.generation_history.append(snapshot)
 
-    def get_hotspots(self, top_n: int = 20) -> List[Tuple]:
+    def get_hotspots(self, top_n: int = 20) -> list[tuple]:
         """
         Get genes with most frequent violations (hotspots).
 
@@ -111,7 +110,7 @@ class ViolationHeatmap:
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_n]
 
-    def get_violations_by_type(self) -> Dict[str, int]:
+    def get_violations_by_type(self) -> dict[str, int]:
         """
         Get total violations grouped by type.
 
@@ -165,7 +164,7 @@ class ViolationHeatmap:
         if not Path(filepath).exists():
             return heatmap
 
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             data = json.load(f)
 
         # Restore violations (convert string keys back to tuples)

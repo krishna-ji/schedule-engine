@@ -18,15 +18,14 @@ These metrics are essential for:
 Performance: Uses pymoo's optimized implementations where available (10-100x faster).
 """
 
-from typing import List
-from deap import tools
 import numpy as np
-from pymoo.indicators.igd import IGD
+from deap import tools
 from pymoo.indicators.gd import GD
+from pymoo.indicators.igd import IGD
 from scipy.spatial.distance import pdist, squareform
 
 
-def calculate_spacing(population: List) -> float:
+def calculate_spacing(population: list) -> float:
     """
     Calculate spacing metric for Pareto front uniformity.
 
@@ -77,7 +76,7 @@ def calculate_spacing(population: List) -> float:
     return float(spacing)
 
 
-def calculate_generational_distance(population: List, reference_front: List) -> float:
+def calculate_generational_distance(population: list, reference_front: list) -> float:
     """
     Calculate Generational Distance (GD) to reference Pareto front using pymoo.
 
@@ -129,7 +128,7 @@ def calculate_generational_distance(population: List, reference_front: List) -> 
 
 
 def calculate_inverted_generational_distance(
-    population: List, reference_front: List
+    population: list, reference_front: list
 ) -> float:
     """
     Calculate Inverted Generational Distance (IGD) to reference Pareto front using pymoo.
@@ -185,7 +184,7 @@ def calculate_inverted_generational_distance(
     return float(igd)
 
 
-def calculate_spread(population: List) -> float:
+def calculate_spread(population: list) -> float:
     """
     Calculate spread (delta, Δ) metric for Pareto front extent and distribution.
 
@@ -264,7 +263,7 @@ def calculate_spread(population: List) -> float:
     return float(spread)
 
 
-def calculate_epsilon_indicator(population: List, reference_front: List) -> float:
+def calculate_epsilon_indicator(population: list, reference_front: list) -> float:
     """
     Calculate additive epsilon indicator (ε+) for algorithm comparison.
 
@@ -327,7 +326,7 @@ def calculate_epsilon_indicator(population: List, reference_front: List) -> floa
     return float(max_epsilon)
 
 
-def calculate_ideal_point_distance(population: List) -> float:
+def calculate_ideal_point_distance(population: list) -> float:
     """
     Calculate distance from Pareto front to ideal point (0, 0).
 
@@ -366,7 +365,7 @@ def calculate_ideal_point_distance(population: List) -> float:
     return float(min_distance)
 
 
-def get_pareto_front_size(population: List) -> int:
+def get_pareto_front_size(population: list) -> int:
     """
     Count number of non-dominated solutions in final Pareto front.
 

@@ -9,7 +9,6 @@ different verbosity levels.
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 class ColoredFormatter(logging.Formatter):
@@ -47,7 +46,7 @@ class ColoredFormatter(logging.Formatter):
 
 
 def setup_logging(
-    level: str = "DEBUG", log_file: Optional[Path] = None, verbose: bool = False
+    level: str = "DEBUG", log_file: Path | None = None, verbose: bool = False
 ) -> logging.Logger:
     """
     Configure logging for the application.

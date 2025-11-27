@@ -4,7 +4,6 @@ Operator portfolio for local search.
 ENHANCEMENT #6: Selects which local search operator to apply.
 """
 
-from typing import List, Dict
 import numpy as np
 
 
@@ -27,7 +26,7 @@ class OperatorPortfolio:
     """
 
     def __init__(
-        self, operators: List[str], selection_method: str = "thompson_sampling"
+        self, operators: list[str], selection_method: str = "thompson_sampling"
     ):
         """
         Initialize operator portfolio.
@@ -40,12 +39,12 @@ class OperatorPortfolio:
         self.selection_method = selection_method
 
         # Thompson Sampling statistics (Beta distribution parameters)
-        self.alpha = {op: 1.0 for op in operators}  # Successes + 1
-        self.beta = {op: 1.0 for op in operators}  # Failures + 1
+        self.alpha = dict.fromkeys(operators, 1.0)  # Successes + 1
+        self.beta = dict.fromkeys(operators, 1.0)  # Failures + 1
 
         # UCB statistics
-        self.ucb_attempts = {op: 0 for op in operators}
-        self.ucb_rewards = {op: 0.0 for op in operators}
+        self.ucb_attempts = dict.fromkeys(operators, 0)
+        self.ucb_rewards = dict.fromkeys(operators, 0.0)
         self.total_attempts = 0
 
     def select_operator(self) -> str:
@@ -121,7 +120,7 @@ class OperatorPortfolio:
             self.ucb_attempts[operator] += 1
             self.ucb_rewards[operator] += improvement
 
-    def get_statistics(self) -> Dict[str, Dict[str, float]]:
+    def get_statistics(self) -> dict[str, dict[str, float]]:
         """
         Get statistics for all operators.
 
@@ -152,8 +151,8 @@ class OperatorPortfolio:
 
     def reset(self) -> None:
         """Reset all statistics."""
-        self.alpha = {op: 1.0 for op in self.operators}
-        self.beta = {op: 1.0 for op in self.operators}
-        self.ucb_attempts = {op: 0 for op in self.operators}
-        self.ucb_rewards = {op: 0.0 for op in self.operators}
+        self.alpha = dict.fromkeys(self.operators, 1.0)
+        self.beta = dict.fromkeys(self.operators, 1.0)
+        self.ucb_attempts = dict.fromkeys(self.operators, 0)
+        self.ucb_rewards = dict.fromkeys(self.operators, 0.0)
         self.total_attempts = 0

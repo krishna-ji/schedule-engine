@@ -11,10 +11,10 @@ TIER 2 Enhancements:
 - Agent coordinators for multi-agent systems
 """
 
-from src.rl.agents.ppo_agent import create_ppo_agent
 from src.rl.agents.dqn_agent import create_dqn_agent
+from src.rl.agents.ppo_agent import create_ppo_agent
 from src.rl.agents.random_agent import RandomAgent
-from src.rl.agents.specialist_agents import SpecialistAgents, AgentCoordinator
+from src.rl.agents.specialist_agents import AgentCoordinator, SpecialistAgents
 
 __all__ = [
     "create_ppo_agent",
