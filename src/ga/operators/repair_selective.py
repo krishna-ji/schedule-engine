@@ -225,7 +225,7 @@ def repair_instructor_availability_selective(
 
         # Find valid replacement slot
         required_duration = gene.num_quanta
-        new_quanta = _find_instructor_available_slot(
+        new_start = _find_instructor_available_slot(
             individual,
             gene,
             required_duration,
@@ -233,10 +233,8 @@ def repair_instructor_availability_selective(
             context.available_quanta,
         )
 
-        if new_quanta:
-            from src.ga.quanta_converter import quanta_list_to_contiguous
-
-            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
+        if new_start is not None:
+            gene.start_quanta = new_start
             fixes += 1
 
     return fixes
@@ -308,12 +306,6 @@ def repair_group_overlaps_selective(
         if new_slot is not None:
             # Update gene with new slot
             gene.start_quanta = new_slot
-            fixes += 1
-
-            # Rebuild schedule map
-            from src.ga.quanta_converter import quanta_list_to_contiguous
-
-            gene.start_quanta, gene.num_quanta = quanta_list_to_contiguous(new_quanta)
             fixes += 1
 
             # Rebuild schedule map for this group
