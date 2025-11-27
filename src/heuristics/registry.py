@@ -79,6 +79,12 @@ _DIVERSITY_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 _META_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 _REPAIR_HEURISTICS: Dict[str, HeuristicMetadata] = {}
 
+# Track global registration metadata to guard against duplicates
+_GLOBAL_HEURISTIC_NAMES: Dict[str, HeuristicCategory] = {}
+_CATEGORY_PRIORITIES: Dict[HeuristicCategory, Dict[int, str]] = {
+    category: {} for category in HeuristicCategory
+}
+
 
 def _get_registry(category: HeuristicCategory) -> Dict[str, HeuristicMetadata]:
     """Get the registry for a specific category."""
@@ -91,6 +97,28 @@ def _get_registry(category: HeuristicCategory) -> Dict[str, HeuristicMetadata]:
         HeuristicCategory.REPAIR: _REPAIR_HEURISTICS,
     }
     return registries[category]
+
+
+def _validate_registration(
+    name: str, category: HeuristicCategory, priority: int
+) -> None:
+    """Ensure heuristic names and priorities remain unique."""
+
+    if name in _GLOBAL_HEURISTIC_NAMES:
+        existing_category = _GLOBAL_HEURISTIC_NAMES[name]
+        raise ValueError(
+            f"Heuristic '{name}' already registered under '{existing_category.value}'"
+        )
+
+    category_priorities = _CATEGORY_PRIORITIES[category]
+    if priority in category_priorities:
+        conflict = category_priorities[priority]
+        raise ValueError(
+            f"Priority {priority} already used by heuristic '{conflict}' in category '{category.value}'"
+        )
+
+    _GLOBAL_HEURISTIC_NAMES[name] = category
+    category_priorities[priority] = name
 
 
 # ================
@@ -122,6 +150,7 @@ def _heuristic_decorator(category: HeuristicCategory):
         """
 
         def inner_decorator(func: Callable) -> Callable:
+            _validate_registration(name, category, priority)
             metadata = HeuristicMetadata(
                 name=name,
                 function=func,

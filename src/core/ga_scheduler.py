@@ -41,6 +41,7 @@ from src.metrics.diversity import average_pairwise_diversity
 from src.core.types import SchedulingContext
 from src.utils.console_service import get_console
 from src.heuristics.parallel_executor import get_parallel_executor
+from src.heuristics.registry import get_heuristic_statistics_template
 from src.utils.parallel_worker import get_worker_context
 from src.utils.performance_profiler import get_profiler
 from src.utils.structured_logger import StructuredLogger
@@ -409,6 +410,7 @@ class GAScheduler:
         from src.ga.heuristic_tracker import HeuristicTracker
 
         self.heuristic_tracker = HeuristicTracker()
+        self.heuristic_stats = get_heuristic_statistics_template()
         self._setup_heuristic_rotation()
 
         # PERFORMANCE: Parallel heuristic executor (10-16x speedup)
@@ -659,26 +661,33 @@ class GAScheduler:
                 # Select top 4-8 individuals based on population size
                 num_targets = min(8, max(4, len(self.population) // 25))
                 top_individuals = tools.selBest(self.population, num_targets)
+                before_fitness = [tuple(ind.fitness.values) for ind in top_individuals]
 
                 logger.debug(
                     f"Gen {gen}: RL applying '{action_info.name}' to {num_targets} individuals in parallel"
                 )
 
-                # Get heuristic function
                 heuristic_func = action_info.function
                 if heuristic_func:
-                    # Apply in parallel using parallel executor
                     parallel_executor = get_parallel_executor()
-                    modified_individuals = parallel_executor.apply_parallel(
+                    parallel_results = parallel_executor.apply_parallel(
                         heuristic_func=heuristic_func,
                         individuals=top_individuals,
                         context=self.context,
                     )
+                    for individual, result in zip(
+                        top_individuals, parallel_results or []
+                    ):
+                        if isinstance(result, list):
+                            individual[:] = result
+                    modified_individuals = top_individuals
                 else:
                     modified_individuals = []
+                modified_before = before_fitness
             else:
                 # For non-improvement heuristics, use single best individual
                 best_ind = tools.selBest(self.population, 1)[0]
+                modified_before = [tuple(best_ind.fitness.values)]
 
                 # Apply action and get modified individual(s)
                 modified_ind, success = self.rl_action_mapper.apply_action(
@@ -697,6 +706,14 @@ class GAScheduler:
                 )
                 for ind, fit in zip(modified_individuals, fitness_values):
                     ind.fitness.values = fit
+                if action_info:
+                    for before, fit in zip(modified_before, fitness_values):
+                        self._record_heuristic_stat(
+                            action_info.name,
+                            self._is_improvement(before, fit),
+                        )
+            elif action_info:
+                self._record_heuristic_stat(action_info.name, False)
 
                 # Log action application (optional)
                 rl_config = get_config().rl
@@ -731,13 +748,13 @@ class GAScheduler:
 
         # Build rotation order from all enabled heuristics
         heuristic_names = list(enabled.keys())
-        
+
         # Set rotation order in tracker (includes repair heuristics if enabled)
         self.heuristic_tracker.set_heuristic_order(heuristic_names)
-        
+
         # Count repair heuristics for display
-        repair_heuristics = [h for h in heuristic_names if 'repair' in h.lower()]
-        
+        repair_heuristics = [h for h in heuristic_names if "repair" in h.lower()]
+
         if repair_heuristics:
             console.print(
                 f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics (including {len(repair_heuristics)} repair operators)[/dim]"
@@ -767,11 +784,13 @@ class GAScheduler:
 
         # ADAPTIVE PRIORITY ADJUSTMENT: Reorder heuristics based on recent effectiveness
         # Check if adaptive priority is enabled and it's time to reorder
-        full_config = get_config()  # Get full config (not just self.config which is GAConfig)
+        full_config = (
+            get_config()
+        )  # Get full config (not just self.config which is GAConfig)
         adaptive_config = full_config.heuristics.adaptive_priority
         if adaptive_config.get("enabled", False):
             reorder_interval = adaptive_config.get("reorder_interval", 10)
-            
+
             # Reorder every N generations (and at generation 0 after some data)
             if gen > 0 and gen % reorder_interval == 0:
                 order_changed = self.heuristic_tracker.reorder_by_effectiveness(
@@ -779,16 +798,22 @@ class GAScheduler:
                     window_size=adaptive_config.get("evaluation_window", 10),
                     min_applications=adaptive_config.get("min_applications", 3),
                 )
-                
+
                 if order_changed:
                     # Show reordered list with effectiveness scores
                     scores = self.heuristic_tracker.get_effectiveness_summary()
-                    console.print(f"[yellow]    Gen {gen}: Reordered heuristics by effectiveness:[/yellow]")
-                    for i, h_name in enumerate(self.heuristic_tracker.heuristic_order[:5], 1):
+                    console.print(
+                        f"[yellow]    Gen {gen}: Reordered heuristics by effectiveness:[/yellow]"
+                    )
+                    for i, h_name in enumerate(
+                        self.heuristic_tracker.heuristic_order[:5], 1
+                    ):
                         score = scores.get(h_name, 0.0)
                         console.print(f"      {i}. {h_name}: {score:+.3f}")
                     if len(self.heuristic_tracker.heuristic_order) > 5:
-                        console.print(f"      ... and {len(self.heuristic_tracker.heuristic_order) - 5} more")
+                        console.print(
+                            f"      ... and {len(self.heuristic_tracker.heuristic_order) - 5} more"
+                        )
 
         # Get next heuristic in rotation
         heuristic_name = self.heuristic_tracker.get_next_heuristic()
@@ -809,13 +834,17 @@ class GAScheduler:
 
         # Select target individual(s)
         if heuristic_meta.requires_population:
-            # Diversity/selection heuristics need full population
-            target_individuals = tools.selBest(
-                self.population, min(4, len(self.population))
-            )
+            target_size = min(4, len(self.population))
+        elif heuristic_meta.modifies_individual and len(self.population) > 1:
+            target_size = min(4, len(self.population))
         else:
-            # Most heuristics work on single individual
-            target_individuals = tools.selBest(self.population, 1)
+            target_size = 1
+
+        target_individuals = tools.selBest(self.population, target_size)
+        if not target_individuals:
+            return
+
+        fitness_before = [tuple(ind.fitness.values) for ind in target_individuals]
 
         # CONSOLE LOG: Show which heuristic is being applied
         heuristic_start_time = time.time()
@@ -823,70 +852,75 @@ class GAScheduler:
             f"[cyan]   -> Gen {gen}: Heuristic '{heuristic_name}' ({heuristic_meta.category.value}) -> {len(target_individuals)} ind(s)...[/cyan]"
         )
 
-        # Apply heuristic to each target
-        for ind_idx, individual in enumerate(target_individuals):
-            # Record fitness before
-            fitness_before = individual.fitness.values
+        if heuristic_meta.requires_population:
+            self._apply_population_heuristic(
+                heuristic_name,
+                heuristic_meta,
+                target_individuals,
+                fitness_before,
+                gen,
+            )
+        else:
+            self._apply_standard_heuristic_batch(
+                heuristic_name,
+                heuristic_meta,
+                target_individuals,
+                fitness_before,
+                gen,
+            )
 
-            # Apply heuristic
+        # CONSOLE LOG: Show heuristic completion with timing and improvement
+        total_heuristic_time = time.time() - heuristic_start_time
+        console.print(
+            f"[green]   OK Gen {gen}: '{heuristic_name}' done in {total_heuristic_time:.2f}s[/green]"
+        )
+
+    def _apply_population_heuristic(
+        self,
+        heuristic_name: str,
+        heuristic_meta,
+        target_individuals,
+        fitness_before,
+        gen: int,
+    ) -> None:
+        """Apply heuristics that require population context sequentially."""
+        population_snapshot = [list(ind) for ind in self.population]
+
+        for idx, individual in enumerate(target_individuals):
             start_time = time.time()
+            before = fitness_before[idx]
+
             try:
-                if heuristic_meta.requires_population:
-                    # Pass population for diversity heuristics
-                    # NOTE: Pass individual directly (not copy) for in-place modification
-                    
-                    # Special handling for crossover-type heuristics that need two parents
-                    if heuristic_name == "distance_preserving_crossover":
-                        # Select second parent for crossover
-                        parent2 = tools.selRandom(self.population, 1)[0]
-                        result = heuristic_meta.function(
-                            parent1=individual,
-                            parent2=parent2,
-                            context=self.context,
-                        )
-                        # Distance preserving crossover returns TWO offspring - use first one
-                        if isinstance(result, tuple) and len(result) >= 2:
-                            offspring = result[0]
-                            if isinstance(offspring, list):
-                                individual[:] = offspring
-                    elif heuristic_name == "adaptive_diversity_maintenance":
-                        # Pass generation parameter for adaptive diversity
-                        result = heuristic_meta.function(
-                            individual=individual,
-                            population=[list(ind) for ind in self.population],
-                            context=self.context,
-                            generation=gen,
-                        )
-                        # Handle list return (modified individual)
-                        if heuristic_meta.modifies_individual and isinstance(result, list):
-                            individual[:] = result
-                    else:
-                        result = heuristic_meta.function(
-                            individual=individual,
-                            population=[list(ind) for ind in self.population],
-                            context=self.context,
-                        )
-                        # Update individual if modified and heuristic returns new list
-                        if heuristic_meta.modifies_individual and isinstance(result, list):
-                            individual[:] = result
-                else:
-                    # Standard heuristic (individual + context)
-                    # NOTE: Pass individual directly (not copy) for in-place modification
+                if heuristic_name == "distance_preserving_crossover":
+                    parent2 = tools.selRandom(self.population, 1)[0]
                     result = heuristic_meta.function(
-                        individual=individual,
+                        parent1=individual,
+                        parent2=parent2,
                         context=self.context,
                     )
+                    if isinstance(result, tuple) and len(result) >= 2:
+                        offspring = result[0]
+                        if isinstance(offspring, list):
+                            individual[:] = offspring
+                elif heuristic_name == "adaptive_diversity_maintenance":
+                    result = heuristic_meta.function(
+                        individual=individual,
+                        population=population_snapshot,
+                        context=self.context,
+                        generation=gen,
+                    )
+                    if heuristic_meta.modifies_individual and isinstance(result, list):
+                        individual[:] = result
+                else:
+                    result = heuristic_meta.function(
+                        individual=individual,
+                        population=population_snapshot,
+                        context=self.context,
+                    )
+                    if heuristic_meta.modifies_individual and isinstance(result, list):
+                        individual[:] = result
 
-                    # Handle result based on type
-                    if heuristic_meta.modifies_individual:
-                        if isinstance(result, list):
-                            # Heuristic returned modified copy - update original
-                            individual[:] = result
-                        # If result is int or None, heuristic modified individual in-place (no action needed)
-
-                # Re-evaluate if individual was modified
                 if heuristic_meta.modifies_individual:
-                    # Use direct evaluate() function (not toolbox) since we're in main process
                     fitness_after = evaluate(
                         individual,
                         self.context.courses,
@@ -899,25 +933,26 @@ class GAScheduler:
                     fitness_after = individual.fitness.values
 
                 execution_time = time.time() - start_time
-
-                # Record application in tracker
                 self.heuristic_tracker.record_application(
                     generation=gen,
                     heuristic_name=heuristic_name,
                     category=heuristic_meta.category.value,
-                    fitness_before=fitness_before,
+                    fitness_before=before,
                     fitness_after=fitness_after,
                     execution_time=execution_time,
                     individual_id=self.population.index(individual),
                 )
-
-            except Exception as e:
-                logger.warning(f"Heuristic '{heuristic_name}' failed at gen {gen}: {e}")
-                console.print(
-                    f"[yellow]   WARN Gen {gen}: Heuristic '{heuristic_name}' failed: {e}[/yellow]"
+                self._record_heuristic_stat(
+                    heuristic_name, self._is_improvement(before, fitness_after)
                 )
 
-                # Ensure individual has valid fitness (re-evaluate if needed)
+            except Exception as exc:
+                logger.warning(
+                    f"Heuristic '{heuristic_name}' failed at gen {gen}: {exc}"
+                )
+                console.print(
+                    f"[yellow]   WARN Gen {gen}: Heuristic '{heuristic_name}' failed: {exc}[/yellow]"
+                )
                 if (
                     not hasattr(individual.fitness, "values")
                     or not individual.fitness.valid
@@ -933,22 +968,146 @@ class GAScheduler:
                 else:
                     fitness_after = individual.fitness.values
 
-                # Record failed application (don't spam console)
                 self.heuristic_tracker.record_application(
                     generation=gen,
                     heuristic_name=heuristic_name,
                     category=heuristic_meta.category.value,
-                    fitness_before=fitness_before,
+                    fitness_before=before,
                     fitness_after=fitness_after,
                     execution_time=0.0,
-                    individual_id=0,
+                    individual_id=self.population.index(individual),
                 )
-        
-        # CONSOLE LOG: Show heuristic completion with timing and improvement
-        total_heuristic_time = time.time() - heuristic_start_time
-        console.print(
-            f"[green]   OK Gen {gen}: '{heuristic_name}' done in {total_heuristic_time:.2f}s[/green]"
-        )
+                self._record_heuristic_stat(heuristic_name, False)
+
+    def _apply_standard_heuristic_batch(
+        self,
+        heuristic_name: str,
+        heuristic_meta,
+        target_individuals,
+        fitness_before,
+        gen: int,
+    ) -> None:
+        """Apply individual-focused heuristics using parallel executor when possible."""
+        if not target_individuals:
+            return
+
+        results = None
+        per_individual_times = []
+        if self.parallel_executor and len(target_individuals) > 1:
+            try:
+                start = time.time()
+                results = self.parallel_executor.apply_parallel(
+                    heuristic_func=heuristic_meta.function,
+                    individuals=target_individuals,
+                    context=self.context,
+                )
+                elapsed = time.time() - start
+                if len(results) == len(target_individuals):
+                    per_individual_times = [elapsed / len(target_individuals)] * len(
+                        target_individuals
+                    )
+                else:
+                    results = None
+            except Exception as exc:
+                logger.warning(
+                    f"Parallel heuristic '{heuristic_name}' failed, falling back: {exc}"
+                )
+                results = None
+
+        if not results:
+            results = []
+            for individual in target_individuals:
+                start = time.time()
+                try:
+                    result = heuristic_meta.function(
+                        individual=individual,
+                        context=self.context,
+                    )
+                    results.append(result)
+                except Exception as exc:
+                    logger.warning(
+                        f"Heuristic '{heuristic_name}' failed at gen {gen}: {exc}"
+                    )
+                    console.print(
+                        f"[yellow]   WARN Gen {gen}: Heuristic '{heuristic_name}' failed: {exc}[/yellow]"
+                    )
+                    results.append(individual)
+                finally:
+                    per_individual_times.append(time.time() - start)
+
+        for idx, individual in enumerate(target_individuals):
+            before = fitness_before[idx]
+            result = results[idx] if idx < len(results) else None
+
+            if heuristic_meta.modifies_individual and isinstance(result, list):
+                individual[:] = result
+
+            if heuristic_meta.modifies_individual:
+                fitness_after = evaluate(
+                    individual,
+                    self.context.courses,
+                    self.context.instructors,
+                    self.context.groups,
+                    self.context.rooms,
+                )
+                individual.fitness.values = fitness_after
+            else:
+                fitness_after = individual.fitness.values
+
+            exec_time = (
+                per_individual_times[idx] if idx < len(per_individual_times) else 0.0
+            )
+
+            self.heuristic_tracker.record_application(
+                generation=gen,
+                heuristic_name=heuristic_name,
+                category=heuristic_meta.category.value,
+                fitness_before=before,
+                fitness_after=fitness_after,
+                execution_time=exec_time,
+                individual_id=self.population.index(individual),
+            )
+
+            self._record_heuristic_stat(
+                heuristic_name, self._is_improvement(before, fitness_after)
+            )
+
+    @staticmethod
+    def _is_improvement(before, after) -> bool:
+        """Return True if new fitness dominates previous fitness."""
+        if not before or not after:
+            return False
+        try:
+            hard_before, soft_before = before
+            hard_after, soft_after = after
+        except (TypeError, ValueError):
+            return False
+
+        if hard_after < hard_before:
+            return True
+        if hard_after > hard_before:
+            return False
+        return soft_after < soft_before
+
+    def _record_heuristic_stat(self, heuristic_name: str, improved: bool) -> None:
+        """Update heuristic stats counters for telemetry."""
+        if not heuristic_name:
+            return
+
+        applications_key = f"{heuristic_name}_applications"
+        improvements_key = f"{heuristic_name}_improvements"
+
+        self.heuristic_stats.setdefault("total_applications", 0)
+        self.heuristic_stats.setdefault("total_improvements", 0)
+        self.heuristic_stats.setdefault(applications_key, 0)
+        self.heuristic_stats.setdefault(improvements_key, 0)
+
+        self.heuristic_stats[applications_key] += 1
+        self.heuristic_stats["total_applications"] += 1
+
+        if improved:
+            self.heuristic_stats[improvements_key] += 1
+            self.heuristic_stats["total_improvements"] += 1
 
     def initialize_population(self):
         """Create and evaluate initial population."""
@@ -1888,58 +2047,61 @@ class GAScheduler:
         # Check multiple conditions to detect DEAP invalidation bugs
         _before_invalid = time_module.time()
         profiler.start_phase("invalidation_check")
-        
+
         invalid = []
         for ind in offspring:
             # Multi-condition check (DEAP sometimes leaves fitness.valid=True after delete)
             is_invalid = (
-                not hasattr(ind, 'fitness') or
-                not hasattr(ind.fitness, 'valid') or
-                not ind.fitness.valid or
-                not hasattr(ind.fitness, 'values') or
-                len(ind.fitness.values) == 0
+                not hasattr(ind, "fitness")
+                or not hasattr(ind.fitness, "valid")
+                or not ind.fitness.valid
+                or not hasattr(ind.fitness, "values")
+                or len(ind.fitness.values) == 0
             )
-            
+
             if is_invalid:
                 invalid.append(ind)
-        
+
         profiler.end_phase()
         _invalid_check_time = time_module.time() - _before_invalid
-        
+
         # Calculate expected invalidation count
         expected_invalid = int(len(offspring) * (cxpb * 0.75 + mutpb * 0.25))
-        
+
         # DEBUG: Log invalidation results (always show for first 5 gens)
         if gen <= 5:
             console.print(
                 f"[dim]   Gen {gen}: {len(invalid)}/{len(offspring)} individuals invalidated "
                 f"(expected ~{expected_invalid}, {len(invalid)/len(offspring)*100:.1f}%)[/dim]"
             )
-        
+
         # WARNING: Detect invalidation failure
         if len(invalid) < expected_invalid * 0.5 and gen > 0:
             console.print(
                 f"[bold yellow]   WARNING Gen {gen}: Only {len(invalid)}/{len(offspring)} individuals marked invalid! "
                 f"Expected ~{expected_invalid}. Fitness invalidation may be broken.[/bold yellow]"
             )
-        
+
         # PARALLEL FITNESS EVALUATION (PRIMARY PARALLELIZATION TARGET)
         if invalid:
             profiler.start_phase("evaluation", items_to_process=len(invalid))
-            
+
             # Use multiprocessing pool via toolbox.map (32 cores parallelized)
             fitness_values = list(self.toolbox.map(self.toolbox.evaluate, invalid))
-            
+
             for ind, fit in zip(invalid, fitness_values):
                 ind.fitness.values = fit
-            
+
             profiler.end_phase()
-            
+
             # DEBUG: Verify fitness assignment (always show for first 5 gens)
             if gen <= 5:
                 evaluated_count = sum(
-                    1 for ind in invalid 
-                    if hasattr(ind, 'fitness') and hasattr(ind.fitness, 'values') and len(ind.fitness.values) > 0
+                    1
+                    for ind in invalid
+                    if hasattr(ind, "fitness")
+                    and hasattr(ind.fitness, "values")
+                    and len(ind.fitness.values) > 0
                 )
                 console.print(
                     f"[dim]   Gen {gen}: {evaluated_count}/{len(invalid)} individuals evaluated successfully[/dim]"
@@ -1954,17 +2116,21 @@ class GAScheduler:
                 console.print(
                     f"[yellow]   Emergency fallback: Force re-evaluating ALL {len(offspring)} individuals...[/yellow]"
                 )
-                
+
                 # Emergency fallback: Re-evaluate ENTIRE population
-                profiler.start_phase("evaluation_emergency", items_to_process=len(offspring))
-                
-                fitness_values = list(self.toolbox.map(self.toolbox.evaluate, offspring))
-                
+                profiler.start_phase(
+                    "evaluation_emergency", items_to_process=len(offspring)
+                )
+
+                fitness_values = list(
+                    self.toolbox.map(self.toolbox.evaluate, offspring)
+                )
+
                 for ind, fit in zip(offspring, fitness_values):
                     ind.fitness.values = fit
-                
+
                 profiler.end_phase()
-                
+
                 console.print(
                     f"[green]   Emergency re-evaluation complete: {len(offspring)} individuals[/green]"
                 )

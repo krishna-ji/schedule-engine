@@ -30,7 +30,7 @@ class ParallelHeuristicExecutor:
         """
         if max_workers is None:
             max_workers = get_cpu_count()
-        
+
         self.max_workers = max_workers
         self.use_threads = use_threads
 
@@ -62,7 +62,10 @@ class ParallelHeuristicExecutor:
 
         # For small populations, don't parallelize
         if len(individuals) < self.max_workers:
-            return [heuristic_func(ind, context) for ind in individuals]
+            return [
+                self._execute_heuristic(heuristic_func, ind, context)
+                for ind in individuals
+            ]
 
         # Determine chunk size
         if chunk_size is None:
@@ -120,7 +123,10 @@ class ParallelHeuristicExecutor:
                         # Fallback: process chunk sequentially
                         # Use enumerate index to directly access chunk (O(1) instead of O(n))
                         results.extend(
-                            [heuristic_func(ind, context) for ind in chunks[i]]
+                            [
+                                self._execute_heuristic(heuristic_func, ind, context)
+                                for ind in chunks[i]
+                            ]
                         )
 
             return results
@@ -150,7 +156,9 @@ class ParallelHeuristicExecutor:
         for ind in chunk:
             try:
                 modified_ind = heuristic_func(ind, context)
-                results.append(modified_ind)
+                results.append(
+                    ParallelHeuristicExecutor._prepare_result(modified_ind, ind)
+                )
             except Exception as e:
                 # If heuristic fails, keep original
                 logger.debug(f"Heuristic failed on individual: {e}")
@@ -214,6 +222,28 @@ class ParallelHeuristicExecutor:
         except Exception as e:
             logger.error(f"Batch heuristic application failed: {e}")
             return individual
+
+    def _execute_heuristic(
+        self, heuristic_func: Callable, individual: Any, context: Any
+    ):
+        """Execute heuristic safely and return modified individual."""
+        try:
+            result = heuristic_func(individual, context)
+            return self._prepare_result(result, individual)
+        except Exception as exc:
+            logger.debug(f"Heuristic execution failed: {exc}")
+            return individual
+
+    @staticmethod
+    def _prepare_result(result: Any, original: Any):
+        """Normalize heuristic outputs to return mutated individuals."""
+        if isinstance(result, list):
+            return result
+        if isinstance(result, tuple):
+            for item in result:
+                if isinstance(item, list):
+                    return item
+        return original
 
 
 # Singleton instance
