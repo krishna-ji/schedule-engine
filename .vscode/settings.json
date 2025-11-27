@@ -19,7 +19,6 @@
     },
     "python.formatting.provider": "black",
     "python.terminal.activateEnvironment": true,
-    "terminal.integrated.defaultProfile.windows": "Windows PowerShell",
     "python.terminal.activateEnvInCurrentTerminal": true,
     "files.exclude": {
         "**/.ipynb_checkpoints": true,
@@ -40,6 +39,7 @@
     "python.analysis.extraPaths": [
         "./src"
     ],
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
     "github.copilot.chat.commitMessageGeneration.instructions": [
         {
             "file": ".github/copilot-instructions.md"

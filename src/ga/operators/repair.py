@@ -225,6 +225,166 @@ def repair_group_overlaps(
     return fixes
 
 
+# ================
+# 3. ROOM CONFLICT REPAIR (Priority 3)
+# ================
+
+
+@repair_operator(
+    name="repair_room_conflicts",
+    description="Fix room double-bookings by shifting sessions or reassigning rooms",
+    priority=3,
+    modifies_length=False,
+)
+def repair_room_conflicts(
+    individual: List[SessionGene], context: SchedulingContext
+) -> int:
+    """Resolve room conflicts by moving sessions or selecting compatible rooms."""
+    fixes = 0
+    occupied = _build_occupied_quanta_map(individual)
+
+    for gene in individual:
+        has_conflict = any(
+            len(occupied["rooms"].get(q, set())) > 1
+            for q in range(gene.start_quanta, gene.end_quanta)
+        )
+
+        if not has_conflict:
+            continue
+
+        # Try shifting first to keep same room assignment
+        new_start = _find_conflict_free_slot(individual, gene, context.available_quanta)
+
+        if new_start is not None:
+            gene.start_quanta = new_start
+            fixes += 1
+            occupied = _build_occupied_quanta_map(individual)
+            continue
+
+        course_key = (gene.course_id, gene.course_type)
+        course = context.courses.get(course_key)
+        needs_lab = course.course_type == "practical" if course else False
+        new_room = _find_compatible_room(individual, gene, context, needs_lab)
+        if new_room is not None:
+            gene.room_id = new_room
+            fixes += 1
+            occupied = _build_occupied_quanta_map(individual)
+
+    return fixes
+
+
+# ================
+# 4. INSTRUCTOR CONFLICT REPAIR (Priority 4)
+# ================
+
+
+@repair_operator(
+    name="repair_instructor_conflicts",
+    description="Resolve instructor double-bookings by shifting sessions",
+    priority=4,
+    modifies_length=False,
+)
+def repair_instructor_conflicts(
+    individual: List[SessionGene], context: SchedulingContext
+) -> int:
+    """Resolve instructor conflicts by finding conflict-free slots."""
+    fixes = 0
+    occupied = _build_occupied_quanta_map(individual)
+
+    for gene in individual:
+        has_conflict = any(
+            len(occupied["instructors"].get(q, set())) > 1
+            for q in range(gene.start_quanta, gene.end_quanta)
+        )
+
+        if not has_conflict:
+            continue
+
+        new_start = _find_conflict_free_slot(individual, gene, context.available_quanta)
+
+        if new_start is not None:
+            gene.start_quanta = new_start
+            fixes += 1
+            occupied = _build_occupied_quanta_map(individual)
+
+    return fixes
+
+
+# ================
+# 5. INSTRUCTOR QUALIFICATION REPAIR (Priority 5)
+# ================
+
+
+@repair_operator(
+    name="repair_instructor_qualifications",
+    description="Reassign sessions to qualified instructors",
+    priority=5,
+    modifies_length=False,
+)
+def repair_instructor_qualifications(
+    individual: List[SessionGene], context: SchedulingContext
+) -> int:
+    """Ensure instructors assigned to sessions are properly qualified."""
+    fixes = 0
+
+    for gene in individual:
+        course_key = (gene.course_id, gene.course_type)
+        instructor = context.instructors.get(gene.instructor_id)
+        course = context.courses.get(course_key)
+
+        if not course:
+            continue
+
+        if instructor and course_key in instructor.qualified_courses:
+            continue
+
+        replacement = _find_available_instructor(individual, gene, context, course_key)
+        if replacement is not None:
+            gene.instructor_id = replacement
+            fixes += 1
+
+    return fixes
+
+
+# ================
+# 6. ROOM TYPE MISMATCH REPAIR (Priority 6)
+# ================
+
+
+@repair_operator(
+    name="repair_room_type_mismatches",
+    description="Match course requirements with compatible room types",
+    priority=6,
+    modifies_length=False,
+)
+def repair_room_type_mismatches(
+    individual: List[SessionGene], context: SchedulingContext
+) -> int:
+    """Swap rooms when course type and room features disagree."""
+    fixes = 0
+
+    for gene in individual:
+        course_key = (gene.course_id, gene.course_type)
+        course = context.courses.get(course_key)
+        room = context.rooms.get(gene.room_id)
+
+        if not course or not room:
+            continue
+
+        needs_lab = course.course_type == "practical"
+        is_lab = getattr(room, "room_features", None) == "lab"
+
+        if needs_lab == is_lab:
+            continue
+
+        replacement_room = _find_compatible_room(individual, gene, context, needs_lab)
+        if replacement_room is not None:
+            gene.room_id = replacement_room
+            fixes += 1
+
+    return fixes
+
+
 def _find_conflict_free_slot(
     individual: List[SessionGene],
     current_gene: SessionGene,
@@ -275,6 +435,66 @@ def _find_available_slot(
         Start quantum if valid slot found, None otherwise
     """
     return _find_conflict_free_slot(individual, current_gene, available_quanta)
+
+
+def _find_available_instructor(
+    individual: List[SessionGene],
+    current_gene: SessionGene,
+    context: SchedulingContext,
+    course_key: Tuple[str, str],
+) -> Optional[str]:
+    """Find a qualified instructor who is available for the session window."""
+    occupied = _build_occupied_quanta_map(individual, current_gene)
+    duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
+
+    for instructor in context.instructors.values():
+        if course_key not in getattr(instructor, "qualified_courses", set()):
+            continue
+
+        if not all(q in instructor.available_quanta for q in duration_range):
+            continue
+
+        conflict = False
+        for q in duration_range:
+            if instructor.instructor_id in occupied["instructors"].get(q, set()):
+                conflict = True
+                break
+
+        if conflict:
+            continue
+
+        return instructor.instructor_id
+
+    return None
+
+
+def _find_compatible_room(
+    individual: List[SessionGene],
+    current_gene: SessionGene,
+    context: SchedulingContext,
+    needs_lab: bool,
+) -> Optional[str]:
+    """Find a room matching lab/theory requirement without conflicts."""
+    occupied = _build_occupied_quanta_map(individual, current_gene)
+    duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
+
+    for room in context.rooms.values():
+        is_lab = getattr(room, "room_features", None) == "lab"
+        if needs_lab != is_lab:
+            continue
+
+        conflict = False
+        for q in duration_range:
+            if room.room_id in occupied["rooms"].get(q, set()):
+                conflict = True
+                break
+
+        if conflict:
+            continue
+
+        return room.room_id
+
+    return None
 
 
 # ================
@@ -339,6 +559,23 @@ def repair_individual_unified(
     Returns:
         Dict with repair statistics
     """
+    if selective:
+        try:
+            from src.ga.operators.repair_selective import repair_individual_selective
+            from src.config import get_config
+
+            detection_strategy = get_config().repair.detection_strategy
+            selective_stats = repair_individual_selective(
+                individual,
+                context,
+                max_iterations=max_iterations,
+                detection_strategy=detection_strategy,
+            )
+            if selective_stats is not None:
+                return selective_stats
+        except Exception:  # pragma: no cover - fallback to full scan
+            pass
+
     from src.ga.operators.repair_wrappers import get_enabled_repair_operators
 
     stats = {

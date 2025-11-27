@@ -2640,9 +2640,17 @@ class GAScheduler:
             "instructor_availability_fixes": "instructor_availability_fixes",
         }
 
+        normalized = {}
+        for key, value in stats.items():
+            if not key.endswith("_fixes"):
+                continue
+            normalized[key] = value
+            if key.startswith("repair_"):
+                normalized[key[len("repair_") :]] = value
+
         for src_key, dst_key in key_map.items():
-            if src_key in stats:
-                agg[dst_key] += stats.get(src_key, 0)
+            if src_key in normalized:
+                agg[dst_key] += normalized.get(src_key, 0)
 
     def _restart_population(self, gen: int):
         """
