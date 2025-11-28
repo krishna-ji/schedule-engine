@@ -47,11 +47,7 @@
     "ruff.lint.enable": true,
     "ruff.organizeImports": true,
     "ruff.fixAll": true,
-    "ruff.lint.args": [],
-    // MyPy type checker
-    "mypy-type-checker.args": [
-        "--python-version=3.12"
-    ],
+
     // ==================
     // FILE EXCLUSIONS
     // ==================

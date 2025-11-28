@@ -12,7 +12,7 @@ description: "Full-scale production run - SAME functionality as test, scaled up 
 # GA Settings - PROD: SAME algorithm as test, scaled up for quality
 ga:
   ngen: 2000
-  pop_size: 1000 # Larger population for better solution quality (SAME algorithm)
+  pop_size: 400 # Larger population for better solution quality (SAME algorithm)
 
 # Parallel Processing - Inherited from base.yaml (CPU cores * 2)
 
@@ -34,7 +34,7 @@ lns:
 # IGLS Exhaustive Search - Production triggers (NO overlap with LNS intervals)
 repair:
   exhaustive_search:
-    enabled: false  # DISABLED: Takes 9.7 min per trigger (wastes 19.3 min total)
+    enabled: false # DISABLED: Takes 9.7 min per trigger (wastes 19.3 min total)
     generations: [3, 30, 150, 250, 350, 450, 550, 650, 750, 850, 950]
     population_coverage: 0.15 # Top 15% (15 individuals)
     max_neighborhood_size: 120
