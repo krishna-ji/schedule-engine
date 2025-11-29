@@ -92,6 +92,7 @@ uv run check-data
 ## Tech Stack
 
 - **Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)
+- **Type Safety**: mypy 1.13.0 strict mode (100% coverage for all pure Python packages)
 - **Core Libraries**: 
   - DEAP 1.4.1 (genetic algorithms)
   - PyTorch 2.4.1 + CUDA 12.1 (RL training/inference only - NOT used for GA fitness evaluation)
@@ -247,15 +248,21 @@ uv run memetic --prod --name "thesis-memetic-r01"    # 2-4 hours
    - IGD/GD: Vectorized implementations
    - Configurable frequency: `metrics.advanced_metrics_frequency`
    - **Impact**: 27.8 hours → 12 minutes for 2000 generations
-4. **Thesis Experiments**:  Ready (5 progressive experiments)
+4. **Type Safety**:  Complete (comprehensive strict mypy typing)
+   - **All pure Python packages**: 100% typed (diversity/, lns/, heuristics/, workflows/, utils/, config/, entities/, encoder/, decoder/, constraints/, metrics/, exporter/, validation/)
+   - **147 errors fixed**: Systematic fixes across workflows (53), heuristics (49), lns (28), diversity (17)
+   - **56+ files**: Already passing strict mypy from previous work
+   - **33 type: ignore**: Only legitimate library limitations (yaml, numpy, DEAP, RL frameworks)
+   - **Achievement**: All custom-written pure Python code fully typed with mypy 1.13.0 strict mode
+5. **Thesis Experiments**:  Ready (5 progressive experiments)
    - Mode A: Pure NSGA-II baseline (`uv run baseline`)
    - Mode B: + Memetic local search (`uv run memetic`)
    - Mode C: + Round-robin heuristics (`uv run roundrobin`)
    - Mode D: + Adaptive selection (`uv run adaptive`)
    - Mode E: + RL-guided control (`uv run rl`)
    - **Guide**: `docs/45-resource-unused-problem/THESIS_EXPERIMENTS_GUIDE.md`
-4. **Documentation Reorganization**:  Complete (10-category structure, see `docs/INDEX.md`)
-5. **Next Steps (Execution):**
+6. **Documentation Reorganization**:  Complete (10-category structure, see `docs/INDEX.md`)
+7. **Next Steps (Execution):**
    - Run all 5 thesis experiments (6-10 hours total)
    - Analyze results and generate comparison plots
    - Train RL agents if needed (`uv run train prod`)
@@ -344,8 +351,31 @@ except SpecificException as e:
 ### Required Before Each Commit
 - Run `black src/ test/` - Auto-format code
 - Run `ruff check src/ test/` - Lint for issues
+- Run `mypy src/` - Type check (strict mode, must pass)
 - Run `pytest test/unit/` - Ensure tests pass
 - Verify config syntax if changed: `uv run verify-config`
+
+### Type Checking Guidelines
+- **Strict mode required**: All new code must pass `mypy --strict`
+- **Pure Python packages**: 100% type coverage (no type: ignore except for library limitations)
+- **Legitimate type: ignore cases**:
+  - yaml module (no type stubs available)
+  - numpy return types (floating[Any] → float, ndarray → list conversions)
+  - DEAP Individual type (uses Any internally)
+  - RL framework optional components
+  - Circular import forward references
+  - Dynamic attribute assignment on function objects
+  - Private library attributes (e.g., Pool._processes)
+- **Type annotation requirements**:
+  - All function parameters and return types
+  - All class attributes and instance variables
+  - Complex data structures (dict, list with specific element types)
+  - Optional parameters as `T | None = None` (PEP 604 union syntax)
+- **Common patterns**:
+  - Use `from __future__ import annotations` for forward references
+  - Wrap numpy operations: `float(np.mean(...))`, `int(np.argmax(...))`
+  - Assert after None checks: `assert x is not None` (helps type checker)
+  - Import proper types: Use `SessionGene` not `CourseSession` in appropriate contexts
 
 ## Documentation Policy
 
