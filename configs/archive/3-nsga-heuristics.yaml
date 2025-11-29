@@ -1,8 +1,9 @@
 # ================
-# RUNTIME MODE 3: NSGA-II + Repairs + Small Heuristics
+# RUNTIME MODE 3: NSGA-II + Repairs + 19 Heuristics (No Memetic)
 # ================
-# GA with repairs + Phase 1.5 heuristic toolbox (19 operators).
-# Tests effectiveness of heuristic operators without advanced enhancements.
+# NSGA-II with repairs and all 19 heuristics enabled.
+# Tests: Do heuristics improve repair-only baseline?
+# NOTE: No memetic local search (isolated heuristic impact).
 
 ga:
   ngen: 2000
@@ -12,11 +13,11 @@ ga:
   elite_preservation: true
   elite_size: 0.1
   use_adaptive_probabilities: false
-  use_constraint_guided_mutation: true # Constraint-guided mutation enabled
-  population_strategy: random # Random init for fair comparison (smart init produces worse solutions)
+  use_constraint_guided_mutation: true
+  population_strategy: random
   validate_population_integrity: false
 
-# Enable IGLS repair system
+# Enable IGLS repair (no memetic)
 repair:
   enabled: true
   apply_after_mutation: false
@@ -25,7 +26,9 @@ repair:
   detection_strategy: hybrid
   recheck_after_repair: false
   max_iterations: 2
-  memetic_mode: false
+  memetic_mode: false  # NO memetic - test heuristics only
+  elite_percentage: 0.05
+  memetic_iterations: 1
 
   adaptive_repair:
     stagnation_trigger:
@@ -43,35 +46,46 @@ repair:
     cooldown: 5
 
   selective_repair:
-    enabled: true
-    apply_probability: 0.4
-    apply_after_mutation: true
-    apply_after_crossover: true
-    detection_strategy: hybrid
+    enabled: false
 
-# Disable LNS
+# Disable LNS (save for Mode 4+)
 lns:
   enabled: false
 
-# Disable enhancements
+# Enable enhancements (but not memetic)
 enhancements:
-  master_enabled: false
-  memetic_mode: false
+  master_enabled: true
+  memetic_mode: false  # NO memetic in Mode 3
   increased_population: false
   frequent_repair: false
   hypermutation:
-    enabled: false
+    enabled: true
+    trigger_on_stagnation: true
+    stagnation_window: 10
+    duration_generations: 1
+    mutation_rate: 0.5
   constraint_priorities:
-    enabled: false
+    enabled: true
+    availability_weight: 0.8
+    overlap_weight: 0.15
+    other_weight: 0.05
   greedy_initialization_percent: 0.0
   population_restart:
-    enabled: false
+    enabled: true
+    trigger_stagnation_gens: 50
+    restart_percentage: 0.3
+    min_interval_gens: 100
   violation_heatmap:
-    enabled: false
+    enabled: true
+    target_hot_genes: true
+    top_n_hotspots: 5
+    persistence_file: "violation_heatmap.json"
   multi_neighborhood:
-    enabled: false
+    enabled: true
+    max_combinations: 10
+    fallback_to_single: true
 
-# Enable Phase 1.5 heuristics (19 operators)
+# Enable all 19 heuristics (but NOT as round-robin - just available)
 heuristics:
   construction:
     largest_degree_first:
@@ -105,7 +119,8 @@ heuristics:
       probability: 0.15
       prefer_available: true
     multi_perturbation:
-      enabled: false # Not used in fixed heuristic mode
+      enabled: true
+      priority: 5
 
   improvement:
     kempe_chain:
@@ -144,25 +159,13 @@ heuristics:
 
   meta:
     variable_neighborhood_descent:
-      enabled: true
-      priority: 1
-      max_neighborhoods: 3
-      max_iterations: 5
+      enabled: false  # Too slow
     iterated_local_search:
-      enabled: true
-      priority: 2
-      num_iterations: 5
-      perturbation_strength: 0.3
+      enabled: false  # Too slow
     adaptive_large_neighborhood:
-      enabled: true
-      priority: 3
-      num_iterations: 10
-      initial_destroy_rate: 0.3
+      enabled: false  # Too slow
     guided_local_search:
-      enabled: true
-      priority: 4
-      num_iterations: 10
-      penalty_factor: 0.1
+      enabled: false  # Too slow
 
 # Disable RL
 rl:
