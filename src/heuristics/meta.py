@@ -335,9 +335,9 @@ def guided_local_search(
         Number of improving iterations
     """
     # Feature penalties
-    time_penalties = {}
-    room_penalties = {}
-    instructor_penalties = {}
+    time_penalties: dict[tuple[str, int], float] = {}
+    room_penalties: dict[tuple[str, str], float] = {}
+    instructor_penalties: dict[tuple[str, str], float] = {}
 
     improvements = 0
     best_fitness = _simple_fitness(individual, context)

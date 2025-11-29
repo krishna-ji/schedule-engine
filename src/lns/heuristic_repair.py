@@ -106,7 +106,7 @@ def _greedy_assign(
         conflicted_sessions, instructors, groups, rooms, courses
     )
 
-    assigned = []
+    assigned: list[SessionGene] = []
     current_schedule = partial_schedule + assigned
 
     for session in ordered:
@@ -180,9 +180,9 @@ def _find_first_feasible(
         common_quanta &= set(group.available_quanta)
 
     # Filter out occupied quanta
-    occupied_instructor = set()
-    occupied_groups = {gid: set() for gid in session.group_ids}
-    occupied_rooms = {}
+    occupied_instructor: set[int] = set()
+    occupied_groups: dict[str, set[int]] = {gid: set() for gid in session.group_ids}
+    occupied_rooms: dict[str, set[int]] = {}
 
     for fixed in current_schedule:
         if fixed.instructor_id == session.instructor_id:
@@ -256,7 +256,7 @@ def _local_search_repair(
     start_time = time.time()
 
     # Initialize with random assignment (best effort)
-    current = []
+    current: list[SessionGene] = []
     for session in conflicted_sessions:
         candidate = _random_assignment(
             session, partial_schedule + current, instructors, groups, rooms, courses

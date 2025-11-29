@@ -266,12 +266,14 @@ class BehavioralArchive:
         k = min(k, len(self.entries))
 
         # Start with highest novelty solution
-        selected_indices = [np.argmax([e.novelty for e in self.entries])]
+        selected_indices: list[int] = [
+            int(np.argmax([e.novelty for e in self.entries]))
+        ]
 
         # Greedily add solutions farthest from selected set
         while len(selected_indices) < k:
-            max_min_distance = -1
-            best_idx = -1
+            max_min_distance: float = -1.0
+            best_idx: int = -1
 
             for i in range(len(self.entries)):
                 if i in selected_indices:
@@ -284,12 +286,12 @@ class BehavioralArchive:
                         self.entries[i].behavioral_features
                         - self.entries[j].behavioral_features
                     )
-                    min_distance = min(min_distance, dist)
+                    min_distance = float(min(min_distance, dist))  # type: ignore[arg-type]
 
                 # Track solution with maximum minimum distance
                 if min_distance > max_min_distance:
                     max_min_distance = min_distance
-                    best_idx = i
+                    best_idx = int(i)
 
             selected_indices.append(best_idx)
 

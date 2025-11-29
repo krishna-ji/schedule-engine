@@ -10,6 +10,8 @@ Expected speedup: 5-10x on multi-core systems.
 
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Any
 
 from src.core.ga_scheduler import GAMetrics
 from src.encoder.quantum_time_system import QuantumTimeSystem
@@ -51,8 +53,8 @@ def generate_reports(
     population: list,
     qts: QuantumTimeSystem,
     output_dir: str,
-    course_map: dict[tuple, Course] = None,
-    heuristic_tracker: HeuristicTracker = None,
+    course_map: dict[tuple, Course] | None = None,
+    heuristic_tracker: HeuristicTracker | None = None,
 ):
     """
     Generate all output artifacts: plots, JSON, PDFs, violation reports.
@@ -124,8 +126,8 @@ def generate_reports(
     # Export heuristic tracking statistics and plots if available
     if heuristic_tracker and len(heuristic_tracker.applications) > 0:
         print("  [+] Generating heuristic tracking reports...")
-        heuristic_tracker.export_json(output_dir)
-        heuristic_tracker.generate_plots(output_dir)
+        heuristic_tracker.export_json(Path(output_dir))
+        heuristic_tracker.generate_plots(Path(output_dir))
 
         # Print summary
         summary = heuristic_tracker.get_summary()
@@ -150,7 +152,7 @@ def generate_reports(
     start_time = time.time()
 
     # Build list of plotting tasks
-    plot_tasks = []
+    plot_tasks: list[tuple[str, Any, tuple, dict]] = []
 
     # Core evolution plots
     plot_tasks.append(

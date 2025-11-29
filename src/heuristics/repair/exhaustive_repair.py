@@ -33,7 +33,7 @@ def exhaustive_repair(
         context=context,
         population_coverage=1.0,
         max_neighborhood_size=max_neighborhood_size,
-        timeout_seconds=timeout_seconds,
+        timeout_seconds=int(timeout_seconds),
     )
 
-    return metrics.get("total_improvements", 0)
+    return int(metrics.get("total_improvements", 0))

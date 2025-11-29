@@ -8,6 +8,7 @@ Extracted from main.py for better testability and reusability.
 import os
 import random
 from datetime import datetime
+from typing import Any
 
 from rich.progress import (
     BarColumn,
@@ -17,6 +18,7 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
+from src.config.models import Config
 from src.core.ga_scheduler import GAConfig, GAScheduler
 from src.core.types import SchedulingContext
 from src.decoder.individual_decoder import decode_individual
@@ -53,7 +55,7 @@ def run_standard_workflow(
     output_dir: str | None = None,
     seed: int = 69,
     validate: bool = True,
-    config: object | None = None,
+    config: Config | None = None,
 ) -> dict:
     """
     Execute standard GA scheduling workflow.
@@ -91,9 +93,9 @@ def run_standard_workflow(
     """
     # Load config if not provided
     if config is None:
-        from src.config import config as global_config
+        from src.config import get_config
 
-        config = global_config
+        config = get_config()
         if config is None:
             from src.config.loader import load_config
 
@@ -120,7 +122,7 @@ def run_standard_workflow(
         try:
             from src.config.runtime_mode import RuntimeMode
 
-            runtime_mode = RuntimeMode.from_config(config)
+            runtime_mode = RuntimeMode.from_config(config.model_dump())
             mode_value = runtime_mode.value
             mode_number, mode_name = mode_value.split("-", 1)
 
@@ -138,14 +140,14 @@ def run_standard_workflow(
                 "10": "rl",
             }
             category = category_map.get(mode_number, "other")
-            output_dir = (
+            output_dir_path = (
                 Path("output") / category / mode_name / f"evaluation_{timestamp}_auto"
             )
         except Exception:
             # Ultimate fallback: put in "other" category
-            output_dir = Path("output") / "other" / f"evaluation_{timestamp}_auto"
+            output_dir_path = Path("output") / "other" / f"evaluation_{timestamp}_auto"
 
-        output_dir = str(output_dir)
+        output_dir = str(output_dir_path)
     else:
         # Ensure directory exists and make sure it's normalized
         output_dir = os.path.normpath(output_dir)
@@ -286,7 +288,7 @@ def run_standard_workflow(
             initializer=init_worker,
             initargs=(data_dir, seed),
         )
-        console.print(f"[cyan][!info] parallel mode:[/cyan] {pool._processes} workers")
+        console.print(f"[cyan][!info] parallel mode:[/cyan] {pool._processes} workers")  # type: ignore[attr-defined]
         console.print()
     else:
         console.print("[yellow][!info] single-threaded mode[/yellow]")
@@ -524,14 +526,20 @@ def run_standard_workflow(
         transient=True,
     ) as progress:
         task = progress.add_task("creating visualizations...", total=None)
+        # Get population and heuristic_tracker with proper None handling
+        population_list: list[Any] = (
+            scheduler.population if scheduler.population is not None else []
+        )
+        heuristic_tracker_obj = getattr(scheduler, "heuristic_tracker", None)
+
         generate_reports(
             decoded_schedule=decoded_schedule,
             metrics=scheduler.metrics,
-            population=scheduler.population,
+            population=population_list,
             qts=qts,
             output_dir=output_dir,
             course_map=context.courses,
-            heuristic_tracker=getattr(scheduler, "heuristic_tracker", None),
+            heuristic_tracker=heuristic_tracker_obj,
         )
         progress.update(task, completed=1)
 
@@ -668,7 +676,7 @@ def load_input_data(
         groups=groups,
         instructors=instructors,
         rooms=rooms,
-        available_quanta=qts.get_all_operating_quanta(),
+        available_quanta=list(qts.get_all_operating_quanta()),
         config=config,
     )
 

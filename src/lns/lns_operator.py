@@ -145,6 +145,14 @@ def lns_igls_repair(
     start_time = time.time()
     _lns_stats.total_attempts += 1
 
+    # Assert non-None for type checking (already guaranteed by context loading above)
+    assert (
+        courses is not None
+        and instructors is not None
+        and groups is not None
+        and rooms is not None
+    )
+
     # Step 1: Detect conflicts
     conflicted_indices, violations = find_hard_conflict_sessions(
         individual, courses, instructors, groups, rooms
@@ -167,7 +175,7 @@ def lns_igls_repair(
         console.print(
             f"[yellow]   [LNS] Detected {len(conflicted_indices)} conflicted sessions with {total_conflicts} violations[/yellow]"
         )
-        violation_types = {}
+        violation_types: dict[str, int] = {}
         for v in violations:
             vtype = v.constraint_name
             violation_types[vtype] = violation_types.get(vtype, 0) + v.violation_count
@@ -292,7 +300,8 @@ def lns_igls_repair(
                 f"[bold green]   [LNS-IGLS] (OK) Repair SUCCESSFUL: {len(conflicted_sessions)} sessions repaired "
                 f"(total_time={repair_time:.2f}s)[/bold green]"
             )
-        return new_individual
+        # Type cast for mypy (create_individual returns DEAP Individual which inherits from list)
+        return list(new_individual)  # type: ignore[return-value]
     else:
         _lns_stats.failed_repairs += 1
         repair_time = time.time() - start_time
@@ -437,7 +446,7 @@ def should_trigger_lns_repair(
     trigger_interval: int,
     stagnation_counter: int,
     stagnation_threshold: int,
-    force_trigger_generations: list[int] = None,
+    force_trigger_generations: list[int] | None = None,
 ) -> bool:
     """
     Determine if LNS-IGLS repair should be triggered.

@@ -448,7 +448,7 @@ def _build_ejection_chain(
 
     Returns list of (gene, new_time) tuples.
     """
-    chain = []
+    chain: list[tuple[SessionGene, int]] = []
     if not available_quanta:
         return chain
 
@@ -512,7 +512,7 @@ def _apply_ejection_chain(
             return False
 
     first_gene = chain[0][0]
-    first_gene._ejection_old_times = old_times
+    first_gene._ejection_old_times = old_times  # type: ignore[attr-defined]
     return True
 
 
@@ -623,7 +623,9 @@ def _calculate_fitness(
     soft_violations = 0
 
     # Track time assignments
-    time_assignments = defaultdict(list)  # {entity_id: [time_ranges]}
+    time_assignments: dict[str, list[range]] = defaultdict(
+        list
+    )  # {entity_id: [time_ranges]}
 
     for gene in individual:
         time_range = range(gene.time_quantum, gene.time_quantum + gene.duration_quanta)

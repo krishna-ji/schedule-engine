@@ -67,8 +67,10 @@ class SubproblemDiagnostics:
                 common_quanta &= set(group.available_quanta)
 
             # Filter out quanta already occupied in partial schedule by this instructor/groups
-            occupied_instructor = set()
-            occupied_groups = {gid: set() for gid in session.group_ids}
+            occupied_instructor: set[int] = set()
+            occupied_groups: dict[str, set[int]] = {
+                gid: set() for gid in session.group_ids
+            }
 
             for fixed_session in self.partial_schedule:
                 if fixed_session.instructor_id == session.instructor_id:

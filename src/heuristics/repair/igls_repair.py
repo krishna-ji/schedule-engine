@@ -47,4 +47,4 @@ def igls_repair(
         selective=selective,
     )
 
-    return stats.get("total_fixes", 0)
+    return int(stats.get("total_fixes", 0))

@@ -46,7 +46,7 @@ def selective_repair(
     if stats is None:
         return 0
     if isinstance(stats, dict):
-        return stats.get("total_fixes", 0)
+        return int(stats.get("total_fixes", 0))
     # If it returns an integer directly
     if isinstance(stats, int):
         return stats

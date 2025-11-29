@@ -153,9 +153,9 @@ def crowding_mutation(
         Number of genes mutated
     """
     # Analyze population for crowding
-    time_usage = defaultdict(int)
-    room_usage = defaultdict(int)
-    instructor_usage = defaultdict(int)
+    time_usage: dict[int, int] = defaultdict(int)
+    room_usage: dict[str, int] = defaultdict(int)
+    instructor_usage: dict[str, int] = defaultdict(int)
 
     for ind in population:
         for gene in ind:

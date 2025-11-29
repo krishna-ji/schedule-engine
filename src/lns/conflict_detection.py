@@ -36,7 +36,7 @@ class ViolationInfo:
         constraint_name: str,
         violation_count: int,
         affected_sessions: set[int],
-        conflict_details: dict = None,
+        conflict_details: dict | None = None,
     ):
         self.constraint_name = constraint_name
         self.violation_count = violation_count
@@ -117,7 +117,7 @@ def _evaluate_constraint_with_tracking(
     constraint_name: str,
     constraint_func,
     sessions: list[CourseSession],
-    courses: dict[tuple, Course] = None,
+    courses: dict[tuple, Course] | None = None,
 ) -> tuple[set[int], int, dict]:
     """
     Evaluates a constraint and tracks which sessions are involved.
@@ -142,6 +142,9 @@ def _evaluate_constraint_with_tracking(
     elif constraint_name == "room_exclusivity":
         return _track_room_conflicts(sessions)
     elif constraint_name == "instructor_qualifications":
+        # Courses is required for this constraint
+        if courses is None:
+            return set(), 0, {}
         return _track_qualification_violations(sessions, courses)
     elif constraint_name == "room_capacity":
         return _track_room_capacity_violations(sessions)
@@ -170,7 +173,7 @@ def _track_student_group_conflicts(
     """Track student group exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
-    group_time_map = defaultdict(
+    group_time_map: dict[tuple[str, int], list[int]] = defaultdict(
         list
     )  # Maps (group_id, quanta) to list of session indices
 
@@ -198,7 +201,7 @@ def _track_instructor_conflicts(
     """Track instructor exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
-    instructor_time_map = defaultdict(list)
+    instructor_time_map: dict[tuple[str, int], list[int]] = defaultdict(list)
 
     for idx, session in enumerate(sessions):
         iid = session.instructor_id
@@ -219,7 +222,7 @@ def _track_room_conflicts(
     """Track room exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
-    room_time_map = defaultdict(list)
+    room_time_map: dict[tuple[str, int], list[int]] = defaultdict(list)
 
     for idx, session in enumerate(sessions):
         rid = session.room_id
@@ -352,7 +355,7 @@ def select_worst_conflicts(
         return conflicted_indices
 
     # Count how many violations each session is involved in
-    session_violation_count = defaultdict(int)
+    session_violation_count: dict[int, int] = defaultdict(int)
     for violation in violations:
         for idx in violation.affected_sessions:
             session_violation_count[idx] += violation.violation_count

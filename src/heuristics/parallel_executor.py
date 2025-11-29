@@ -23,7 +23,7 @@ class ParallelHeuristicExecutor:
     true parallel execution across all CPU cores.
     """
 
-    def __init__(self, max_workers: int = None, use_threads: bool = False):
+    def __init__(self, max_workers: int | None = None, use_threads: bool = False):
         """Initialize parallel executor.
 
         Args:
@@ -46,7 +46,7 @@ class ParallelHeuristicExecutor:
         heuristic_func: Callable,
         individuals: list,
         context: Any,
-        chunk_size: int = None,
+        chunk_size: int | None = None,
     ) -> list:
         """Apply heuristic to population in parallel.
 
@@ -83,7 +83,8 @@ class ParallelHeuristicExecutor:
         ExecutorClass = ThreadPoolExecutor if self.use_threads else ProcessPoolExecutor
 
         # Prepare args for executor
-        executor_kwargs = {"max_workers": self.max_workers}
+        initializer_func: Callable[[str, int], None] | None = None
+        initializer_args: tuple[str, int] | None = None
 
         # If using ProcessPoolExecutor, use initializer to avoid pickling context
         if not self.use_threads:
@@ -96,12 +97,25 @@ class ParallelHeuristicExecutor:
             ):
                 data_dir = context.config.io.data_dir
 
-            executor_kwargs["initializer"] = init_worker
-            executor_kwargs["initargs"] = (data_dir, random.randint(0, 10000))
+            initializer_func = init_worker
+            initializer_args = (data_dir, random.randint(0, 10000))
 
         try:
             # Process in parallel with order preservation
-            with ExecutorClass(**executor_kwargs) as executor:
+            from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+
+            executor_ctx: ThreadPoolExecutor | ProcessPoolExecutor
+            if self.use_threads:
+                executor_ctx = ThreadPoolExecutor(max_workers=self.max_workers)
+            else:
+                # Use type: ignore for initializer signature mismatch (ProcessPoolExecutor doesn't accept [str, int] args)
+                executor_ctx = ProcessPoolExecutor(
+                    max_workers=self.max_workers,
+                    initializer=initializer_func,  # type: ignore[arg-type]
+                    initargs=initializer_args or (),  # type: ignore[arg-type]
+                )
+
+            with executor_ctx as executor:
                 # If using processes, DO NOT pass context (it's loaded in worker)
                 submit_context = context if self.use_threads else None
 
@@ -252,7 +266,7 @@ class ParallelHeuristicExecutor:
 _parallel_executor = None
 
 
-def get_parallel_executor(max_workers: int = None) -> ParallelHeuristicExecutor:
+def get_parallel_executor(max_workers: int | None = None) -> ParallelHeuristicExecutor:
     """Get or create parallel executor singleton.
 
     Args:
