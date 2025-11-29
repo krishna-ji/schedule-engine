@@ -77,11 +77,10 @@ class RLInference:
 
         try:
             # Validate state
-            if validate:
-                if not self._validate_state(state):
-                    logger.error("Invalid state shape")
-                    self.error_count += 1
-                    return None
+            if validate and not self._validate_state(state):
+                logger.error("Invalid state shape")
+                self.error_count += 1
+                return None
 
             # Predict action
             action, _states = self.model.predict(state, deterministic=deterministic)

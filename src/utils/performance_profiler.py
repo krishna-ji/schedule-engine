@@ -154,7 +154,7 @@ class PerformanceProfiler:
         try:
             self.current_phase.cpu_percent = self.process.cpu_percent(interval=None)
             self.current_phase.memory_mb = self.process.memory_info().rss / 1024 / 1024
-        except:
+        except Exception:  # Ignore if process monitoring fails
             pass  # Ignore if process monitoring fails
 
     def end_phase(self) -> None:
@@ -200,10 +200,7 @@ class PerformanceProfiler:
             # Add rate if items were processed
             if phase.items_processed > 0 and phase.duration > 0:
                 rate = phase.items_processed / phase.duration
-                if rate < 1:
-                    rate_str = f"{1/rate:.1f}s/item"
-                else:
-                    rate_str = f"{rate:.0f}items/s"
+                rate_str = f"{1 / rate:.1f}s/item" if rate < 1 else f"{rate:.0f}items/s"
                 parts.append(f"{phase.name}={duration_str}({rate_str})")
             else:
                 parts.append(f"{phase.name}={duration_str}")

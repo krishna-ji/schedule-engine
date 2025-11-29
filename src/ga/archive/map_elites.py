@@ -27,7 +27,7 @@ class MAPElites:
 
     def __init__(
         self,
-        feature_dimensions: list[tuple[int, int]] = None,
+        feature_dimensions: list[tuple[int, int]] | None = None,
         feature_bins: int = 5,
     ):
         """
@@ -77,7 +77,7 @@ class MAPElites:
         return tuple(indices)
 
     def add_or_replace(
-        self, individual: Individual, descriptor: NDArray[np.float64] = None
+        self, individual: Individual, descriptor: NDArray[np.float64] | None = None
     ) -> bool:
         """
         Add individual to feature map (or replace if better).
@@ -94,7 +94,7 @@ class MAPElites:
 
         # Get feature map cell
         cell_indices = self.get_feature_indices(descriptor)
-        fitness = individual.fitness.values
+        fitness = individual.fitness.values  # type: ignore[attr-defined]
 
         # Check if cell is empty or this individual is better
         if cell_indices not in self.feature_map:
@@ -168,7 +168,7 @@ class MAPElites:
         """
         total_cells = self.feature_bins ** len(self.feature_dimensions)
         occupied_cells = len(self.feature_map)
-        return occupied_cells / total_cells
+        return float(occupied_cells / total_cells)
 
     def get_statistics(self) -> dict[str, float]:
         """Get archive statistics."""
@@ -177,7 +177,7 @@ class MAPElites:
                 "coverage": 0.0,
                 "num_elites": 0,
                 "feasible_elites": 0,
-                "best_fitness": (float("inf"), float("inf")),
+                "best_fitness": (float("inf"), float("inf")),  # type: ignore[dict-item]
             }
 
         all_fitness = [fit for _, fit in self.feature_map.values()]
@@ -188,7 +188,7 @@ class MAPElites:
             "coverage": self.get_coverage(),
             "num_elites": len(self.feature_map),
             "feasible_elites": feasible_count,
-            "best_fitness": best_fitness,
+            "best_fitness": best_fitness,  # type: ignore[dict-item]
         }
 
     def reset(self) -> None:

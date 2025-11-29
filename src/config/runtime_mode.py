@@ -362,7 +362,7 @@ class RuntimeMode(str, Enum):
                 "meta",
             ]:
                 if category in heuristics_config:
-                    for heuristic_name, heuristic_cfg in heuristics_config[
+                    for _heuristic_name, heuristic_cfg in heuristics_config[
                         category
                     ].items():
                         if isinstance(heuristic_cfg, dict) and heuristic_cfg.get(

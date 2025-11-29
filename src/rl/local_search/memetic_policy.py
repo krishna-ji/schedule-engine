@@ -31,7 +31,7 @@ class MemeticPolicy:
     - Computational budget remaining
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize memetic policy.
 
@@ -42,7 +42,12 @@ class MemeticPolicy:
         self.budget_levels = self.config.get(
             "budget_levels", [0, 10, 50, 100, 200, 500]
         )
-        self.model = None  # RL model (loaded on demand)
+        # Import PPO only for type checking to avoid runtime import
+        from typing import TYPE_CHECKING
+
+        if TYPE_CHECKING:
+            from stable_baselines3 import PPO
+        self.model: PPO | None = None  # type: ignore[name-defined]
 
     def get_action_space_size(self) -> int:
         """Get size of action space."""
@@ -67,7 +72,7 @@ class MemeticPolicy:
         if self.model:
             action, _ = self.model.predict(observation, deterministic=deterministic)
             action_idx = int(action)
-            return self.budget_levels[action_idx]
+            return int(self.budget_levels[action_idx])
         else:
             # Fallback: Fixed budget
             return 100
@@ -92,13 +97,13 @@ class MemeticPolicy:
             State feature vector
         """
         # Individual features
-        hard_violations = individual.fitness.values[0]
-        soft_violations = individual.fitness.values[1]
+        hard_violations = individual.fitness.values[0]  # type: ignore[attr-defined]
+        soft_violations = individual.fitness.values[1]  # type: ignore[attr-defined]
 
         # Population statistics
-        all_fitness = np.array([ind.fitness.values for ind in population])
-        avg_hard = np.mean(all_fitness[:, 0])
-        avg_soft = np.mean(all_fitness[:, 1])
+        all_fitness = np.array([ind.fitness.values for ind in population])  # type: ignore[attr-defined]
+        # avg_hard = np.mean(all_fitness[:, 0])  # Unused
+        # avg_soft = np.mean(all_fitness[:, 1])  # Unused
 
         # Relative quality
         hard_rank = np.sum(all_fitness[:, 0] < hard_violations) / len(population)
@@ -132,7 +137,8 @@ class MemeticPolicy:
             try:
                 from stable_baselines3 import PPO
 
-                self.model = PPO.load(model_path)
+                loaded_model = PPO.load(model_path)
+                self.model = loaded_model
             except Exception as e:
                 print(f"Warning: Failed to load memetic policy model: {e}")
 
@@ -189,10 +195,7 @@ class DynamicTermination:
             self.iterations_without_improvement += 1
 
         # Check patience
-        if self.iterations_without_improvement >= self.patience:
-            return True
-
-        return False
+        return self.iterations_without_improvement >= self.patience
 
     def reset(self) -> None:
         """Reset termination state."""

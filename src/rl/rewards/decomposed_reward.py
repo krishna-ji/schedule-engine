@@ -37,7 +37,7 @@ class DecomposedReward(BaseRewardCalculator):
     - Ensemble collectively covers entire Pareto front
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize decomposed reward calculator.
 

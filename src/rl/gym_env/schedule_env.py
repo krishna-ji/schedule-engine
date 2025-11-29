@@ -285,8 +285,8 @@ class ScheduleEnv(gym.Env):
         action_label = action_info.name if action_info else f"action_{action}"
 
         # Apply action to best individual
-        best_individual = min(self.population, key=lambda ind: ind.fitness.values[0])
-        prev_fitness = best_individual.fitness.values
+        best_individual = min(self.population, key=lambda ind: ind.fitness.values[0])  # type: ignore[attr-defined]
+        prev_fitness = best_individual.fitness.values  # type: ignore[attr-defined]
         prev_individual = self._clone_individual(best_individual)
         working_individual = self._clone_individual(best_individual)
 
@@ -343,7 +343,7 @@ class ScheduleEnv(gym.Env):
             # Replace worst individual with modified copy
             worst_idx = max(
                 range(len(self.population)),
-                key=lambda i: self.population[i].fitness.values[0],
+                key=lambda i: self.population[i].fitness.values[0],  # type: ignore[attr-defined]
             )
             self.population[worst_idx] = self._clone_individual(evaluated_candidate)
             result_individual = self._clone_individual(evaluated_candidate)
@@ -415,10 +415,13 @@ class ScheduleEnv(gym.Env):
 
         # End profiling and add breakdown to info
         self.profiler.end_generation()
-        if self.debug_logging and hasattr(self.profiler, "generation_profiles"):
-            if self.profiler.generation_profiles:
-                last_profile = self.profiler.generation_profiles[-1]
-                info["profile"] = last_profile.get_summary()
+        if (
+            self.debug_logging
+            and hasattr(self.profiler, "generation_profiles")
+            and self.profiler.generation_profiles
+        ):
+            last_profile = self.profiler.generation_profiles[-1]
+            info["profile"] = last_profile.get_summary()
 
         # Print profiling summary at episode end
         if (terminated or truncated) and self.debug_logging:
@@ -443,9 +446,9 @@ class ScheduleEnv(gym.Env):
         """Get best fitness in current population."""
         if not self.population:
             return float("inf")
-        best_ind = min(self.population, key=lambda ind: ind.fitness.values[0])
-        hard, soft = best_ind.fitness.values
-        return abs(hard) * 100 + abs(soft)
+        best_ind = min(self.population, key=lambda ind: ind.fitness.values[0])  # type: ignore[attr-defined]
+        hard, soft = best_ind.fitness.values  # type: ignore[attr-defined]
+        return float(abs(hard) * 100 + abs(soft))
 
     def _get_info(self) -> dict[str, Any]:
         """Get episode info dictionary."""
@@ -458,7 +461,7 @@ class ScheduleEnv(gym.Env):
             "population_size": len(self.population),
         }
 
-    def render(self) -> str | None:
+    def render(self) -> str | None:  # type: ignore[override]
         """Render environment state."""
         if self.render_mode == "ansi":
             return self._render_ansi()
@@ -495,7 +498,7 @@ class ScheduleEnv(gym.Env):
         from deap import creator
 
         # Create new DEAP Individual from plain list
-        deap_individual = creator.Individual(individual)
+        deap_individual: Individual = creator.Individual(individual)  # type: ignore[no-any-return]
         return deap_individual
 
     def _ensure_individual_fitness(
@@ -510,11 +513,11 @@ class ScheduleEnv(gym.Env):
             )
             return False
 
-        values = getattr(individual.fitness, "values", ())
+        values = getattr(individual.fitness, "values", ())  # type: ignore[attr-defined]
         values_valid = (
-            getattr(individual.fitness, "valid", False)
+            getattr(individual.fitness, "valid", False)  # type: ignore[attr-defined]
             and len(values) == 2
-            and all(isinstance(value, (int, float)) for value in values)
+            and all(isinstance(value, int | float) for value in values)
         )
 
         # Fast evaluation mode: trust cached fitness if valid
@@ -525,12 +528,14 @@ class ScheduleEnv(gym.Env):
             return True
 
         if self._fitness_evaluator is None:
-            from src.ga.evaluator.fitness import evaluate as evaluate_fitness
+            from src.ga.evaluator.fitness import (
+                evaluate as evaluate_fitness,  # type: ignore[attr-defined]
+            )
 
             self._fitness_evaluator = evaluate_fitness
 
         try:
-            fitness = self._fitness_evaluator(
+            fitness = self._fitness_evaluator(  # type: ignore[operator]
                 individual,
                 courses=self.context.courses,
                 instructors=self.context.instructors,
@@ -545,7 +550,7 @@ class ScheduleEnv(gym.Env):
             )
             return False
 
-        individual.fitness.values = fitness
+        individual.fitness.values = fitness  # type: ignore[attr-defined]
         return True
 
     def _clone_individual(self, individual: Individual) -> Individual:
@@ -563,8 +568,8 @@ class ScheduleEnv(gym.Env):
         cloned[:] = individual[:]
 
         # Copy fitness (shallow copy is sufficient - tuples are immutable)
-        if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):
-            cloned.fitness.values = individual.fitness.values
+        if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
+            cloned.fitness.values = individual.fitness.values  # type: ignore[attr-defined]
 
         return cloned
 

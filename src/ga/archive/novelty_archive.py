@@ -51,7 +51,7 @@ class NoveltyArchive:
         self.descriptor_extractor = BehavioralDescriptors()
 
     def compute_novelty(
-        self, individual: Individual, descriptor: NDArray[np.float64] = None
+        self, individual: Individual, descriptor: NDArray[np.float64] | None = None
     ) -> float:
         """
         Compute novelty of an individual.
@@ -84,7 +84,7 @@ class NoveltyArchive:
         return float(np.mean(k_nearest_distances))
 
     def add_if_novel(
-        self, individual: Individual, descriptor: NDArray[np.float64] = None
+        self, individual: Individual, descriptor: NDArray[np.float64] | None = None
     ) -> bool:
         """
         Add individual to archive if sufficiently novel.
@@ -103,7 +103,7 @@ class NoveltyArchive:
 
         if novelty >= self.novelty_threshold:
             # Novel enough to add
-            fitness = individual.fitness.values
+            fitness = individual.fitness.values  # type: ignore[attr-defined]
             self.archive.append((individual, descriptor, fitness))
             return True
 

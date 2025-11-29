@@ -405,7 +405,7 @@ def _calculate_individual_distance(
     differences = 0
     total_comparisons = len(ind1) * 3  # time, room, instructor
 
-    for gene1, gene2 in zip(ind1, ind2):
+    for gene1, gene2 in zip(ind1, ind2, strict=True):
         if gene1.time_quantum != gene2.time_quantum:
             differences += 1
         if gene1.room_id != gene2.room_id:

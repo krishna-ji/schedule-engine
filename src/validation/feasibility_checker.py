@@ -931,7 +931,7 @@ def generate_feasibility_report_file(
                     # Generic detail printing for other metrics
                     for key, value in result.details.items():
                         if key not in ["bottlenecks", "details"] and not isinstance(
-                            value, (list, dict)
+                            value, list | dict
                         ):
                             f.write(f"  {key}: {value}\n")
                     f.write("\n")

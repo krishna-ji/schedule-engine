@@ -145,22 +145,22 @@ def _detect_full(
     instructor_schedule = _build_instructor_schedule_map(individual)
 
     # Detect group overlaps
-    for group_id, schedule in group_schedule.items():
-        for quantum, gene_indices in schedule.items():
+    for _group_id, schedule in group_schedule.items():
+        for _quantum, gene_indices in schedule.items():
             if len(gene_indices) > 1:
                 for idx in gene_indices:
                     violations[idx].append("group_overlap")
 
     # Detect room conflicts
-    for room_id, schedule in room_schedule.items():
-        for quantum, gene_indices in schedule.items():
+    for _room_id, schedule in room_schedule.items():
+        for _quantum, gene_indices in schedule.items():
             if len(gene_indices) > 1:
                 for idx in gene_indices:
                     violations[idx].append("room_conflict")
 
     # Detect instructor conflicts
-    for instructor_id, schedule in instructor_schedule.items():
-        for quantum, gene_indices in schedule.items():
+    for _instructor_id, schedule in instructor_schedule.items():
+        for _quantum, gene_indices in schedule.items():
             if len(gene_indices) > 1:
                 for idx in gene_indices:
                     violations[idx].append("instructor_conflict")
@@ -221,7 +221,7 @@ def _build_group_schedule_map(individual: list[SessionGene]) -> dict:
     Returns:
         Dict: {group_id: {quantum: [gene_indices]}}
     """
-    schedule = defaultdict(lambda: defaultdict(list))
+    schedule: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(list))
 
     for idx, gene in enumerate(individual):
         for quantum in range(gene.start_quanta, gene.end_quanta):
@@ -238,7 +238,7 @@ def _build_room_schedule_map(individual: list[SessionGene]) -> dict:
     Returns:
         Dict: {room_id: {quantum: [gene_indices]}}
     """
-    schedule = defaultdict(lambda: defaultdict(list))
+    schedule: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(list))
 
     for idx, gene in enumerate(individual):
         for quantum in range(gene.start_quanta, gene.end_quanta):
@@ -254,7 +254,7 @@ def _build_instructor_schedule_map(individual: list[SessionGene]) -> dict:
     Returns:
         Dict: {instructor_id: {quantum: [gene_indices]}}
     """
-    schedule = defaultdict(lambda: defaultdict(list))
+    schedule: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(list))
 
     for idx, gene in enumerate(individual):
         for quantum in range(gene.start_quanta, gene.end_quanta):

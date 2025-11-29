@@ -110,7 +110,7 @@ def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
         )
 
         # Build one gene per subsession
-        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+        for _subsession_idx, subsession_duration in enumerate(subsession_durations):
             # Find valid time slot for THIS subsession
             time_quantum = _find_earliest_valid_time(
                 context,
@@ -223,7 +223,7 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
         subsession_durations = get_subsession_durations(
             course.quanta_per_week, course.course_type
         )
-        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+        for _subsession_idx, subsession_duration in enumerate(subsession_durations):
             sessions_to_schedule.append((course_id, course, subsession_duration))
 
     # Schedule sessions in constraint order
@@ -378,7 +378,7 @@ def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
         )
 
         # Schedule each subsession
-        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+        for _subsession_idx, subsession_duration in enumerate(subsession_durations):
             # Find valid time slot for THIS subsession
             time_quantum = _find_earliest_valid_time(
                 context,

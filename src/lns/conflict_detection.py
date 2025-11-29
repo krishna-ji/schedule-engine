@@ -110,7 +110,7 @@ def find_hard_conflict_sessions(
             )
 
     # Return sorted list of indices
-    return sorted(list(conflicted_session_indices)), violations
+    return sorted(conflicted_session_indices), violations
 
 
 def _evaluate_constraint_with_tracking(
@@ -268,10 +268,13 @@ def _track_room_capacity_violations(
     conflicted_indices = set()
 
     for idx, session in enumerate(sessions):
-        if session.room and session.group:
-            if session.group.student_count > session.room.capacity:
-                violations += 1
-                conflicted_indices.add(idx)
+        if (
+            session.room
+            and session.group
+            and session.group.student_count > session.room.capacity
+        ):
+            violations += 1
+            conflicted_indices.add(idx)
 
     return conflicted_indices, violations, {"conflict_type": "room_capacity_exceeded"}
 

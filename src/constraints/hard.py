@@ -196,22 +196,23 @@ def _room_type_matches(required: str, room_type: str) -> bool:
         return True
 
     # Lecture/theory courses: Accept lecture, classroom, auditorium
-    if required in ["lecture", "classroom", "theory"]:
-        if room_type in ["lecture", "classroom", "auditorium", "seminar", "tutorial"]:
-            return True
+    if required in ["lecture", "classroom", "theory"] and room_type in [
+        "lecture",
+        "classroom",
+        "auditorium",
+        "seminar",
+        "tutorial",
+    ]:
+        return True
 
     # Practical/lab courses: Accept practical, lab variants
-    if required in ["practical", "lab", "laboratory"]:
-        if room_type in [
-            "practical",
-            "lab",
-            "laboratory",
-            "computer_lab",
-            "science_lab",
-        ]:
-            return True
-
-    return False
+    return required in ["practical", "lab", "laboratory"] and room_type in [
+        "practical",
+        "lab",
+        "laboratory",
+        "computer_lab",
+        "science_lab",
+    ]
 
 
 @hard_constraint(

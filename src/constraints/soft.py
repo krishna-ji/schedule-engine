@@ -278,7 +278,7 @@ def session_continuity(sessions: list[CourseSession]) -> int:
     for course_key, course_days in course_day_quanta.items():
         course_type = course_type_map[course_key]
 
-        for day, day_quanta in course_days.items():
+        for _day, day_quanta in course_days.items():
             # Sort quanta to identify consecutive blocks
             sorted_quanta = sorted(day_quanta)
 

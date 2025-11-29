@@ -354,7 +354,7 @@ def get_heuristic_statistics_template() -> dict[str, int]:
     }
 
     # Add counter for each heuristic
-    for name in all_heuristics.keys():
+    for name in all_heuristics:
         stats[f"{name}_applications"] = 0
         stats[f"{name}_improvements"] = 0
 

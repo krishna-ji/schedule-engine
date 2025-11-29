@@ -520,12 +520,10 @@ class InputValidator:
 
             for course_id in group.enrolled_courses:
                 # Find course in context
-                found_course = None
                 for c in self.context.courses.values():
                     if (
                         hasattr(c, "course_code") and c.course_code == course_id
                     ) or c.course_id == course_id:
-                        found_course = c
                         break
 
                 if course and course.required_room_features:

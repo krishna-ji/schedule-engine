@@ -7,7 +7,7 @@ achieving 10-16x speedup by fully utilizing all CPU cores.
 import logging
 import random
 from collections.abc import Callable
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from typing import Any
 
 from src.utils.parallel_worker import get_worker_context, init_worker
@@ -78,9 +78,6 @@ class ParallelHeuristicExecutor:
             individuals[i : i + chunk_size]
             for i in range(0, len(individuals), chunk_size)
         ]
-
-        # Select executor type
-        ExecutorClass = ThreadPoolExecutor if self.use_threads else ProcessPoolExecutor
 
         # Prepare args for executor
         initializer_func: Callable[[str, int], None] | None = None
@@ -166,7 +163,7 @@ class ParallelHeuristicExecutor:
             except RuntimeError:
                 # Should not happen if initialized correctly
                 # But if it does, we can't proceed without context
-                raise RuntimeError("Context missing in worker process")
+                raise RuntimeError("Context missing in worker process") from None
 
         results = []
         for ind in chunk:
@@ -200,10 +197,13 @@ class ParallelHeuristicExecutor:
         if len(heuristic_funcs) == 0:
             return individual
 
-        ExecutorClass = ThreadPoolExecutor if self.use_threads else ProcessPoolExecutor
-
         try:
-            with ExecutorClass(
+            from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+
+            executor_class = (
+                ThreadPoolExecutor if self.use_threads else ProcessPoolExecutor
+            )
+            with executor_class(
                 max_workers=min(self.max_workers, len(heuristic_funcs))
             ) as executor:
                 # Apply all heuristics in parallel

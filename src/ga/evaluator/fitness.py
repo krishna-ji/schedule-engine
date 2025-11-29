@@ -17,7 +17,7 @@ def evaluate(
     courses: dict[tuple, Course],  # Keys are (course_code, course_type) tuples
     instructors: dict[str, Instructor],
     groups: dict[str, Group],
-    rooms: dict[str, Room] = None,
+    rooms: dict[str, Room] | None = None,
 ) -> tuple[int, int]:
     """
     Evaluates a timetable individual using both hard and soft constraints.
@@ -55,7 +55,7 @@ def evaluate(
     soft_penalty = 0
     enabled_soft_constraints = get_enabled_soft_constraints()
 
-    for constraint_name, constraint_info in enabled_soft_constraints.items():
+    for _constraint_name, constraint_info in enabled_soft_constraints.items():
         constraint_func = constraint_info["function"]
         weight = constraint_info["weight"]
         soft_penalty += weight * constraint_func(sessions)

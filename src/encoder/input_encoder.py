@@ -200,57 +200,57 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         semester = item.get("Semester", 1)
         credits = item.get("Credits", 3)
 
-        L = item.get("L", 0)
-        T = item.get("T", 0)
-        P = item.get("P", 0)
+        lec = item.get("L", 0)
+        tut = item.get("T", 0)
+        prac = item.get("P", 0)
 
         practical_features = item.get("PracticalRoomFeatures", "").strip()
         practical_features = [
             f.strip().lower() for f in practical_features.split(",") if f.strip()
         ]
 
-        # Create theory course object if L + T > 0
-        if L + T > 0:
+        # Create theory course object if lec + tut > 0
+        if lec + tut > 0:
             course = Course(
                 course_id=course_code,  # Plain course code, no suffix!
                 name=f"{name} (Theory)",
-                quanta_per_week=int(L + T),
+                quanta_per_week=int(lec + tut),
                 required_room_features="lecture",  # Simple string, not list
                 enrolled_group_ids=[],
                 qualified_instructor_ids=[],
                 course_type="theory",
-                L=int(L),  # Store lecture hours
-                T=int(T),  # Store tutorial hours
+                L=int(lec),  # Store lecture hours
+                T=int(tut),  # Store tutorial hours
                 P=0,
                 course_code=course_code,
                 department=department,
                 semester=semester,
                 credits=credits,
-                lecture_hours=L + T,
+                lecture_hours=lec + tut,
                 practical_hours=0,
             )
             # Key by (course_code, course_type) for uniqueness
             courses[(course_code, "theory")] = course
 
-        # Create practical course object if P > 0
-        if P > 0:
+        # Create practical course object if prac > 0
+        if prac > 0:
             course = Course(
                 course_id=course_code,  # Same course_id as theory!
                 name=f"{name} (Practical)",
-                quanta_per_week=int(P),
+                quanta_per_week=int(prac),
                 required_room_features="practical",  # Simple string, not list
                 enrolled_group_ids=[],
                 qualified_instructor_ids=[],
                 course_type="practical",
                 L=0,
                 T=0,
-                P=int(P),  # Store practical hours
+                P=int(prac),  # Store practical hours
                 course_code=course_code,
                 department=department,
                 semester=semester,
                 credits=credits,
                 lecture_hours=0,
-                practical_hours=P,
+                practical_hours=prac,
             )
             # Key by (course_code, course_type) for uniqueness
             courses[(course_code, "practical")] = course

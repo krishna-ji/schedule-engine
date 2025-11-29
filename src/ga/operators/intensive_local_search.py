@@ -140,8 +140,8 @@ def apply_exhaustive_search(
     sorted_pop = sorted(
         population,
         key=lambda ind: (
-            ind.fitness.values
-            if hasattr(ind, "fitness") and ind.fitness.valid
+            ind.fitness.values  # type: ignore[attr-defined]
+            if hasattr(ind, "fitness") and ind.fitness.valid  # type: ignore[attr-defined]
             else (float("inf"), float("inf"))
         ),
     )
@@ -155,7 +155,7 @@ def apply_exhaustive_search(
     # Determine number of workers - USE ALL AVAILABLE CORES
     num_workers = get_cpu_count() if parallel else 1
 
-    for pop_idx, original_ind in enumerate(individuals_to_optimize):
+    for _pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout
         elapsed = time.time() - start_time
         if elapsed > timeout_seconds:
@@ -166,8 +166,8 @@ def apply_exhaustive_search(
         # Same optimization used in RL environment (proven effective)
         improved_ind = type(original_ind)(original_ind[:])  # Copy genes list
         # Copy fitness if it exists
-        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):
-            improved_ind.fitness.values = original_ind.fitness.values
+        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):  # type: ignore[attr-defined]
+            improved_ind.fitness.values = original_ind.fitness.values  # type: ignore[attr-defined]
 
         if parallel and num_workers > 1:
             # PARALLEL: Optimize all genes concurrently
@@ -306,8 +306,8 @@ def apply_greedy_search(
     sorted_pop = sorted(
         population,
         key=lambda ind: (
-            ind.fitness.values
-            if hasattr(ind, "fitness") and ind.fitness.valid
+            ind.fitness.values  # type: ignore[attr-defined]
+            if hasattr(ind, "fitness") and ind.fitness.valid  # type: ignore[attr-defined]
             else (float("inf"), float("inf"))
         ),
     )
@@ -321,7 +321,7 @@ def apply_greedy_search(
     # Determine number of workers - USE ALL AVAILABLE CORES
     num_workers = get_cpu_count() if parallel else 1
 
-    for pop_idx, original_ind in enumerate(individuals_to_optimize):
+    for _pop_idx, original_ind in enumerate(individuals_to_optimize):
         # Check timeout
         elapsed = time.time() - start_time
         if elapsed > timeout_seconds:
@@ -331,8 +331,8 @@ def apply_greedy_search(
         # Fast shallow copy + list copy (10-50x faster than deepcopy)
         improved_ind = type(original_ind)(original_ind[:])  # Copy genes list
         # Copy fitness if it exists
-        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):
-            improved_ind.fitness.values = original_ind.fitness.values
+        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):  # type: ignore[attr-defined]
+            improved_ind.fitness.values = original_ind.fitness.values  # type: ignore[attr-defined]
 
         if parallel and num_workers > 1:
             # PARALLEL: Optimize all genes concurrently

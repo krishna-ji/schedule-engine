@@ -86,8 +86,8 @@ def plot_spacing_trend(spacing_history: list, output_dir: str) -> None:
         xy=(min_gen, min_spacing),
         xytext=(10, 10),
         textcoords="offset points",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="yellow", alpha=0.7),
-        arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0"),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "yellow", "alpha": 0.7},
+        arrowprops={"arrowstyle": "->", "connectionstyle": "arc3,rad=0"},
         fontsize=10,
     )
 
@@ -109,7 +109,7 @@ def plot_spacing_trend(spacing_history: list, output_dir: str) -> None:
             transform=ax.transAxes,
             fontsize=10,
             verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
         )
 
     format_axis(
@@ -200,7 +200,7 @@ def plot_spacing_distribution(population: list, output_dir: str) -> None:
         fontsize=10,
         verticalalignment="top",
         horizontalalignment="right",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
     format_axis(
@@ -291,7 +291,7 @@ def plot_spacing_with_pareto(
         transform=ax1.transAxes,
         fontsize=10,
         verticalalignment="top",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
     format_axis(
@@ -418,7 +418,7 @@ def plot_spacing_multi_run(
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
     format_axis(

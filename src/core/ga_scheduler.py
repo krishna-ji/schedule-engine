@@ -462,9 +462,9 @@ class GAScheduler:
         # Selection operator
         # Use fast NSGA-II for large populations (5-10x faster)
         if get_config().ga.pop_size >= 200:
-            from src.ga.operators.fast_nsga2 import selNSGA2Fast
+            from src.ga.operators.fast_nsga2 import sel_nsga2_fast
 
-            self.toolbox.register("select", selNSGA2Fast)
+            self.toolbox.register("select", sel_nsga2_fast)
         else:
             self.toolbox.register("select", tools.selNSGA2)
 

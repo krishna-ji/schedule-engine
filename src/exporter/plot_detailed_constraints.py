@@ -361,8 +361,8 @@ def plot_constraint_summary(
         CSV data available in csv/constraint_metrics.csv (hard_total, soft_total columns)
     """
     # Calculate totals
-    total_hard = [sum(values) for values in zip(*hard_trends.values())]
-    total_soft = [sum(values) for values in zip(*soft_trends.values())]
+    total_hard = [sum(values) for values in zip(*hard_trends.values(), strict=False)]
+    total_soft = [sum(values) for values in zip(*soft_trends.values(), strict=False)]
 
     fig, ((ax1, ax2), (ax3, ax4)) = create_thesis_figure(2, 2, figsize=(14, 10))
 

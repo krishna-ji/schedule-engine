@@ -86,7 +86,7 @@ def plot_metrics_boxplot(
         patch_artist=True,
         widths=0.6,
         showmeans=True,
-        meanprops=dict(marker="D", markerfacecolor="red", markersize=8),
+        meanprops={"marker": "D", "markerfacecolor": "red", "markersize": 8},
     )
 
     # Color boxes
@@ -97,7 +97,7 @@ def plot_metrics_boxplot(
         get_color("orange"),
         get_color("purple"),
     ]
-    for patch, color in zip(bp["boxes"], colors * len(bp["boxes"])):
+    for patch, color in zip(bp["boxes"], colors * len(bp["boxes"]), strict=False):
         patch.set_facecolor(color)
         patch.set_alpha(0.6)
 
@@ -303,7 +303,7 @@ def plot_algorithm_comparison(
 def plot_success_rate_comparison(
     runs_hard_violations: list,
     output_dir: str,
-    thresholds: list = [0, 10, 50, 100],
+    thresholds: list | None = None,
 ) -> None:
     """
     Plot success rates at different feasibility thresholds.
@@ -318,6 +318,8 @@ def plot_success_rate_comparison(
     Saves:
         - plots/success_rate.pdf: Success rate bar plot
     """
+    if thresholds is None:
+        thresholds = [0, 10, 50, 100]
     plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
@@ -341,7 +343,7 @@ def plot_success_rate_comparison(
     )
 
     # Add percentage labels on bars
-    for i, (bar, rate) in enumerate(zip(bars, success_rates)):
+    for _i, (bar, rate) in enumerate(zip(bars, success_rates, strict=False)):
         height = bar.get_height()
         ax.text(
             bar.get_x() + bar.get_width() / 2,
@@ -452,7 +454,7 @@ def plot_convergence_speed_comparison(
         fontsize=10,
         verticalalignment="top",
         horizontalalignment="right",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
     ax.set_xlabel("Generations to Reach Target")

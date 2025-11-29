@@ -17,7 +17,7 @@ class BaseRewardCalculator(ABC):
     into scalar reward signals for RL training.
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize reward calculator.
 
@@ -58,7 +58,7 @@ class BaseRewardCalculator(ABC):
         Returns:
             List of (hard_violations, soft_violations) tuples
         """
-        return [ind.fitness.values for ind in population]
+        return [ind.fitness.values for ind in population]  # type: ignore[attr-defined]
 
     def get_best_fitness(self, population: list[Individual]) -> tuple[float, float]:
         """

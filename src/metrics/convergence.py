@@ -344,10 +344,7 @@ def compare_algorithm_performance(
     cohens_d = (mean1 - mean2) / pooled_std if pooled_std > 0 else 0.0
 
     # Determine winner (for minimization)
-    if p_value < 0.05:
-        winner = "algo1" if mean1 < mean2 else "algo2"
-    else:
-        winner = "tie"
+    winner = ("algo1" if mean1 < mean2 else "algo2") if p_value < 0.05 else "tie"
 
     return {
         "algo1_mean": float(mean1),

@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from src.utils.logging_config import get_logger
 
@@ -269,7 +269,7 @@ class ModelRegistry:
             return {"deployments": [], "rollback_history": []}
 
         with open(self.registry_path) as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore[no-any-return]
 
     def _save_registry(self, data: dict[str, Any]) -> None:
         """Save registry to JSON file (atomic write)."""

@@ -8,6 +8,10 @@ import logging
 
 import torch
 
+from src.entities.course import Course
+from src.entities.group import Group
+from src.entities.instructor import Instructor
+from src.entities.room import Room
 from src.ga.sessiongene import SessionGene
 
 logger = logging.getLogger(__name__)
@@ -67,7 +71,7 @@ class GPUConstraintEvaluator:
             return 32
 
     def batch_evaluate_conflicts(
-        self, population: list[list[SessionGene]], batch_size: int = None
+        self, population: list[list[SessionGene]], batch_size: int | None = None
     ) -> list[tuple[int, int]]:
         """Evaluate constraints for entire population on GPU.
 
@@ -147,7 +151,7 @@ class GPUConstraintEvaluator:
         - Schedule compactness (soft)
         """
         batch_size = batch_tensor.shape[0]
-        max_genes = batch_tensor.shape[1]
+        batch_tensor.shape[1]
 
         # Extract features
         time_slots = batch_tensor[:, :, 0]  # [batch, genes]
@@ -216,10 +220,10 @@ class GPUConstraintEvaluator:
     def evaluate_batch(
         self,
         population: list,
-        courses: list,
-        instructors: list,
-        groups: list,
-        rooms: list,
+        courses: dict[tuple, Course],
+        instructors: dict[str, Instructor],
+        groups: dict[str, Group],
+        rooms: dict[str, Room],
     ) -> list[tuple[float, float]]:
         """Evaluate fitness for entire population using GPU-accelerated constraints.
 
@@ -228,10 +232,10 @@ class GPUConstraintEvaluator:
 
         Args:
             population: List of individuals to evaluate
-            courses: Dict mapping (course_id, course_type) -> Course OR List of Course objects
-            instructors: Dict mapping instructor_id -> Instructor OR List of Instructor objects
-            groups: Dict mapping group_id -> Group OR List of Group objects
-            rooms: Dict mapping room_id -> Room OR List of Room objects
+            courses: Dict mapping (course_id, course_type) -> Course
+            instructors: Dict mapping instructor_id -> Instructor
+            groups: Dict mapping group_id -> Group
+            rooms: Dict mapping room_id -> Room
 
         Returns:
             List of fitness tuples (hard_penalty, soft_penalty) with negative values
@@ -240,7 +244,7 @@ class GPUConstraintEvaluator:
             # Fallback to CPU for small batches or no GPU
             from src.ga.evaluator.fitness import evaluate
 
-            # CPU evaluate() expects dicts, not lists - pass through as-is
+            # CPU evaluate() expects dicts
             return [
                 evaluate(ind, courses, instructors, groups, rooms) for ind in population
             ]
@@ -320,9 +324,9 @@ class GPUConstraintEvaluator:
             instructor_list = instructors
 
         if isinstance(groups, dict):
-            group_list = list(groups.values())
+            list(groups.values())
         else:
-            group_list = groups
+            pass
 
         if isinstance(rooms, dict):
             room_list = list(rooms.values())
@@ -376,21 +380,21 @@ class GPUConstraintEvaluator:
             for accurate group conflict checking
         """
         # Feature indices (for clarity)
-        FEAT_TIME_START = 0
-        FEAT_DURATION = 1
-        FEAT_INSTRUCTOR = 2
-        FEAT_ROOM = 3
-        FEAT_NUM_GROUPS = 4
-        FEAT_COURSE_ID = 5
-        FEAT_COURSE_TYPE = 6
-        FEAT_ROOM_CAP = 7
-        FEAT_REQ_CAP = 8
-        FEAT_INST_FULLTIME = 9
-        FEAT_ROOM_FEATURES = 10
-        FEAT_REQ_FEATURES = 11
-        FEAT_INSTRUCTOR_QUALIFIED = 12
-        FEAT_INST_AVAILABLE = 13
-        FEAT_ROOM_AVAILABLE = 14
+        feat_time_start = 0
+        feat_duration = 1
+        feat_instructor = 2
+        feat_room = 3
+        feat_num_groups = 4
+        feat_course_id = 5
+        feat_course_type = 6
+        feat_room_cap = 7
+        feat_req_cap = 8
+        feat_inst_fulltime = 9
+        feat_room_features = 10
+        feat_req_features = 11
+        feat_instructor_qualified = 12
+        feat_inst_available = 13
+        feat_room_available = 14
 
         tensor = torch.zeros((len(batch), max_genes, 15), dtype=torch.long)
 
@@ -465,13 +469,13 @@ class GPUConstraintEvaluator:
                 )
 
                 # Basic features
-                tensor[i, j, FEAT_TIME_START] = gene.start_quanta
-                tensor[i, j, FEAT_DURATION] = gene.num_quanta
-                tensor[i, j, FEAT_INSTRUCTOR] = hash(gene.instructor_id) % 1000000
-                tensor[i, j, FEAT_ROOM] = hash(gene.room_id) % 1000000
-                tensor[i, j, FEAT_NUM_GROUPS] = len(gene.group_ids)
-                tensor[i, j, FEAT_COURSE_ID] = hash(gene.course_id) % 1000000
-                tensor[i, j, FEAT_COURSE_TYPE] = type_map.get(
+                tensor[i, j, feat_time_start] = gene.start_quanta
+                tensor[i, j, feat_duration] = gene.num_quanta
+                tensor[i, j, feat_instructor] = hash(gene.instructor_id) % 1000000
+                tensor[i, j, feat_room] = hash(gene.room_id) % 1000000
+                tensor[i, j, feat_num_groups] = len(gene.group_ids)
+                tensor[i, j, feat_course_id] = hash(gene.course_id) % 1000000
+                tensor[i, j, feat_course_type] = type_map.get(
                     gene.course_type.lower() if gene.course_type else "theory", 1
                 )
 
@@ -480,23 +484,23 @@ class GPUConstraintEvaluator:
                 if course_key in course_map:
                     course = course_map[course_key]
                     # Required capacity (sum of group sizes)
-                    tensor[i, j, FEAT_REQ_CAP] = getattr(course, "required_capacity", 0)
+                    tensor[i, j, feat_req_cap] = getattr(course, "required_capacity", 0)
                     # Required room features
                     req_feat = getattr(course, "required_room_features", "lecture")
-                    tensor[i, j, FEAT_REQ_FEATURES] = feature_map.get(
+                    tensor[i, j, feat_req_features] = feature_map.get(
                         req_feat.lower() if req_feat else "lecture", 1
                     )
 
                     # HC3: Check instructor qualification
                     qualified_ids = getattr(course, "qualified_instructor_ids", [])
-                    tensor[i, j, FEAT_INSTRUCTOR_QUALIFIED] = (
+                    tensor[i, j, feat_instructor_qualified] = (
                         1 if gene.instructor_id in qualified_ids else 0
                     )
 
                 # Instructor features
                 if gene.instructor_id in instructor_map:
                     inst = instructor_map[gene.instructor_id]
-                    tensor[i, j, FEAT_INST_FULLTIME] = (
+                    tensor[i, j, feat_inst_fulltime] = (
                         1 if getattr(inst, "is_full_time", True) else 0
                     )
 
@@ -507,16 +511,16 @@ class GPUConstraintEvaluator:
                             q in available_quanta
                             for q in range(gene.start_quanta, gene.end_quanta)
                         )
-                        tensor[i, j, FEAT_INST_AVAILABLE] = 1 if all_available else 0
+                        tensor[i, j, feat_inst_available] = 1 if all_available else 0
                     else:
-                        tensor[i, j, FEAT_INST_AVAILABLE] = 1  # Assume available
+                        tensor[i, j, feat_inst_available] = 1  # Assume available
 
                 # Room features
                 if gene.room_id in room_map:
                     room = room_map[gene.room_id]
-                    tensor[i, j, FEAT_ROOM_CAP] = getattr(room, "capacity", 0)
+                    tensor[i, j, feat_room_cap] = getattr(room, "capacity", 0)
                     room_feat = getattr(room, "room_features", "lecture")
-                    tensor[i, j, FEAT_ROOM_FEATURES] = feature_map.get(
+                    tensor[i, j, feat_room_features] = feature_map.get(
                         room_feat.lower() if room_feat else "lecture", 1
                     )
 
@@ -527,9 +531,9 @@ class GPUConstraintEvaluator:
                             q in room_available_quanta
                             for q in range(gene.start_quanta, gene.end_quanta)
                         )
-                        tensor[i, j, FEAT_ROOM_AVAILABLE] = 1 if all_available else 0
+                        tensor[i, j, feat_room_available] = 1 if all_available else 0
                     else:
-                        tensor[i, j, FEAT_ROOM_AVAILABLE] = 1  # Assume available
+                        tensor[i, j, feat_room_available] = 1  # Assume available
 
             group_data.append(individual_groups)
 
@@ -561,10 +565,10 @@ class GPUConstraintEvaluator:
         duration = batch_tensor[:, :, 1]
         instructor_ids = batch_tensor[:, :, 2]
         room_ids = batch_tensor[:, :, 3]
-        num_groups = batch_tensor[:, :, 4]
+        batch_tensor[:, :, 4]
         course_ids = batch_tensor[:, :, 5]
-        room_capacity = batch_tensor[:, :, 7]
-        req_capacity = batch_tensor[:, :, 8]
+        batch_tensor[:, :, 7]
+        batch_tensor[:, :, 8]
         room_features = batch_tensor[:, :, 10]
         req_features = batch_tensor[:, :, 11]
         instructor_qualified = batch_tensor[:, :, 12]
@@ -735,7 +739,7 @@ class GPUConstraintEvaluator:
 
     def is_available(self) -> bool:
         """Check if GPU evaluation is available."""
-        return self.enabled
+        return bool(self.enabled)
 
 
 # Singleton instance

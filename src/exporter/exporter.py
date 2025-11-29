@@ -135,7 +135,7 @@ def _save_json_schedule_as_pdf(
         - PDF contains one page per student group
     """
 
-    DAYS = [
+    days = [
         "Sunday",
         "Monday",
         "Tuesday",
@@ -144,8 +144,8 @@ def _save_json_schedule_as_pdf(
         "Friday",
         "Saturday",
     ]
-    DAY_IDX = {day: i for i, day in enumerate(DAYS)}
-    TIME_FORMAT = "%H:%M"
+    day_idx = {day: i for i, day in enumerate(days)}
+    time_format = "%H:%M"
 
     def to_float(time_str: str) -> float:
         """Convert time string to float hours.
@@ -156,7 +156,7 @@ def _save_json_schedule_as_pdf(
         Returns:
             float: Time as decimal hours (e.g., 14:30 -> 14.5).
         """
-        t = datetime.strptime(time_str, TIME_FORMAT)
+        t = datetime.strptime(time_str, time_format)
         return t.hour + t.minute / 60.0
 
     def merge_sessions(sessions: list[dict]) -> list[dict]:
@@ -204,19 +204,19 @@ def _save_json_schedule_as_pdf(
 
         fig, ax = plt.subplots(figsize=(14, 10))
         ax.set_title(f"Routine for {group_name}", fontsize=16, pad=20)
-        ax.set_xlim(0, len(DAYS))
+        ax.set_xlim(0, len(days))
         ax.set_ylim(end_hour, start_hour)
-        ax.set_xticks(range(len(DAYS)))
-        ax.set_xticklabels(DAYS, fontsize=10)
+        ax.set_xticks(range(len(days)))
+        ax.set_xticklabels(days, fontsize=10)
         ax.set_yticks(range(start_hour, end_hour + 1))
         ax.set_yticklabels([f"{h:02d}:00" for h in range(start_hour, end_hour + 1)])
         ax.grid(True, which="both", linestyle="--", linewidth=0.5)
 
         for session in sessions:
             day = session["day"]
-            if day not in DAY_IDX:
+            if day not in day_idx:
                 continue
-            x = DAY_IDX[day]
+            x = day_idx[day]
             y = session["start"]
             height = session["end"] - session["start"]
             label = session["label"]

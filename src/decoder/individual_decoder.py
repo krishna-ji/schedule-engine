@@ -56,7 +56,7 @@ def decode_individual(
     # Get actual valid quantum range from QuantumTimeSystem
     from src.encoder.quantum_time_system import QuantumTimeSystem
 
-    MAX_VALID_QUANTUM = QuantumTimeSystem().total_quanta
+    max_valid_quantum = QuantumTimeSystem().total_quanta
 
     for gene in individual:
         # Validate and clip quanta before decoding to prevent ValueError in constraints
@@ -64,7 +64,7 @@ def decode_individual(
         valid_quanta = [
             q
             for q in range(gene.start_quanta, gene.end_quanta)
-            if 0 <= q < MAX_VALID_QUANTUM
+            if 0 <= q < max_valid_quantum
         ]
         if not valid_quanta:
             # All quanta invalid - skip this gene entirely

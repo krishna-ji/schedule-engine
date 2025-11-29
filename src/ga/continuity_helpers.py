@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from src.config import get_config
 from src.core.types import SchedulingContext
+from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.entities.course import Course
 
 
@@ -32,7 +33,7 @@ class ContinuityHelper:
 
     def __init__(self, context: SchedulingContext):
         self.context = context
-        self.qts = context.quantum_time_system
+        self.qts = QuantumTimeSystem()
         self.config = get_config()
 
     def calculate_session_durations(self, course: Course) -> list[SessionDuration]:
@@ -73,7 +74,7 @@ class ContinuityHelper:
             for i in range(full_blocks):
                 durations.append(
                     SessionDuration(
-                        course_id=course.id,
+                        course_id=course.course_id,
                         course_type="theory",
                         session_index=i,
                         num_quanta=block_size,
@@ -83,7 +84,7 @@ class ContinuityHelper:
             if remainder > 0:
                 durations.append(
                     SessionDuration(
-                        course_id=course.id,
+                        course_id=course.course_id,
                         course_type="theory",
                         session_index=full_blocks,
                         num_quanta=remainder,
@@ -97,7 +98,7 @@ class ContinuityHelper:
 
             durations.append(
                 SessionDuration(
-                    course_id=course.id,
+                    course_id=course.course_id,
                     course_type="practical",
                     session_index=0,
                     num_quanta=practical_quanta,
@@ -167,9 +168,9 @@ class ContinuityHelper:
         """Check if time window is available for all resources."""
         window = range(start_q, start_q + duration)
 
-        # Day boundary check
-        start_day = start_q // self.qts.quanta_per_day
-        end_day = (start_q + duration - 1) // self.qts.quanta_per_day
+        # Day boundary check - ensure session doesn't span days
+        start_day, _ = self.qts.quanta_to_time(start_q)
+        end_day, _ = self.qts.quanta_to_time(start_q + duration - 1)
         if start_day != end_day:
             return False
 
@@ -193,7 +194,10 @@ class ContinuityHelper:
         - Earlier times preferred (morning > afternoon)
         """
         # Time preference (favor earlier slots)
-        time_of_day = start_q % self.qts.quanta_per_day
+        day, time_str = self.qts.quanta_to_time(start_q)
+        # Parse time to get minutes from start of day
+        hour, minute = map(int, time_str.split(":"))
+        time_of_day = hour * 60 + minute
         time_score = time_of_day * 0.1
 
-        return time_score
+        return float(time_score)

@@ -32,8 +32,8 @@ class SolutionSelector:
         self.num_solutions = num_solutions
 
         # UCB statistics
-        self.solution_attempts = {}
-        self.solution_improvements = {}
+        self.solution_attempts: dict[int, int] = {}
+        self.solution_improvements: dict[int, float] = {}
 
     def select(self, population: list[Individual]) -> list[Individual]:
         """
@@ -61,7 +61,7 @@ class SolutionSelector:
 
     def _select_elite(self, population: list[Individual]) -> list[Individual]:
         """Select best N solutions."""
-        sorted_pop = sorted(population, key=lambda ind: ind.fitness.values)
+        sorted_pop = sorted(population, key=lambda ind: ind.fitness.values)  # type: ignore[attr-defined]
         return sorted_pop[: self.num_solutions]
 
     def _select_diverse(self, population: list[Individual]) -> list[Individual]:
@@ -70,12 +70,12 @@ class SolutionSelector:
         candidates = list(population)
 
         # Start with best solution
-        best_idx = np.argmin([ind.fitness.values for ind in candidates])
+        best_idx = np.argmin([ind.fitness.values for ind in candidates])  # type: ignore[attr-defined]
         selected.append(candidates.pop(best_idx))
 
         # Greedily add most diverse solutions
         while len(selected) < self.num_solutions and candidates:
-            max_diversity = -1
+            max_diversity = -1.0
             max_idx = 0
 
             for i, candidate in enumerate(candidates):
@@ -84,7 +84,7 @@ class SolutionSelector:
                     self._fitness_distance(candidate, sel) for sel in selected
                 )
                 if min_dist > max_diversity:
-                    max_diversity = min_dist
+                    max_diversity = float(min_dist)
                     max_idx = i
 
             selected.append(candidates.pop(max_idx))
@@ -126,7 +126,7 @@ class SolutionSelector:
     def _select_stochastic(self, population: list[Individual]) -> list[Individual]:
         """Select with probability proportional to fitness quality."""
         # Calculate selection probabilities (better fitness = higher probability)
-        fitness_values = np.array([ind.fitness.values for ind in population])
+        fitness_values = np.array([ind.fitness.values for ind in population])  # type: ignore[attr-defined]
         combined_fitness = fitness_values[:, 0] * 100 + fitness_values[:, 1]
 
         # Invert (lower fitness = better)
@@ -161,6 +161,6 @@ class SolutionSelector:
     @staticmethod
     def _fitness_distance(ind1: Individual, ind2: Individual) -> float:
         """Calculate Euclidean distance in fitness space."""
-        f1 = np.array(ind1.fitness.values)
-        f2 = np.array(ind2.fitness.values)
+        f1 = np.array(ind1.fitness.values)  # type: ignore[attr-defined]
+        f2 = np.array(ind2.fitness.values)  # type: ignore[attr-defined]
         return float(np.linalg.norm(f1 - f2))

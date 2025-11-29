@@ -203,7 +203,7 @@ def _generate_neighborhood(
     Returns:
         List of neighbor SessionGene objects
     """
-    neighbors = []
+    neighbors: list[SessionGene] = []
 
     # Get course and metadata
     course_key = (gene.course_id, gene.course_type)
@@ -238,7 +238,7 @@ def _generate_time_neighbors(
     neighbors = []
 
     # Convert to sorted list if it's a set
-    available_quanta = sorted(list(context.available_quanta))
+    available_quanta = sorted(context.available_quanta)
 
     # Try all possible time slots of same duration
     for start_idx in range(len(available_quanta) - duration + 1):
@@ -323,9 +323,8 @@ def _is_room_suitable(
     if course.course_type == "practical":
         if room.room_features != "lab":
             return False
-    elif course.course_type == "theory":
-        if room.room_features == "lab":
-            return False  # Don't use labs for theory
+    elif course.course_type == "theory" and room.room_features == "lab":
+        return False  # Don't use labs for theory
 
     return True
 
@@ -398,15 +397,13 @@ def _count_gene_violations(
     # Check instructor qualification
     course_key = (gene.course_id, gene.course_type)
     course = context.courses.get(course_key)
-    if instructor and course:
-        if course_key not in instructor.qualified_courses:
-            violations += 2  # Higher weight for qualification
+    if instructor and course and course_key not in instructor.qualified_courses:
+        violations += 2  # Higher weight for qualification
 
     # Check room type mismatch
     room = context.rooms.get(gene.room_id)
-    if course and room:
-        if not _is_room_suitable(course, room, context, gene.group_ids):
-            violations += 1
+    if course and room and not _is_room_suitable(course, room, context, gene.group_ids):
+        violations += 1
 
     return violations
 

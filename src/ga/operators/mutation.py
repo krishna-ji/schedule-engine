@@ -52,7 +52,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     # Use first group for room suitability check
     primary_group = gene.group_ids[0] if gene.group_ids else None
     suitable_rooms = find_suitable_rooms_for_course(
-        gene.course_id, primary_group, context
+        gene.course_id, primary_group if primary_group else "", context
     )
     if gene.room_id in suitable_rooms and random.random() < 0.5:
         new_room = gene.room_id  # Keep current room if suitable
@@ -118,18 +118,17 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> list[int]:
         return gene.get_quanta_list()  # Keep original
 
     # Attempt to find consecutive slots
-    for attempt in range(5):  # Try 5 times to find consecutive slots
+    for _attempt in range(5):  # Try 5 times to find consecutive slots
         start_idx = random.randint(0, len(available_quanta) - num_quanta)
         consecutive_quanta = available_quanta[start_idx : start_idx + num_quanta]
 
         # Verify we got EXACTLY the right number of quanta
-        if len(consecutive_quanta) == num_quanta:
-            # Check if quanta are somewhat consecutive (simplified check)
-            if (
-                num_quanta == 1
-                or (max(consecutive_quanta) - min(consecutive_quanta)) < num_quanta * 2
-            ):
-                return consecutive_quanta
+        # Check if quanta are somewhat consecutive (simplified check)
+        if len(consecutive_quanta) == num_quanta and (
+            num_quanta == 1
+            or (max(consecutive_quanta) - min(consecutive_quanta)) < num_quanta * 2
+        ):
+            return consecutive_quanta
 
     # Fallback to random selection - but MUST return exactly num_quanta items
     # Use random.sample which guarantees exact count
@@ -143,7 +142,7 @@ def find_suitable_rooms_for_course(
     Find rooms suitable for a specific course and group combination.
     Takes into account group size, course requirements, and room features.
     """
-    course = context.courses.get(course_id)
+    course = context.courses.get((course_id,))
     group = context.groups.get(group_id)
 
     if not course:

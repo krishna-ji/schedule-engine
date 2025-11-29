@@ -20,7 +20,7 @@ class ScalarReward(BaseRewardCalculator):
     - action_cost = computational cost penalty (optional)
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize scalar reward calculator.
 
@@ -74,7 +74,7 @@ class ScalarReward(BaseRewardCalculator):
             # Clip to reasonable range to prevent explosions
             reward = max(min(reward / 100.0, 1.0), -1.0)
 
-        return reward
+        return float(reward)
 
     def calculate_with_avg(
         self,
@@ -114,4 +114,4 @@ class ScalarReward(BaseRewardCalculator):
         if self.normalize:
             reward = max(min(reward / 100.0, 1.0), -1.0)
 
-        return reward
+        return float(reward)

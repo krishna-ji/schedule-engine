@@ -129,8 +129,8 @@ class ActionMapper:
             # Use shallow copy + list copy instead of deepcopy for 10-50x speedup
             individual_copy = copy.copy(individual)
             individual_copy[:] = individual[:]
-            if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):
-                individual_copy.fitness.values = individual.fitness.values
+            if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
+                individual_copy.fitness.values = individual.fitness.values  # type: ignore[attr-defined]
 
             import inspect
 
@@ -164,10 +164,7 @@ class ActionMapper:
                     individual_copy, parent2, context, **heuristic_kwargs
                 )
                 # Crossover returns tuple of offspring - take first
-                if isinstance(result, tuple):
-                    modified = result[0]
-                else:
-                    modified = result
+                modified = result[0] if isinstance(result, tuple) else result
 
             # Handle construction heuristics that build from scratch (context only)
             elif action_info.category == "construction" or len(params) == 1:
@@ -264,7 +261,7 @@ class ActionMapper:
             return individual, False
 
     def _get_heuristic_kwargs(
-        self, action_info: ActionInfo, provided_params: list = None
+        self, action_info: ActionInfo, provided_params: list | None = None
     ) -> dict:
         """
         Extract heuristic configuration parameters from config.
@@ -302,9 +299,10 @@ class ActionMapper:
 
         # Get all parameter names from function signature
         try:
+            assert action_info.function is not None
             sig = inspect.signature(action_info.function)
             func_params = set(sig.parameters.keys())
-        except:
+        except Exception:  # Catch all inspection errors
             func_params = set()
 
         # Build exclusion set: metadata fields + already provided positional params
@@ -344,16 +342,16 @@ class ActionMapper:
         if platform.system() != "Windows" and self.timeout_seconds > 0:
             try:
                 # Set up timeout alarm (Unix only)
-                old_handler = signal.signal(signal.SIGALRM, self._timeout_handler)
-                signal.alarm(int(self.timeout_seconds))
+                old_handler = signal.signal(signal.SIGALRM, self._timeout_handler)  # type: ignore[attr-defined]
+                signal.alarm(int(self.timeout_seconds))  # type: ignore[attr-defined]
 
                 try:
                     result = func(*args, **kwargs)
                     return result
                 finally:
                     # Cancel alarm and restore handler
-                    signal.alarm(0)
-                    signal.signal(signal.SIGALRM, old_handler)
+                    signal.alarm(0)  # type: ignore[attr-defined]
+                    signal.signal(signal.SIGALRM, old_handler)  # type: ignore[attr-defined]
 
             except TimeoutError:
                 logger.warning(
@@ -386,9 +384,7 @@ class ActionMapper:
         if len(result) == 0:
             return False
         # Check if all elements have course_id attribute (basic gene validation)
-        if not all(hasattr(gene, "course_id") for gene in result):
-            return False
-        return True
+        return all(hasattr(gene, "course_id") for gene in result)
 
     def is_valid_action(self, action: int) -> bool:
         """Check if action is valid and enabled."""

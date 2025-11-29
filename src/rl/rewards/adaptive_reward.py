@@ -31,7 +31,7 @@ class AdaptiveReward(BaseRewardCalculator):
     3. Stagnation-adaptive: Boost diversity when stuck
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize adaptive reward calculator.
 

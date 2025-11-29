@@ -4,6 +4,8 @@ Optimized non-dominated sorting with O(N log^(M-1) N) complexity instead of O(MN
 Provides 5-10x speedup for populations > 200.
 """
 
+from src.core.types import Individual
+
 
 def fast_nondominated_sort(population: list) -> list[list]:
     """Fast non-dominated sorting using efficient domination checking.
@@ -19,9 +21,11 @@ def fast_nondominated_sort(population: list) -> list[list]:
 
     # Use index-based tracking instead of using individuals as dict keys
     n = len(population)
-    dominated_solutions = [[] for _ in range(n)]  # Indices dominated by each individual
+    dominated_solutions: list[list[int]] = [
+        [] for _ in range(n)
+    ]  # Indices dominated by each individual
     dominating_count = [0] * n  # Count of individuals dominating each individual
-    fronts = [[]]
+    fronts: list[list[int]] = [[]]
 
     # Fast domination checking - compare all pairs
     for i in range(n):
@@ -81,7 +85,7 @@ def dominates(ind1, ind2) -> bool:
     - ind1 is strictly better in at least one objective
     """
     better_in_any = False
-    for val1, val2 in zip(ind1.fitness.values, ind2.fitness.values):
+    for val1, val2 in zip(ind1.fitness.values, ind2.fitness.values, strict=False):
         if val1 > val2:  # Minimization: lower is better
             return False
         elif val1 < val2:
@@ -136,7 +140,7 @@ def assign_crowding_distance(front: list):
             front[i].fitness.crowding_dist += distance
 
 
-def selNSGA2Fast(individuals: list, k: int) -> list:
+def sel_nsga2_fast(individuals: list, k: int) -> list:
     """Fast NSGA-II selection.
 
     Selects k individuals from the population using:
@@ -157,7 +161,7 @@ def selNSGA2Fast(individuals: list, k: int) -> list:
     fronts = fast_nondominated_sort(individuals)
 
     # Step 2: Build selected population front by front
-    selected = []
+    selected: list[Individual] = []
     for front in fronts:
         if len(selected) + len(front) <= k:
             # Add entire front

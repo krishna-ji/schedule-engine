@@ -50,7 +50,7 @@ class BehavioralDescriptors:
         ]
 
     def extract(
-        self, individual: Individual, sessions: list[CourseSession] = None
+        self, individual: Individual, sessions: list[CourseSession] | None = None
     ) -> NDArray[np.float64]:
         """
         Extract behavioral descriptor from individual.
@@ -91,7 +91,7 @@ class BehavioralDescriptors:
         day_counts = np.zeros(7)
         total_sessions = len(sessions)
 
-        for session in sessions:
+        for _session in sessions:
             # TODO: Extract day from session quanta
             # day_idx = get_day_index(session.session_quanta[0])
             # day_counts[day_idx] += 1
@@ -106,7 +106,7 @@ class BehavioralDescriptors:
         time_counts = np.zeros(3)  # [morning, afternoon, evening]
         total_sessions = len(sessions)
 
-        for session in sessions:
+        for _session in sessions:
             # TODO: Classify session start time
             # if is_morning(session): time_counts[0] += 1
             # elif is_afternoon(session): time_counts[1] += 1

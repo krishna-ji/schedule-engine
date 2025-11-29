@@ -317,7 +317,7 @@ class HypervolumeCalculator:
             dominated_space = np.max(pareto_points, axis=0) - self.reference_point
 
         # Return product of dominated ranges (upper bound approximation)
-        return np.prod(np.maximum(dominated_space, 0))
+        return float(np.prod(np.maximum(dominated_space, 0)))
 
 
 def compute_hypervolume_reward(

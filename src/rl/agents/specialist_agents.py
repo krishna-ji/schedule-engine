@@ -183,10 +183,7 @@ class SpecialistAgents:
                 )
 
                 # Probabilistic selection
-                if np.random.rand() < alpha:
-                    action = repair_action
-                else:
-                    action = optimizer_action
+                action = repair_action if np.random.rand() < alpha else optimizer_action
 
                 self.blended_actions += 1
                 return int(action), "blended"
@@ -301,7 +298,7 @@ class AgentCoordinator:
 
         # Simple heuristic: select based on primary need
         hard_violations = context.get("hard_violations", 0)
-        soft_violations = context.get("soft_violations", 0)
+        # soft_violations = context.get("soft_violations", 0)  # Unused
 
         if hard_violations > 0:
             # Need repair agent

@@ -124,7 +124,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> list:
             results = list(executor.map(_random_construction_wrapper, random_tasks))
         population.extend([ind for ind in results if ind is not None])
     else:
-        for i in range(random_count):
+        for _i in range(random_count):
             individual = _random_construction(context, pair_tuples)
             if individual:
                 population.append(create_individual(individual))
@@ -167,15 +167,17 @@ def _greedy_construction(
     )
 
     individual = []
-    group_schedule = {}  # {(group_id, quantum): True}
-    room_usage = {}  # {(room_id, quantum): True}
-    instructor_usage = {}  # {(instructor_id, quantum): True}
+    group_schedule: dict[tuple[str, int], bool] = {}  # {(group_id, quantum): True}
+    room_usage: dict[tuple[str, int], bool] = {}  # {(room_id, quantum): True}
+    instructor_usage: dict[tuple[str, int], bool] = (
+        {}
+    )  # {(instructor_id, quantum): True}
 
     # Import subsession breaker (canonical L/T/P logic)
     from src.ga.population import get_subsession_durations
 
     # Schedule each pair greedily
-    for course_key, group_ids, session_type, num_quanta in sorted_pairs:
+    for course_key, group_ids, _session_type, num_quanta in sorted_pairs:
         if num_quanta == 0:
             continue
 
@@ -191,7 +193,7 @@ def _greedy_construction(
         )
 
         # Schedule each subsession separately
-        for subsession_idx, subsession_duration in enumerate(subsession_durations):
+        for _subsession_idx, subsession_duration in enumerate(subsession_durations):
             # Find first feasible assignment for THIS subsession
             gene = _find_feasible_assignment(
                 course_key,
@@ -271,7 +273,7 @@ def _find_feasible_assignment(
     group_schedule: dict,
     room_usage: dict,
     instructor_usage: dict,
-) -> SessionGene:
+) -> SessionGene | None:
     """
     Find first feasible assignment for a course-group pair.
 
@@ -286,7 +288,7 @@ def _find_feasible_assignment(
     available_quanta = list(context.available_quanta)
     max_attempts = min(50, len(available_quanta))
 
-    for attempt in range(max_attempts):
+    for _attempt in range(max_attempts):
         # FIXED: Handle cases where num_quanta > len(available_quanta)
         if num_quanta <= len(available_quanta):
             # Try contiguous block of quanta
@@ -349,7 +351,7 @@ def _find_feasible_assignment(
 
 def _find_available_room(
     quanta: list[int], rooms: dict, room_usage: dict, course_type: str
-) -> str:
+) -> str | None:
     """Find first room available during quanta and matching course type."""
     for room_id, room in rooms.items():
         # Check room type matches
@@ -362,14 +364,14 @@ def _find_available_room(
         # Check room is free during all quanta
         free = all((room_id, q) not in room_usage for q in quanta)
         if free:
-            return room_id
+            return str(room_id)
 
     return None
 
 
 def _find_available_instructor(
     quanta: list[int], course, instructors: dict, instructor_usage: dict
-) -> str:
+) -> str | None:
     """Find first qualified instructor available during quanta."""
     qualified_ids = getattr(course, "qualified_instructor_ids", [])
 
@@ -388,7 +390,7 @@ def _find_available_instructor(
         # Check not double-booked
         free = all((instructor_id, q) not in instructor_usage for q in quanta)
         if free:
-            return instructor_id
+            return str(instructor_id)
 
     return None
 
@@ -412,7 +414,10 @@ def _random_construction(
 
 
 def _random_gene(
-    course_key: str, group_ids: list[str], num_quanta: int, context: SchedulingContext
+    course_key: tuple[str, str],
+    group_ids: list[str],
+    num_quanta: int,
+    context: SchedulingContext,
 ) -> SessionGene:
     """Generate random SessionGene (fallback when greedy fails)."""
     course = context.courses.get(course_key)

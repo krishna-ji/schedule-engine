@@ -44,9 +44,6 @@ def generate_course_group_pairs(
     Note: course_id is now tuple key (course_code, course_type) from courses dict.
     """
     pairs = []
-    processed_theory_courses = (
-        set()
-    )  # Track (course_code, parent_prefix) to avoid duplicates
 
     # Group all subgroups by their parent prefix (e.g., BAE2A, BAE2B -> BAE2)
     # This allows us to find siblings that should attend theory together

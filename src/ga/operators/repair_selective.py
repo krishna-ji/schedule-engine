@@ -109,7 +109,7 @@ def repair_individual_selective(
         return stats
 
     # Step 2: Repair loop - only violated genes
-    for iteration in range(max_iterations):
+    for _iteration in range(max_iterations):
         stats["iterations"] += 1
         iteration_fixes = 0
 
@@ -257,7 +257,9 @@ def repair_group_overlaps_selective(
     fixes = 0
 
     # Build group schedule map for entire individual (needed for conflict detection)
-    group_schedule = defaultdict(lambda: defaultdict(list))
+    group_schedule: dict[str, dict[int, list[int]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for idx, gene in enumerate(individual):
         for q in range(gene.start_quanta, gene.end_quanta):
             for group_id in gene.group_ids:
@@ -290,7 +292,9 @@ def repair_group_overlaps_selective(
         room = context.rooms.get(gene.room_id)
         groups = [context.groups.get(gid) for gid in gene.group_ids]
 
-        if not all([course, instructor, room] + groups):
+        # Type-safe concatenation of optional entity lists
+        entities_list = [course, instructor, room] + list(groups)
+        if not all(entities_list):
             continue
 
         # Find available slot using correct function signature (4 params)
@@ -329,7 +333,9 @@ def repair_room_conflicts_selective(
     fixes = 0
 
     # Build room schedule map
-    room_schedule = defaultdict(lambda: defaultdict(list))
+    room_schedule: dict[str, dict[int, list[int]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for idx, gene in enumerate(individual):
         for q in range(gene.start_quanta, gene.end_quanta):
             room_schedule[gene.room_id][q].append(idx)
@@ -357,7 +363,7 @@ def repair_room_conflicts_selective(
         room = context.rooms.get(gene.room_id)
         groups = [context.groups.get(gid) for gid in gene.group_ids]
 
-        if not all([course, instructor, room] + groups):
+        if not all([course, instructor, room] + list(groups)):
             continue
 
         # Find available slot using correct function signature (4 params)
@@ -393,7 +399,9 @@ def repair_instructor_conflicts_selective(
     fixes = 0
 
     # Build instructor schedule map
-    instructor_schedule = defaultdict(lambda: defaultdict(list))
+    instructor_schedule: dict[str, dict[int, list[int]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for idx, gene in enumerate(individual):
         for q in range(gene.start_quanta, gene.end_quanta):
             instructor_schedule[gene.instructor_id][q].append(idx)
@@ -421,7 +429,7 @@ def repair_instructor_conflicts_selective(
         room = context.rooms.get(gene.room_id)
         groups = [context.groups.get(gid) for gid in gene.group_ids]
 
-        if not all([course, instructor, room] + groups):
+        if not all([course, instructor, room] + list(groups)):
             continue
 
         # Find available slot using correct function signature (4 params)

@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TRAIN_CONFIG_DIR = PROJECT_ROOT / "configs" / "training"

@@ -72,7 +72,7 @@ class ProbabilityPolicy:
         if self.mode == "discrete":
             # Decode discrete action to probability grid
             action_int = (
-                int(action) if isinstance(action, (int, np.integer)) else int(action[0])
+                int(action) if isinstance(action, int | np.integer) else int(action[0])
             )
             cx_idx = action_int // len(self.mutpb_levels)
             mut_idx = action_int % len(self.mutpb_levels)

@@ -28,9 +28,12 @@ def get_course_for_gene(context: SchedulingContext, gene: SessionGene):
 
     # Fall back to first matching course_id regardless of type
     for key, course in courses.items():
-        if isinstance(key, tuple) and key[0] == course_id:
-            if course_type is None or key[1] == course_type:
-                return course
+        if (
+            isinstance(key, tuple)
+            and key[0] == course_id
+            and (course_type is None or key[1] == course_type)
+        ):
+            return course
 
     raise KeyError(course_id)
 

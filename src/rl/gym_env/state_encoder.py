@@ -154,8 +154,8 @@ class StateEncoder:
             return self._get_zero_features()
 
         # Extract fitness values (both objectives)
-        hard_violations = np.array([ind.fitness.values[0] for ind in population])
-        soft_violations = np.array([ind.fitness.values[1] for ind in population])
+        hard_violations = np.array([ind.fitness.values[0] for ind in population])  # type: ignore[attr-defined]
+        soft_violations = np.array([ind.fitness.values[1] for ind in population])  # type: ignore[attr-defined]
 
         # Combined fitness (weighted sum for single metric)
         fitness_values = hard_violations * 100 + soft_violations
@@ -219,7 +219,7 @@ class StateEncoder:
         if len(population) < 2:
             return 0.0
 
-        fitness_array = np.array([ind.fitness.values for ind in population])
+        fitness_array = np.array([ind.fitness.values for ind in population])  # type: ignore[attr-defined]
         # Use scipy pdist for 10-30x faster pairwise distance calculation
         from scipy.spatial.distance import pdist
 
@@ -260,7 +260,7 @@ class StateEncoder:
             return 0.0
 
         # Extract fitness vectors (hard, soft)
-        fitness_array = np.array([ind.fitness.values for ind in population])
+        fitness_array = np.array([ind.fitness.values for ind in population])  # type: ignore[attr-defined]
 
         # Calculate pairwise Euclidean distances in fitness space (scipy optimized)
         from scipy.spatial.distance import pdist
@@ -278,7 +278,7 @@ class StateEncoder:
         if fitness_range < 1e-6:
             return 0.0
 
-        return min(avg_distance / (fitness_range + 1e-6), 1.0)
+        return float(min(avg_distance / (fitness_range + 1e-6), 1.0))
 
     def _calculate_unique_fitness_ratio(self, population: list[Individual]) -> float:
         """
@@ -292,7 +292,7 @@ class StateEncoder:
             return 0.0
 
         # Extract fitness tuples (hard, soft)
-        fitness_tuples = [ind.fitness.values for ind in population]
+        fitness_tuples = [ind.fitness.values for ind in population]  # type: ignore[attr-defined]
 
         # Count unique fitness values (with small tolerance for floating point)
         # Round to 4 decimal places to avoid floating point precision issues

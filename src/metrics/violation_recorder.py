@@ -31,20 +31,21 @@ def record_violations_to_heatmap(
     for gene in individual:
         # 1. Instructor availability
         instructor = context.instructors.get(gene.instructor_id)
-        if instructor:
-            # Check if any quantum in the contiguous block is unavailable
-            if any(
-                q not in instructor.available_quanta
-                for q in range(gene.start_quanta, gene.end_quanta)
-            ):
-                heatmap.record_violation(gene, "availability")
+        if instructor and any(
+            q not in instructor.available_quanta
+            for q in range(gene.start_quanta, gene.end_quanta)
+        ):
+            heatmap.record_violation(gene, "availability")
 
         # 2. Instructor qualification
         course_key = (gene.course_id, gene.course_type)
         course = context.courses.get(course_key)
-        if course and instructor:
-            if instructor.instructor_id not in course.qualified_instructor_ids:
-                heatmap.record_violation(gene, "qualification")
+        if (
+            course
+            and instructor
+            and instructor.instructor_id not in course.qualified_instructor_ids
+        ):
+            heatmap.record_violation(gene, "qualification")
 
         # 3. Room type mismatch (simplified check)
         room = context.rooms.get(gene.room_id)
@@ -64,8 +65,8 @@ def record_violations_to_heatmap(
             for q in range(gene.start_quanta, gene.end_quanta):
                 group_schedule[group_id][q].append(gene)
 
-    for group_id, quanta_map in group_schedule.items():
-        for quantum, genes in quanta_map.items():
+    for _group_id, quanta_map in group_schedule.items():
+        for _quantum, genes in quanta_map.items():
             if len(genes) > 1:
                 # Record all genes involved in overlap
                 for gene in genes:
@@ -79,8 +80,8 @@ def record_violations_to_heatmap(
         for q in range(gene.start_quanta, gene.end_quanta):
             instructor_schedule[gene.instructor_id][q].append(gene)
 
-    for instructor_id, quanta_map in instructor_schedule.items():
-        for quantum, genes in quanta_map.items():
+    for _instructor_id, quanta_map in instructor_schedule.items():
+        for _quantum, genes in quanta_map.items():
             if len(genes) > 1:
                 for gene in genes:
                     heatmap.record_violation(gene, "instructor_conflict")
@@ -91,8 +92,8 @@ def record_violations_to_heatmap(
         for q in range(gene.start_quanta, gene.end_quanta):
             room_schedule[gene.room_id][q].append(gene)
 
-    for room_id, quanta_map in room_schedule.items():
-        for quantum, genes in quanta_map.items():
+    for _room_id, quanta_map in room_schedule.items():
+        for _quantum, genes in quanta_map.items():
             if len(genes) > 1:
                 for gene in genes:
                     heatmap.record_violation(gene, "room_conflict")

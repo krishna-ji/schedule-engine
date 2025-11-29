@@ -36,7 +36,7 @@ def analyze_group_hierarchy(groups: dict[str, Group]) -> dict:
         }
     """
     parents = set()
-    subgroups_dict = {}  # parent_id -> [subgroup_ids]
+    subgroups_dict: dict[str, list[str]] = {}  # parent_id -> [subgroup_ids]
     parent_map = {}  # subgroup_id -> parent_id
     all_group_ids = set(groups.keys())
 
@@ -57,9 +57,9 @@ def analyze_group_hierarchy(groups: dict[str, Group]) -> dict:
                 subgroups_dict[potential_parent].append(group_id)
 
     # Identify standalone groups (neither parent nor subgroup)
-    parents_list = sorted(list(parents))
+    parents_list = sorted(parents)
     all_subgroups = set(parent_map.keys())
-    standalone = sorted(list(all_group_ids - parents - all_subgroups))
+    standalone = sorted(all_group_ids - parents - all_subgroups)
 
     return {
         "parents": parents_list,
@@ -81,12 +81,14 @@ def is_subgroup(group_id: str, hierarchy: dict) -> bool:
 
 def get_parent(group_id: str, hierarchy: dict) -> str:
     """Get parent group ID for a subgroup."""
-    return hierarchy["parent_map"].get(group_id)
+    result = hierarchy["parent_map"].get(group_id)
+    return str(result) if result is not None else ""
 
 
 def get_subgroups(parent_id: str, hierarchy: dict) -> list[str]:
     """Get list of subgroup IDs for a parent."""
-    return hierarchy["subgroups"].get(parent_id, [])
+    result = hierarchy["subgroups"].get(parent_id, [])
+    return list(result) if result is not None else []
 
 
 def has_subgroups(group_id: str, hierarchy: dict) -> bool:

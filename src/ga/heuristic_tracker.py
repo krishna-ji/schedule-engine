@@ -9,6 +9,7 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -55,24 +56,26 @@ class HeuristicTracker:
     - Visualization plots
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.applications: list[HeuristicApplication] = []
         self.generation_stats: dict[int, GenerationStats] = {}
 
         # Per-heuristic cumulative stats
-        self.heuristic_stats = defaultdict(
-            lambda: {
-                "total_applications": 0,
-                "successful_applications": 0,
-                "total_improvement": 0.0,
-                "average_improvement": 0.0,
-                "best_improvement": 0.0,
-                "worst_improvement": 0.0,
-                "total_time": 0.0,
-                "average_time": 0.0,
-                "success_rate": 0.0,
-                "generations_applied": set(),
-            }
+        self.heuristic_stats: dict[str, dict[str, int | float | set[int]]] = (
+            defaultdict(
+                lambda: {
+                    "total_applications": 0,
+                    "successful_applications": 0,
+                    "total_improvement": 0.0,
+                    "average_improvement": 0.0,
+                    "best_improvement": 0.0,
+                    "worst_improvement": 0.0,
+                    "total_time": 0.0,
+                    "average_time": 0.0,
+                    "success_rate": 0.0,
+                    "generations_applied": set(),
+                }
+            )
         )
 
         # Round-robin state
@@ -99,7 +102,7 @@ class HeuristicTracker:
         self.current_heuristic_index = (self.current_heuristic_index + 1) % len(
             self.heuristic_order
         )
-        return heuristic
+        return str(heuristic)
 
     def reorder_by_effectiveness(
         self,
@@ -250,24 +253,37 @@ class HeuristicTracker:
 
         # Update per-heuristic stats
         stats = self.heuristic_stats[heuristic_name]
-        stats["total_applications"] += 1
+        stats["total_applications"] = cast(int, stats["total_applications"]) + 1
+        assert isinstance(stats["generations_applied"], set)
         stats["generations_applied"].add(generation)
-        stats["total_time"] += execution_time
+        stats["total_time"] = cast(float, stats["total_time"]) + execution_time
 
         if success:
-            stats["successful_applications"] += 1
-            stats["total_improvement"] += improvement
-            stats["best_improvement"] = max(stats["best_improvement"], improvement)
+            stats["successful_applications"] = (
+                cast(int, stats["successful_applications"]) + 1
+            )
+            stats["total_improvement"] = (
+                cast(float, stats["total_improvement"]) + improvement
+            )
+            stats["best_improvement"] = max(
+                cast(float, stats["best_improvement"]), improvement
+            )
         else:
-            stats["worst_improvement"] = min(stats["worst_improvement"], improvement)
+            stats["worst_improvement"] = min(
+                cast(float, stats["worst_improvement"]), improvement
+            )
 
         # Update averages
-        stats["average_improvement"] = (
-            stats["total_improvement"] / stats["total_applications"]
+        stats["average_improvement"] = cast(float, stats["total_improvement"]) / cast(
+            int, stats["total_applications"]
         )
-        stats["average_time"] = stats["total_time"] / stats["total_applications"]
+        stats["average_time"] = cast(float, stats["total_time"]) / cast(
+            int, stats["total_applications"]
+        )
         stats["success_rate"] = (
-            stats["successful_applications"] / stats["total_applications"] * 100
+            cast(int, stats["successful_applications"])
+            / cast(int, stats["total_applications"])
+            * 100
         )
 
     def get_summary(self) -> dict:
@@ -287,7 +303,8 @@ class HeuristicTracker:
 
         # Find best heuristic overall
         best_heuristic = max(
-            self.heuristic_stats.items(), key=lambda x: x[1]["total_improvement"]
+            self.heuristic_stats.items(),
+            key=lambda x: cast(float, x[1]["total_improvement"]),
         )
 
         return {
@@ -321,14 +338,14 @@ class HeuristicTracker:
 
         # Export per-heuristic stats
         heuristic_stats_path = output_dir / "heuristic_stats.json"
-        stats_export = {}
+        stats_export: dict[str, dict] = {}
         for name, stats in self.heuristic_stats.items():
             stats_export[name] = {
                 k: v for k, v in stats.items() if k != "generations_applied"
             }
-            stats_export[name]["generations_applied"] = sorted(
-                list(stats["generations_applied"])
-            )
+            gen_set = cast(set[int], stats["generations_applied"])
+            # Convert to list for JSON serialization (assign to dict, not stats)
+            stats_export[name]["generations_applied"] = sorted(gen_set)
 
         with open(heuristic_stats_path, "w") as f:
             json.dump(stats_export, f, indent=2)
@@ -408,13 +425,17 @@ class HeuristicTracker:
         # Sort heuristics by total improvement
         sorted_heuristics = sorted(
             self.heuristic_stats.items(),
-            key=lambda x: x[1]["total_improvement"],
+            key=lambda x: cast(float, x[1]["total_improvement"]),
             reverse=True,
         )
 
         names = [h[0] for h in sorted_heuristics]
-        improvements = [h[1]["total_improvement"] for h in sorted_heuristics]
-        applications = [h[1]["total_applications"] for h in sorted_heuristics]
+        improvements = [
+            cast(float, h[1]["total_improvement"]) for h in sorted_heuristics
+        ]
+        applications = [
+            cast(int, h[1]["total_applications"]) for h in sorted_heuristics
+        ]
 
         # Plot 1: Total Improvement
         colors = ["green" if imp > 0 else "red" for imp in improvements]
@@ -472,7 +493,7 @@ class HeuristicTracker:
         )
         ax.set_xticklabels(
             [
-                all_generations[i]
+                str(all_generations[i])
                 for i in range(
                     0, len(all_generations), max(1, len(all_generations) // 10)
                 )
@@ -496,12 +517,12 @@ class HeuristicTracker:
         # Sort by success rate
         sorted_heuristics = sorted(
             self.heuristic_stats.items(),
-            key=lambda x: x[1]["success_rate"],
+            key=lambda x: cast(float, x[1]["success_rate"]),
             reverse=True,
         )
 
         names = [h[0] for h in sorted_heuristics]
-        success_rates = [h[1]["success_rate"] for h in sorted_heuristics]
+        success_rates = [cast(float, h[1]["success_rate"]) for h in sorted_heuristics]
 
         colors = [
             "green" if rate >= 50 else "orange" if rate >= 25 else "red"
@@ -572,7 +593,7 @@ class HeuristicTracker:
     def _plot_category_performance(self, output_dir: Path) -> None:
         """Plot performance grouped by category."""
         # Aggregate by category
-        category_stats = defaultdict(
+        category_stats: dict[str, dict[str, float | int]] = defaultdict(
             lambda: {
                 "total_improvement": 0.0,
                 "applications": 0,
@@ -584,15 +605,22 @@ class HeuristicTracker:
         for name, stats in self.heuristic_stats.items():
             # Infer category from heuristic name or metadata
             category = self._infer_category(name)
-            category_stats[category]["total_improvement"] += stats["total_improvement"]
-            category_stats[category]["applications"] += stats["total_applications"]
-            category_stats[category]["successful"] += stats["successful_applications"]
+            category_stats[category]["total_improvement"] = cast(
+                float, category_stats[category]["total_improvement"]
+            ) + cast(float, stats["total_improvement"])
+            category_stats[category]["applications"] = cast(
+                int, category_stats[category]["applications"]
+            ) + cast(int, stats["total_applications"])
+            category_stats[category]["successful"] = cast(
+                int, category_stats[category]["successful"]
+            ) + cast(int, stats["successful_applications"])
 
         # Calculate success rates
-        for cat, stats in category_stats.items():
-            if stats["applications"] > 0:
-                stats["success_rate"] = (
-                    stats["successful"] / stats["applications"] * 100
+        for _cat, cat_stats in category_stats.items():
+            apps = cast(int, cat_stats["applications"])
+            if apps > 0:
+                cat_stats["success_rate"] = (
+                    cast(int, cat_stats["successful"]) / apps * 100
                 )
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))

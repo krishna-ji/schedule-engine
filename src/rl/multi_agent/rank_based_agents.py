@@ -150,7 +150,7 @@ class RankBasedMultiAgent:
         Returns:
             Pareto rank (1-based)
         """
-        ind_fitness = np.array(individual.fitness.values)
+        ind_fitness = np.array(individual.fitness.values)  # type: ignore[attr-defined]
 
         # Count how many individuals dominate this one
         domination_count = 0
@@ -158,7 +158,7 @@ class RankBasedMultiAgent:
             if other is individual:
                 continue
 
-            other_fitness = np.array(other.fitness.values)
+            other_fitness = np.array(other.fitness.values)  # type: ignore[attr-defined]
 
             # Check dominance (minimization)
             # other dominates ind if: other <= ind in all objectives AND other < ind in at least one

@@ -117,10 +117,7 @@ def load_ppo_agent(
     """
     if env is not None:
         # Wrap environment if not already vectorized
-        if isinstance(env, VecEnv):
-            vec_env = env
-        else:
-            vec_env = DummyVecEnv([lambda: env])
+        vec_env = env if isinstance(env, VecEnv) else DummyVecEnv([lambda: env])
         model = PPO.load(model_path, env=vec_env, device=device)
     else:
         model = PPO.load(model_path, device=device)

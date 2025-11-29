@@ -118,7 +118,7 @@ def repair_operator(
         )
         _REPAIR_OPERATORS[name] = metadata
         # Store metadata on function for introspection
-        func._repair_metadata = metadata
+        func._repair_metadata = metadata  # type: ignore[attr-defined]
         return func
 
     return decorator
@@ -254,7 +254,7 @@ def list_all_repair_operators() -> None:
 # ================
 
 
-def get_repair_statistics_template() -> dict[str, int]:
+def get_repair_statistics_template() -> dict[str, int | float]:
     """
     Returns template for repair statistics tracking.
 
@@ -263,13 +263,13 @@ def get_repair_statistics_template() -> dict[str, int]:
     """
     all_repairs = get_all_repair_operators()
 
-    stats = {
+    stats: dict[str, int | float] = {
         "iterations": 0,
         "total_fixes": 0,
     }
 
     # Add counter for each repair operator
-    for name in all_repairs.keys():
+    for name in all_repairs:
         stats[f"{name}_fixes"] = 0
         stats[f"{name}_calls"] = 0
 

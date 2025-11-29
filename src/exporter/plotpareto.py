@@ -24,7 +24,9 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
     """
     Enhanced Pareto front visualization showing all points with better visibility.
     """
-    hard_vals, soft_vals = zip(*[ind.fitness.values for ind in population])
+    hard_vals, soft_vals = zip(
+        *[ind.fitness.values for ind in population], strict=False
+    )
 
     # Route CSVs to consolidated csv/ directory
     csv_dir = get_csv_dir(output_dir)
@@ -40,7 +42,7 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
                 "Soft_Constraint_Penalties",
             ]
         )
-        for idx, (h, s) in enumerate(zip(hard_vals, soft_vals)):
+        for idx, (h, s) in enumerate(zip(hard_vals, soft_vals, strict=False)):
             writer.writerow([idx, h, s])
 
     # Save Pareto front data to CSV
@@ -56,7 +58,7 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
         writer.writerow(
             ["Pareto_Index", "Hard_Constraint_Violations", "Soft_Constraint_Penalties"]
         )
-        for idx, (h, s) in enumerate(zip(pareto_hard, pareto_soft)):
+        for idx, (h, s) in enumerate(zip(pareto_hard, pareto_soft, strict=False)):
             writer.writerow([idx, h, s])
 
     # Create comprehensive plots showing all data
@@ -68,7 +70,7 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
     jittered_hard = []
     jittered_soft = []
 
-    for h, s in zip(hard_vals, soft_vals):
+    for h, s in zip(hard_vals, soft_vals, strict=False):
         key = (h, s)
         if key in unique_points:
             unique_points[key] += 1
@@ -160,20 +162,22 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
             # Create density heatmap
             hard_range = np.linspace(min(hard_vals), max(hard_vals), 50)
             soft_range = np.linspace(min(soft_vals), max(soft_vals), 50)
-            H, S = np.meshgrid(hard_range, soft_range)
-            positions = np.vstack([H.ravel(), S.ravel()])
+            h_grid, s_grid = np.meshgrid(hard_range, soft_range)
+            positions = np.vstack([h_grid.ravel(), s_grid.ravel()])
             values = np.vstack([hard_vals, soft_vals])
 
             try:
                 kernel = gaussian_kde(values)
-                density = np.reshape(kernel(positions).T, H.shape)
+                density = np.reshape(kernel(positions).T, h_grid.shape)
             except np.linalg.LinAlgError:
                 # Data is too degenerate for KDE, fall back to histogram
                 has_sufficient_variance = False
 
         if has_sufficient_variance:
             # Successfully created KDE, plot it
-            im = ax3.contourf(H, S, density, levels=20, cmap="Blues", alpha=0.6)
+            im = ax3.contourf(
+                h_grid, s_grid, density, levels=20, cmap="Blues", alpha=0.6
+            )
             ax3.scatter(
                 hard_vals,
                 soft_vals,
@@ -270,7 +274,10 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
     )
 
     # Plot 4: Size-coded points showing frequency
-    sizes = [unique_points.get((h, s), 1) * 25 for h, s in zip(hard_vals, soft_vals)]
+    sizes = [
+        unique_points.get((h, s), 1) * 25
+        for h, s in zip(hard_vals, soft_vals, strict=False)
+    ]
     scatter = ax4.scatter(
         hard_vals,
         soft_vals,
@@ -375,7 +382,7 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
         )
 
         # Annotate each point with its index
-        for i, (h, s) in enumerate(zip(pareto_hard, pareto_soft)):
+        for i, (h, s) in enumerate(zip(pareto_hard, pareto_soft, strict=False)):
             ax.annotate(
                 f"{i+1}",
                 (h, s),

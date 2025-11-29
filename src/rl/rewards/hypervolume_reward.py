@@ -41,7 +41,7 @@ class HypervolumeReward(BaseRewardCalculator):
     - Requires reference point selection
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize hypervolume reward calculator.
 

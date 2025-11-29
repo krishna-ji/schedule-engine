@@ -47,19 +47,19 @@ def individual_distance(ind1: list[SessionGene], ind2: list[SessionGene]) -> flo
         return 0.0
 
     # Vectorize comparisons (much faster than loop + gene_distance)
-    courses_diff = np.sum([g1.course_id != g2.course_id for g1, g2 in zip(ind1, ind2)])
+    courses_diff = np.sum([g1.course_id != g2.course_id for g1, g2 in zip(ind1, ind2, strict=False)])
     instructors_diff = np.sum(
-        [g1.instructor_id != g2.instructor_id for g1, g2 in zip(ind1, ind2)]
+        [g1.instructor_id != g2.instructor_id for g1, g2 in zip(ind1, ind2, strict=False)]
     )
-    rooms_diff = np.sum([g1.room_id != g2.room_id for g1, g2 in zip(ind1, ind2)])
+    rooms_diff = np.sum([g1.room_id != g2.room_id for g1, g2 in zip(ind1, ind2, strict=False)])
     groups_diff = np.sum(
-        [set(g1.group_ids) != set(g2.group_ids) for g1, g2 in zip(ind1, ind2)]
+        [set(g1.group_ids) != set(g2.group_ids) for g1, g2 in zip(ind1, ind2, strict=False)]
     )
     # Compare time allocation (start and duration)
     quanta_diff = np.sum(
         [
             (g1.start_quanta != g2.start_quanta or g1.num_quanta != g2.num_quanta)
-            for g1, g2 in zip(ind1, ind2)
+            for g1, g2 in zip(ind1, ind2, strict=False)
         ]
     )
 

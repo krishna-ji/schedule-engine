@@ -383,7 +383,7 @@ def plot_convergence_rate(
             fontsize=10,
             verticalalignment="top",
             horizontalalignment="right",
-            bbox=dict(boxstyle="round", facecolor="yellow", alpha=0.7),
+            bbox={"boxstyle": "round", "facecolor": "yellow", "alpha": 0.7},
         )
 
     format_axis(
@@ -470,7 +470,7 @@ def plot_constraint_satisfaction_evolution(
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="bottom",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
     format_axis(

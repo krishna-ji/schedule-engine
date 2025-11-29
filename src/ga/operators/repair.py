@@ -189,7 +189,7 @@ def repair_group_overlaps(
     Uses NEW API: gene.start_quanta, gene.num_quanta
     """
     fixes = 0
-    occupied = _build_occupied_quanta_map(individual)
+    # occupied = _build_occupied_quanta_map(individual)  # Unused
 
     for gene in individual:
         # Check if any group in this gene has conflicts
@@ -498,7 +498,7 @@ def _find_compatible_room(
 
 
 def _build_occupied_quanta_map(
-    individual: list[SessionGene], exclude_gene: SessionGene = None
+    individual: list[SessionGene], exclude_gene: SessionGene | None = None
 ) -> dict[str, dict[int, set[str]]]:
     """
     Build occupation map for detecting conflicts.
@@ -512,7 +512,7 @@ def _build_occupied_quanta_map(
             "instructors": {quantum: {instructor_id, ...}}
         }
     """
-    occupied = {
+    occupied: dict[str, dict[int, set[str]]] = {
         "groups": defaultdict(set),
         "rooms": defaultdict(set),
         "instructors": defaultdict(set),
@@ -585,7 +585,7 @@ def repair_individual_unified(
         return stats
 
     # Apply repairs iteratively
-    for iteration in range(max_iterations):
+    for _iteration in range(max_iterations):
         iteration_fixes = 0
 
         for repair_name, repair_meta in enabled_repairs.items():

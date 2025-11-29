@@ -218,22 +218,26 @@ class ModelLoader:
         """
         try:
             # Check action space
-            if expected_action_space is not None:
-                if model.action_space != expected_action_space:
-                    logger.error(
-                        f"Action space mismatch: expected {expected_action_space}, "
-                        f"got {model.action_space}"
-                    )
-                    return False
+            if (
+                expected_action_space is not None
+                and model.action_space != expected_action_space
+            ):
+                logger.error(
+                    f"Action space mismatch: expected {expected_action_space}, "
+                    f"got {model.action_space}"
+                )
+                return False
 
             # Check observation space
-            if expected_observation_space is not None:
-                if model.observation_space != expected_observation_space:
-                    logger.error(
-                        f"Observation space mismatch: expected {expected_observation_space}, "
-                        f"got {model.observation_space}"
-                    )
-                    return False
+            if (
+                expected_observation_space is not None
+                and model.observation_space != expected_observation_space
+            ):
+                logger.error(
+                    f"Observation space mismatch: expected {expected_observation_space}, "
+                    f"got {model.observation_space}"
+                )
+                return False
 
             logger.debug("Model validation passed")
             return True
@@ -287,9 +291,7 @@ class ModelLoader:
             self.clear_cache()
 
             start = time.time()
-            model = self.load_model(
-                model_path, agent_type=agent_type, force_reload=True
-            )
+            self.load_model(model_path, agent_type=agent_type, force_reload=True)
             elapsed_ms = (time.time() - start) * 1000
 
             times.append(elapsed_ms)

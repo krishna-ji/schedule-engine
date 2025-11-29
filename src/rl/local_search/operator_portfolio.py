@@ -59,11 +59,11 @@ class OperatorPortfolio:
         elif self.selection_method == "ucb":
             return self._select_ucb()
         elif self.selection_method == "random":
-            return np.random.choice(self.operators)
+            return str(np.random.choice(self.operators))
         else:
             # Fixed: round-robin
             idx = self.total_attempts % len(self.operators)
-            self.total_attempts += 1
+            return str(self.operators[idx])
             return self.operators[idx]
 
     def _select_thompson_sampling(self) -> str:

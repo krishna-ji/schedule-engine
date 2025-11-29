@@ -425,7 +425,7 @@ def _propose_move(
             and rid != session.room_id
         ]
         if suitable:
-            new_room = random.choice(suitable)
+            # new_room = random.choice(suitable)  # Unused - directly use in SessionGene
             neighbor[idx] = SessionGene(
                 course_id=session.course_id,
                 course_type=session.course_type,

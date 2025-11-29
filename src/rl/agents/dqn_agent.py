@@ -49,10 +49,7 @@ def create_dqn_agent(
     gamma = gamma or dqn_config.gamma
 
     # Wrap environment in DummyVecEnv if not already vectorized (required by SB3)
-    if isinstance(env, VecEnv):
-        vec_env = env
-    else:
-        vec_env = DummyVecEnv([lambda: env])
+    vec_env = env if isinstance(env, VecEnv) else DummyVecEnv([lambda: env])
 
     # Extract device from kwargs or use config (prevents duplicate parameter error)
     device = kwargs.pop("device", config.rl.agent.device)
@@ -97,10 +94,7 @@ def load_dqn_agent(
     """
     if env is not None:
         # Wrap environment if not already vectorized
-        if isinstance(env, VecEnv):
-            vec_env = env
-        else:
-            vec_env = DummyVecEnv([lambda: env])
+        vec_env = env if isinstance(env, VecEnv) else DummyVecEnv([lambda: env])
         model = DQN.load(model_path, env=vec_env, device=device)
     else:
         model = DQN.load(model_path, device=device)

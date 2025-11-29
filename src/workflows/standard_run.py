@@ -340,13 +340,13 @@ def run_standard_workflow(
     # CRITICAL: Order matters! This defines hc1-hc8 mapping used in console output
     # Order is deterministic from registry (decorator registration order in hard.py)
     hard_names = []
-    for name in all_hard_constraints.keys():
+    for name in all_hard_constraints:
         constraint_cfg = getattr(config.hard_constraints, name, None)
         if constraint_cfg and constraint_cfg.enabled:
             hard_names.append(name)
 
     soft_names = []
-    for name in all_soft_constraints.keys():
+    for name in all_soft_constraints:
         constraint_cfg = getattr(config.soft_constraints, name, None)
         if constraint_cfg and constraint_cfg.enabled:
             soft_names.append(name)

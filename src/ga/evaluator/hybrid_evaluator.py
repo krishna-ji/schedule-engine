@@ -38,6 +38,9 @@ class HybridEvaluator:
         self.fallback_to_cpu = fallback_to_cpu
 
         # Try to initialize GPU evaluator
+        from src.ga.evaluator.gpu_batch_evaluator import GPUConstraintEvaluator
+
+        self.gpu_evaluator: GPUConstraintEvaluator | None
         try:
             self.gpu_evaluator = get_gpu_evaluator(device=gpu_device)
             self.gpu_available = self.gpu_evaluator.is_available()
@@ -57,7 +60,7 @@ class HybridEvaluator:
         self,
         population: list,
         cpu_evaluate_func: Callable,
-        batch_size: int = None,
+        batch_size: int | None = None,
     ) -> list[tuple[int, int]]:
         """Evaluate population using optimal strategy.
 
@@ -81,6 +84,7 @@ class HybridEvaluator:
         if use_gpu:
             try:
                 logger.debug(f"Using GPU for {pop_size} individuals")
+                assert self.gpu_evaluator is not None  # Type narrowing for mypy
                 return self.gpu_evaluator.batch_evaluate_conflicts(
                     population, batch_size=batch_size
                 )

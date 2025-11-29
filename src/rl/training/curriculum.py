@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 
 from src.config import get_config
-from src.encoder import SchedulingContext
+from src.core.types import SchedulingContext
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -160,6 +160,7 @@ class CurriculumManager:
             self.advancement_counter = 0
 
             new_stage = self.get_current_stage()
+            assert new_stage is not None
             logger.info(
                 f"Advanced to stage '{new_stage.name}' ({self.current_stage_idx + 1}/{len(self.stages)})"
             )
@@ -223,7 +224,7 @@ class CurriculumManager:
         Returns:
             Filtered list of courses
         """
-        all_courses = self.context.courses
+        all_courses = list(self.context.courses.values())
 
         if len(all_courses) <= target_num_courses:
             return all_courses
@@ -231,15 +232,13 @@ class CurriculumManager:
         if strategy == "random":
             return random.sample(all_courses, target_num_courses)
         elif strategy == "smallest":
-            # Sort by total sessions (theory + practical)
-            sorted_courses = sorted(
-                all_courses, key=lambda c: c.theory_sessions + c.practical_sessions
-            )
+            # Sort by total sessions (L+T+P hours)
+            sorted_courses = sorted(all_courses, key=lambda c: c.L + c.T + c.P)
             return sorted_courses[:target_num_courses]
         elif strategy == "largest":
             sorted_courses = sorted(
                 all_courses,
-                key=lambda c: c.theory_sessions + c.practical_sessions,
+                key=lambda c: c.L + c.T + c.P,
                 reverse=True,
             )
             return sorted_courses[:target_num_courses]
@@ -270,19 +269,20 @@ class CurriculumManager:
 
         validation_set = []
 
-        for i in range(num_problems):
+        for _i in range(num_problems):
             # Filter courses to match difficulty
             filtered_courses = self.filter_courses_by_difficulty(
                 current_stage.num_courses, strategy="random"
             )
 
-            # Create new context with filtered courses
+            # Create new context with filtered courses (convert list back to dict)
+            courses_dict = {(c.course_code, c.course_type): c for c in filtered_courses}
             validation_context = SchedulingContext(
-                courses=filtered_courses,
+                courses=courses_dict,
                 instructors=self.context.instructors,
                 rooms=self.context.rooms,
                 groups=self.context.groups,
-                time_system=self.context.time_system,
+                available_quanta=self.context.available_quanta,
             )
 
             validation_set.append(validation_context)
@@ -306,33 +306,33 @@ class CurriculumManager:
             current_stage.num_courses, strategy="random"
         )
 
-        # Create training context
+        # Create training context (convert list back to dict)
+        courses_dict = {(c.course_code, c.course_type): c for c in filtered_courses}
         training_context = SchedulingContext(
-            courses=filtered_courses,
+            courses=courses_dict,
             instructors=self.context.instructors,
             rooms=self.context.rooms,
             groups=self.context.groups,
-            time_system=self.context.time_system,
+            available_quanta=self.context.available_quanta,
         )
 
         return training_context
 
     def save_progress(self, save_path: str):
         """Save curriculum progress to file."""
+        current_stage = self.get_current_stage()
         progress = {
             "current_stage_idx": self.current_stage_idx,
-            "current_stage": (
-                self.get_current_stage().name if self.get_current_stage() else None
-            ),
+            "current_stage": current_stage.name if current_stage else None,
             "advancement_counter": self.advancement_counter,
             "validation_scores": self.validation_scores,
             "timestamp": datetime.now().isoformat(),
         }
 
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path_obj = Path(save_path)
+        save_path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(save_path, "w") as f:
+        with open(save_path_obj, "w") as f:
             json.dump(progress, f, indent=2)
 
         logger.info(f"Saved curriculum progress to {save_path}")
@@ -344,10 +344,10 @@ class CurriculumManager:
         Returns:
             True if loaded successfully
         """
-        load_path = Path(load_path)
+        load_path_obj = Path(load_path)
 
-        if not load_path.exists():
-            logger.warning(f"Progress file not found: {load_path}")
+        if not load_path_obj.exists():
+            logger.warning(f"Progress file not found: {load_path_obj}")
             return False
 
         try:
@@ -359,8 +359,10 @@ class CurriculumManager:
             self.validation_scores = progress["validation_scores"]
 
             logger.info(f"Loaded curriculum progress from {load_path}")
+            current_stage = self.get_current_stage()
+            assert current_stage is not None
             logger.info(
-                f"Resumed at stage '{self.get_current_stage().name}' ({self.current_stage_idx + 1}/{len(self.stages)})"
+                f"Resumed at stage '{current_stage.name}' ({self.current_stage_idx + 1}/{len(self.stages)})"
             )
 
             return True

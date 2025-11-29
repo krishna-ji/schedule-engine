@@ -109,7 +109,7 @@ def _is_instructor_qualified(
     session: CourseSession, context: SchedulingContext
 ) -> bool:
     """Check if instructor is qualified to teach the course."""
-    course = context.courses.get(session.course_id)
+    course = context.courses.get(session.course_id)  # type: ignore[call-overload]
     if not course:
         return True  # Unknown course, assume OK
 
@@ -139,11 +139,11 @@ def _has_group_overlap(
             other.group_ids if isinstance(other.group_ids, list) else [other.group_ids]
         )
 
-        # Same group?
-        if set(session_groups) & set(other_groups):
-            # Overlapping time?
-            if set(session.session_quanta) & set(other.session_quanta):
-                return True
+        # Same group and overlapping time?
+        if (set(session_groups) & set(other_groups)) and (
+            set(session.session_quanta) & set(other.session_quanta)
+        ):
+            return True
     return False
 
 
@@ -155,11 +155,11 @@ def _has_room_conflict(
         if idx == current_idx:
             continue
 
-        # Same room?
-        if session.room_id == other.room_id:
-            # Overlapping time?
-            if set(session.session_quanta) & set(other.session_quanta):
-                return True
+        # Same room and overlapping time?
+        if session.room_id == other.room_id and (
+            set(session.session_quanta) & set(other.session_quanta)
+        ):
+            return True
     return False
 
 
@@ -171,11 +171,11 @@ def _has_instructor_conflict(
         if idx == current_idx:
             continue
 
-        # Same instructor?
-        if session.instructor_id == other.instructor_id:
-            # Overlapping time?
-            if set(session.session_quanta) & set(other.session_quanta):
-                return True
+        # Same instructor and overlapping time?
+        if session.instructor_id == other.instructor_id and (
+            set(session.session_quanta) & set(other.session_quanta)
+        ):
+            return True
     return False
 
 

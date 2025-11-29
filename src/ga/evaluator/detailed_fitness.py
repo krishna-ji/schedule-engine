@@ -17,7 +17,7 @@ def evaluate_detailed(
     courses: dict[tuple, Course],  # Keys are (course_code, course_type) tuples
     instructors: dict[str, Instructor],
     groups: dict[str, Group],
-    rooms: dict[str, Room] = None,
+    rooms: dict[str, Room] | None = None,
 ) -> tuple[dict[str, int], dict[str, int]]:
     """
     Evaluates a timetable individual with detailed constraint breakdown.

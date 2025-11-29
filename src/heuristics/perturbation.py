@@ -184,10 +184,7 @@ def temporal_shift(
             continue
 
         # Determine shift delta
-        if delta is None:
-            shift_delta = random.randint(-5, 5)
-        else:
-            shift_delta = delta
+        shift_delta = random.randint(-5, 5) if delta is None else delta
 
         # Calculate new time quantum based on start of session
         candidate_start = gene.time_quantum + shift_delta

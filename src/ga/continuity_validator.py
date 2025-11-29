@@ -40,8 +40,8 @@ def validate_continuity(individual: list[SessionGene]) -> tuple[bool, list[str]]
             )
 
         # Check 3: Same day (no midnight wrap)
-        start_day = gene.start_quanta // qts.quanta_per_day
-        end_day = (gene.end_quanta - 1) // qts.quanta_per_day
+        start_day, _ = qts.quanta_to_time(gene.start_quanta)
+        end_day, _ = qts.quanta_to_time(gene.end_quanta - 1)
         if start_day != end_day:
             violations.append(f"{gene.course_id}: Spans days {start_day} → {end_day}")
 

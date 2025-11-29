@@ -79,9 +79,9 @@ def generate_pure_random_population(
     # TODO: Implement parallel version using data_dir + worker loading pattern
     population = []
 
-    for i in range(n):
+    for _i in range(n):
         genes = []
-        for course_id, group_ids, session_type, num_quanta in course_group_pairs:
+        for course_id, group_ids, _session_type, _num_quanta in course_group_pairs:
             course = context.courses.get(course_id)
             if not course:
                 continue
@@ -116,7 +116,7 @@ def _create_pure_random_individual_wrapper(args):
         return None
 
     genes = []
-    for course_id, group_ids, session_type, num_quanta in course_group_pairs:
+    for course_id, group_ids, _session_type, _num_quanta in course_group_pairs:
         course = context.courses.get(course_id)
         if not course:
             continue
@@ -338,7 +338,7 @@ def generate_course_group_aware_population(
                 )
 
                 # Create one SessionGene per subsession
-                for subsession_idx, num_quanta in enumerate(subsession_durations):
+                for _subsession_idx, num_quanta in enumerate(subsession_durations):
                     session_gene = create_session_gene_with_conflict_avoidance(
                         course_id[0] if isinstance(course_id, tuple) else course_id,
                         group_ids,
@@ -640,15 +640,14 @@ def create_session_gene_with_conflict_avoidance(
     # DEBUG: Log what happened
     import logging
 
-    if assigned_quanta:
-        if len(assigned_quanta) != quanta_needed:
-            print(
-                f" BUG DETECTED: {course_id} {session_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
-            )
-            print(f"   assigned_quanta={assigned_quanta[:10]}...")
-            logging.warning(
-                f"{course_id}: assign_conflict_free_quanta returned {len(assigned_quanta)} but needed {quanta_needed}"
-            )
+    if assigned_quanta and len(assigned_quanta) != quanta_needed:
+        print(
+            f" BUG DETECTED: {course_id} {session_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
+        )
+        print(f"   assigned_quanta={assigned_quanta[:10]}...")
+        logging.warning(
+            f"{course_id}: assign_conflict_free_quanta returned {len(assigned_quanta)} but needed {quanta_needed}"
+        )
 
     # CRITICAL: If assignment fails, wrap around or duplicate quanta as needed
     # Repair operators will fix overlaps later - maintaining correct num_quanta is priority
@@ -799,8 +798,7 @@ def create_component_session_with_conflict_avoidance(
     # FIXED: Add wrap-around fallback if assignment fails
     if not assigned_quanta:
         if len(context.available_quanta) >= quanta_needed:
-            import random
-
+            # Use module-level random import
             start_idx = random.randint(0, len(context.available_quanta) - quanta_needed)
             assigned_quanta = context.available_quanta[
                 start_idx : start_idx + quanta_needed
@@ -990,8 +988,7 @@ def create_component_session(
     # FIXED: Add wrap-around fallback if assignment fails
     if not assigned_quanta:
         if len(context.available_quanta) >= quanta_needed:
-            import random
-
+            # Use module-level random import
             start_idx = random.randint(0, len(context.available_quanta) - quanta_needed)
             assigned_quanta = context.available_quanta[
                 start_idx : start_idx + quanta_needed
@@ -1112,23 +1109,29 @@ def find_suitable_rooms(
             continue
 
         # PRIORITY 2: Flexible match using Room's built-in method
-        if hasattr(room, "is_suitable_for_course_type"):
-            if room.is_suitable_for_course_type(required_str):
-                flexible_matches.append(room)
-                continue
+        if hasattr(
+            room, "is_suitable_for_course_type"
+        ) and room.is_suitable_for_course_type(required_str):
+            flexible_matches.append(room)
+            continue
 
         # PRIORITY 3: Fallback compatibility rules
         # Lab courses can use any lab variant
-        if required_str in ["lab", "laboratory"]:
-            if any(lab_type in room_str for lab_type in ["lab", "computer", "science"]):
-                flexible_matches.append(room)
-                continue
+        if required_str in ["lab", "laboratory"] and any(
+            lab_type in room_str for lab_type in ["lab", "computer", "science"]
+        ):
+            flexible_matches.append(room)
+            continue
 
         # Lecture/theory courses have flexibility
-        if required_str in ["lecture", "classroom", "theory"]:
-            if room_str in ["lecture", "classroom", "auditorium", "seminar"]:
-                flexible_matches.append(room)
-                continue
+        if required_str in ["lecture", "classroom", "theory"] and room_str in [
+            "lecture",
+            "classroom",
+            "auditorium",
+            "seminar",
+        ]:
+            flexible_matches.append(room)
+            continue
 
     # Return prioritized list: exact matches first, then flexible
     result = exact_matches + flexible_matches

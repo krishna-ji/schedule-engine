@@ -6,8 +6,6 @@ Runs standard GA-based course scheduling workflow with runtime mode support.
 
 import argparse
 import time
-from datetime import datetime
-from pathlib import Path
 
 from src.config import init_config
 from src.config.loader import load_config
@@ -45,14 +43,9 @@ def main():
         Controlled by parallel.use_multiprocessing in YAML config.
         Provides 3-6x speedup on multi-core systems.
     """
-    # Initialize structured logging system (console + file)
-    log_dir = Path("logs") / "nsga"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"nsga_{timestamp}.log"
-
+    # Initialize structured logging (console only - experiments tracked via output/)
     setup_logging(
-        log_file=log_file,
+        log_file=None,
         console_level="DEBUG",
         file_level="DEBUG",
         show_time=True,

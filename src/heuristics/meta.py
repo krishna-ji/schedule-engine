@@ -157,7 +157,7 @@ def iterated_local_search(
 
     improvements = 0
 
-    for iteration in range(num_iterations):
+    for _iteration in range(num_iterations):
         # Local search phase
         variable_neighborhood_descent(individual, context, max_neighborhoods=2)
 
@@ -243,7 +243,7 @@ def adaptive_large_neighborhood(
     best_individual = [copy.copy(gene) for gene in individual]
     best_fitness = _simple_fitness(best_individual, context)
 
-    for iteration in range(num_iterations):
+    for _iteration in range(num_iterations):
         # Select destroy operator (roulette wheel based on scores)
         destroy_operator = _select_operator_adaptive(operator_scores)
 
@@ -342,7 +342,7 @@ def guided_local_search(
     improvements = 0
     best_fitness = _simple_fitness(individual, context)
 
-    for iteration in range(num_iterations):
+    for _iteration in range(num_iterations):
         # Apply local search
         local_improvements = variable_neighborhood_descent(
             individual, context, max_neighborhoods=2, max_iterations=3
@@ -360,7 +360,8 @@ def guided_local_search(
 
         if local_improvements > 0:
             improvements += 1
-            best_fitness = current_fitness
+            # Update best fitness (used for tracking)
+            best_fitness = current_fitness  # noqa: F841
         else:
             # Stuck - add penalties to current features
             for gene in individual:
@@ -393,7 +394,7 @@ def _simple_fitness(individual: list[SessionGene], context: SchedulingContext) -
     # Count time conflicts
     time_usage = {}
     for gene in individual:
-        course = context.courses[(gene.course_id, gene.course_type)]
+        # course = context.courses[(gene.course_id, gene.course_type)]  # Unused
         time_range = tuple(
             range(gene.time_quantum, gene.time_quantum + gene.duration_quanta)
         )

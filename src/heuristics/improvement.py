@@ -375,11 +375,8 @@ def _build_kempe_chain(
     chain = [gene1, gene2]
 
     # Find sessions that would be affected by swapping gene1 and gene2 times
-    time1 = gene1.time_quantum
-    time2 = gene2.time_quantum
-
-    # Sessions at time1 that share resources with gene2
-    # Sessions at time2 that share resources with gene1
+    # Sessions at gene1's time that share resources with gene2
+    # Sessions at gene2's time that share resources with gene1
     # (This is a simplified chain - full implementation would be more complex)
 
     return chain
@@ -477,15 +474,14 @@ def _build_ejection_chain(
             if gene == current_gene:
                 continue
 
-            if gene.time_quantum == new_time:
-                # Check for conflicts
-                if (
-                    set(gene.group_ids) & set(current_gene.group_ids)
-                    or gene.instructor_id == current_gene.instructor_id
-                    or gene.room_id == current_gene.room_id
-                ):
-                    ejected_gene = gene
-                    break
+            # Check for conflicts at new time
+            if gene.time_quantum == new_time and (
+                set(gene.group_ids) & set(current_gene.group_ids)
+                or gene.instructor_id == current_gene.instructor_id
+                or gene.room_id == current_gene.room_id
+            ):
+                ejected_gene = gene
+                break
 
         if not ejected_gene:
             break

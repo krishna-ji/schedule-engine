@@ -463,7 +463,9 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
             "Calling SubprocVecEnv(start_method='spawn')... (workers initializing)"
         )
         sys.stdout.flush()
-        vec_env = SubprocVecEnv(env_fns, start_method="spawn")
+        vec_env: SubprocVecEnv | DummyVecEnv = SubprocVecEnv(
+            env_fns, start_method="spawn"
+        )
         elapsed = time.time() - start_time
         logger.info(f"SubprocVecEnv created in {elapsed:.1f}s")
     else:
@@ -482,23 +484,15 @@ def main() -> None:
 
     args = parse_args()
 
-    # Setup structured logging with file output and clean console
-    log_dir = Path("logs/training")
-    log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"train_{timestamp}.log"
-
-    # Initialize structured logging system
+    # Initialize structured logging (console only - training runs tracked via output/)
     console_level = "DEBUG"
     setup_logging(
-        log_file=log_file,
+        log_file=None,
         console_level=console_level,
         file_level="DEBUG",
         show_time=True,
         show_path=False,
     )
-
-    logger.info(f"Logging to: {log_file}")
 
     if args.list_profiles:
         available = sorted(list_training_profiles())

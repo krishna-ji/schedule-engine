@@ -282,7 +282,7 @@ def lns_igls_repair(
     # Step 7: Reintegrate or return original
     if repaired_sessions is not None:
         new_genes = list(individual)
-        for idx, repaired_session in zip(conflicted_indices, repaired_sessions):
+        for idx, repaired_session in zip(conflicted_indices, repaired_sessions, strict=False):
             new_genes[idx] = repaired_session
 
         # Wrap into DEAP Individual

@@ -88,8 +88,8 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
         xy=(max_gen, max_hv),
         xytext=(10, 10),
         textcoords="offset points",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="yellow", alpha=0.7),
-        arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0"),
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": "yellow", "alpha": 0.7},
+        arrowprops={"arrowstyle": "->", "connectionstyle": "arc3,rad=0"},
         fontsize=10,
     )
 
@@ -110,7 +110,7 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
             transform=ax.transAxes,
             fontsize=10,
             verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
         )
 
     format_axis(
@@ -247,7 +247,7 @@ def plot_hypervolume_with_confidence(
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
     format_axis(
@@ -337,7 +337,7 @@ def plot_hypervolume_comparison(
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",
-        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
     )
 
     format_axis(

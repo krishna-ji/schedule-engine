@@ -24,7 +24,7 @@ class SpecialistAgent(ABC):
     - Intensifier: Elite → Perfect
     """
 
-    def __init__(self, name: str, model_path: str = None):
+    def __init__(self, name: str, model_path: str | None = None):
         """
         Initialize specialist agent.
 
@@ -34,7 +34,12 @@ class SpecialistAgent(ABC):
         """
         self.name = name
         self.model_path = model_path
-        self.model = None  # Loaded on demand
+        # Import PPO type for annotation
+        from typing import TYPE_CHECKING
+
+        if TYPE_CHECKING:
+            from stable_baselines3 import PPO
+        self.model: PPO | None = None  # type: ignore[name-defined]
         self.activation_count = 0
         self.success_count = 0
 
@@ -74,7 +79,8 @@ class SpecialistAgent(ABC):
             try:
                 from stable_baselines3 import PPO
 
-                self.model = PPO.load(self.model_path)
+                loaded_model: PPO = PPO.load(self.model_path)
+                self.model = loaded_model
                 print(f"Loaded {self.name} model from {self.model_path}")
             except Exception as e:
                 print(f"Warning: Failed to load {self.name} model: {e}")
@@ -106,7 +112,7 @@ class RepairAgent(SpecialistAgent):
     Heuristics: Kempe chains, ejection chains, targeted swaps
     """
 
-    def __init__(self, model_path: str = None):
+    def __init__(self, model_path: str | None = None):
         super().__init__("RepairAgent", model_path)
         self.hard_violation_threshold = 1.0  # Activate if any hard violations
 
@@ -118,10 +124,10 @@ class RepairAgent(SpecialistAgent):
         if not population:
             return False
 
-        best_fitness = min(ind.fitness.values for ind in population)
+        best_fitness = min(ind.fitness.values for ind in population)  # type: ignore[attr-defined]
         has_hard_violations = best_fitness[0] > 0
 
-        return has_hard_violations
+        return bool(has_hard_violations)
 
     def select_action(self, observation: NDArray[np.float32]) -> int:
         """Select repair-focused heuristic."""
@@ -134,7 +140,7 @@ class RepairAgent(SpecialistAgent):
         else:
             # Fallback: Prioritize improvement heuristics
             # Kempe chain (action 10), ejection chain (action 11)
-            return np.random.choice([10, 11])
+            return int(np.random.choice([10, 11]))
 
 
 class OptimizerAgent(SpecialistAgent):
@@ -145,7 +151,7 @@ class OptimizerAgent(SpecialistAgent):
     Heuristics: Local search, variable depth search, guided local search
     """
 
-    def __init__(self, model_path: str = None):
+    def __init__(self, model_path: str | None = None):
         super().__init__("OptimizerAgent", model_path)
 
     def should_activate(
@@ -155,11 +161,11 @@ class OptimizerAgent(SpecialistAgent):
         if not population:
             return False
 
-        best_fitness = min(ind.fitness.values for ind in population)
+        best_fitness = min(ind.fitness.values for ind in population)  # type: ignore[attr-defined]
         is_feasible = best_fitness[0] == 0
         has_soft_violations = best_fitness[1] > 0
 
-        return is_feasible and has_soft_violations
+        return bool(is_feasible and has_soft_violations)
 
     def select_action(self, observation: NDArray[np.float32]) -> int:
         """Select optimization-focused heuristic."""
@@ -172,7 +178,7 @@ class OptimizerAgent(SpecialistAgent):
         else:
             # Fallback: Meta-heuristics for fine-tuning
             # Variable depth search (12), guided local search (18)
-            return np.random.choice([12, 18])
+            return int(np.random.choice([12, 18]))
 
 
 class ExplorerAgent(SpecialistAgent):
@@ -183,7 +189,7 @@ class ExplorerAgent(SpecialistAgent):
     Heuristics: Perturbations, diversity operators, large neighborhood search
     """
 
-    def __init__(self, model_path: str = None):
+    def __init__(self, model_path: str | None = None):
         super().__init__("ExplorerAgent", model_path)
         self.stagnation_threshold = 10  # Activate after 10 gens without improvement
 
@@ -192,7 +198,7 @@ class ExplorerAgent(SpecialistAgent):
     ) -> bool:
         """Activate if search is stagnated."""
         stagnation = state.get("generations_without_improvement", 0)
-        return stagnation >= self.stagnation_threshold
+        return bool(stagnation >= self.stagnation_threshold)
 
     def select_action(self, observation: NDArray[np.float32]) -> int:
         """Select diversity-focused heuristic."""
@@ -205,7 +211,7 @@ class ExplorerAgent(SpecialistAgent):
         else:
             # Fallback: Perturbation + diversity heuristics
             # Multi-perturbation (8), crowding mutation (14), adaptive diversity (16)
-            return np.random.choice([8, 14, 16])
+            return int(np.random.choice([8, 14, 16]))
 
 
 class IntensifierAgent(SpecialistAgent):
@@ -216,7 +222,7 @@ class IntensifierAgent(SpecialistAgent):
     Heuristics: Intensive local search, careful refinement
     """
 
-    def __init__(self, model_path: str = None):
+    def __init__(self, model_path: str | None = None):
         super().__init__("IntensifierAgent", model_path)
         self.elite_threshold = 10.0  # Activate if best soft < 10
 
@@ -227,7 +233,7 @@ class IntensifierAgent(SpecialistAgent):
         if not population:
             return False
 
-        best_fitness = min(ind.fitness.values for ind in population)
+        best_fitness = min(ind.fitness.values for ind in population)  # type: ignore[attr-defined]
         is_feasible = best_fitness[0] == 0
         is_near_optimal = best_fitness[1] < self.elite_threshold
 
@@ -236,7 +242,7 @@ class IntensifierAgent(SpecialistAgent):
         max_generations = state.get("max_generations", 2000)
         is_late_search = generation > 0.7 * max_generations
 
-        return is_feasible and is_near_optimal and is_late_search
+        return bool(is_feasible and is_near_optimal and is_late_search)
 
     def select_action(self, observation: NDArray[np.float32]) -> int:
         """Select intensive refinement heuristic."""
@@ -249,4 +255,4 @@ class IntensifierAgent(SpecialistAgent):
         else:
             # Fallback: Intensive local search
             # Iterated local search (17), guided local search (18)
-            return np.random.choice([17, 18])
+            return int(np.random.choice([17, 18]))

@@ -68,7 +68,7 @@ class RewardCalculator:
             reference_point: Reference point for hypervolume (e.g., [1000, 10000])
             hypervolume_scale: Scale factor for hypervolume normalization
         """
-        self.fitness_weight = fitness_weight
+        self.fitness_weight = fitness_weight  # type: ignore[attr-defined]
         self.diversity_weight = diversity_weight
         self.time_weight = time_weight
         self.normalize = normalize
@@ -85,7 +85,7 @@ class RewardCalculator:
                 reference_point = np.array([1000.0, 10000.0])
 
             self.reference_point = np.asarray(reference_point, dtype=np.float64)
-            self.hv_calculator = HypervolumeCalculator(
+            self.hv_calculator: HypervolumeCalculator | None = HypervolumeCalculator(
                 reference_point=self.reference_point, minimize=True
             )
         else:
@@ -136,7 +136,7 @@ class RewardCalculator:
 
         # Weighted sum
         total_reward = (
-            self.fitness_weight * fitness_reward
+            self.fitness_weight * fitness_reward  # type: ignore[attr-defined]
             + self.diversity_weight * diversity_bonus
             - self.time_weight * time_penalty
         )
@@ -222,9 +222,9 @@ class RewardCalculator:
         # Extract Pareto front (fitness values for all individuals)
         pareto_front = np.array(
             [
-                ind.fitness.values
+                ind.fitness.values  # type: ignore[attr-defined]
                 for ind in population
-                if hasattr(ind, "fitness") and ind.fitness.valid
+                if hasattr(ind, "fitness") and ind.fitness.valid  # type: ignore[attr-defined]
             ]
         )
 
@@ -255,11 +255,11 @@ class RewardCalculator:
 
         Combines hard and soft violations: hard * 100 + soft
         """
-        if not hasattr(individual, "fitness") or not individual.fitness.valid:
+        if not hasattr(individual, "fitness") or not individual.fitness.valid:  # type: ignore[attr-defined]
             return float("inf")
 
-        hard, soft = individual.fitness.values
-        return abs(hard) * 100 + abs(soft)
+        hard, soft = individual.fitness.values  # type: ignore[attr-defined]
+        return float(abs(hard) * 100 + abs(soft))
 
     def calculate_episode_reward(
         self,
@@ -304,7 +304,7 @@ class RewardCalculator:
     def get_config(self) -> dict[str, Any]:
         """Get reward calculator configuration."""
         config = {
-            "fitness_weight": self.fitness_weight,
+            "fitness_weight": self.fitness_weight,  # type: ignore[attr-defined]
             "diversity_weight": self.diversity_weight,
             "time_weight": self.time_weight,
             "normalize": self.normalize,

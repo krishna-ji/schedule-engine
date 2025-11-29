@@ -138,10 +138,12 @@ class BehavioralArchive:
 
         # Check quality threshold
         combined_fitness = abs(fitness[0]) * 100 + abs(fitness[1])
-        if self.quality_threshold is not None:
-            if combined_fitness > self.quality_threshold:
-                self.total_rejections += 1
-                return False
+        if (
+            self.quality_threshold is not None
+            and combined_fitness > self.quality_threshold
+        ):
+            self.total_rejections += 1
+            return False
 
         # Create entry
         entry = ArchiveEntry(
