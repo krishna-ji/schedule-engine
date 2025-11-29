@@ -185,12 +185,6 @@ TOTAL_RUNTIME_MODES: Final[int] = 10
 # FILE PATHS (relative to project root)
 # ================
 
-# Configuration
-CONFIGS_DIR: Final[str] = "configs"
-CONFIG_BASE: Final[str] = "configs/base.yaml"
-CONFIG_TEST: Final[str] = "configs/test.yaml"
-CONFIG_PROD: Final[str] = "configs/prod.yaml"
-
 # Input data
 DATA_DIR: Final[str] = "data"
 DATA_COURSES: Final[str] = "data/Course.json"

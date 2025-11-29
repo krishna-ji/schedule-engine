@@ -3,14 +3,15 @@ Display current soft constraint configuration.
 Quick utility to see which constraints are enabled and their weights.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from rich.console import Console
+
 from src.config import get_config  # get_config().soft_constraints
 from src.constraints.registry import get_enabled_soft_constraints
-from rich.console import Console
 
 console = Console()
 
@@ -57,7 +58,9 @@ def main():
     total_weight = sum(info["weight"] for info in enabled.values())
     console.print(f"[bold]Total enabled weight: [cyan]{total_weight:.2f}[/cyan][/bold]")
     console.print("[bold cyan]" + "═" * 60 + "[/bold cyan]")
-    console.print("[dim]To modify: Edit configs/base.yaml[/dim]\n")
+    console.print(
+        "[dim]To modify: Update Python presets in src/config/presets/data.py or profile overrides.[/dim]\n"
+    )
 
 
 if __name__ == "__main__":

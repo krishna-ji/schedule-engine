@@ -9,12 +9,10 @@ Convention:
      - Configs: DRY hierarchy (test < prod)
 """
 
-import sys
-import os
 import argparse
-from dataclasses import dataclass
+import os
+import sys
 from pathlib import Path
-from typing import Dict, Optional
 
 from rich.console import Console
 
@@ -24,57 +22,33 @@ sys.path.insert(0, str(project_root))
 
 console = Console()
 
+from src.config.presets.profiles import Profile
+from src.config.runtime_mode import RuntimeMode
 
-@dataclass(frozen=True)
-class ProfileConfig:
-    """Metadata describing a CLI execution profile."""
-
-    env: str
-    config: Path
-    desc: str
-
-
-PROFILE_MAP: Dict[str, ProfileConfig] = {
-    "test": ProfileConfig(
-        env="test",
-        config=Path("configs/test.yaml"),
-        desc="Smoke test (~30 gens, 10 pop, 2-5 min)",
-    ),
-    "prod": ProfileConfig(
-        env="prod",
-        config=Path("configs/prod.yaml"),
-        desc="Production (~2000 gens, 1000 pop, multi-hour)",
-    ),
+PROFILE_DESCRIPTIONS: dict[Profile, str] = {
+    Profile.TEST: "Smoke test (~30 gens, 10 pop, 2-5 min)",
+    Profile.PROD: "Production (~2000 gens, 1000 pop, multi-hour)",
 }
 
-PROFILE_CHOICES = tuple(PROFILE_MAP.keys())
-DEFAULT_PROFILE = "test"
+PROFILE_CHOICES = tuple(profile.value for profile in Profile)
+DEFAULT_PROFILE = Profile.TEST
 
 
-def _resolve_profile(profile: Optional[str]) -> str:
+def _resolve_profile(value: str | None) -> Profile:
     """Validate profile value and fallback to default when missing."""
 
-    value = profile or DEFAULT_PROFILE
-    if value not in PROFILE_MAP:
-        console.print(
-            f"[bold red][!err] Unknown profile '{value}'. "
-            f"Valid options: {', '.join(PROFILE_CHOICES)}[/bold red]"
-        )
+    try:
+        return Profile.from_string(value or DEFAULT_PROFILE.value)
+    except ValueError as exc:
+        console.print(f"[bold red][!err] {exc}[/bold red]")
         sys.exit(1)
-    return value
 
 
-def _env_for_profile(profile: str) -> str:
-    """Return environment name associated with a CLI profile."""
-
-    return PROFILE_MAP[profile].env
-
-
-def _profile_banner(profile: str) -> str:
+def _profile_banner(profile: Profile) -> str:
     """Format profile description for console output."""
 
-    cfg = PROFILE_MAP[profile]
-    return f"{profile} ({cfg.desc})"
+    description = PROFILE_DESCRIPTIONS.get(profile, "")
+    return f"{profile.value} ({description})"
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -109,7 +83,6 @@ def create_parser() -> argparse.ArgumentParser:
             "See docs/02-user-guides/runtime-modes.md"
         ),
     )
-    parser.add_argument("--config", help="Explicit config path override")
 
     return parser
 
@@ -120,23 +93,15 @@ def main_train_rl():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
-    profile_cfg = PROFILE_MAP[profile]
+    profile_value = profile.value
 
     # Ensure downstream config loader uses the matching environment profile.
-    # GA/RL share the same YAML hierarchy (configs/test.yaml, configs/prod.yaml).
-    # Map RL profiles onto those environments so every worker process
-    # inherits the correct settings instead of falling back to test.
-    env_profile = profile_cfg.env
-    schedule_config_path = str(profile_cfg.config)
-
-    os.environ["ENVIRONMENT"] = env_profile
-    os.environ["SCHEDULE_CONFIG"] = schedule_config_path
+    os.environ["ENVIRONMENT"] = profile_value
 
     console.print(
         "[dim]ENVIRONMENT set to[/dim] "
-        f"{env_profile} [dim]for RL profile[/dim] {_profile_banner(profile)}"
+        f"{profile_value} [dim]for RL profile[/dim] {_profile_banner(profile)}"
     )
-    console.print(f"[dim]SCHEDULE_CONFIG ->[/dim] {schedule_config_path}")
     console.print(f"[green]Mode E: RL training ({_profile_banner(profile)})[/green]")
     console.print(
         "[dim]  Train PPO/DQN agents with optional curriculum (add --curriculum).[/dim]"
@@ -146,7 +111,7 @@ def main_train_rl():
     from src.rl.training.train_script import main as rl_main
 
     # Build argv for RL training
-    sys.argv = ["train_script.py", "--profile", profile, "--agent", "ppo"]
+    sys.argv = ["train_script.py", "--profile", profile_value, "--agent", "ppo"]
 
     # Add curriculum flag if requested (curriculum works with any profile)
     if args.curriculum:
@@ -154,7 +119,7 @@ def main_train_rl():
     else:
         # Map profile to timesteps (if not using curriculum)
         timestep_map = {"test": 10_000, "prod": 100_000}
-        sys.argv.extend(["--timesteps", str(timestep_map[profile])])
+        sys.argv.extend(["--timesteps", str(timestep_map[profile_value])])
 
     exit_code = rl_main() or 0
 
@@ -162,7 +127,7 @@ def main_train_rl():
         console.print("[green]RL training finished successfully.[/green]")
         console.print(
             "[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
-            "and launch the GA via Mode F: 'uv run rl --%s'.[/dim]" % profile
+            "and launch the GA via Mode F: 'uv run rl --%s'.[/dim]" % profile.value
         )
 
     sys.exit(exit_code)
@@ -185,16 +150,15 @@ def main_baseline():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
-    env = _env_for_profile(profile)
 
     from main import main
 
     sys.argv = [
         "main.py",
-        "--config",
-        "configs/baseline/a-pure-nsga.yaml",
-        "--env",
-        env,
+        "--mode",
+        RuntimeMode.MODE_A.value,
+        "--profile",
+        profile.value,
     ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
@@ -212,16 +176,15 @@ def main_memetic():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
-    env = _env_for_profile(profile)
 
     from main import main
 
     sys.argv = [
         "main.py",
-        "--config",
-        "configs/nsga/b-nsga-memetic.yaml",
-        "--env",
-        env,
+        "--mode",
+        RuntimeMode.MODE_B.value,
+        "--profile",
+        profile.value,
     ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
@@ -239,16 +202,15 @@ def main_roundrobin():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
-    env = _env_for_profile(profile)
 
     from main import main
 
     sys.argv = [
         "main.py",
-        "--config",
-        "configs/hybrid/c-roundrobin.yaml",
-        "--env",
-        env,
+        "--mode",
+        RuntimeMode.MODE_C.value,
+        "--profile",
+        profile.value,
     ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
@@ -268,16 +230,15 @@ def main_adaptive():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
-    env = _env_for_profile(profile)
 
     from main import main
 
     sys.argv = [
         "main.py",
-        "--config",
-        "configs/hybrid/d-adaptive.yaml",
-        "--env",
-        env,
+        "--mode",
+        RuntimeMode.MODE_D.value,
+        "--profile",
+        profile.value,
     ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
@@ -297,16 +258,15 @@ def main_rl():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
-    env = _env_for_profile(profile)
 
     from main import main
 
     sys.argv = [
         "main.py",
-        "--config",
-        "configs/rl/e-rl-guided.yaml",
-        "--env",
-        env,
+        "--mode",
+        RuntimeMode.MODE_E.value,
+        "--profile",
+        profile.value,
     ]
     if args.name:
         sys.argv.extend(["--experiment", args.name])
@@ -318,7 +278,7 @@ def main_rl():
         "[dim]  Deploy trained agents for heuristic control (repairs+memetic+RL).[/dim]"
     )
     console.print(
-        "[dim]  Uses rl.agent.model_path from configs/rl/e-rl-guided.yaml. Update it to point to your promoted model before running.[/dim]"
+        "[dim]  Update rl.agent.model_path in src/config/presets/modes.py before running to point at your promoted model.[/dim]"
     )
     sys.exit(main() or 0)
 
@@ -330,28 +290,19 @@ def main_nsga():
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
-    env = _env_for_profile(profile)
 
     from main import main
 
     sys.argv = ["main.py"]
 
-    if args.config:
-        sys.argv.extend(["--config", args.config])
-    else:
-        runtime_mode = args.mode or "nsga-full"
-        sys.argv.extend(["--mode", runtime_mode])
-
-    sys.argv.extend(["--env", env])
+    runtime_mode = args.mode or RuntimeMode.NSGA_FULL.value
+    sys.argv.extend(["--mode", runtime_mode])
+    sys.argv.extend(["--profile", profile.value])
 
     if args.name:
         sys.argv.extend(["--experiment", args.name])
 
-    descriptor = (
-        f"mode={args.mode or 'nsga-full'}"
-        if not args.config
-        else f"config={args.config}"
-    )
+    descriptor = f"mode={runtime_mode}"
     console.print(
         f"[green]NSGA-II launcher ({_profile_banner(profile)}) — {descriptor}[/green]"
     )
@@ -405,8 +356,9 @@ def main_clean():
 
 def main_list():
     """List experiments."""
-    from pathlib import Path
     import json
+    from pathlib import Path
+
     from rich.table import Table
 
     manifest_path = Path("output/experiment_manifest.json")
@@ -466,10 +418,9 @@ def main_stats():
 
 def main_interactive():
     """Interactive command launcher (TUI menu)."""
-    from rich.prompt import Prompt
-    from rich.table import Table
-    from rich.panel import Panel
     import subprocess
+
+    from rich.prompt import Prompt
 
     commands = [
         # Direct NSGA launcher (profile-aware freeform entry point)
@@ -485,11 +436,6 @@ def main_interactive():
                     "n2",
                     "nsga --prod --mode nsga-full",
                     "NSGA launcher (default mode) (~4-6 hrs, 2000 gens)",
-                ),
-                (
-                    "n3",
-                    "nsga --test --config configs/nsga/5-nsga-full.yaml",
-                    "NSGA launcher (explicit config example)",
                 ),
             ],
         ),

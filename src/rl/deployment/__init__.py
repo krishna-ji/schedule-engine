@@ -6,7 +6,7 @@ Provides fast model loading and inference for production use:
 - Fast inference (<10ms per prediction)
 - Version management and model registry
 - CPU-only device selection
-- Atomic config updates and rollback
+- Registry-driven promotions with rollback
 """
 
 from src.rl.deployment.inference import RLInference

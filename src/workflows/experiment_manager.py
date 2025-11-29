@@ -30,11 +30,11 @@ class ExperimentRun:
 
     run_id: str  # Unique identifier (timestamp-based)
     runtime_mode: str  # RuntimeMode value (e.g., "1-pure-nsga")
-    experiment_name: str | None  # User-provided name
-    config_path: str  # Path to config file used
+    config_reference: str  # Identifier for the config/blueprint used
     output_path: str  # Path to output directory
     seed: int  # Random seed
     timestamp: str  # ISO format timestamp
+    experiment_name: str | None = None  # User-provided name
     duration_seconds: float | None = None  # Total runtime
     generations: int | None = None  # Number of generations
     population_size: int | None = None  # Population size
@@ -50,6 +50,9 @@ class ExperimentRun:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ExperimentRun":
         """Load from dictionary."""
+        data = data.copy()
+        data.setdefault("config_reference", "legacy")
+        data.setdefault("experiment_name", None)
         return cls(**data)
 
     @property
@@ -201,7 +204,7 @@ class ExperimentManager:
     def register_run(
         self,
         runtime_mode: RuntimeMode,
-        config_path: Path,
+        config_reference: str,
         output_path: Path,
         experiment_name: str | None = None,
         seed: int = 69,
@@ -212,7 +215,7 @@ class ExperimentManager:
 
         Args:
             runtime_mode: Runtime mode used
-            config_path: Path to config file
+            config_reference: Identifier for the config blueprint
             output_path: Path to output directory
             experiment_name: Optional experiment name
             seed: Random seed
@@ -228,7 +231,7 @@ class ExperimentManager:
             run_id=run_id,
             runtime_mode=runtime_mode.value,
             experiment_name=experiment_name,
-            config_path=str(config_path),
+            config_reference=config_reference,
             output_path=str(output_path),
             seed=seed,
             timestamp=timestamp.isoformat(),

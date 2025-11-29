@@ -1,19 +1,17 @@
 """
 Model registry for managing RL agent versions in production.
 
-Provides atomic updates to production configuration and model metadata tracking.
-Ensures safe model promotion with rollback capability.
+Provides atomic metadata tracking for RL agent promotions and rollbacks.
+Configuration updates are now handled dynamically through Python presets, so the
+registry is the single source of truth for active deployments.
 """
 
 import json
-import shutil
 import threading
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-import yaml  # type: ignore[import-untyped]
 
 from src.utils.logging_config import get_logger
 
@@ -50,14 +48,13 @@ class ModelRegistry:
     Manages production model deployments with atomic updates.
 
     Features:
-    - Atomic config updates (write to temp, then rename)
     - Version history tracking
     - Rollback support
     - Thread-safe operations
     - Validation before promotion
 
     Usage:
-        registry = ModelRegistry("configs/prod.yaml", "models/rl_agents/registry.json")
+        registry = ModelRegistry("models/rl_agents/registry.json")
         registry.promote_model(
             model_path="models/rl_agents/best_model.zip",
             agent_type="ppo",
@@ -69,17 +66,14 @@ class ModelRegistry:
 
     def __init__(
         self,
-        prod_config_path: str | Path,
         registry_path: str | Path = "models/rl_agents/registry.json",
     ):
         """
         Initialize model registry.
 
         Args:
-            prod_config_path: Path to production config file (e.g., configs/prod.yaml)
             registry_path: Path to registry JSON file
         """
-        self.prod_config_path = Path(prod_config_path)
         self.registry_path = Path(registry_path)
         self.lock = threading.Lock()
 
@@ -98,15 +92,7 @@ class ModelRegistry:
         checkpoint_id: str | None = None,
     ) -> ModelRegistration:
         """
-        Promote a model to production with atomic config update.
-
-        Steps:
-        1. Validate model file exists
-        2. Load current prod config
-        3. Update rl.agent.model_path and rl.agent.type
-        4. Write to temp file
-        5. Atomic rename (overwrites prod config)
-        6. Record deployment in registry
+        Promote a model to production and mark its metadata as active.
 
         Args:
             model_path: Path to trained model file
@@ -121,7 +107,6 @@ class ModelRegistry:
 
         Raises:
             FileNotFoundError: Model file doesn't exist
-            ValueError: Invalid configuration
         """
         with self.lock:
             model_path = Path(model_path)
@@ -129,33 +114,6 @@ class ModelRegistry:
             # Validate model exists
             if not model_path.exists():
                 raise FileNotFoundError(f"Model file not found: {model_path}")
-
-            # Load current prod config
-            with open(self.prod_config_path) as f:
-                config = yaml.safe_load(f)
-
-            # Backup current config
-            backup_path = self.prod_config_path.with_suffix(".yaml.backup")
-            shutil.copy(self.prod_config_path, backup_path)
-            logger.info(f"Backed up config to {backup_path}")
-
-            # Update config with new model
-            if "rl" not in config:
-                config["rl"] = {}
-            if "agent" not in config["rl"]:
-                config["rl"]["agent"] = {}
-
-            config["rl"]["agent"]["model_path"] = str(model_path)
-            config["rl"]["agent"]["type"] = agent_type
-
-            # Atomic write: write to temp, then rename
-            temp_path = self.prod_config_path.with_suffix(".yaml.tmp")
-            with open(temp_path, "w") as f:
-                yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
-
-            # Atomic rename (overwrites prod config)
-            temp_path.replace(self.prod_config_path)
-            logger.info(f"Updated prod config: {self.prod_config_path}")
 
             # Create deployment record
             model_id = f"{agent_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -166,7 +124,12 @@ class ModelRegistry:
                 deployed_at=datetime.now().isoformat(),
                 promoted_from_checkpoint=checkpoint_id,
                 validation_metrics=validation_metrics,
-                config_snapshot=config.get("rl", {}),
+                config_snapshot={
+                    "agent": {
+                        "model_path": str(model_path),
+                        "type": agent_type,
+                    }
+                },
                 deployed_by=promoted_by,
                 notes=notes,
                 status="active",
@@ -201,44 +164,49 @@ class ModelRegistry:
             registry_data = self._load_registry()
             deployments = registry_data["deployments"]
 
-            # Find current active and previous deprecated
+            # Find latest active and latest non-active deployment (deprecated/rolled_back)
             active_idx = None
             previous_idx = None
 
-            for i, dep in enumerate(deployments):
-                if dep.get("status") == "active":
+            for i in range(len(deployments) - 1, -1, -1):
+                dep = deployments[i]
+                status = dep.get("status")
+                if active_idx is None and status == "active":
                     active_idx = i
-                elif dep.get("status") == "deprecated" and previous_idx is None:
+                    continue
+                if previous_idx is None and status in {"deprecated", "rolled_back"}:
                     previous_idx = i
 
-            if active_idx is None or previous_idx is None:
+                if active_idx is not None and previous_idx is not None:
+                    break
+
+            if previous_idx is None:
                 logger.warning("Cannot rollback: no previous deployment found")
                 return None
 
-            # Get previous deployment
-            previous = ModelRegistration.from_dict(deployments[previous_idx])
+            # Update statuses in-place without creating new record
+            now = datetime.now().isoformat()
+            active_id = None
+            if active_idx is not None:
+                deployments[active_idx]["status"] = "rolled_back"
+                deployments[active_idx]["rolled_back_at"] = now
+                active_id = deployments[active_idx]["model_id"]
 
-            # Promote previous model
-            registration = self.promote_model(
-                model_path=previous.model_path,
-                agent_type=previous.agent_type,
-                validation_metrics=previous.validation_metrics,
-                promoted_by="system_rollback",
-                notes=f"Rolled back from {deployments[active_idx]['model_id']}",
-            )
+            previous = deployments[previous_idx]
+            previous["status"] = "active"
+            previous["reactivated_at"] = now
 
-            # Record rollback
             registry_data["rollback_history"].append(
                 {
-                    "from": deployments[active_idx]["model_id"],
-                    "to": previous.model_id,
-                    "rolled_back_at": datetime.now().isoformat(),
+                    "from": active_id,
+                    "to": previous["model_id"],
+                    "rolled_back_at": now,
                 }
             )
             self._save_registry(registry_data)
 
-            logger.info(f"Rolled back to {previous.model_id}")
-            return registration
+            logger.info(f"Rolled back to {previous['model_id']}")
+            return ModelRegistration.from_dict(previous)
 
     def get_active_deployment(self) -> ModelRegistration | None:
         """Get currently active deployment."""
@@ -269,7 +237,14 @@ class ModelRegistry:
             return {"deployments": [], "rollback_history": []}
 
         with open(self.registry_path) as f:
-            return json.load(f)  # type: ignore[no-any-return]
+            data: dict[str, Any] = json.load(f)
+
+        if "deployments" not in data:
+            data["deployments"] = []
+        if "rollback_history" not in data:
+            data["rollback_history"] = []
+
+        return data
 
     def _save_registry(self, data: dict[str, Any]) -> None:
         """Save registry to JSON file (atomic write)."""

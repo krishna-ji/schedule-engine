@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Final
 
 from src.config.loader import load_config
 from src.config.models import Config
+from src.config.presets.base import ConfigBlueprint
+from src.config.presets.profiles import Profile
+from src.config.runtime_mode import RuntimeMode
 
 # Global config object (set during CLI bootstrap)
 _config: Config | None = None
 
 
 def init_config(
-    config_path: str | Path | None = None, config_obj: Config | None = None
+    runtime_mode: RuntimeMode | None = None,
+    profile: Profile | str | None = None,
+    config_obj: Config | None = None,
+    blueprint: ConfigBlueprint | None = None,
 ) -> Config:
     """Initialize the global config once and return it."""
 
@@ -21,7 +26,9 @@ def init_config(
     if config_obj is not None:
         _config = config_obj
     else:
-        _config = load_config(str(config_path) if config_path else None)
+        _config = load_config(
+            runtime_mode=runtime_mode, profile=profile, blueprint=blueprint
+        )
     return _config
 
 
