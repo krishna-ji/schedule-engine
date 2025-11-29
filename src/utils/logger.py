@@ -34,11 +34,11 @@ class GALogger:
         Initialize logger.
 
         Args:
-            output_dir: Directory to write run.log
+            output_dir: Directory to write log_run.log
             config: Configuration dictionary with GA parameters
         """
         self.output_dir = output_dir
-        self.log_path = os.path.join(output_dir, "run.log")
+        self.log_path = os.path.join(output_dir, "log_run.log")
         self.config = config
         self.generation_logs: list[GenerationLog] = []
         self.start_time: datetime | None = None

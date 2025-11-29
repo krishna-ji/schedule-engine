@@ -16,6 +16,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from src.utils.output_paths import get_csv_dir, get_nsga_plot_dir
+
 from .thesis_style import (
     PALETTE,
     apply_thesis_style,
@@ -41,16 +43,16 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
         output_dir: Directory to save plots
 
     Saves:
-        - plots/hypervolume_trend.pdf: Main trend plot
+        - plots/nsga/hypervolume_trend.pdf: Main trend plot
 
     Note:
-        CSV data available in data/metrics.csv (hypervolume column)
+        CSV data available in csv/constraint_metrics.csv (hypervolume column)
     """
     if not hypervolume_history:
         return
 
     # Create plot directory
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     # Create plot
@@ -149,10 +151,8 @@ def plot_hypervolume_with_confidence(
     if not runs_hypervolumes:
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
-    csv_dir = os.path.join(output_dir, "CSVs")
-    os.makedirs(plot_dir, exist_ok=True)
-    os.makedirs(csv_dir, exist_ok=True)
+    plot_dir = get_nsga_plot_dir(output_dir)
+    csv_dir = get_csv_dir(output_dir)
 
     # Ensure all runs have same length (pad with last value if needed)
     max_gens = max(len(run) for run in runs_hypervolumes)
@@ -287,7 +287,7 @@ def plot_hypervolume_comparison(
     Saves:
         - plots/hypervolume_comparison.pdf: Comparison plot
     """
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     fig, ax = create_thesis_figure(1, 1, figsize=(12, 7))

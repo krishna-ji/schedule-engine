@@ -65,7 +65,7 @@ def generate_reports(
     Creates:
         - schedule.json: Schedule in JSON format
         - calendar.pdf: Visual calendar with color-coded sessions
-        - violations.log: Detailed constraint violation report
+        - log_violations.log: Detailed constraint violation report
         - Evolution plots: hard/soft constraint trends, diversity
         - Pareto front visualization
         - Detailed constraint breakdown plots
@@ -143,7 +143,7 @@ def generate_reports(
     if course_map:
         print("  [+] Generating violation report...")
         generate_violation_report(decoded_schedule, course_map, qts, output_dir)
-        print("      [!ok] violations.log")
+        print("      [!ok] log_violations.log")
 
     # ========================================
     # PARALLEL PLOTTING SECTION

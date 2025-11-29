@@ -2,7 +2,7 @@
 Constraint Violation Report Generator
 
 Generates detailed human-readable reports of all constraint violations
-in a schedule. Outputs to violations.log in the output directory.
+in a schedule. Outputs to log_violations.log in the output directory.
 """
 
 from collections import defaultdict
@@ -106,7 +106,7 @@ def generate_violation_report(
     # Write to file
     import os
 
-    report_file = os.path.join(output_path, "violations.log")
+    report_file = os.path.join(output_path, "log_violations.log")
     with open(report_file, "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines))
 

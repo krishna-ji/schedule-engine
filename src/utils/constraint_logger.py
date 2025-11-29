@@ -2,13 +2,15 @@
 Constraint Logger Module
 
 Detailed CSV logging for constraint breakdowns, diversity metrics, and GA events.
-Separate from run.log to provide granular per-generation analysis.
+Separate from log_run.log to provide granular per-generation analysis.
 """
 
 from __future__ import annotations
 
 import csv
 import os
+
+from src.utils.output_paths import get_csv_dir
 
 
 class ConstraintLogger:
@@ -37,16 +39,14 @@ class ConstraintLogger:
         Initialize constraint logger.
 
         Args:
-            output_dir: Directory to write data/metrics.csv
+            output_dir: Directory to write csv/constraint_metrics.csv
             hard_constraint_names: List of enabled hard constraint names
             soft_constraint_names: List of enabled soft constraint names
         """
         self.output_dir = output_dir
-        # Create data/ subdirectory for CSV files
-        data_dir = os.path.join(output_dir, "data")
-        # os.makedirs already creates all parent directories by default
-        os.makedirs(data_dir, exist_ok=True)
-        self.log_path = os.path.join(data_dir, "metrics.csv")
+        # Create csv/ subdirectory for all CSV exports
+        csv_dir = get_csv_dir(output_dir)
+        self.log_path = str(csv_dir / "constraint_metrics.csv")
         self.hard_names = hard_constraint_names
         self.soft_names = soft_constraint_names
 
