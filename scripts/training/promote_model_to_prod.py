@@ -2,9 +2,9 @@
 Promote validated RL model to production.
 
 This script promotes a validated checkpoint to production by:
-1. Updating configs/prod.yaml with new model path
-2. Recording deployment in registry.json
-3. Creating backup of previous configuration
+1. Validating the trained policy/checkpoint
+2. Recording deployment metadata in models/rl_agents/registry.json
+3. Letting Python presets automatically pick the latest active agent
 
 Usage:
     # Promote best checkpoint from manifest
@@ -22,12 +22,14 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
+REGISTRY_PATH = project_root / "models" / "rl_agents" / "registry.json"
+
+from src.config import get_config
 from src.rl.deployment.registry import ModelRegistry
 from src.rl.training.checkpoints import CheckpointManager
-from src.config import get_config
 from src.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
@@ -56,7 +58,7 @@ def promote_from_checkpoint(
     if not checkpoint:
         logger.error(f"Checkpoint not found: {checkpoint_id}")
         print(f" Checkpoint not found: {checkpoint_id}")
-        print(f"\nAvailable checkpoints:")
+        print("\nAvailable checkpoints:")
         for ckpt in manager.list_checkpoints():
             print(f"  - {ckpt.checkpoint_id} ({ckpt.stage}, {ckpt.status})")
         sys.exit(1)
@@ -70,7 +72,7 @@ def promote_from_checkpoint(
 
     # Validate checkpoint is a valid model
     try:
-        from stable_baselines3 import PPO, DQN
+        from stable_baselines3 import DQN, PPO
 
         if checkpoint.agent_type.lower() == "ppo":
             _ = PPO.load(checkpoint.model_path)
@@ -105,9 +107,7 @@ def promote_from_checkpoint(
     print()
 
     # Initialize registry
-    prod_config_path = project_root / "configs" / "prod.yaml"
-    registry_path = project_root / "models" / "rl_agents" / "registry.json"
-    registry = ModelRegistry(prod_config_path, registry_path)
+    registry = ModelRegistry(REGISTRY_PATH)
 
     # Promote model
     try:
@@ -120,13 +120,13 @@ def promote_from_checkpoint(
             checkpoint_id=checkpoint_id,
         )
 
-        print(f" Model promoted successfully!")
+        print(" Model promoted successfully!")
         print(f"   Deployment ID: {registration.model_id}")
-        print(f"   Config updated: {prod_config_path}")
-        print(f"   Registry updated: {registry_path}")
+        print(f"   Registry updated: {REGISTRY_PATH}")
         print()
-        print(f" To use in production, run:")
-        print(f"   uv run prod")
+        print(" Active agent will be used automatically by Python presets.")
+        print(" To run production workload:")
+        print("   uv run prod")
 
     except Exception as e:
         logger.exception("Promotion failed")
@@ -163,9 +163,7 @@ def promote_from_file(
     print()
 
     # Initialize registry
-    prod_config_path = project_root / "configs" / "prod.yaml"
-    registry_path = project_root / "models" / "rl_agents" / "registry.json"
-    registry = ModelRegistry(prod_config_path, registry_path)
+    registry = ModelRegistry(REGISTRY_PATH)
 
     # Promote model
     try:
@@ -177,13 +175,13 @@ def promote_from_file(
             notes=notes,
         )
 
-        print(f" Model promoted successfully!")
+        print(" Model promoted successfully!")
         print(f"   Deployment ID: {registration.model_id}")
-        print(f"   Config updated: {prod_config_path}")
-        print(f"   Registry updated: {registry_path}")
+        print(f"   Registry updated: {REGISTRY_PATH}")
         print()
-        print(f" To use in production, run:")
-        print(f"   uv run prod")
+        print(" Active agent will be used automatically by Python presets.")
+        print(" To run production workload:")
+        print("   uv run prod")
 
     except Exception as e:
         logger.exception("Promotion failed")
@@ -193,9 +191,7 @@ def promote_from_file(
 
 def rollback_deployment() -> None:
     """Rollback to previous deployment."""
-    prod_config_path = project_root / "configs" / "prod.yaml"
-    registry_path = project_root / "models" / "rl_agents" / "registry.json"
-    registry = ModelRegistry(prod_config_path, registry_path)
+    registry = ModelRegistry(REGISTRY_PATH)
 
     # Get current deployment
     current = registry.get_active_deployment()
@@ -216,7 +212,7 @@ def rollback_deployment() -> None:
     try:
         registration = registry.rollback_to_previous()
         if registration:
-            print(f" Rolled back successfully!")
+            print(" Rolled back successfully!")
             print(f"   Now using: {registration.model_id}")
             print(f"   Model: {registration.model_path}")
         else:
@@ -230,9 +226,7 @@ def rollback_deployment() -> None:
 
 def list_deployments(limit: int = 10) -> None:
     """List recent deployments."""
-    prod_config_path = project_root / "configs" / "prod.yaml"
-    registry_path = project_root / "models" / "rl_agents" / "registry.json"
-    registry = ModelRegistry(prod_config_path, registry_path)
+    registry = ModelRegistry(REGISTRY_PATH)
 
     deployments = registry.get_deployment_history(limit=limit)
 

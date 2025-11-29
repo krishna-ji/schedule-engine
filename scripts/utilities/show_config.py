@@ -3,14 +3,15 @@ Display current constraint configuration (both hard and soft).
 Quick utility to see which constraints are enabled and their weights.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.config import get_config
 from rich.console import Console
 from rich.table import Table
+
+from src.config import get_config
 
 console = Console()
 
@@ -114,7 +115,9 @@ def main():
         f"[bold]TOTAL: [green]{hard_enabled_count + soft_enabled_count}/{hard_total_count + soft_total_count}[/green] constraints enabled[/bold]"
     )
     console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]")
-    console.print("\n[dim]To modify: Edit configs/base.yaml[/dim]\n")
+    console.print(
+        "\n[dim]To modify: Update Python presets in src/config/presets/data.py or profile overrides.[/dim]\n"
+    )
 
 
 if __name__ == "__main__":

@@ -31,20 +31,20 @@ def check_cuda_availability():
     print(f"CUDA Available: {cuda_available}")
 
     if cuda_available:
-        print(f" CUDA is properly configured")
+        print(" CUDA is properly configured")
         return True
     else:
-        print(f" CUDA is NOT available")
-        print(f"\nPossible reasons:")
-        print(f"1. No NVIDIA GPU detected")
-        print(f"2. NVIDIA drivers not installed or outdated")
-        print(f"3. PyTorch installed without CUDA support")
-        print(f"\nTo fix:")
-        print(f"  1. Install/update NVIDIA drivers from nvidia.com")
-        print(f"  2. Reinstall PyTorch with CUDA:")
-        print(f"     uv pip uninstall torch")
+        print(" CUDA is NOT available")
+        print("\nPossible reasons:")
+        print("1. No NVIDIA GPU detected")
+        print("2. NVIDIA drivers not installed or outdated")
+        print("3. PyTorch installed without CUDA support")
+        print("\nTo fix:")
+        print("  1. Install/update NVIDIA drivers from nvidia.com")
+        print("  2. Reinstall PyTorch with CUDA:")
+        print("     uv pip uninstall torch")
         print(
-            f"     uv pip install torch --index-url https://download.pytorch.org/whl/cu121"
+            "     uv pip install torch --index-url https://download.pytorch.org/whl/cu121"
         )
         return False
 
@@ -148,25 +148,25 @@ def test_config_device():
         print(f"Configured device: {device}")
 
         if device == "cuda" and not torch.cuda.is_available():
-            print(f"️  WARNING: Config set to 'cuda' but CUDA not available!")
+            print("️  WARNING: Config set to 'cuda' but CUDA not available!")
             print(
-                f"   Training will fail. Change to 'cpu' or 'auto' in configs/base.yaml"
+                "   Training will fail. Change to 'cpu' or 'auto' in Python presets (see src/config/presets/data.py)."
             )
             return False
         elif device == "cuda":
-            print(f" Config correctly set for GPU training")
+            print(" Config correctly set for GPU training")
             return True
         elif device == "auto":
             actual = "cuda" if torch.cuda.is_available() else "cpu"
             print(f"️  'auto' will use: {actual}")
             if torch.cuda.is_available():
-                print(f" TIP: Set 'device: cuda' explicitly for guaranteed GPU usage")
+                print(" TIP: Set 'device: cuda' explicitly for guaranteed GPU usage")
             return True
         else:
             print(f"️  Using CPU (device: {device})")
             if torch.cuda.is_available():
                 print(
-                    f" TIP: Change to 'device: cuda' in configs/base.yaml for GPU acceleration"
+                    " TIP: Change to 'device: cuda' in Python presets (src/config/presets/data.py) for GPU acceleration"
                 )
             return True
 
@@ -184,7 +184,7 @@ def estimate_vram_usage():
         return
 
     print("Estimated VRAM requirements for RL training:")
-    print(f"")
+    print("")
     print(f"{'Component':<30} {'VRAM':<15} {'Notes'}")
     print(f"{'-'*60}")
     print(f"{'PPO Policy Network (MLP)':<30} {'~50 MB':<15} {'Small network'}")
@@ -195,21 +195,21 @@ def estimate_vram_usage():
     print(f"{'-'*60}")
     print(f"{'Total (typical)':<30} {'~500 MB':<15} {' Well within 8GB'}")
     print(f"{'Total (maximum)':<30} {'~1 GB':<15} {' Still plenty of room'}")
-    print(f"")
+    print("")
 
     # Check current GPU
     gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1e9
     print(f"Your GPU: {gpu_mem:.2f} GB total VRAM")
     print(f"Available for training: ~{gpu_mem * 0.9:.2f} GB (after OS overhead)")
-    print(f"")
+    print("")
 
     if gpu_mem >= 8:
-        print(f" Your GPU has sufficient VRAM for RL training")
-        print(f" You can even run 2-3 training sessions simultaneously!")
+        print(" Your GPU has sufficient VRAM for RL training")
+        print(" You can even run 2-3 training sessions simultaneously!")
     elif gpu_mem >= 4:
-        print(f" Your GPU has sufficient VRAM for RL training")
+        print(" Your GPU has sufficient VRAM for RL training")
     else:
-        print(f"️  Your GPU has limited VRAM - may need to reduce batch sizes")
+        print("️  Your GPU has limited VRAM - may need to reduce batch sizes")
 
 
 def print_recommendations():
@@ -221,7 +221,9 @@ def print_recommendations():
         print("")
         print("Next steps:")
         print("1. Enable GPU in config:")
-        print("   Edit configs/base.yaml line 328: device: cuda")
+        print(
+            "   Update Python presets (src/config/presets/data.py) to set rl.agent.device: cuda"
+        )
         print("")
         print("2. Run benchmark:")
         print("   uv run python scripts/benchmark_gpu_training.py")

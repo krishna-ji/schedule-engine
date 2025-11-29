@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # pragma: no cover
+    from src.config.presets.base import ConfigBlueprint
 
 
 class RuntimeMode(str, Enum):
@@ -78,52 +79,19 @@ class RuntimeMode(str, Enum):
         }
         return names[self]
 
-    @property
-    def config_path(self) -> Path:
-        """
-        Get config file path for this runtime mode.
+    def blueprint_class(self) -> type[ConfigBlueprint]:
+        """Return the ConfigBlueprint class associated with this mode."""
 
-        Returns:
-            Path to config YAML file (e.g., configs/baseline/1-pure-nsga.yaml)
-        """
-        category_map = {
-            # Numbered modes (1-10)
-            RuntimeMode.BASELINE: "baseline",
-            RuntimeMode.NSGA_REPAIRS: "nsga",
-            RuntimeMode.NSGA_HEURISTICS: "nsga",
-            RuntimeMode.NSGA_FULL: "nsga",
-            RuntimeMode.RL_GUIDED: "rl",
-            RuntimeMode.ROUND_ROBIN: "hybrid",
-            RuntimeMode.RL_SPECIALISTS: "rl",
-            RuntimeMode.ARCHIVE_DIVERSITY: "rl",
-            RuntimeMode.RL_HIERARCHICAL: "rl",
-            RuntimeMode.RL_MULTIAGENT: "rl",
-            # Lettered modes (A-E)
-            RuntimeMode.MODE_A: "baseline",
-            RuntimeMode.MODE_B: "nsga",
-            RuntimeMode.MODE_C: "hybrid",
-            RuntimeMode.MODE_D: "hybrid",
-            RuntimeMode.MODE_E: "rl",
-        }
-        overrides = {
-            # Progressive A–E configs already live under their canonical paths
-            RuntimeMode.BASELINE: Path("configs/baseline/a-pure-nsga.yaml"),
-            RuntimeMode.NSGA_FULL: Path("configs/nsga/5-nsga-full.yaml"),
-            RuntimeMode.RL_GUIDED: Path("configs/rl/e-rl-guided.yaml"),
-            RuntimeMode.ROUND_ROBIN: Path("configs/hybrid/c-roundrobin.yaml"),
-            RuntimeMode.RL_SPECIALISTS: Path("configs/archive/7-rl-specialists.yaml"),
-            RuntimeMode.ARCHIVE_DIVERSITY: Path(
-                "configs/archive/8-archive-diversity.yaml"
-            ),
-            RuntimeMode.RL_HIERARCHICAL: Path("configs/archive/9-rl-hierarchical.yaml"),
-            RuntimeMode.RL_MULTIAGENT: Path("configs/archive/10-rl-multiagent.yaml"),
-        }
+        from src.config.presets.registry import RUNTIME_MODE_BLUEPRINTS
 
-        if self in overrides:
-            return overrides[self]
+        return RUNTIME_MODE_BLUEPRINTS[self]
 
-        category = category_map[self]
-        return Path(f"configs/{category}/{self.value}.yaml")
+    def instantiate_blueprint(self) -> ConfigBlueprint:
+        """Instantiate and bind the blueprint for this runtime mode."""
+
+        blueprint = self.blueprint_class()()
+        blueprint.bind_runtime_mode(self)
+        return blueprint
 
     @property
     def description(self) -> str:
@@ -424,49 +392,4 @@ class RuntimeMode(str, Enum):
             lines.append(f"    {mode.display_name}")
             lines.append(f"    {mode.description}")
             lines.append("")
-        return "\n".join(lines)
-
-
-@dataclass
-class ExperimentConfig:
-    """
-    Complete experiment configuration.
-
-    Combines runtime mode with config parameters and metadata.
-    """
-
-    mode: RuntimeMode
-    config_path: Path
-    experiment_name: str | None = None
-    output_dir: str | None = None
-    seed: int = 69
-    notes: str | None = None
-
-    def __post_init__(self) -> None:
-        """Validate config path exists."""
-        if not self.config_path.exists():
-            raise FileNotFoundError(
-                f"Config file not found: {self.config_path}\n"
-                f"Expected path for mode '{self.mode.value}': {self.mode.config_path}"
-            )
-
-    @property
-    def mode_name(self) -> str:
-        """Short mode name for file/folder naming."""
-        return self.mode.value.split("-", 1)[1]  # e.g., "pure-nsga" -> "pure-nsga"
-
-    def summary(self) -> str:
-        """Get human-readable summary of experiment config."""
-        lines = [
-            "Experiment Configuration:",
-            f"  Mode: {self.mode.display_name}",
-            f"  Config: {self.config_path}",
-        ]
-        if self.experiment_name:
-            lines.append(f"  Name: {self.experiment_name}")
-        if self.output_dir:
-            lines.append(f"  Output: {self.output_dir}")
-        lines.append(f"  Seed: {self.seed}")
-        if self.notes:
-            lines.append(f"  Notes: {self.notes}")
         return "\n".join(lines)

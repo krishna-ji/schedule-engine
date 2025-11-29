@@ -4,11 +4,14 @@ Schedule Engine Entry Point
 Runs standard GA-based course scheduling workflow with runtime mode support.
 """
 
+from __future__ import annotations
+
 import argparse
 import time
 
 from src.config import init_config
 from src.config.loader import load_config
+from src.config.presets.profiles import Profile
 from src.config.runtime_mode import RuntimeMode
 from src.utils.console_service import get_console
 from src.utils.experiment import sanitize_experiment_name
@@ -17,14 +20,31 @@ from src.workflows import run_standard_workflow
 from src.workflows.experiment_manager import ExperimentManager
 
 console = get_console()
+PROFILE_CHOICES = [profile.value for profile in Profile]
 
 
-def main():
+def _extract_config_reference(config) -> str:
+    """Derive a concise identifier for manifest logging."""
+
+    metadata = getattr(config, "metadata", None)
+    if isinstance(metadata, dict):
+        runtime_mode = metadata.get("runtime_mode")
+        blueprint = metadata.get("blueprint")
+        if runtime_mode and blueprint:
+            return f"{runtime_mode}:{blueprint}"
+        if blueprint:
+            return blueprint
+        if runtime_mode:
+            return runtime_mode
+    return getattr(config, "name", "default")
+
+
+def main() -> int:
     """
     Execute standard scheduling workflow.
 
     Pipeline:
-        1. Load configuration from YAML (configs/test|dev|prod.yaml)
+        1. Build configuration via Python presets (profile + runtime mode)
         2. Load input data from data/
         3. Validate input for consistency
         4. Check feasibility (optional)
@@ -32,18 +52,13 @@ def main():
         6. Export best schedule to output/
         7. Generate evolution plots and reports
 
-    Configuration:
-        Loaded from YAML files in configs/ directory.
-        Use --env {test|prod} to select configuration.
-
     Results:
         Saved to output/evaluation_<timestamp>/
 
     Parallelization:
-        Controlled by parallel.use_multiprocessing in YAML config.
-        Provides 3-6x speedup on multi-core systems.
+        Controlled by parallel.use_multiprocessing in config blueprint.
     """
-    # Initialize structured logging (console only - experiments tracked via output/)
+
     setup_logging(
         log_file=None,
         console_level="DEBUG",
@@ -52,7 +67,6 @@ def main():
         show_path=False,
     )
 
-    # Parse CLI arguments
     parser = argparse.ArgumentParser(
         description="University Course Scheduling Engine",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -66,16 +80,26 @@ def main():
             "See docs/02-user-guides/runtime-modes.md for the full list."
         ),
     )
-    parser.add_argument(
-        "--config",
+    profile_group = parser.add_mutually_exclusive_group()
+    profile_group.add_argument(
+        "--profile",
         type=str,
-        help="Path to config YAML file (overrides --mode)",
+        choices=PROFILE_CHOICES,
+        help="Profile selector: test (smoke) or prod (full)",
     )
-    parser.add_argument(
-        "--env",
-        type=str,
-        choices=["test", "prod"],
-        help="Environment: test (smoke) or prod (best quality)",
+    profile_group.add_argument(
+        "--test",
+        action="store_const",
+        const=Profile.TEST.value,
+        dest="profile",
+        help="Shortcut for --profile test",
+    )
+    profile_group.add_argument(
+        "--prod",
+        action="store_const",
+        const=Profile.PROD.value,
+        dest="profile",
+        help="Shortcut for --profile prod",
     )
     parser.add_argument(
         "--experiment",
@@ -95,28 +119,22 @@ def main():
     )
     args = parser.parse_args()
 
-    # CRITICAL: Set environment FIRST before any config loading
-    # This ensures config loader sees the correct environment
-    import os
+    try:
+        profile = Profile.from_string(getattr(args, "profile", None))
+    except ValueError as exc:
+        console.print(f"[bold red][!err] {exc}[/bold red]")
+        return 1
 
-    if args.env:
-        os.environ["ENVIRONMENT"] = args.env
-    elif "ENVIRONMENT" not in os.environ:
-        os.environ["ENVIRONMENT"] = "test"  # Default to test
-
-    # Handle --list-modes
     if args.list_modes:
         console.print(RuntimeMode.list_modes())
         return 0
 
-    # Handle --compare
     if args.compare:
         manager = ExperimentManager()
         table = manager.compare_modes()
         console.print(table)
         return 0
 
-    # Parse runtime mode
     runtime_mode = None
     if args.mode:
         try:
@@ -124,94 +142,58 @@ def main():
             console.print(f"[cyan]Runtime Mode:[/cyan] {runtime_mode.display_name}")
             console.print(f"[dim]{runtime_mode.description}[/dim]")
             console.print()
-        except ValueError as e:
-            console.print(f"[bold red][!err] {e}[/bold red]")
+        except ValueError as exc:
+            console.print(f"[bold red][!err] {exc}[/bold red]")
             return 1
 
-    # Experiment name: interactive prompt fallback
-    exp_name = args.experiment
-    # Use automatic experiment naming - no interactive prompt needed
-    if exp_name is None:
-        exp_name = "auto_generated"
-
-    exp_name = sanitize_experiment_name(exp_name)
-
-    # Initialize experiment manager
+    exp_name = sanitize_experiment_name(args.experiment or "auto_generated")
     manager = ExperimentManager()
 
-    # Load configuration (with runtime mode support)
-    # Environment is already set above via os.environ["ENVIRONMENT"]
     try:
-        if args.config:
-            # Explicit config path: base → config → environment
-            console.print(
-                f"[dim]Loading: {args.config} + {os.environ['ENVIRONMENT']}.yaml[/dim]"
-            )
-            config = load_config(args.config)
-        elif runtime_mode:
-            # Runtime mode: base → mode → environment
-            console.print(
-                f"[dim]Loading: {runtime_mode.value} + {os.environ['ENVIRONMENT']}.yaml[/dim]"
-            )
-            config = load_config(runtime_mode=runtime_mode)
-        else:
-            # Default: base → environment only
-            console.print(f"[dim]Loading: {os.environ['ENVIRONMENT']}.yaml[/dim]")
-            config = load_config(None)
-
-        # Initialize global config singleton
+        descriptor = runtime_mode.value if runtime_mode else "default"
+        console.print(
+            f"[dim]Building config: mode={descriptor} | profile={profile.value}[/dim]"
+        )
+        config = load_config(runtime_mode=runtime_mode, profile=profile)
         init_config(config_obj=config)
 
         console.print()
         console.print(config.summary())
         console.print()
-    except Exception as e:
-        console.print(f"[bold red][!err] failed to load config:[/bold red] {e}")
+    except Exception as exc:  # pragma: no cover - user runtime errors
+        console.print(f"[bold red][!err] failed to load config:[/bold red] {exc}")
         return 1
 
-    # Create output directory with runtime mode structure
-    # ALWAYS use ExperimentManager for organized structure
-    if not runtime_mode:
-        # Infer runtime mode from config
+    if runtime_mode is None:
         try:
             runtime_mode = RuntimeMode.from_config(config)
         except (ValueError, AttributeError):
-            # Fallback to baseline if mode cannot be determined
             runtime_mode = RuntimeMode.BASELINE
 
     output_dir = manager.create_output_dir(runtime_mode, exp_name)
     console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
     console.print()
 
-    # Register experiment run
-    experiment_run = None
-    if runtime_mode:
-        experiment_run = manager.register_run(
-            runtime_mode=runtime_mode,
-            config_path=runtime_mode.config_path,
-            output_path=output_dir,
-            experiment_name=exp_name,
-            seed=69,
-        )
+    experiment_run = manager.register_run(
+        runtime_mode=runtime_mode,
+        config_reference=_extract_config_reference(config),
+        output_path=output_dir,
+        experiment_name=exp_name,
+        seed=69,
+    )
 
-    # Track start time
     start_time = time.time()
-
-    # Run workflow with config
     result = run_standard_workflow(
         pop_size=config.ga.pop_size,
         generations=config.ga.ngen,
         crossover_prob=config.ga.cxpb,
         mutation_prob=config.ga.mutpb,
-        validate=True,  # Enable input validation
-        config=config,  # Pass config object to workflow
-        output_dir=str(output_dir) if output_dir else None,
+        validate=True,
+        config=config,
+        output_dir=str(output_dir),
     )
-
-    # Track end time
     duration_seconds = time.time() - start_time
 
-    # Print final summary with beautiful rich formatting
     console.print()
     console.print("[bold cyan]results[/bold cyan]")
     console.print()
@@ -230,7 +212,6 @@ def main():
     console.print(f"  [dim]runtime:[/dim] {duration_seconds:.1f}s")
     console.print()
 
-    # Update experiment run with results (P0 FIX: Always update manifest)
     if experiment_run and runtime_mode:
         try:
             manager.update_run_results(
@@ -244,53 +225,50 @@ def main():
             console.print(
                 f"[dim]Experiment logged: {experiment_run.run_id} ({runtime_mode.display_name})[/dim]"
             )
-        except Exception as e:
-            console.print(f"[yellow]Warning: Failed to update manifest: {e}[/yellow]")
+        except Exception as exc:  # pragma: no cover - manifest corruption
+            console.print(f"[yellow]Warning: Failed to update manifest: {exc}[/yellow]")
         console.print()
 
+    return 0
 
-# Removed timed_input function - no longer needed with automatic experiment naming
 
+def _create_env_entry_point(profile_name: str):
+    """Factory for profile entry points."""
 
-def _create_env_entry_point(env: str):
-    """Factory for environment entry points."""
-
-    def entry_point():
-        import os
+    def entry_point() -> None:
         import sys
 
-        os.environ["ENVIRONMENT"] = env
-        sys.exit(main() or 0)
+        sys.argv = ["main.py", "--profile", profile_name]
+        sys.exit(main())
 
     return entry_point
 
 
-def _create_mode_entry_point(mode: str, env: str = "prod"):
+def _create_mode_entry_point(mode: str, profile_name: str = Profile.PROD.value):
     """Factory for runtime mode entry points."""
 
-    def entry_point():
+    def entry_point() -> None:
         import sys
 
-        # Preserve user arguments (e.g. --experiment name)
-        # Filter out 'uv run' artifacts if present, though usually sys.argv[1:] is enough
         user_args = sys.argv[1:]
-
-        # Construct new argv: script + forced args + user args
-        sys.argv = ["main.py", "--mode", mode, "--env", env] + user_args
-        sys.exit(main() or 0)
+        sys.argv = [
+            "main.py",
+            "--mode",
+            mode,
+            "--profile",
+            profile_name,
+        ] + user_args
+        sys.exit(main())
 
     return entry_point
 
 
-# Environment entry points
-main_prod = _create_env_entry_point("prod")
+main_prod = _create_env_entry_point(Profile.PROD.value)
 main_prod.__doc__ = "Entry point for production runs (uv run prod)"
 
-main_test = _create_env_entry_point("test")
+main_test = _create_env_entry_point(Profile.TEST.value)
 main_test.__doc__ = "Entry point for test runs (uv run test)"
 
-
-# Runtime mode entry points (A→B→C structure)
 _MODE_MAPPING = {
     "baseline": (
         RuntimeMode.BASELINE.value,
@@ -302,23 +280,23 @@ _MODE_MAPPING = {
     ),
 }
 
-# Generate entry points dynamically
 for func_name, (mode_value, doc) in _MODE_MAPPING.items():
-    # Default (Prod)
-    entry_point = _create_mode_entry_point(mode_value, env="prod")
+    entry_point = _create_mode_entry_point(mode_value, profile_name=Profile.PROD.value)
     entry_point.__doc__ = doc
     globals()[f"main_{func_name}"] = entry_point
 
-    # Explicit Prod
-    entry_point_prod = _create_mode_entry_point(mode_value, env="prod")
+    entry_point_prod = _create_mode_entry_point(
+        mode_value, profile_name=Profile.PROD.value
+    )
     entry_point_prod.__doc__ = f"{doc} (Prod)"
     globals()[f"main_{func_name}_prod"] = entry_point_prod
 
-    # Explicit Test
-    entry_point_test = _create_mode_entry_point(mode_value, env="test")
+    entry_point_test = _create_mode_entry_point(
+        mode_value, profile_name=Profile.TEST.value
+    )
     entry_point_test.__doc__ = f"{doc} (Test)"
     globals()[f"main_{func_name}_test"] = entry_point_test
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
