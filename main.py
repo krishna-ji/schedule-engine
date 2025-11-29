@@ -1,18 +1,18 @@
 """
 Schedule Engine Entry Point
 
-Runs standard GA-based course scheduling workflow with runtime mode support.
+Runs standard GA-based course scheduling workflow with experiment configs.
 """
 
 from __future__ import annotations
 
 import argparse
-import time
+import sys
 
-from src.config import init_config
+# Import all experiments
+from configs import experiment_a, experiment_b, experiment_c, experiment_d, experiment_e
 from src.config.loader import load_config
 from src.config.presets.profiles import Profile
-from src.config.runtime_mode import RuntimeMode
 from src.utils.console_service import get_console
 from src.utils.experiment import sanitize_experiment_name
 from src.utils.structured_logger import setup_logging
@@ -20,23 +20,38 @@ from src.workflows import run_standard_workflow
 from src.workflows.experiment_manager import ExperimentManager
 
 console = get_console()
-PROFILE_CHOICES = [profile.value for profile in Profile]
+
+# Experiment registry
+EXPERIMENTS = {
+    "a": ("Experiment A: Pure NSGA-II", experiment_a),
+    "b": ("Experiment B: Memetic NSGA-II", experiment_b),
+    "c": ("Experiment C: Round-Robin Heuristics", experiment_c),
+    "d": ("Experiment D: Adaptive Selection", experiment_d),
+    "e": ("Experiment E: RL-Guided", experiment_e),
+    "baseline": ("Experiment A: Pure NSGA-II", experiment_a),
+    "memetic": ("Experiment B: Memetic NSGA-II", experiment_b),
+    "roundrobin": ("Experiment C: Round-Robin Heuristics", experiment_c),
+    "adaptive": ("Experiment D: Adaptive Selection", experiment_d),
+    "rl": ("Experiment E: RL-Guided", experiment_e),
+}
 
 
-def _extract_config_reference(config) -> str:
-    """Derive a concise identifier for manifest logging."""
+def list_experiments() -> str:
+    """Generate formatted list of available experiments."""
+    lines = ["Available Experiments:", ""]
 
-    metadata = getattr(config, "metadata", None)
-    if isinstance(metadata, dict):
-        runtime_mode = metadata.get("runtime_mode")
-        blueprint = metadata.get("blueprint")
-        if runtime_mode and blueprint:
-            return f"{runtime_mode}:{blueprint}"
-        if blueprint:
-            return blueprint
-        if runtime_mode:
-            return runtime_mode
-    return getattr(config, "name", "default")
+    seen = set()
+    for key in ["a", "b", "c", "d", "e"]:
+        if key in seen:
+            continue
+        seen.add(key)
+        name, blueprint = EXPERIMENTS[key]
+        lines.append(f"  {key}")
+        lines.append(f"    {name}")
+        lines.append(f"    {blueprint.description}")
+        lines.append("")
+
+    return "\n".join(lines)
 
 
 def main() -> int:
@@ -44,7 +59,7 @@ def main() -> int:
     Execute standard scheduling workflow.
 
     Pipeline:
-        1. Build configuration via Python presets (profile + runtime mode)
+        1. Build configuration via experiment blueprint + profile
         2. Load input data from data/
         3. Validate input for consistency
         4. Check feasibility (optional)
@@ -53,10 +68,7 @@ def main() -> int:
         7. Generate evolution plots and reports
 
     Results:
-        Saved to output/evaluation_<timestamp>/
-
-    Parallelization:
-        Controlled by parallel.use_multiprocessing in config blueprint.
+        Saved to output/<experiment-name>/evaluation_<timestamp>/
     """
 
     setup_logging(
@@ -70,233 +82,136 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="University Course Scheduling Engine",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=RuntimeMode.list_modes(),
+        epilog=list_experiments(),
     )
     parser.add_argument(
-        "--mode",
+        "--experiment",
+        "-e",
         type=str,
-        help=(
-            "Runtime mode alias (e.g., nsga-full, mode-a, round-robin). "
-            "See docs/02-user-guides/runtime-modes.md for the full list."
-        ),
+        required=False,
+        help="Experiment ID (a, b, c, d, e) or alias (baseline, memetic, roundrobin, adaptive, rl)",
     )
     profile_group = parser.add_mutually_exclusive_group()
     profile_group.add_argument(
         "--profile",
         type=str,
-        choices=PROFILE_CHOICES,
+        choices=["test", "prod", "debug"],
         help="Profile selector: test (smoke) or prod (full)",
     )
     profile_group.add_argument(
         "--test",
         action="store_const",
-        const=Profile.TEST.value,
+        const="test",
         dest="profile",
         help="Shortcut for --profile test",
     )
     profile_group.add_argument(
         "--prod",
         action="store_const",
-        const=Profile.PROD.value,
+        const="prod",
         dest="profile",
         help="Shortcut for --profile prod",
     )
     parser.add_argument(
-        "--experiment",
+        "--name",
         type=str,
-        default=None,
-        help="Optional experiment name to tag the output folder",
+        help="Custom experiment name (overrides auto-generated name)",
     )
     parser.add_argument(
-        "--list-modes",
+        "--list",
         action="store_true",
-        help="List all available runtime modes and exit",
+        help="List all available experiments and exit",
     )
-    parser.add_argument(
-        "--compare",
-        action="store_true",
-        help="Show runtime mode comparison table and exit",
-    )
+
     args = parser.parse_args()
 
-    try:
-        profile = Profile.from_string(getattr(args, "profile", None))
-    except ValueError as exc:
-        console.print(f"[bold red][!err] {exc}[/bold red]")
+    # List experiments
+    if args.list:
+        console.print(list_experiments())
+        return 0
+
+    # Validate experiment
+    if not args.experiment:
+        console.print("[red]Error:[/red] --experiment/-e is required")
+        console.print("\nUse --list to see available experiments")
         return 1
 
-    if args.list_modes:
-        console.print(RuntimeMode.list_modes())
-        return 0
+    experiment_key = args.experiment.lower()
+    if experiment_key not in EXPERIMENTS:
+        console.print(f"[red]Error:[/red] Unknown experiment: {args.experiment}")
+        console.print("\nAvailable experiments: a, b, c, d, e")
+        console.print("Use --list for details")
+        return 1
 
-    if args.compare:
-        manager = ExperimentManager()
-        table = manager.compare_modes()
-        console.print(table)
-        return 0
+    experiment_name, blueprint = EXPERIMENTS[experiment_key]
 
-    runtime_mode = None
-    if args.mode:
-        try:
-            runtime_mode = RuntimeMode.from_string(args.mode)
-            console.print(f"[cyan]Runtime Mode:[/cyan] {runtime_mode.display_name}")
-            console.print(f"[dim]{runtime_mode.description}[/dim]")
-            console.print()
-        except ValueError as exc:
-            console.print(f"[bold red][!err] {exc}[/bold red]")
-            return 1
+    # Determine profile
+    profile_str = args.profile or "test"
+    profile = Profile(profile_str)
 
-    exp_name = sanitize_experiment_name(args.experiment or "auto_generated")
+    # Build config
+    console.print(f"[cyan]Experiment:[/cyan] {experiment_name}")
+    console.print(f"[cyan]Profile:[/cyan] {profile.value.upper()}")
+    console.print(f"[cyan]Blueprint:[/cyan] {blueprint.name}")
+    console.print()
+
+    config = load_config(blueprint, profile)
+
+    # Experiment manager
     manager = ExperimentManager()
 
-    try:
-        descriptor = runtime_mode.value if runtime_mode else "default"
-        console.print(
-            f"[dim]Building config: mode={descriptor} | profile={profile.value}[/dim]"
-        )
-        config = load_config(runtime_mode=runtime_mode, profile=profile)
-        init_config(config_obj=config)
+    # Use custom name or generate from experiment key
+    if args.name:
+        exp_name = sanitize_experiment_name(args.name)
+    else:
+        exp_name = f"experiment_{experiment_key}_{profile.value}"
 
-        console.print()
-        console.print(config.summary())
-        console.print()
-    except Exception as exc:  # pragma: no cover - user runtime errors
-        console.print(f"[bold red][!err] failed to load config:[/bold red] {exc}")
-        return 1
-
-    if runtime_mode is None:
-        try:
-            runtime_mode = RuntimeMode.from_config(config)
-        except (ValueError, AttributeError):
-            runtime_mode = RuntimeMode.BASELINE
-
-    output_dir = manager.create_output_dir(runtime_mode, exp_name)
+    # Create output directory
+    output_dir = manager.create_output_dir_simple(exp_name)
     console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
     console.print()
 
+    # Register experiment
     experiment_run = manager.register_run(
-        runtime_mode=runtime_mode,
-        config_reference=_extract_config_reference(config),
+        experiment_id=experiment_key,
+        config_reference=f"{blueprint.name}:{profile.value}",
         output_path=output_dir,
-        experiment_name=exp_name,
-        seed=69,
+        profile=profile.value,
     )
 
-    start_time = time.time()
-    result = run_standard_workflow(
-        pop_size=config.ga.pop_size,
-        generations=config.ga.ngen,
-        crossover_prob=config.ga.cxpb,
-        mutation_prob=config.ga.mutpb,
-        validate=True,
-        config=config,
-        output_dir=str(output_dir),
-    )
-    duration_seconds = time.time() - start_time
+    # Run workflow
+    try:
+        result = run_standard_workflow(
+            config=config,
+            output_dir=output_dir,
+        )
 
-    console.print()
-    console.print("[bold cyan]results[/bold cyan]")
-    console.print()
+        if result.best_individual is None:
+            console.print("[yellow]Warning:[/yellow] No valid solution found")
+            manager.mark_failed(experiment_run.run_id, "No valid solution found")
+            return 1
 
-    hard_viol = result["best_individual"].fitness.values[0]
-    soft_pen = result["best_individual"].fitness.values[1]
+        # Mark as complete
+        manager.mark_complete(
+            experiment_run.run_id,
+            best_fitness=float(result.best_individual.fitness.values[0]),
+            generation_completed=result.generation,
+        )
 
-    if hard_viol == 0:
-        console.print("[green][!ok] perfect schedule (no hard violations)[/green]")
-    else:
-        console.print(f"[yellow][!warn] hard violations:[/yellow] {hard_viol:.0f}")
-
-    console.print(f"  [dim]soft penalty:[/dim] {soft_pen:.2f}")
-    console.print(f"  [dim]sessions:[/dim] {len(result['decoded_schedule'])}")
-    console.print(f"  [dim]output:[/dim] {result['output_path']}")
-    console.print(f"  [dim]runtime:[/dim] {duration_seconds:.1f}s")
-    console.print()
-
-    if experiment_run and runtime_mode:
-        try:
-            manager.update_run_results(
-                run=experiment_run,
-                duration_seconds=duration_seconds,
-                generations=config.ga.ngen,
-                population_size=config.ga.pop_size,
-                best_hard_violations=abs(hard_viol),
-                best_soft_penalty=soft_pen,
-            )
-            console.print(
-                f"[dim]Experiment logged: {experiment_run.run_id} ({runtime_mode.display_name})[/dim]"
-            )
-        except Exception as exc:  # pragma: no cover - manifest corruption
-            console.print(f"[yellow]Warning: Failed to update manifest: {exc}[/yellow]")
         console.print()
+        console.print("[green]✓ Scheduling complete![/green]")
+        console.print(f"[cyan]Results saved to:[/cyan] {output_dir}")
+        return 0
 
-    return 0
-
-
-def _create_env_entry_point(profile_name: str):
-    """Factory for profile entry points."""
-
-    def entry_point() -> None:
-        import sys
-
-        sys.argv = ["main.py", "--profile", profile_name]
-        sys.exit(main())
-
-    return entry_point
-
-
-def _create_mode_entry_point(mode: str, profile_name: str = Profile.PROD.value):
-    """Factory for runtime mode entry points."""
-
-    def entry_point() -> None:
-        import sys
-
-        user_args = sys.argv[1:]
-        sys.argv = [
-            "main.py",
-            "--mode",
-            mode,
-            "--profile",
-            profile_name,
-        ] + user_args
-        sys.exit(main())
-
-    return entry_point
-
-
-main_prod = _create_env_entry_point(Profile.PROD.value)
-main_prod.__doc__ = "Entry point for production runs (uv run prod)"
-
-main_test = _create_env_entry_point(Profile.TEST.value)
-main_test.__doc__ = "Entry point for test runs (uv run test)"
-
-_MODE_MAPPING = {
-    "baseline": (
-        RuntimeMode.BASELINE.value,
-        "Mode 1: Pure NSGA-II baseline",
-    ),
-    "rl": (
-        RuntimeMode.RL_GUIDED.value,
-        "Mode 5: RL-guided heuristics",
-    ),
-}
-
-for func_name, (mode_value, doc) in _MODE_MAPPING.items():
-    entry_point = _create_mode_entry_point(mode_value, profile_name=Profile.PROD.value)
-    entry_point.__doc__ = doc
-    globals()[f"main_{func_name}"] = entry_point
-
-    entry_point_prod = _create_mode_entry_point(
-        mode_value, profile_name=Profile.PROD.value
-    )
-    entry_point_prod.__doc__ = f"{doc} (Prod)"
-    globals()[f"main_{func_name}_prod"] = entry_point_prod
-
-    entry_point_test = _create_mode_entry_point(
-        mode_value, profile_name=Profile.TEST.value
-    )
-    entry_point_test.__doc__ = f"{doc} (Test)"
-    globals()[f"main_{func_name}_test"] = entry_point_test
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interrupted by user[/yellow]")
+        manager.mark_failed(experiment_run.run_id, "Interrupted by user")
+        return 130
+    except Exception as e:
+        console.print(f"\n[red]Error:[/red] {e}")
+        manager.mark_failed(experiment_run.run_id, str(e))
+        raise
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

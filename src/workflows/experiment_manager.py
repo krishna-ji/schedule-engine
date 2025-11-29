@@ -1,7 +1,7 @@
 """
-Experiment manager for organizing outputs and tracking runtime modes.
+Experiment manager for organizing outputs and tracking experiments.
 
-Provides structured output organization by runtime mode, automatic
+Provides structured output organization by experiment ID, automatic
 experiment logging, and comparison tools for research workflows.
 """
 
@@ -14,10 +14,18 @@ from typing import Any
 
 from rich.table import Table
 
-from src.config.runtime_mode import RuntimeMode
 from src.utils.console_service import get_console
 
 console = get_console()
+
+# Known experiment IDs and their display names
+EXPERIMENTS = {
+    "a": "Experiment A: Pure NSGA-II",
+    "b": "Experiment B: Memetic",
+    "c": "Experiment C: Round-Robin",
+    "d": "Experiment D: Adaptive",
+    "e": "Experiment E: RL-Guided",
+}
 
 
 @dataclass
@@ -29,7 +37,7 @@ class ExperimentRun:
     """
 
     run_id: str  # Unique identifier (timestamp-based)
-    runtime_mode: str  # RuntimeMode value (e.g., "1-pure-nsga")
+    runtime_mode: str  # Experiment ID (e.g., "a", "b", "c", "d", "e")
     config_reference: str  # Identifier for the config/blueprint used
     output_path: str  # Path to output directory
     seed: int  # Random seed
@@ -124,7 +132,7 @@ class ExperimentManager:
 
     def create_output_dir(
         self,
-        runtime_mode: RuntimeMode,
+        runtime_mode: str,
         experiment_name: str | None = None,
         timestamp: datetime | None = None,
     ) -> Path:
@@ -203,7 +211,7 @@ class ExperimentManager:
 
     def register_run(
         self,
-        runtime_mode: RuntimeMode,
+        runtime_mode: str,
         config_reference: str,
         output_path: Path,
         experiment_name: str | None = None,
@@ -280,8 +288,8 @@ class ExperimentManager:
 
         self._save_manifest()
 
-    def get_runs_by_mode(
-        self, runtime_mode: RuntimeMode, complete_only: bool = False
+    def get_runs_for_mode(
+        self, runtime_mode: str, complete_only: bool = False
     ) -> list[ExperimentRun]:
         """
         Get all runs for a specific runtime mode.
@@ -341,9 +349,7 @@ class ExperimentManager:
 
         return len(incomplete)
 
-    def get_latest_run(
-        self, runtime_mode: RuntimeMode | None = None
-    ) -> ExperimentRun | None:
+    def get_best_run(self, runtime_mode: str | None = None) -> ExperimentRun | None:
         """
         Get most recent experiment run.
 
@@ -358,24 +364,22 @@ class ExperimentManager:
             return None
         return max(runs, key=lambda r: r.timestamp)
 
-    def compare_modes(
-        self, modes: list[RuntimeMode] | None = None, top_n: int = 5
-    ) -> Table:
+    def compare_modes(self, modes: list[str] | None = None, top_n: int = 5) -> Table:
         """
-        Generate comparison table for runtime modes.
+        Generate comparison table for experiments.
 
         Args:
-            modes: Optional list of modes to compare (defaults to all)
-            top_n: Number of recent runs per mode to include
+            modes: Optional list of experiment IDs to compare (defaults to all)
+            top_n: Number of recent runs per experiment to include
 
         Returns:
             Rich Table object for display
         """
         if modes is None:
-            modes = list(RuntimeMode)
+            modes = list(EXPERIMENTS.keys())
 
-        table = Table(title="Runtime Mode Comparison")
-        table.add_column("Mode", style="cyan")
+        table = Table(title="Experiment Comparison")
+        table.add_column("Experiment", style="cyan")
         table.add_column("Runs", justify="right")
         table.add_column("Best Hard", justify="right", style="green")
         table.add_column("Best Soft", justify="right", style="yellow")
@@ -384,8 +388,9 @@ class ExperimentManager:
 
         for mode in modes:
             runs = self.get_runs_by_mode(mode)
+            display_name = EXPERIMENTS.get(mode, mode)
             if not runs:
-                table.add_row(mode.display_name, "0", "-", "-", "-", "-")
+                table.add_row(display_name, "0", "-", "-", "-", "-")
                 continue
 
             # Recent runs
@@ -444,13 +449,13 @@ class ExperimentManager:
             ),
         }
 
-        # Per-mode statistics
+        # Per-experiment statistics
         mode_stats = {}
-        for mode in RuntimeMode:
-            mode_runs = self.get_runs_by_mode(mode)
+        for exp_id in EXPERIMENTS:
+            mode_runs = self.get_runs_by_mode(exp_id)
             if mode_runs:
                 mode_complete = [r for r in mode_runs if r.is_complete]
-                mode_stats[mode.value] = {
+                mode_stats[exp_id] = {
                     "total": len(mode_runs),
                     "complete": len(mode_complete),
                     "incomplete": len(mode_runs) - len(mode_complete),
@@ -474,20 +479,18 @@ class ExperimentManager:
                 "\n[yellow]Tip:[/yellow] Run [cyan]manager.archive_incomplete_runs()[/cyan] to clean manifest."
             )
 
-    def export_comparison_csv(
-        self, output_path: Path, modes: list[RuntimeMode] | None = None
-    ):
+    def export_comparison_csv(self, output_path: Path, modes: list[str] | None = None):
         """
         Export comparison data to CSV for analysis.
 
         Args:
             output_path: Path to CSV file
-            modes: Optional list of modes to include (defaults to all)
+            modes: Optional list of experiment IDs to include (defaults to all)
         """
         import csv
 
         if modes is None:
-            modes = list(RuntimeMode)
+            modes = list(EXPERIMENTS.keys())
 
         with open(output_path, "w", newline="") as f:
             writer = csv.writer(f)
@@ -526,17 +529,15 @@ class ExperimentManager:
 
         console.print(f"[green]Exported comparison data to {output_path}[/green]")
 
-    def clean_old_runs(
-        self, keep_last_n: int = 10, runtime_mode: RuntimeMode | None = None
-    ):
+    def cleanup_old_runs(self, keep_last_n: int = 10, runtime_mode: str | None = None):
         """
         Clean up old experiment outputs to save disk space.
 
         Args:
-            keep_last_n: Number of recent runs to keep per mode
-            runtime_mode: Optional mode filter (defaults to all modes)
+            keep_last_n: Number of recent runs to keep per experiment
+            runtime_mode: Optional experiment ID filter (defaults to all experiments)
         """
-        modes = [runtime_mode] if runtime_mode else list(RuntimeMode)
+        modes = [runtime_mode] if runtime_mode else list(EXPERIMENTS.keys())
 
         for mode in modes:
             runs = sorted(

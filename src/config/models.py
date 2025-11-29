@@ -817,7 +817,15 @@ class RLConfig(BaseModel):
     """Reinforcement Learning integration configuration"""
 
     enabled: bool = False
-    mode: Literal["disabled", "training", "inference", "hybrid"] = "disabled"
+    mode: Literal[
+        "disabled",
+        "training",
+        "inference",
+        "hybrid",
+        "rl_primary",
+        "rl_fallback",
+        "rl_assisted",
+    ] = "disabled"
     environment: RLEnvironmentConfig = Field(default_factory=RLEnvironmentConfig)
     reward: RLRewardConfig = Field(default_factory=RLRewardConfig)
     agent: RLAgentConfig = Field(default_factory=RLAgentConfig)

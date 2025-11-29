@@ -8,14 +8,12 @@ from src.config.loader import load_config
 from src.config.models import Config
 from src.config.presets.base import ConfigBlueprint
 from src.config.presets.profiles import Profile
-from src.config.runtime_mode import RuntimeMode
 
 # Global config object (set during CLI bootstrap)
 _config: Config | None = None
 
 
 def init_config(
-    runtime_mode: RuntimeMode | None = None,
     profile: Profile | str | None = None,
     config_obj: Config | None = None,
     blueprint: ConfigBlueprint | None = None,
@@ -26,18 +24,20 @@ def init_config(
     if config_obj is not None:
         _config = config_obj
     else:
-        _config = load_config(
-            runtime_mode=runtime_mode, profile=profile, blueprint=blueprint
-        )
+        if blueprint is None:
+            raise ValueError("Either config_obj or blueprint must be provided")
+        _config = load_config(blueprint=blueprint, profile=profile)
     return _config
 
 
 def get_config() -> Config:
-    """Return the cached config, loading from disk if necessary."""
+    """Return the cached config (must be initialized first)."""
 
     global _config
     if _config is None:
-        _config = load_config()
+        raise RuntimeError(
+            "Config not initialized! Call init_config() first or provide blueprint."
+        )
     return _config
 
 

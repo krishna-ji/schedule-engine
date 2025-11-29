@@ -2,66 +2,90 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-import yaml  # type: ignore[import-untyped]
+from src.rl.training.presets import TRAINING_BASE_DEFAULTS, TRAINING_PROFILE_OVERRIDES
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-TRAIN_CONFIG_DIR = PROJECT_ROOT / "configs" / "training"
-BASE_CONFIG_PATH = TRAIN_CONFIG_DIR / "base.yaml"
 DEFAULT_PROFILE = "test"
 
 
-def _load_yaml(path: Path) -> dict[str, Any]:
-    """Read a YAML file and return its content as a dictionary."""
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge two dictionaries and return the merged result."""
+
+    result = deepcopy(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = deepcopy(value)
+    return result
+
+
+def _resolve_profile_overrides(
+    profile: str, stack: tuple[str, ...] | None = None
+) -> dict[str, Any]:
+    """Resolve profile overrides with optional inheritance."""
+
+    stack = stack or ()
+    if profile in stack:
+        cycle = " -> ".join((*stack, profile))
+        raise ValueError(f"Circular training profile inheritance detected: {cycle}")
+
+    try:
+        raw = deepcopy(TRAINING_PROFILE_OVERRIDES[profile])
+    except KeyError as exc:
+        raise ValueError(f"Unknown training profile: {profile}") from exc
+
+    parent = raw.pop("inherits", raw.pop("base_profile", None))
+    if parent:
+        parent_overrides = _resolve_profile_overrides(parent, (*stack, profile))
+        return _deep_merge(parent_overrides, raw)
+
+    return raw
+
+
+def _load_custom_override(path: Path) -> dict[str, Any]:
+    """Load custom override from supported file formats (currently JSON)."""
+
     if not path.exists():
-        raise FileNotFoundError(f"Training config not found: {path}")
+        raise FileNotFoundError(f"Override file not found: {path}")
+
+    if path.suffix.lower() != ".json":
+        raise ValueError("Custom training overrides must be JSON files")
 
     with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
+        data = json.load(handle)
+
+    if not isinstance(data, dict):
+        raise ValueError("Custom override file must contain a JSON object")
+
     return data
 
 
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    """Recursively merge two dictionaries."""
-    merged = dict(base)
-    for key, value in override.items():
-        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
-            merged[key] = _deep_merge(merged[key], value)
-        else:
-            merged[key] = value
-    return merged
-
-
 def list_training_profiles() -> Iterable[str]:
-    """Return the set of available training profiles (excluding base)."""
-    if not TRAIN_CONFIG_DIR.exists():
-        return []
+    """Return the set of available training profiles."""
 
-    return sorted(
-        path.stem
-        for path in TRAIN_CONFIG_DIR.glob("*.yaml")
-        if path.name not in {"base.yaml"}
-    )
+    return sorted(TRAINING_PROFILE_OVERRIDES.keys())
 
 
 def load_training_config(
     profile: str | None = None,
     custom_path: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Load RL training configuration by merging base + profile + optional custom file.
-    """
-    selected_profile = profile or DEFAULT_PROFILE
-    profile_path = TRAIN_CONFIG_DIR / f"{selected_profile}.yaml"
+    """Build RL training configuration from Python presets."""
 
-    config = _load_yaml(BASE_CONFIG_PATH)
-    config = _deep_merge(config, _load_yaml(profile_path))
+    selected_profile = profile or DEFAULT_PROFILE
+    config = deepcopy(TRAINING_BASE_DEFAULTS)
+    overrides = _resolve_profile_overrides(selected_profile)
+    config = _deep_merge(config, overrides)
 
     if custom_path:
-        config = _deep_merge(config, _load_yaml(Path(custom_path)))
+        custom_data = _load_custom_override(Path(custom_path))
+        config = _deep_merge(config, custom_data)
 
     config.setdefault("profile", selected_profile)
     return config

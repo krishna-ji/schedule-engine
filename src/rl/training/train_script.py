@@ -154,7 +154,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=DEFAULT_PROFILE,
         choices=profiles,
-        help="Training profile defined in configs/training/",
+        help="Training profile defined in src.rl.training.presets",
     )
 
     parser.add_argument(
@@ -163,7 +163,7 @@ def parse_args() -> argparse.Namespace:
         dest="config",
         type=str,
         default=None,
-        help="Optional custom training config to merge (YAML)",
+        help="Optional custom training override (JSON)",
     )
 
     parser.add_argument(
@@ -502,7 +502,7 @@ def main() -> None:
                 logger.info("  - %s", name)
         else:
             logger.warning(
-                "No training profiles found. Add YAML files to configs/training/."
+                "No training profiles registered. Update src.rl.training.presets to add more."
             )
         return
 
@@ -513,6 +513,9 @@ def main() -> None:
         )
     except FileNotFoundError as exc:
         logger.error("Training config not found: %s", exc)
+        sys.exit(2)
+    except ValueError as exc:
+        logger.error("Invalid training config override: %s", exc)
         sys.exit(2)
 
     apply_profile_defaults(args, profile_config)

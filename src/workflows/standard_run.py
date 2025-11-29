@@ -114,39 +114,11 @@ def run_standard_workflow(
 
     # Create output directory
     if output_dir is None:
-        # Fallback: create organized structure even without explicit runtime mode
+        # Fallback: create simple timestamped directory
         from pathlib import Path
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # Try to infer mode from config
-        try:
-            from src.config.runtime_mode import RuntimeMode
-
-            runtime_mode = RuntimeMode.from_config(config.model_dump())
-            mode_value = runtime_mode.value
-            mode_number, mode_name = mode_value.split("-", 1)
-
-            # Map to category
-            category_map = {
-                "1": "baseline",
-                "2": "nsga",
-                "3": "nsga",
-                "4": "nsga",
-                "5": "rl",
-                "6": "hybrid",
-                "7": "rl",
-                "8": "hybrid",
-                "9": "rl",
-                "10": "rl",
-            }
-            category = category_map.get(mode_number, "other")
-            output_dir_path = (
-                Path("output") / category / mode_name / f"evaluation_{timestamp}_auto"
-            )
-        except Exception:
-            # Ultimate fallback: put in "other" category
-            output_dir_path = Path("output") / "other" / f"evaluation_{timestamp}_auto"
-
+        output_dir_path = Path("output") / f"evaluation_{timestamp}_auto"
         output_dir = str(output_dir_path)
     else:
         # Ensure directory exists and make sure it's normalized

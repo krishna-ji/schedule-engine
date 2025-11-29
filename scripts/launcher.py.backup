@@ -23,10 +23,11 @@ sys.path.insert(0, str(project_root))
 console = Console()
 
 from src.config.presets.profiles import Profile
+from src.config.runtime_mode import RuntimeMode
 
 PROFILE_DESCRIPTIONS: dict[Profile, str] = {
     Profile.TEST: "Smoke test (~30 gens, 10 pop, 2-5 min)",
-    Profile.PROD: "Production (~2000 gens, 400 pop, multi-hour)",
+    Profile.PROD: "Production (~2000 gens, 1000 pop, multi-hour)",
 }
 
 PROFILE_CHOICES = tuple(profile.value for profile in Profile)
@@ -78,8 +79,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--mode",
         help=(
-            "Experiment selector (a=baseline, b=memetic, c=roundrobin, d=adaptive, e=rl). "
-            "Also accepts legacy names (nsga-full, baseline, adaptive, rl, etc.)"
+            "Runtime mode alias (e.g., nsga-full, mode-a, round-robin). "
+            "See docs/02-user-guides/runtime-modes.md"
         ),
     )
 
@@ -154,13 +155,13 @@ def main_baseline():
 
     sys.argv = [
         "main.py",
-        "--experiment",
-        "a",
+        "--mode",
+        RuntimeMode.BASELINE_PURE_NSGA.value,
         "--profile",
         profile.value,
     ]
     if args.name:
-        sys.argv.extend(["--name", args.name])
+        sys.argv.extend(["--experiment", args.name])
 
     console.print(
         f"[green]Mode A: Pure NSGA-II baseline ({_profile_banner(profile)})[/green]"
@@ -180,13 +181,13 @@ def main_memetic():
 
     sys.argv = [
         "main.py",
-        "--experiment",
-        "b",
+        "--mode",
+        RuntimeMode.NSGA_MEMETIC.value,
         "--profile",
         profile.value,
     ]
     if args.name:
-        sys.argv.extend(["--name", args.name])
+        sys.argv.extend(["--experiment", args.name])
 
     console.print(
         f"[green]Mode B: NSGA-II + memetic local search ({_profile_banner(profile)})[/green]"
@@ -206,13 +207,13 @@ def main_roundrobin():
 
     sys.argv = [
         "main.py",
-        "--experiment",
-        "c",
+        "--mode",
+        RuntimeMode.ROUNDROBIN.value,
         "--profile",
         profile.value,
     ]
     if args.name:
-        sys.argv.extend(["--name", args.name])
+        sys.argv.extend(["--experiment", args.name])
 
     console.print(
         f"[green]Mode C: Round-robin heuristics + repair ({_profile_banner(profile)})[/green]"
@@ -234,13 +235,13 @@ def main_adaptive():
 
     sys.argv = [
         "main.py",
-        "--experiment",
-        "d",
+        "--mode",
+        RuntimeMode.ADAPTIVE.value,
         "--profile",
         profile.value,
     ]
     if args.name:
-        sys.argv.extend(["--name", args.name])
+        sys.argv.extend(["--experiment", args.name])
 
     console.print(
         f"[green]Mode D: Adaptive heuristic selection ({_profile_banner(profile)})[/green]"
@@ -252,7 +253,7 @@ def main_adaptive():
 
 
 def main_rl():
-    """Run Mode E experiment (RL-guided inference run)."""
+    """Run Mode F experiment (RL-guided inference run)."""
     parser = create_parser()
     args = parser.parse_args()
 
@@ -262,28 +263,28 @@ def main_rl():
 
     sys.argv = [
         "main.py",
-        "--experiment",
-        "e",
+        "--mode",
+        RuntimeMode.RL_GUIDED.value,
         "--profile",
         profile.value,
     ]
     if args.name:
-        sys.argv.extend(["--name", args.name])
+        sys.argv.extend(["--experiment", args.name])
 
     console.print(
-        f"[green]Mode E: RL-guided inference ({_profile_banner(profile)})[/green]"
+        f"[green]Mode F: RL-guided inference ({_profile_banner(profile)})[/green]"
     )
     console.print(
         "[dim]  Deploy trained agents for heuristic control (repairs+memetic+RL).[/dim]"
     )
     console.print(
-        "[dim]  Update rl.agent.model_path in configs/experiment_e_rl_guided.py before running to point at your promoted model.[/dim]"
+        "[dim]  Update rl.agent.model_path in src/config/presets/modes.py before running to point at your promoted model.[/dim]"
     )
     sys.exit(main() or 0)
 
 
 def main_nsga():
-    """Unified NSGA-II launcher with experiment selection."""
+    """Unified NSGA-II launcher honoring runtime modes and profiles."""
 
     parser = create_parser()
     args = parser.parse_args()
@@ -294,42 +295,14 @@ def main_nsga():
 
     sys.argv = ["main.py"]
 
-    # Default to experiment D (adaptive) if no mode specified
-    experiment = args.mode or "d"
-
-    # Map legacy mode names to experiments
-    mode_map = {
-        "nsga-full": "d",
-        "mode-a": "a",
-        "baseline": "a",
-        "mode-b": "b",
-        "memetic": "b",
-        "mode-c": "c",
-        "roundrobin": "c",
-        "mode-d": "d",
-        "adaptive": "d",
-        "mode-e": "e",
-        "rl": "e",
-        "rl-guided": "e",
-    }
-
-    experiment = mode_map.get(experiment.lower(), experiment)
-
-    sys.argv.extend(["--experiment", experiment])
+    runtime_mode = args.mode or RuntimeMode.MODE_4_NSGA_FULL.value
+    sys.argv.extend(["--mode", runtime_mode])
     sys.argv.extend(["--profile", profile.value])
 
     if args.name:
-        sys.argv.extend(["--name", args.name])
+        sys.argv.extend(["--experiment", args.name])
 
-    experiment_names = {
-        "a": "Experiment A: Pure NSGA-II",
-        "b": "Experiment B: Memetic",
-        "c": "Experiment C: Round-robin",
-        "d": "Experiment D: Adaptive",
-        "e": "Experiment E: RL-guided",
-    }
-
-    descriptor = experiment_names.get(experiment, f"experiment={experiment}")
+    descriptor = f"mode={runtime_mode}"
     console.print(
         f"[green]NSGA-II launcher ({_profile_banner(profile)}) — {descriptor}[/green]"
     )
@@ -450,102 +423,82 @@ def main_interactive():
     from rich.prompt import Prompt
 
     commands = [
-        # Direct NSGA launcher (experiment-aware entry point)
+        # Direct NSGA launcher (profile-aware freeform entry point)
         (
             "nsga-launcher",
             [
                 (
                     "n1",
-                    "nsga --test",
-                    "NSGA launcher (default: adaptive) (~3 min, 30 gens)",
+                    "nsga --test --mode nsga-full",
+                    "NSGA launcher (default mode) (~3 min, 30 gens)",
                 ),
                 (
                     "n2",
-                    "nsga --prod",
-                    "NSGA launcher (default: adaptive) (~4-6 hrs, 2000 gens)",
+                    "nsga --prod --mode nsga-full",
+                    "NSGA launcher (default mode) (~4-6 hrs, 2000 gens)",
                 ),
             ],
         ),
-        # Experiment A: Baseline
+        # Mode A: Baseline
         (
-            "experiment-a",
+            "mode-a",
             [
-                (
-                    "a1",
-                    "baseline --test",
-                    "Experiment A: Pure NSGA-II (~2 min, 30 gens)",
-                ),
-                (
-                    "a2",
-                    "baseline --prod",
-                    "Experiment A: Pure NSGA-II (~3-5 hrs, 2000 gens)",
-                ),
+                ("a1", "baseline --test", "Mode A: Pure NSGA-II (~2 min, 30 gens)"),
+                ("a2", "baseline --prod", "Mode A: Pure NSGA-II (~3-5 hrs, 2000 gens)"),
             ],
         ),
-        # Experiment B: Memetic
+        # Mode B: Memetic
         (
-            "experiment-b",
+            "mode-b",
             [
-                ("b1", "memetic --test", "Experiment B: + Memetic (~2 min, 30 gens)"),
-                (
-                    "b2",
-                    "memetic --prod",
-                    "Experiment B: + Memetic (~3-5 hrs, 2000 gens)",
-                ),
+                ("b1", "memetic --test", "Mode B: + Memetic (~2 min, 30 gens)"),
+                ("b2", "memetic --prod", "Mode B: + Memetic (~3-5 hrs, 2000 gens)"),
             ],
         ),
-        # Experiment C: Round-Robin
+        # Mode C: Round-Robin
         (
-            "experiment-c",
+            "mode-c",
             [
-                (
-                    "c1",
-                    "roundrobin --test",
-                    "Experiment C: + Round-robin (~3 min, 30 gens)",
-                ),
+                ("c1", "roundrobin --test", "Mode C: + Round-robin (~3 min, 30 gens)"),
                 (
                     "c2",
                     "roundrobin --prod",
-                    "Experiment C: + Round-robin (~4-6 hrs, 2000 gens)",
+                    "Mode C: + Round-robin (~4-6 hrs, 2000 gens)",
                 ),
             ],
         ),
-        # Experiment D: Adaptive
+        # Mode D: Adaptive
         (
-            "experiment-d",
+            "mode-d",
             [
-                ("d1", "adaptive --test", "Experiment D: + Adaptive (~3 min, 30 gens)"),
-                (
-                    "d2",
-                    "adaptive --prod",
-                    "Experiment D: + Adaptive (~4-6 hrs, 2000 gens)",
-                ),
+                ("d1", "adaptive --test", "Mode D: + Adaptive (~3 min, 30 gens)"),
+                ("d2", "adaptive --prod", "Mode D: + Adaptive (~4-6 hrs, 2000 gens)"),
             ],
         ),
-        # Experiment E: RL Training (with curriculum options)
+        # Mode E: RL Training (with curriculum options)
         (
-            "rl-training",
+            "mode-e-training",
             [
-                ("e1", "train-rl --test", "RL training (10K steps, ~5-10 min)"),
-                ("e2", "train-rl --prod", "RL training (100K steps, ~1-2 hrs)"),
+                ("e1", "train-rl --test", "Mode E: RL training (10K steps, ~5-10 min)"),
+                ("e2", "train-rl --prod", "Mode E: RL training (100K steps, ~1-2 hrs)"),
                 (
                     "e3",
                     "train-rl --test --curriculum",
-                    "RL curriculum smoke (multi-stage, ~15 min)",
+                    "Mode E: Curriculum smoke (multi-stage, ~15 min)",
                 ),
                 (
                     "e4",
                     "train-rl --prod --curriculum",
-                    "RL curriculum full run (~2-3 hrs)",
+                    "Mode E: Curriculum full run (~2-3 hrs)",
                 ),
             ],
         ),
-        # Experiment E: RL-guided inference
+        # Mode F: RL-guided inference
         (
-            "experiment-e",
+            "mode-f",
             [
-                ("f1", "rl --test", "Experiment E: RL-guided GA (~3 min, 30 gens)"),
-                ("f2", "rl --prod", "Experiment E: RL-guided GA (~4-6 hrs, 2000 gens)"),
+                ("f1", "rl --test", "Mode F: RL-guided GA (~3 min, 30 gens)"),
+                ("f2", "rl --prod", "Mode F: RL-guided GA (~4-6 hrs, 2000 gens)"),
             ],
         ),
         # Utilities
@@ -563,7 +516,7 @@ def main_interactive():
     while True:
         console.clear()
         console.print(
-            "\n[bold cyan]Schedule Engine - Progressive Experiments (A→E)[/bold cyan]\n"
+            "\n[bold cyan]Schedule Engine - NSGA Launcher + Progressive Experiments (A→F)[/bold cyan]\n"
         )
 
         for category, cmds in commands:
@@ -571,29 +524,27 @@ def main_interactive():
             if category == "nsga-launcher":
                 console.print("[bold magenta]NSGA LAUNCHER[/bold magenta]")
                 console.print(
-                    "[dim]  Direct NSGA entry — pass any experiment via --mode[/dim]"
+                    "[dim]  Direct NSGA entry — pass any runtime via --mode or --config[/dim]"
                 )
-            elif category == "experiment-a":
-                console.print("[bold magenta]EXPERIMENT A: BASELINE[/bold magenta]")
+            elif category == "mode-a":
+                console.print("[bold magenta]MODE A: BASELINE[/bold magenta]")
                 console.print("[dim]  Pure NSGA-II (no repairs, no heuristics)[/dim]")
-            elif category == "experiment-b":
-                console.print("\n[bold magenta]EXPERIMENT B: + MEMETIC[/bold magenta]")
+            elif category == "mode-b":
+                console.print("\n[bold magenta]MODE B: + MEMETIC[/bold magenta]")
                 console.print("[dim]  NSGA-II + memetic local search[/dim]")
-            elif category == "experiment-c":
-                console.print(
-                    "\n[bold magenta]EXPERIMENT C: + ROUND-ROBIN[/bold magenta]"
-                )
+            elif category == "mode-c":
+                console.print("\n[bold magenta]MODE C: + ROUND-ROBIN[/bold magenta]")
                 console.print("[dim]  Fixed rotation (19 heuristics + 3 repairs)[/dim]")
-            elif category == "experiment-d":
-                console.print("\n[bold magenta]EXPERIMENT D: + ADAPTIVE[/bold magenta]")
+            elif category == "mode-d":
+                console.print("\n[bold magenta]MODE D: + ADAPTIVE[/bold magenta]")
                 console.print("[dim]  Intelligent heuristic selection[/dim]")
-            elif category == "rl-training":
-                console.print("\n[bold magenta]RL TRAINING[/bold magenta]")
+            elif category == "mode-e-training":
+                console.print("\n[bold magenta]MODE E: RL TRAINING[/bold magenta]")
                 console.print(
                     "[dim]  Train PPO/DQN agents; add --curriculum for staged runs[/dim]"
                 )
-            elif category == "experiment-e":
-                console.print("\n[bold magenta]EXPERIMENT E: RL-GUIDED[/bold magenta]")
+            elif category == "mode-f":
+                console.print("\n[bold magenta]MODE F: RL-GUIDED RUN[/bold magenta]")
                 console.print(
                     "[dim]  Deploy trained agents for heuristic control[/dim]"
                 )

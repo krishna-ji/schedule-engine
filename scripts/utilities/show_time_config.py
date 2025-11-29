@@ -21,9 +21,7 @@ def _time_to_minutes(time_str: str) -> int:
     return hour * 60 + minute
 
 
-def _within_day_quantum(
-    day: str, qts: QuantumTimeSystem, time_str: str
-) -> int | None:
+def _within_day_quantum(day: str, qts: QuantumTimeSystem, time_str: str) -> int | None:
     start_minutes = qts.day_start_time.get(day)
     quanta_count = qts.day_quanta_count.get(day, 0)
     if start_minutes is None or quanta_count == 0:
