@@ -4,8 +4,10 @@ Core Type Definitions
 This module contains type-safe data structures used throughout the system.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.entities.course import Course
 from src.entities.group import Group
@@ -13,8 +15,10 @@ from src.entities.instructor import Instructor
 from src.entities.room import Room
 from src.ga.sessiongene import SessionGene
 
+__all__ = ["Individual", "SchedulingContext"]
+
 # Alias used across GA and RL modules; DEAP wraps this list at runtime.
-Individual = List[SessionGene]
+Individual = list[SessionGene]
 
 
 @dataclass
@@ -34,14 +38,14 @@ class SchedulingContext:
         available_quanta: List of available time quantum indices
     """
 
-    courses: Dict[tuple, Course]  # Keys are (course_code, course_type) tuples
-    groups: Dict[str, Group]
-    instructors: Dict[str, Instructor]
-    rooms: Dict[str, Room]
-    available_quanta: List[int]
-    config: Optional[Any] = None
+    courses: dict[tuple, Course]  # Keys are (course_code, course_type) tuples
+    groups: dict[str, Group]
+    instructors: dict[str, Instructor]
+    rooms: dict[str, Room]
+    available_quanta: list[int]
+    config: Any | None = None
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """
         Validate the scheduling context for consistency.
 

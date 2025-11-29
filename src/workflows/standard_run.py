@@ -8,38 +8,40 @@ Extracted from main.py for better testability and reusability.
 import os
 import random
 from datetime import datetime
-from typing import Dict, Optional
-from src.utils.system_info import get_cpu_count
+from typing import Any
+
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    BarColumn,
     TextColumn,
     TimeElapsedColumn,
 )
 
+from src.config.models import Config
+from src.core.ga_scheduler import GAConfig, GAScheduler
+from src.core.types import SchedulingContext
+from src.decoder.individual_decoder import decode_individual
 from src.encoder.input_encoder import (
+    link_courses_and_groups,
+    link_courses_and_instructors,
     load_courses,
     load_groups,
     load_instructors,
     load_rooms,
-    link_courses_and_groups,
-    link_courses_and_instructors,
 )
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.decoder.individual_decoder import decode_individual
-from src.core.types import SchedulingContext
-from src.core.ga_scheduler import GAScheduler, GAConfig
+from src.utils.console_service import get_console
+from src.utils.constraint_logger import ConstraintLogger
+from src.utils.logger import GALogger
+from src.utils.performance_profiler import cleanup_profiler, init_profiler
+from src.utils.system_info import get_cpu_count
 from src.validation import validate_input
 from src.validation.feasibility_checker import (
     check_feasibility,
     generate_feasibility_report_file,
 )
 from src.workflows.reporting import generate_reports
-from src.utils.logger import GALogger
-from src.utils.constraint_logger import ConstraintLogger
-from src.utils.console_service import get_console
-from src.utils.performance_profiler import init_profiler, cleanup_profiler
 
 console = get_console()
 
@@ -50,11 +52,11 @@ def run_standard_workflow(
     crossover_prob: float = 0.7,
     mutation_prob: float = 0.2,
     data_dir: str = "data",
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
     seed: int = 69,
     validate: bool = True,
-    config: Optional[object] = None,
-) -> Dict:
+    config: Config | None = None,
+) -> dict:
     """
     Execute standard GA scheduling workflow.
 
@@ -91,9 +93,9 @@ def run_standard_workflow(
     """
     # Load config if not provided
     if config is None:
-        from src.config import config as global_config
+        from src.config import get_config
 
-        config = global_config
+        config = get_config()
         if config is None:
             from src.config.loader import load_config
 
@@ -120,7 +122,7 @@ def run_standard_workflow(
         try:
             from src.config.runtime_mode import RuntimeMode
 
-            runtime_mode = RuntimeMode.from_config(config)
+            runtime_mode = RuntimeMode.from_config(config.model_dump())
             mode_value = runtime_mode.value
             mode_number, mode_name = mode_value.split("-", 1)
 
@@ -138,14 +140,14 @@ def run_standard_workflow(
                 "10": "rl",
             }
             category = category_map.get(mode_number, "other")
-            output_dir = (
+            output_dir_path = (
                 Path("output") / category / mode_name / f"evaluation_{timestamp}_auto"
             )
         except Exception:
             # Ultimate fallback: put in "other" category
-            output_dir = Path("output") / "other" / f"evaluation_{timestamp}_auto"
+            output_dir_path = Path("output") / "other" / f"evaluation_{timestamp}_auto"
 
-        output_dir = str(output_dir)
+        output_dir = str(output_dir_path)
     else:
         # Ensure directory exists and make sure it's normalized
         output_dir = os.path.normpath(output_dir)
@@ -166,7 +168,15 @@ def run_standard_workflow(
                 config.output.output_dir = output_dir
             else:
                 # Some configs only have base_dir - create a new attribute for runtime
-                setattr(config.output, "output_dir", output_dir)
+                config.output.output_dir = output_dir
+
+        if hasattr(config, "io"):
+            # GA scheduler and other systems read io.output_dir; ensure it points
+            # to this specific run instead of the global default "output".
+            if hasattr(config.io, "output_dir"):
+                config.io.output_dir = output_dir
+            else:
+                config.io.output_dir = output_dir
     except Exception:
         # Don't fail the run if mutation fails; fall back to passing output_dir
         console.print(
@@ -244,7 +254,7 @@ def run_standard_workflow(
     if config.feasibility.generate_report and (
         is_feasible or config.feasibility.save_report_on_success
     ):
-        feasibility_report_path = os.path.join(output_dir, "feasibility.log")
+        feasibility_report_path = os.path.join(output_dir, "log_feasibility.log")
         generate_feasibility_report_file(feasibility_report, feasibility_report_path)
         console.print(f"  [dim]saved:[/dim] {feasibility_report_path}")
         console.print()
@@ -262,6 +272,7 @@ def run_standard_workflow(
 
     if config.parallel.use_multiprocessing:
         import multiprocessing
+
         from src.utils.parallel_worker import init_worker
 
         # Determine worker count: None = CPU count (Windows handle limit safe)
@@ -277,7 +288,7 @@ def run_standard_workflow(
             initializer=init_worker,
             initargs=(data_dir, seed),
         )
-        console.print(f"[cyan][!info] parallel mode:[/cyan] {pool._processes} workers")
+        console.print(f"[cyan][!info] parallel mode:[/cyan] {pool._processes} workers")  # type: ignore[attr-defined]
         console.print()
     else:
         console.print("[yellow][!info] single-threaded mode[/yellow]")
@@ -515,14 +526,20 @@ def run_standard_workflow(
         transient=True,
     ) as progress:
         task = progress.add_task("creating visualizations...", total=None)
+        # Get population and heuristic_tracker with proper None handling
+        population_list: list[Any] = (
+            scheduler.population if scheduler.population is not None else []
+        )
+        heuristic_tracker_obj = getattr(scheduler, "heuristic_tracker", None)
+
         generate_reports(
             decoded_schedule=decoded_schedule,
             metrics=scheduler.metrics,
-            population=scheduler.population,
+            population=population_list,
             qts=qts,
             output_dir=output_dir,
             course_map=context.courses,
-            heuristic_tracker=getattr(scheduler, "heuristic_tracker", None),
+            heuristic_tracker=heuristic_tracker_obj,
         )
         progress.update(task, completed=1)
 
@@ -563,7 +580,7 @@ def run_standard_workflow(
 
 def load_input_data(
     data_dir: str,
-    config: Optional[object] = None,
+    config: object | None = None,
 ) -> tuple[QuantumTimeSystem, SchedulingContext]:
     """
     Load and link all input entities.
@@ -580,8 +597,8 @@ def load_input_data(
     Returns:
         Tuple of (QuantumTimeSystem, SchedulingContext)
     """
-    from concurrent.futures import ThreadPoolExecutor
     import time
+    from concurrent.futures import ThreadPoolExecutor
 
     start_time = time.time()
 
@@ -659,7 +676,7 @@ def load_input_data(
         groups=groups,
         instructors=instructors,
         rooms=rooms,
-        available_quanta=qts.get_all_operating_quanta(),
+        available_quanta=list(qts.get_all_operating_quanta()),
         config=config,
     )
 

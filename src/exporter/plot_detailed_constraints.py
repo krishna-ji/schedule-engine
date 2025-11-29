@@ -1,15 +1,16 @@
 import matplotlib.pyplot as plt
-import os
-from typing import Dict, List
+
+from src.utils.output_paths import get_constraint_plot_dir
+
 from .thesis_style import (
-    apply_thesis_style,
-    get_color,
-    PALETTE,
     LINE_STYLES,
     MARKERS,
-    save_figure,
+    PALETTE,
+    apply_thesis_style,
     create_thesis_figure,
     format_axis,
+    get_color,
+    save_figure,
 )
 
 # Apply thesis styling
@@ -17,20 +18,19 @@ apply_thesis_style()
 
 
 def plot_individual_hard_constraints(
-    hard_trends: Dict[str, List[int]], output_dir: str
-):
+    hard_trends: dict[str, list[int]], output_dir: str
+) -> None:
     """
-    Plots each hard constraint trend separately and saves them in plots/constraints/hard/ subdirectory.
+    Plot each hard constraint trend and store it under plots/constraints/ using an ``hc_`` prefix.
 
     Args:
         hard_trends: Dictionary mapping constraint names to their trends over generations
         output_dir: Base output directory
 
     Note:
-        CSV data available in data/metrics.csv (hard_<constraint> columns)
+        CSV data available in csv/constraint_metrics.csv (hard_<constraint> columns)
     """
-    hard_dir = os.path.join(output_dir, "plots", "constraints", "hard")
-    os.makedirs(hard_dir, exist_ok=True)
+    constraint_dir = get_constraint_plot_dir(output_dir)
 
     # Individual plots for each hard constraint
     for constraint_name, trend in hard_trends.items():
@@ -89,8 +89,8 @@ def plot_individual_hard_constraints(
         plt.tight_layout()
 
         # Save individual plot
-        filename = f"{constraint_name}_trend.pdf"
-        save_figure(fig, os.path.join(hard_dir, filename))
+        filename = f"hc_{constraint_name}_trend.pdf"
+        save_figure(fig, constraint_dir / filename)
 
     # Combined plot with all hard constraints
     fig, ax = create_thesis_figure(1, 1, figsize=(12, 7))
@@ -121,7 +121,7 @@ def plot_individual_hard_constraints(
 
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=9, framealpha=0.95)
     plt.tight_layout()
-    save_figure(fig, os.path.join(hard_dir, "all_hard_constraints.pdf"))
+    save_figure(fig, constraint_dir / "hc_all_constraints.pdf")
 
     # Create a summary statistics table plot
     fig, ax = create_thesis_figure(1, 1, figsize=(11, 6.5))
@@ -180,24 +180,23 @@ def plot_individual_hard_constraints(
     )
     ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()
-    save_figure(fig, os.path.join(hard_dir, "hard_constraints_summary.pdf"))
+    save_figure(fig, constraint_dir / "hc_summary.pdf")
 
 
 def plot_individual_soft_constraints(
-    soft_trends: Dict[str, List[int]], output_dir: str
-):
+    soft_trends: dict[str, list[int]], output_dir: str
+) -> None:
     """
-    Plots each soft constraint trend separately and saves them in plots/constraints/soft/ subdirectory.
+    Plot each soft constraint trend and store it under plots/constraints/ using an ``sc_`` prefix.
 
     Args:
         soft_trends: Dictionary mapping constraint names to their trends over generations
         output_dir: Base output directory
 
     Note:
-        CSV data available in data/metrics.csv (soft_<constraint> columns)
+        CSV data available in csv/constraint_metrics.csv (soft_<constraint> columns)
     """
-    soft_dir = os.path.join(output_dir, "plots", "constraints", "soft")
-    os.makedirs(soft_dir, exist_ok=True)
+    constraint_dir = get_constraint_plot_dir(output_dir)
 
     # Individual plots for each soft constraint
     for constraint_name, trend in soft_trends.items():
@@ -256,8 +255,8 @@ def plot_individual_soft_constraints(
         plt.tight_layout()
 
         # Save individual plot
-        filename = f"{constraint_name}_trend.pdf"
-        save_figure(fig, os.path.join(soft_dir, filename))
+        filename = f"sc_{constraint_name}_trend.pdf"
+        save_figure(fig, constraint_dir / filename)
 
     # Combined plot with all soft constraints
     fig, ax = create_thesis_figure(1, 1, figsize=(12, 7))
@@ -288,7 +287,7 @@ def plot_individual_soft_constraints(
 
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=9, framealpha=0.95)
     plt.tight_layout()
-    save_figure(fig, os.path.join(soft_dir, "all_soft_constraints.pdf"))
+    save_figure(fig, constraint_dir / "sc_all_constraints.pdf")
 
     # Create a summary statistics table plot
     fig, ax = create_thesis_figure(1, 1, figsize=(11, 6.5))
@@ -347,19 +346,19 @@ def plot_individual_soft_constraints(
     )
     ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()
-    save_figure(fig, os.path.join(soft_dir, "soft_constraints_summary.pdf"))
+    save_figure(fig, constraint_dir / "sc_summary.pdf")
 
 
 def plot_constraint_summary(
-    hard_trends: Dict[str, List[int]],
-    soft_trends: Dict[str, List[int]],
+    hard_trends: dict[str, list[int]],
+    soft_trends: dict[str, list[int]],
     output_dir: str,
-):
+) -> None:
     """
     Creates a summary dashboard showing total trends and final constraint values.
 
     Note:
-        CSV data available in data/metrics.csv (hard_total, soft_total columns)
+        CSV data available in csv/constraint_metrics.csv (hard_total, soft_total columns)
     """
     # Calculate totals
     total_hard = [sum(values) for values in zip(*hard_trends.values())]
@@ -420,7 +419,7 @@ def plot_constraint_summary(
     )
     ax3.set_xticks(range(len(final_hard)))
     ax3.set_xticklabels(
-        [name.replace("_", "\n") for name in final_hard.keys()], rotation=45, ha="right"
+        [name.replace("_", "\n") for name in final_hard], rotation=45, ha="right"
     )
 
     # Final soft constraint values (bar chart)
@@ -442,8 +441,9 @@ def plot_constraint_summary(
     )
     ax4.set_xticks(range(len(final_soft)))
     ax4.set_xticklabels(
-        [name.replace("_", "\n") for name in final_soft.keys()], rotation=45, ha="right"
+        [name.replace("_", "\n") for name in final_soft], rotation=45, ha="right"
     )
 
     plt.tight_layout()
-    save_figure(fig, os.path.join(output_dir, "constraint_summary.pdf"))
+    constraint_dir = get_constraint_plot_dir(output_dir)
+    save_figure(fig, constraint_dir / "constraint_dashboard.pdf")

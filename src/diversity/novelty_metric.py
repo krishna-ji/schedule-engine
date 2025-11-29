@@ -24,14 +24,13 @@ References:
 - Mouret & Clune (2015): "Illuminating the Space of Possible Solutions"
 """
 
-from typing import List, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
 
 def compute_novelty(
     features: NDArray[np.float64],
-    archive_features: List[NDArray[np.float64]],
+    archive_features: list[NDArray[np.float64]],
     k: int = 15,
     metric: str = "euclidean",
 ) -> float:
@@ -78,10 +77,10 @@ def compute_novelty(
 
 def k_nearest_neighbors(
     features: NDArray[np.float64],
-    archive_features: List[NDArray[np.float64]],
+    archive_features: list[NDArray[np.float64]],
     k: int = 15,
     metric: str = "euclidean",
-) -> Tuple[List[int], List[float]]:
+) -> tuple[list[int], list[float]]:
     """
     Find k-nearest neighbors in behavior space.
 
@@ -118,7 +117,7 @@ def k_nearest_neighbors(
 
 def compute_sparseness(
     features: NDArray[np.float64],
-    population_features: List[NDArray[np.float64]],
+    population_features: list[NDArray[np.float64]],
     k: int = 15,
     metric: str = "euclidean",
 ) -> float:
@@ -142,8 +141,8 @@ def compute_sparseness(
 
 def compute_local_competition(
     features: NDArray[np.float64],
-    population_features: List[NDArray[np.float64]],
-    population_fitness: List[float],
+    population_features: list[NDArray[np.float64]],
+    population_fitness: list[float],
     k: int = 15,
     metric: str = "euclidean",
 ) -> float:
@@ -218,7 +217,7 @@ def _compute_distance(
 
 
 def compute_coverage(
-    archive_features: List[NDArray[np.float64]],
+    archive_features: list[NDArray[np.float64]],
     n_bins: int = 10,
 ) -> float:
     """
@@ -270,7 +269,7 @@ def compute_coverage(
 
 
 def compute_diversity_metrics(
-    archive_features: List[NDArray[np.float64]],
+    archive_features: list[NDArray[np.float64]],
 ) -> dict:
     """
     Compute comprehensive diversity metrics for archive.

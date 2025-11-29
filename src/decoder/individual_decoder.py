@@ -1,30 +1,29 @@
-"""
-Module: individual_decoder
+"""Module: individual_decoder.
 
 This module provides functionality to decode a genetic algorithm (GA) individual—
 represented as a list of `SessionGene` objects—into a list of rich, semantically
 meaningful `CourseSession` objects.
-
-The decoded structure is used for constraint evaluation, visualization,
-and schedule analysis in the University Course Timetabling Problem (UCTP).
 """
 
-from typing import List, Dict
-from src.ga.sessiongene import SessionGene
-from src.entities.decoded_session import CourseSession
+from __future__ import annotations
+
 from src.entities.course import Course
-from src.entities.instructor import Instructor
+from src.entities.decoded_session import CourseSession
 from src.entities.group import Group
+from src.entities.instructor import Instructor
 from src.entities.room import Room
+from src.ga.sessiongene import SessionGene
+
+__all__ = ["decode_individual"]
 
 
 def decode_individual(
-    individual: List[SessionGene],
-    courses: Dict[tuple, Course],  # Keys are (course_code, course_type) tuples
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-) -> List[CourseSession]:
+    individual: list[SessionGene],
+    courses: dict[tuple[str, str], Course],  # Keys are (course_code, course_type)
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+) -> list[CourseSession]:
     """Decodes a GA individual (chromosome) into a list of CourseSession objects.
 
     This function translates each `SessionGene` into a `CourseSession`, enriching

@@ -18,20 +18,20 @@ Expected Impact: 20-35% better initial population → faster convergence
 Configuration: Greedy percentage controlled by config.enhancements.greedy_initialization_percent
 """
 
-from typing import List, Dict, Tuple
-import random
 import os
-from src.ga.sessiongene import SessionGene
-from src.ga.individual import create_individual
-from src.ga.population import generate_course_group_aware_population
+import random
+from concurrent.futures import ProcessPoolExecutor
+
+from src.core.types import SchedulingContext
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.ga.group_hierarchy import analyze_group_hierarchy
-from src.core.types import SchedulingContext
-from concurrent.futures import ProcessPoolExecutor
+from src.ga.individual import create_individual
+from src.ga.population import generate_course_group_aware_population
+from src.ga.sessiongene import SessionGene
 from src.utils.system_info import get_cpu_count
 
 
-def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
+def generate_hybrid_population(n: int, context: SchedulingContext) -> list:
     """
     Generate population with hybrid initialization strategy.
 
@@ -88,9 +88,9 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
     # Generate greedy individuals using registered construction heuristics
     # Cycle through: largest_degree_first, most_constrained_first, earliest_deadline_first
     from src.heuristics.construction import (
+        earliest_deadline_first,
         largest_degree_first,
         most_constrained_first,
-        earliest_deadline_first,
     )
 
     construction_heuristics = [
@@ -106,7 +106,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
             genes = heuristic(context)
             if genes:
                 population.append(create_individual(genes))
-        except Exception as e:
+        except Exception:
             # Fallback to smart if construction heuristic fails
             fallback = generate_course_group_aware_population(1, context)
             if fallback:
@@ -139,8 +139,8 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> List:
 
 
 def _greedy_construction(
-    context: SchedulingContext, pair_tuples: List[Tuple]
-) -> List[SessionGene]:
+    context: SchedulingContext, pair_tuples: list[tuple]
+) -> list[SessionGene]:
     """
     Greedy constructive heuristic for creating feasible schedule.
 
@@ -221,7 +221,7 @@ def _greedy_construction(
 
 
 def _calculate_constraint_difficulty(
-    pair_tuple: Tuple, context: SchedulingContext
+    pair_tuple: tuple, context: SchedulingContext
 ) -> float:
     """
     Estimate scheduling difficulty for a course-group pair.
@@ -264,13 +264,13 @@ def _calculate_constraint_difficulty(
 
 
 def _find_feasible_assignment(
-    course_key: Tuple[str, str],
-    group_ids: List[str],
+    course_key: tuple[str, str],
+    group_ids: list[str],
     num_quanta: int,
     context: SchedulingContext,
-    group_schedule: Dict,
-    room_usage: Dict,
-    instructor_usage: Dict,
+    group_schedule: dict,
+    room_usage: dict,
+    instructor_usage: dict,
 ) -> SessionGene:
     """
     Find first feasible assignment for a course-group pair.
@@ -348,7 +348,7 @@ def _find_feasible_assignment(
 
 
 def _find_available_room(
-    quanta: List[int], rooms: Dict, room_usage: Dict, course_type: str
+    quanta: list[int], rooms: dict, room_usage: dict, course_type: str
 ) -> str:
     """Find first room available during quanta and matching course type."""
     for room_id, room in rooms.items():
@@ -368,7 +368,7 @@ def _find_available_room(
 
 
 def _find_available_instructor(
-    quanta: List[int], course, instructors: Dict, instructor_usage: Dict
+    quanta: list[int], course, instructors: dict, instructor_usage: dict
 ) -> str:
     """Find first qualified instructor available during quanta."""
     qualified_ids = getattr(course, "qualified_instructor_ids", [])
@@ -394,8 +394,8 @@ def _find_available_instructor(
 
 
 def _random_construction(
-    context: SchedulingContext, pair_tuples: List[Tuple]
-) -> List[SessionGene]:
+    context: SchedulingContext, pair_tuples: list[tuple]
+) -> list[SessionGene]:
     """
     Generate completely random individual for diversity.
 

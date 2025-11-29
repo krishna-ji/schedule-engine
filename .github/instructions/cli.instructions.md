@@ -12,8 +12,18 @@ The unified CLI launcher system provides a clean, consistent interface for runni
 **Purpose**: Primary experimental workflows (GA, RL training)  
 **Naming**: Numbers for easy memorization  
 **Examples**:
-- Command 0: `nsga` - NSGA-II genetic algorithm
-- Command 5: `train-rl` - RL agent training
+- `nsga` - NSGA-II genetic algorithm (unified launcher)
+- `train-rl` - RL agent training
+
+### Progressive Mode Experiments (A→E)
+**Purpose**: Systematic ablation study with increasing complexity  
+**Convention**: Alphabetic progression (A=baseline → E=full RL)  
+**Modes**:
+- Mode A: `baseline` - Pure NSGA-II (no repairs, no heuristics)
+- Mode B: `memetic` - + Memetic local search
+- Mode C: `roundrobin` - + Round-robin heuristics
+- Mode D: `adaptive` - + Adaptive heuristic selection
+- Mode E: `rl` - + RL-guided control (full deployment)
 
 ### Helper Commands (a-z)
 **Purpose**: Utilities and diagnostics  
@@ -77,21 +87,23 @@ def main_train_rl():
 **Convention**:
 ```toml
 [project.scripts]
-# Main commands (0-9)
+# Main launcher (unified NSGA-II)
 nsga = "scripts.launcher:main_nsga"
 train-rl = "scripts.launcher:main_train_rl"
 
-# Progressive experiment shortcuts (Mode A-E)
-baseline = "scripts.launcher:main_baseline"
-memetic = "scripts.launcher:main_memetic"
-roundrobin = "scripts.launcher:main_roundrobin"
-adaptive = "scripts.launcher:main_adaptive"
-rl = "scripts.launcher:main_rl"
+# Progressive Mode Experiments (A→E)
+baseline = "scripts.launcher:main_baseline"      # Mode A: Pure NSGA-II
+memetic = "scripts.launcher:main_memetic"        # Mode B: + Memetic
+roundrobin = "scripts.launcher:main_roundrobin"  # Mode C: + Round-robin
+adaptive = "scripts.launcher:main_adaptive"      # Mode D: + Adaptive
+rl = "scripts.launcher:main_rl"                  # Mode E: + RL-guided
 
 # Helper commands (a-z)
 diagnose = "scripts.launcher:main_diagnose"
 clean = "scripts.launcher:main_clean"
-list-experiments = "scripts.launcher:main_list_experiments"
+list-experiments = "scripts.launcher:main_list"  # Updated from main_list_experiments
+stats = "scripts.launcher:main_stats"
+archive = "scripts.launcher:main_archive"
 ```
 
 **Rules**:
@@ -126,11 +138,16 @@ list-experiments = "scripts.launcher:main_list_experiments"
 # 1. Diagnose setup
 uv run diagnose
 
-# 2. Smoke test locally
-uv run nsga --test
+# 2. Run progressive modes
+uv run baseline --test     # Mode A: Pure NSGA-II
+uv run memetic --test      # Mode B: + Memetic local search
+uv run roundrobin --test   # Mode C: + Round-robin heuristics
+uv run adaptive --test     # Mode D: + Adaptive selection
+uv run rl --test           # Mode E: + RL-guided (requires trained model)
 
-# 3. Production on VM
-uv run nsga --prod --name "thesis-baseline-r01"
+# 3. Production runs
+uv run baseline --prod --name "thesis-baseline-r01"
+uv run memetic --prod --name "thesis-memetic-r01"
 ```
 
 ### Custom Arguments

@@ -52,6 +52,26 @@ repair:
     apply_after_crossover: true
     detection_strategy: hybrid
 
+  heuristics:
+    repair_instructor_availability:
+      enabled: true
+      priority: 1
+    repair_group_overlaps:
+      enabled: true
+      priority: 2
+    repair_room_conflicts:
+      enabled: true
+      priority: 3
+    repair_instructor_conflicts:
+      enabled: true
+      priority: 4
+    repair_instructor_qualifications:
+      enabled: true
+      priority: 5
+    repair_room_type_mismatches:
+      enabled: true
+      priority: 6
+
 # Enable LNS-IGLS local search
 lns:
   enabled: true

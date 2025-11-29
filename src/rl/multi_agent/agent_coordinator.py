@@ -4,17 +4,18 @@ Agent coordinator for multi-agent RL system.
 ENHANCEMENT #4: Coordinates specialist agent selection and execution.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
 from src.core.types import Individual
 from src.rl.multi_agent.specialist_agents import (
-    SpecialistAgent,
-    RepairAgent,
-    OptimizerAgent,
     ExplorerAgent,
     IntensifierAgent,
+    OptimizerAgent,
+    RepairAgent,
+    SpecialistAgent,
 )
 
 
@@ -28,7 +29,7 @@ class AgentCoordinator:
     3. Meta-agent: RL agent learns which specialist to use
     """
 
-    def __init__(self, strategy: str = "state_based", config: Dict = None):
+    def __init__(self, strategy: str = "state_based", config: dict = None):
         """
         Initialize agent coordinator.
 
@@ -40,7 +41,7 @@ class AgentCoordinator:
         self.config = config or {}
 
         # Initialize specialist agents
-        self.agents: List[SpecialistAgent] = [
+        self.agents: list[SpecialistAgent] = [
             RepairAgent(self.config.get("repair_model_path")),
             OptimizerAgent(self.config.get("optimizer_model_path")),
             ExplorerAgent(self.config.get("explorer_model_path")),
@@ -57,8 +58,8 @@ class AgentCoordinator:
 
     def select_agent(
         self,
-        population: List[Individual],
-        state: Dict[str, Any],
+        population: list[Individual],
+        state: dict[str, Any],
         observation: NDArray[np.float32] = None,
     ) -> SpecialistAgent:
         """
@@ -88,7 +89,7 @@ class AgentCoordinator:
             return self.agents[idx]
 
     def _select_state_based(
-        self, population: List[Individual], state: Dict[str, Any]
+        self, population: list[Individual], state: dict[str, Any]
     ) -> SpecialistAgent:
         """
         Select agent based on search state (priority order).
@@ -185,7 +186,7 @@ class AgentCoordinator:
         self.ucb_counts[agent_idx] += 1
         self.ucb_rewards[agent_idx] += reward
 
-    def get_agent_statistics(self) -> Dict[str, Dict[str, float]]:
+    def get_agent_statistics(self) -> dict[str, dict[str, float]]:
         """
         Get statistics for all agents.
 

@@ -7,6 +7,12 @@
 # Time Configuration
 time:
   quantum_minutes: 60
+  opening_time: "10:00"
+  closing_time: "17:00"
+  closed_days:
+    - Saturday
+  day_overrides: {}
+  # Preferred window values are legacy and only shown in optional diagnostics.
   earliest_preferred_time: "08:00"
   latest_preferred_time: "18:00"
   midday_break_start: "12:00"
@@ -24,7 +30,7 @@ time:
 io:
   data_dir: data
   output_dir: output
-  logs_dir: output/logs     # Consolidated under output/
+  logs_dir: output/logs # Consolidated under output/
   models_dir: output/models # Consolidated under output/
 
 # Calendar Display
@@ -221,11 +227,11 @@ enhancements:
 heuristics:
   # Adaptive Priority Adjustment (Dynamic Reordering)
   adaptive_priority:
-    enabled: false           # Disabled by default (enable in specific modes like d-adaptive)
-    reorder_interval: 10     # Reorder every N generations
-    evaluation_window: 10    # Use last N generations for effectiveness scoring
-    min_applications: 3      # Require at least N applications before reordering
-  
+    enabled: false # Disabled by default (enable in specific modes like d-adaptive)
+    reorder_interval: 10 # Reorder every N generations
+    evaluation_window: 10 # Use last N generations for effectiveness scoring
+    min_applications: 3 # Require at least N applications before reordering
+
   # Construction heuristics - build schedules greedily
   construction:
     largest_degree_first:
@@ -345,7 +351,6 @@ heuristics:
       priority: 10 # High priority when enabled (apply last)
       max_neighborhood_size: 50
       timeout_seconds: 5.0
-
 
 # RL Integration (Phase 2)
 rl:
@@ -475,7 +480,7 @@ rl:
 
     # Checkpoint settings
     checkpoint_settings:
-      manifest_path: "output/models/rl_agents/manifest.json"  # Consolidated under output/
+      manifest_path: "output/models/rl_agents/manifest.json" # Consolidated under output/
       validation_set_dir: "data/validation"
       checkpoint_keep_last: 5 # Keep only last N checkpoints per stage
       validation_threshold: 0.05 # Relative improvement for stage advancement
@@ -504,7 +509,7 @@ rl:
       - fixed_priority
     num_evaluation_episodes: 10
     save_metrics: true
-    metrics_dir: output/analysis/rl_metrics  # Under analysis/ for better organization
+    metrics_dir: output/analysis/rl_metrics # Under analysis/ for better organization
 
   # Logging
   logging:

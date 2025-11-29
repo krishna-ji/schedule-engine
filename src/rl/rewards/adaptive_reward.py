@@ -8,7 +8,6 @@ Prioritizes hard constraints early, then shifts to soft constraints
 once feasibility is achieved.
 """
 
-from typing import List
 import numpy as np
 
 from src.core.types import Individual
@@ -61,8 +60,8 @@ class AdaptiveReward(BaseRewardCalculator):
 
     def calculate(
         self,
-        prev_population: List[Individual],
-        current_population: List[Individual],
+        prev_population: list[Individual],
+        current_population: list[Individual],
         action_cost: float = 0.0,
     ) -> float:
         """
@@ -100,7 +99,7 @@ class AdaptiveReward(BaseRewardCalculator):
 
         return float(reward)
 
-    def _update_state(self, population: List[Individual]) -> None:
+    def _update_state(self, population: list[Individual]) -> None:
         """
         Update internal state based on current population.
 

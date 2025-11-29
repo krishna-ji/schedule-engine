@@ -1,11 +1,11 @@
 import random
-from typing import List
-from src.ga.sessiongene import SessionGene
+
 from src.config import get_config
+from src.ga.sessiongene import SessionGene
 
 
 def crossover_course_group_aware(
-    ind1: List[SessionGene], ind2: List[SessionGene], cx_prob: float = 0.5
+    ind1: list[SessionGene], ind2: list[SessionGene], cx_prob: float = 0.5
 ):
     """
     Position-Independent Crossover that preserves (course, group) structure.

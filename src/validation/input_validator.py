@@ -5,12 +5,15 @@ Validates loaded data for consistency before GA execution.
 Fails fast with clear error messages to prevent cryptic runtime failures.
 """
 
-from typing import List
+from __future__ import annotations
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from src.utils.system_info import get_cpu_count
+
 from src.core.types import SchedulingContext
 from src.exceptions import DataValidationError
 from src.utils.console_service import get_console
+
+__all__ = ["ValidationError", "InputValidator", "validate_input"]
 
 console = get_console()
 
@@ -35,10 +38,10 @@ class ValidationError(DataValidationError):
         self.severity = severity
         super().__init__(f"[{severity}] {category}: {message}")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"[{self.severity}] {self.category}: {self.message}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
 
@@ -61,10 +64,10 @@ class InputValidator:
             context: SchedulingContext to validate
         """
         self.context = context
-        self.errors: List[ValidationError] = []
-        self.warnings: List[ValidationError] = []
+        self.errors: list[ValidationError] = []
+        self.warnings: list[ValidationError] = []
 
-    def validate(self, parallel: bool = True) -> List[ValidationError]:
+    def validate(self, parallel: bool = True) -> list[ValidationError]:
         """
         Run all validation checks.
 
@@ -135,7 +138,7 @@ class InputValidator:
 
         return self.errors + self.warnings
 
-    def _validate_courses(self):
+    def _validate_courses(self) -> None:
         """Validate course data."""
         if not self.context.courses:
             self.errors.append(
@@ -331,7 +334,7 @@ class InputValidator:
         # Note: Removed warning for courses with no groups enrolled
         # (this is valid for elective courses or courses offered to specific groups only)
 
-    def _validate_enrolled_courses_without_instructors(self):
+    def _validate_enrolled_courses_without_instructors(self) -> None:
         """
         Check if any enrolled courses have no qualified instructors.
         This is a CRITICAL error - courses that groups are enrolled in MUST have instructors.
@@ -354,9 +357,12 @@ class InputValidator:
 
             # Also check if course_code matches course_id directly
             if course_code in self.context.courses:
-                matching_courses.append(
-                    (course_code, self.context.courses[course_code])
-                )
+                # Try to get the course directly
+                course_obj = self.context.courses.get(course_code)  # type: ignore[arg-type, call-overload]
+                if course_obj:
+                    matching_courses.append(
+                        (course_code, course_obj)  # type: ignore[arg-type]
+                    )
 
             # Check each matching course for qualified instructors
             for course_id, course in matching_courses:
@@ -375,8 +381,8 @@ class InputValidator:
 
         # Report errors if found
         if courses_without_instructors:
-            from rich.table import Table
             from rich.panel import Panel
+            from rich.table import Table
 
             # Create table for better visualization
             table = Table(
@@ -388,8 +394,14 @@ class InputValidator:
             table.add_column("Course Name", style="cyan", width=40)
             table.add_column("Issue", style="red")
 
-            for course_id, course_name in courses_without_instructors:
-                table.add_row(course_id, course_name, "No qualified instructors")
+            for course_info in courses_without_instructors:
+                cid = (
+                    course_info[0]
+                    if isinstance(course_info[0], str)
+                    else str(course_info[0])
+                )
+                cname = course_info[1]
+                table.add_row(cid, cname, "No qualified instructors")
 
             console.print()
             console.print(table)
@@ -406,15 +418,21 @@ class InputValidator:
             console.print()
 
             # Add error for each course
-            for course_id, course_name in courses_without_instructors:
+            for course_info in courses_without_instructors:
+                cid = (
+                    course_info[0]
+                    if isinstance(course_info[0], str)
+                    else str(course_info[0])
+                )
+                cname = course_info[1]
                 self.errors.append(
                     ValidationError(
                         "INSTRUCTOR_QUALIFICATION",
-                        f"Enrolled course '{course_id}' ({course_name}) has NO qualified instructors - cannot be scheduled!",
+                        f"Enrolled course '{cid}' ({cname}) has NO qualified instructors - cannot be scheduled!",
                     )
                 )
 
-    def _validate_availability(self):
+    def _validate_availability(self) -> None:
         """Validate availability constraints."""
         if not self.context.available_quanta:
             self.errors.append(
@@ -454,7 +472,7 @@ class InputValidator:
                 )
             )
 
-    def _validate_room_features_for_enrolled_courses(self):
+    def _validate_room_features_for_enrolled_courses(self) -> None:
         """
         Validate that rooms have required features for all enrolled courses.
 
@@ -502,12 +520,12 @@ class InputValidator:
 
             for course_id in group.enrolled_courses:
                 # Find course in context
-                course = None
+                found_course = None
                 for c in self.context.courses.values():
                     if (
                         hasattr(c, "course_code") and c.course_code == course_id
                     ) or c.course_id == course_id:
-                        course = c
+                        found_course = c
                         break
 
                 if course and course.required_room_features:
@@ -572,7 +590,7 @@ class InputValidator:
         """Check if validation found any warnings."""
         return len(self.warnings) > 0
 
-    def print_report(self):
+    def print_report(self) -> None:
         """Print validation report to console."""
         # Don't print anything here - errors/warnings are already shown
         # in detailed tables during validation (e.g., enrolled courses without instructors)

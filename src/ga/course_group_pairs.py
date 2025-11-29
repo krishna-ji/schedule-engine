@@ -6,17 +6,16 @@ Generates (Course, Group) pairs following parent-subgroup rules:
 - Practical (P): Each subgroup separately
 """
 
-from typing import Dict, List, Tuple
 from src.entities.course import Course
 from src.entities.group import Group
 
 
 def generate_course_group_pairs(
-    courses: Dict[tuple, Course],
-    groups: Dict[str, Group],
-    hierarchy: Dict,
+    courses: dict[tuple, Course],
+    groups: dict[str, Group],
+    hierarchy: dict,
     silent: bool = False,
-) -> List[Tuple[tuple, List[str], str, int]]:
+) -> list[tuple[tuple, list[str], str, int]]:
     """
     Generates (course_id, group_ids, session_type, num_quanta) tuples.
 
@@ -55,7 +54,7 @@ def generate_course_group_pairs(
 
     parent_to_subgroups = defaultdict(list)
 
-    for group_id in groups.keys():
+    for group_id in groups:
         # Check if this is a subgroup (ends with letter)
         if len(group_id) > 1 and group_id[-1].isalpha():
             parent_prefix = group_id[:-1]
@@ -111,12 +110,12 @@ def generate_course_group_pairs(
     return pairs
 
 
-def count_total_genes(pairs: List[Tuple]) -> int:
+def count_total_genes(pairs: list[tuple]) -> int:
     """Count total number of genes that will be created."""
     return sum(num_quanta for _, _, _, num_quanta in pairs)
 
 
-def group_pairs_by_course(pairs: List[Tuple]) -> Dict[tuple, List[Tuple]]:
+def group_pairs_by_course(pairs: list[tuple]) -> dict[tuple, list[tuple]]:
     """Group pairs by course for analysis."""
     from collections import defaultdict
 

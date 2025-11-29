@@ -9,9 +9,9 @@ Supports 3 modes:
 - RL-Assisted: Mix RL (80%) with exploration (20%)
 """
 
-from typing import Optional, List, Callable
-from enum import Enum
 import random
+from enum import Enum
+
 import numpy as np
 
 from src.rl.deployment.inference import RLInference
@@ -90,7 +90,7 @@ class HybridController:
     def select_action(
         self,
         state: np.ndarray,
-        valid_actions: Optional[List[int]] = None,
+        valid_actions: list[int] | None = None,
         deterministic: bool = True,
     ) -> int:
         """
@@ -129,7 +129,7 @@ class HybridController:
     def _rl_primary(
         self,
         state: np.ndarray,
-        valid_actions: Optional[List[int]],
+        valid_actions: list[int] | None,
         deterministic: bool,
     ) -> int:
         """RL-Primary mode: Always use RL, fallback only on failure."""
@@ -146,7 +146,7 @@ class HybridController:
     def _rl_fallback(
         self,
         state: np.ndarray,
-        valid_actions: Optional[List[int]],
+        valid_actions: list[int] | None,
         deterministic: bool,
     ) -> int:
         """RL-Fallback mode: Try RL with timeout, fallback on timeout/error."""
@@ -168,7 +168,7 @@ class HybridController:
     def _rl_assisted(
         self,
         state: np.ndarray,
-        valid_actions: Optional[List[int]],
+        valid_actions: list[int] | None,
         deterministic: bool,
     ) -> int:
         """RL-Assisted mode: Mix RL with exploration."""
@@ -186,7 +186,7 @@ class HybridController:
         self.fallback_calls += 1
         return self._fallback_action(valid_actions)
 
-    def _fallback_action(self, valid_actions: Optional[List[int]]) -> int:
+    def _fallback_action(self, valid_actions: list[int] | None) -> int:
         """Execute fallback strategy."""
         if not valid_actions:
             valid_actions = list(range(20))  # Default action space

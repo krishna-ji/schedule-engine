@@ -27,15 +27,13 @@ Usage:
     offspring1, offspring2 = distance_preserving_crossover(parent1, parent2, context)
 """
 
-from typing import List, Dict, Tuple, Set, Optional
-import random
 import copy
+import random
 from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import diversity_heuristic
-
 
 # ================
 # DISTANCE PRESERVING CROSSOVER
@@ -51,11 +49,11 @@ from src.heuristics.registry import diversity_heuristic
     modifies_individual=False,
 )
 def distance_preserving_crossover(
-    parent1: List[SessionGene],
-    parent2: List[SessionGene],
+    parent1: list[SessionGene],
+    parent2: list[SessionGene],
     context: SchedulingContext,
     preserve_distance: float = 0.7,
-) -> Tuple[List[SessionGene], List[SessionGene]]:
+) -> tuple[list[SessionGene], list[SessionGene]]:
     """
     Crossover that preserves distance between parents.
 
@@ -129,8 +127,8 @@ def distance_preserving_crossover(
     modifies_individual=True,
 )
 def crowding_mutation(
-    individual: List[SessionGene],
-    population: List[List[SessionGene]],
+    individual: list[SessionGene],
+    population: list[list[SessionGene]],
     context: SchedulingContext,
     intensity: float = 0.3,
 ) -> int:
@@ -155,9 +153,9 @@ def crowding_mutation(
         Number of genes mutated
     """
     # Analyze population for crowding
-    time_usage = defaultdict(int)
-    room_usage = defaultdict(int)
-    instructor_usage = defaultdict(int)
+    time_usage: dict[int, int] = defaultdict(int)
+    room_usage: dict[str, int] = defaultdict(int)
+    instructor_usage: dict[str, int] = defaultdict(int)
 
     for ind in population:
         for gene in ind:
@@ -256,11 +254,11 @@ def crowding_mutation(
     modifies_individual=False,
 )
 def niching_selection(
-    individual: List[SessionGene],
-    population: List[List[SessionGene]],
+    individual: list[SessionGene],
+    population: list[list[SessionGene]],
     context: SchedulingContext,
     niche_radius: float = 0.3,
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """
     Selection that promotes diverse individuals through fitness sharing.
 
@@ -346,12 +344,12 @@ def niching_selection(
     modifies_individual=True,
 )
 def adaptive_diversity_maintenance(
-    individual: List[SessionGene],
-    population: List[List[SessionGene]],
+    individual: list[SessionGene],
+    population: list[list[SessionGene]],
     context: SchedulingContext,
     generation: int,
     diversity_threshold: float = 0.2,
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """
     Adaptively maintain diversity based on population convergence.
 
@@ -389,7 +387,7 @@ def adaptive_diversity_maintenance(
 
 
 def _calculate_individual_distance(
-    ind1: List[SessionGene], ind2: List[SessionGene]
+    ind1: list[SessionGene], ind2: list[SessionGene]
 ) -> float:
     """
     Calculate normalized distance between two individuals.
@@ -418,7 +416,7 @@ def _calculate_individual_distance(
     return differences / total_comparisons if total_comparisons > 0 else 0.0
 
 
-def _calculate_population_diversity(population: List[List[SessionGene]]) -> float:
+def _calculate_population_diversity(population: list[list[SessionGene]]) -> float:
     """
     Calculate overall population diversity.
 
@@ -440,7 +438,7 @@ def _calculate_population_diversity(population: List[List[SessionGene]]) -> floa
 
 
 def _inject_diversity(
-    individual: List[SessionGene], context: SchedulingContext, intensity: float
+    individual: list[SessionGene], context: SchedulingContext, intensity: float
 ) -> None:
     """
     Inject diversity into individual through random mutations.

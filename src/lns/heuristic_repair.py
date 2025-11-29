@@ -4,31 +4,30 @@ Heuristic-based repair for LNS (Large Neighborhood Search).
 Provides fast, greedy repair strategies as an alternative to CP-SAT.
 """
 
-from typing import List, Dict, Optional, Tuple
+import logging
 import random
 import time
-import logging
 
-from src.ga.sessiongene import SessionGene
 from src.entities.course import Course
-from src.entities.instructor import Instructor
 from src.entities.group import Group
+from src.entities.instructor import Instructor
 from src.entities.room import Room
 from src.ga.evaluator.fitness import evaluate
+from src.ga.sessiongene import SessionGene
 
 logger = logging.getLogger(__name__)
 
 
 def repair_with_heuristic(
-    conflicted_sessions: List[SessionGene],
-    partial_schedule: List[SessionGene],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
+    conflicted_sessions: list[SessionGene],
+    partial_schedule: list[SessionGene],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
     max_iterations: int = 500,
     time_limit: float = 5.0,
-) -> Optional[List[SessionGene]]:
+) -> list[SessionGene] | None:
     """
     Repair conflicted sessions using greedy heuristic + local search.
 
@@ -90,13 +89,13 @@ def repair_with_heuristic(
 
 
 def _greedy_assign(
-    conflicted_sessions: List[SessionGene],
-    partial_schedule: List[SessionGene],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-) -> Optional[List[SessionGene]]:
+    conflicted_sessions: list[SessionGene],
+    partial_schedule: list[SessionGene],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+) -> list[SessionGene] | None:
     """
     Greedy assignment: place each session in first feasible time/room slot.
 
@@ -107,7 +106,7 @@ def _greedy_assign(
         conflicted_sessions, instructors, groups, rooms, courses
     )
 
-    assigned = []
+    assigned: list[SessionGene] = []
     current_schedule = partial_schedule + assigned
 
     for session in ordered:
@@ -126,15 +125,15 @@ def _greedy_assign(
 
 
 def _order_by_difficulty(
-    sessions: List[SessionGene],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-    courses: Dict[tuple, Course],
-) -> List[SessionGene]:
+    sessions: list[SessionGene],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+    courses: dict[tuple, Course],
+) -> list[SessionGene]:
     """Order sessions by difficulty (fewest options first)."""
 
-    def difficulty_score(session: SessionGene) -> Tuple[int, int, int]:
+    def difficulty_score(session: SessionGene) -> tuple[int, int, int]:
         # Count available times (instructor & groups intersection)
         instructor = instructors[session.instructor_id]
         common_quanta = set(instructor.available_quanta)
@@ -162,12 +161,12 @@ def _order_by_difficulty(
 
 def _find_first_feasible(
     session: SessionGene,
-    current_schedule: List[SessionGene],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-    courses: Dict[tuple, Course],
-) -> Optional[SessionGene]:
+    current_schedule: list[SessionGene],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+    courses: dict[tuple, Course],
+) -> SessionGene | None:
     """Find first feasible time/room assignment for a session."""
 
     instructor = instructors[session.instructor_id]
@@ -181,9 +180,9 @@ def _find_first_feasible(
         common_quanta &= set(group.available_quanta)
 
     # Filter out occupied quanta
-    occupied_instructor = set()
-    occupied_groups = {gid: set() for gid in session.group_ids}
-    occupied_rooms = {}
+    occupied_instructor: set[int] = set()
+    occupied_groups: dict[str, set[int]] = {gid: set() for gid in session.group_ids}
+    occupied_rooms: dict[str, set[int]] = {}
 
     for fixed in current_schedule:
         if fixed.instructor_id == session.instructor_id:
@@ -239,15 +238,15 @@ def _find_first_feasible(
 
 
 def _local_search_repair(
-    conflicted_sessions: List[SessionGene],
-    partial_schedule: List[SessionGene],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
+    conflicted_sessions: list[SessionGene],
+    partial_schedule: list[SessionGene],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
     max_iterations: int,
     time_limit: float,
-) -> Optional[List[SessionGene]]:
+) -> list[SessionGene] | None:
     """
     Local search repair with random moves and acceptance.
 
@@ -257,7 +256,7 @@ def _local_search_repair(
     start_time = time.time()
 
     # Initialize with random assignment (best effort)
-    current = []
+    current: list[SessionGene] = []
     for session in conflicted_sessions:
         candidate = _random_assignment(
             session, partial_schedule + current, instructors, groups, rooms, courses
@@ -298,9 +297,9 @@ def _local_search_repair(
         delta_soft = neighbor_fitness[1] - current_fitness[1]
 
         accept = False
-        if delta_hard < 0:  # Hard constraint improvement
-            accept = True
-        elif delta_hard == 0 and delta_soft < 0:  # Soft improvement
+        if (
+            delta_hard < 0 or delta_hard == 0 and delta_soft < 0
+        ):  # Hard constraint improvement
             accept = True
         elif temperature > 0.1:  # Simulated annealing
             prob = min(1.0, 2.718281828 ** (-abs(delta_hard) / temperature))
@@ -336,12 +335,12 @@ def _local_search_repair(
 
 def _random_assignment(
     session: SessionGene,
-    current_schedule: List[SessionGene],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-    courses: Dict[tuple, Course],
-) -> Optional[SessionGene]:
+    current_schedule: list[SessionGene],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+    courses: dict[tuple, Course],
+) -> SessionGene | None:
     """Random feasible assignment (best effort)."""
     instructor = instructors[session.instructor_id]
     common_quanta = set(instructor.available_quanta)
@@ -384,13 +383,13 @@ def _random_assignment(
 
 
 def _propose_move(
-    current: List[SessionGene],
-    partial_schedule: List[SessionGene],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-    courses: Dict[tuple, Course],
-) -> Optional[List[SessionGene]]:
+    current: list[SessionGene],
+    partial_schedule: list[SessionGene],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+    courses: dict[tuple, Course],
+) -> list[SessionGene] | None:
     """Propose a random move (time shift or room swap)."""
     if not current:
         return None

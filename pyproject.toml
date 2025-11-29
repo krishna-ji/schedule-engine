@@ -121,35 +121,131 @@ packages = ["src"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 exclude = [
     ".venv",
     "__pycache__",
     "output",
     "notebook",
+    "logs",
+    ".pytest_cache",
 ]
-# Extend-ignore allows us to selectively disable rules that are kept at the
-# organization level but create false positives in localized contexts (e.g.,
-# console initialization ordering). Keep this minimal and document any changes.
 
 [tool.ruff.lint]
-extend-ignore = ["E402"]
+# Enable recommended rule sets
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+
+ignore = [
+    "E402",   # Module level import not at top of file (for console init)
+    "E501",   # Line too long (handled by Black, many are comments/strings)
+    "N812",   # Lowercase imported as non-lowercase (DEAP conventions)
+    "SIM108", # Use ternary operator (sometimes less readable)
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports in __init__ files
+"test/**/*.py" = ["S101"] # Use of assert in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 exclude = '''
 /(
     \.venv
   | __pycache__
   | output
   | notebook
+  | logs
+  | \.pytest_cache
 )/
 '''
+# Enable preview features for better formatting
+preview = true
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
+files = ["src", "scripts", "test"]
+explicit_package_bases = false
+mypy_path = "src"
+exclude = [
+    "output/",
+    "logs/",
+    "notebook/",
+]
+
+[[tool.mypy.overrides]]
+module = ["src.utils.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["src.config.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["src.constants", "src.exceptions"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["src.entities.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["src.encoder.*", "src.decoder.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["src.constraints.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["src.exporter.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["src.metrics.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+# Relaxed checking for complex GA/RL integration with DEAP's dynamic types
+[[tool.mypy.overrides]]
+module = ["src.core.ga_scheduler"]
+# Keep basic type checking but allow flexibility for DEAP/SB3 integration
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+# Suppress common dynamic typing issues
+disable_error_code = ["attr-defined", "arg-type", "union-attr", "assignment"]
+
+# TODO: Complete type annotations for validation package
+# [[tool.mypy.overrides]]
+# module = ["src.validation.*"]
+# disallow_untyped_defs = true
+# disallow_incomplete_defs = true

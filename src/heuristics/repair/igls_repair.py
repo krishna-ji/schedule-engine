@@ -5,17 +5,11 @@ Iterative Greedy Local Search repair operator integrated as a heuristic.
 This operator fixes hard constraint violations using stagnation-triggered repair.
 """
 
-from typing import List, Optional
-import copy
-
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.heuristics.registry import HeuristicCategory
 
 # Import the original IGLS repair logic
 from src.ga.operators.repair import repair_individual_unified
-
-
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 
@@ -28,29 +22,29 @@ from src.heuristics.registry import repair_heuristic
     modifies_individual=True,
 )
 def igls_repair(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_iterations: int = 2,
     selective: bool = True,
 ) -> int:
     """
     Apply IGLS repair to fix constraint violations.
-    
+
     Args:
         individual: Individual to repair
         context: Scheduling context
         max_iterations: Maximum repair iterations
         selective: Use selective repair (faster)
-    
+
     Returns:
         Number of violations fixed
     """
     # Use the existing unified repair function
     stats = repair_individual_unified(
         individual=individual,
-        context=context, 
+        context=context,
         max_iterations=max_iterations,
-        selective=selective
+        selective=selective,
     )
-    
-    return stats.get('total_fixes', 0)
+
+    return int(stats.get("total_fixes", 0))

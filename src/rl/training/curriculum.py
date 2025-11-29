@@ -13,13 +13,14 @@ Features:
 - Adaptive advancement logic
 """
 
-from typing import Optional, Dict, Any, List, Tuple
-from pathlib import Path
-from dataclasses import dataclass
-import random
-import numpy as np
 import json
+import random
+from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 from src.config import get_config
 from src.encoder import SchedulingContext
@@ -68,9 +69,9 @@ class CurriculumManager:
     def __init__(
         self,
         context: SchedulingContext,
-        stages: Optional[List[Dict[str, Any]]] = None,
+        stages: list[dict[str, Any]] | None = None,
         validation_ratio: float = 0.2,
-        random_seed: Optional[int] = None,
+        random_seed: int | None = None,
     ):
         """
         Initialize curriculum manager.
@@ -103,7 +104,7 @@ class CurriculumManager:
         self.current_stage_idx = 0
 
         # Validation tracking
-        self.validation_scores: Dict[str, List[float]] = {
+        self.validation_scores: dict[str, list[float]] = {
             s.name: [] for s in self.stages
         }
         self.advancement_counter = 0
@@ -116,8 +117,8 @@ class CurriculumManager:
             )
 
     def _parse_stages(
-        self, stage_configs: List[Dict[str, Any]]
-    ) -> List[CurriculumStage]:
+        self, stage_configs: list[dict[str, Any]]
+    ) -> list[CurriculumStage]:
         """Parse stage configurations into CurriculumStage objects."""
         stages = []
 
@@ -141,7 +142,7 @@ class CurriculumManager:
 
         return stages
 
-    def get_current_stage(self) -> Optional[CurriculumStage]:
+    def get_current_stage(self) -> CurriculumStage | None:
         """Get current training stage."""
         if self.current_stage_idx >= len(self.stages):
             return None
@@ -211,7 +212,7 @@ class CurriculumManager:
         self,
         target_num_courses: int,
         strategy: str = "random",
-    ) -> List:
+    ) -> list:
         """
         Filter courses to match target difficulty.
 
@@ -248,8 +249,8 @@ class CurriculumManager:
     def create_validation_set(
         self,
         num_problems: int = 5,
-        seed: Optional[int] = None,
-    ) -> List[SchedulingContext]:
+        seed: int | None = None,
+    ) -> list[SchedulingContext]:
         """
         Create validation set with different problem instances.
 
@@ -367,7 +368,7 @@ class CurriculumManager:
             logger.error(f"Failed to load progress: {e}")
             return False
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get curriculum training statistics."""
         current_stage = self.get_current_stage()
 
@@ -390,7 +391,7 @@ class CurriculumManager:
         return stats
 
 
-def create_default_curriculum() -> List[Dict[str, Any]]:
+def create_default_curriculum() -> list[dict[str, Any]]:
     """Create default 3-stage curriculum configuration."""
     return [
         {

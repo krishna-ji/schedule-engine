@@ -28,13 +28,12 @@ Usage:
     print(f"Made {improvements} improving moves")
 """
 
-from typing import List, Dict, Tuple, Set, Optional
+import copy
 import random
 from collections import defaultdict
-import copy
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import improvement_heuristic
 from src.heuristics.utils import (
     estimate_session_student_count,
@@ -44,7 +43,6 @@ from src.heuristics.utils import (
     get_room_feature,
     move_gene_to_time_if_valid,
 )
-
 
 # ================
 # KEMPE CHAIN (Graph coloring move for conflict resolution)
@@ -60,7 +58,7 @@ from src.heuristics.utils import (
     modifies_individual=True,
 )
 def kempe_chain(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_iterations: int = 5,
 ) -> int:
@@ -148,7 +146,7 @@ def kempe_chain(
     modifies_individual=True,
 )
 def ejection_chain(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_chain_length: int = 5,
     max_iterations: int = 3,
@@ -235,7 +233,7 @@ def ejection_chain(
     modifies_individual=True,
 )
 def variable_depth_search(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_depth: int = 3,
     max_iterations: int = 5,
@@ -338,10 +336,10 @@ def variable_depth_search(
 
 
 def _find_conflict_pairs(
-    individual: List[SessionGene], context: SchedulingContext
-) -> List[Tuple[int, int]]:
+    individual: list[SessionGene], context: SchedulingContext
+) -> list[tuple[int, int]]:
     """Find conflicting session index pairs (overlapping time + shared resources)."""
-    conflicts: Set[Tuple[int, int]] = set()
+    conflicts: set[tuple[int, int]] = set()
 
     for i, gene1 in enumerate(individual):
         for j, gene2 in enumerate(individual[i + 1 :], start=i + 1):
@@ -368,11 +366,11 @@ def _find_conflict_pairs(
 
 
 def _build_kempe_chain(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     gene1: SessionGene,
     gene2: SessionGene,
     context: SchedulingContext,
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """Build Kempe chain for two conflicting sessions."""
     chain = [gene1, gene2]
 
@@ -387,7 +385,7 @@ def _build_kempe_chain(
     return chain
 
 
-def _apply_kempe_swap(chain: List[SessionGene]) -> bool:
+def _apply_kempe_swap(chain: list[SessionGene]) -> bool:
     """
     Swap times along Kempe chain with validation.
 
@@ -439,18 +437,18 @@ def _apply_kempe_swap(chain: List[SessionGene]) -> bool:
 
 
 def _build_ejection_chain(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     start_gene: SessionGene,
     context: SchedulingContext,
     max_length: int,
-    available_quanta: List[int],
-) -> List[Tuple[SessionGene, int]]:
+    available_quanta: list[int],
+) -> list[tuple[SessionGene, int]]:
     """
     Build ejection chain starting from start_gene.
 
     Returns list of (gene, new_time) tuples.
     """
-    chain = []
+    chain: list[tuple[SessionGene, int]] = []
     if not available_quanta:
         return chain
 
@@ -498,8 +496,8 @@ def _build_ejection_chain(
 
 
 def _apply_ejection_chain(
-    chain: List[Tuple[SessionGene, int]],
-    valid_quanta: Set[int],
+    chain: list[tuple[SessionGene, int]],
+    valid_quanta: set[int],
 ) -> bool:
     """Apply ejection chain moves if all target quanta remain valid."""
     if not chain:
@@ -514,11 +512,11 @@ def _apply_ejection_chain(
             return False
 
     first_gene = chain[0][0]
-    first_gene._ejection_old_times = old_times
+    first_gene._ejection_old_times = old_times  # type: ignore[attr-defined]
     return True
 
 
-def _revert_ejection_chain(chain: List[Tuple[SessionGene, int]]) -> None:
+def _revert_ejection_chain(chain: list[tuple[SessionGene, int]]) -> None:
     """Revert ejection chain moves."""
     if not chain:
         return
@@ -531,8 +529,8 @@ def _revert_ejection_chain(chain: List[Tuple[SessionGene, int]]) -> None:
 
 
 def _generate_move_sequence(
-    individual: List[SessionGene], context: SchedulingContext, depth: int
-) -> List[Tuple[str, Dict]]:
+    individual: list[SessionGene], context: SchedulingContext, depth: int
+) -> list[tuple[str, dict]]:
     """Generate random sequence of moves."""
     sequence = []
     move_types = ["time_shift", "room_change", "instructor_change"]
@@ -583,11 +581,11 @@ def _generate_move_sequence(
 
 
 def _apply_move(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     move_type: str,
-    move_params: Dict,
+    move_params: dict,
     context: SchedulingContext,
-    valid_quanta: Optional[Set[int]] = None,
+    valid_quanta: set[int] | None = None,
 ) -> bool:
     """Apply a single move, returning False if it results in an invalid assignment."""
 
@@ -609,8 +607,8 @@ def _apply_move(
 
 
 def _calculate_fitness(
-    individual: List[SessionGene], context: SchedulingContext
-) -> Tuple[int, int]:
+    individual: list[SessionGene], context: SchedulingContext
+) -> tuple[int, int]:
     """
     Calculate fitness (hard violations, soft violations).
 
@@ -625,7 +623,9 @@ def _calculate_fitness(
     soft_violations = 0
 
     # Track time assignments
-    time_assignments = defaultdict(list)  # {entity_id: [time_ranges]}
+    time_assignments: dict[str, list[range]] = defaultdict(
+        list
+    )  # {entity_id: [time_ranges]}
 
     for gene in individual:
         time_range = range(gene.time_quantum, gene.time_quantum + gene.duration_quanta)

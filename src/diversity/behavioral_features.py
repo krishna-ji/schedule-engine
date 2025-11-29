@@ -20,7 +20,6 @@ Mathematical Definition:
     solutions S to d-dimensional behavior space.
 """
 
-from typing import Dict, List
 import numpy as np
 from numpy.typing import NDArray
 
@@ -108,7 +107,7 @@ def extract_behavioral_features(
     return np.array(features, dtype=np.float64)
 
 
-def _compute_sessions_per_day(sessions: List) -> List[float]:
+def _compute_sessions_per_day(sessions: list) -> list[float]:
     """
     Compute number of sessions per day of week.
 
@@ -117,12 +116,22 @@ def _compute_sessions_per_day(sessions: List) -> List[float]:
     from src.encoder.quantum_time_system import QuantumTimeSystem
 
     qts = QuantumTimeSystem()
-    sessions_per_day = [0] * 7  # Sun-Sat
+    sessions_per_day = [0.0] * 7  # Sun-Sat
+    day_to_index = {
+        "sunday": 0,
+        "monday": 1,
+        "tuesday": 2,
+        "wednesday": 3,
+        "thursday": 4,
+        "friday": 5,
+        "saturday": 6,
+    }
 
     for session in sessions:
         for quantum in session.session_quanta:
-            day = qts.quantum_to_day_of_week(quantum)
-            sessions_per_day[day] += 1
+            day_name, _ = qts.quanta_to_time(quantum)
+            day_index = day_to_index.get(day_name.lower(), 0)
+            sessions_per_day[day_index] += 1.0
 
     # Normalize by total sessions
     total = sum(sessions_per_day)
@@ -133,8 +142,8 @@ def _compute_sessions_per_day(sessions: List) -> List[float]:
 
 
 def _compute_room_utilization(
-    sessions: List, context: SchedulingContext
-) -> List[float]:
+    sessions: list, context: SchedulingContext
+) -> list[float]:
     """
     Compute room utilization metrics.
 
@@ -146,7 +155,7 @@ def _compute_room_utilization(
     - Lecture hall usage ratio
     - Lab usage ratio
     """
-    room_usage = {room_id: 0 for room_id in context.rooms.keys()}
+    room_usage = dict.fromkeys(context.rooms.keys(), 0)
     room_capacities = []
     group_sizes = []
 
@@ -159,7 +168,7 @@ def _compute_room_utilization(
             room_capacity = room.capacity
             group_size = sum(
                 [
-                    len(context.groups[gid].students)
+                    context.groups[gid].student_count
                     for gid in session.group_ids
                     if gid in context.groups
                 ]
@@ -170,11 +179,11 @@ def _compute_room_utilization(
                 group_sizes.append(group_size)
 
     usage_values = list(room_usage.values())
-    mean_usage = np.mean(usage_values) if usage_values else 0.0
-    std_usage = np.std(usage_values) if usage_values else 0.0
+    mean_usage = float(np.mean(usage_values)) if usage_values else 0.0
+    std_usage = float(np.std(usage_values)) if usage_values else 0.0
 
-    mean_capacity = np.mean(room_capacities) if room_capacities else 0.0
-    std_capacity = np.std(room_capacities) if room_capacities else 0.0
+    mean_capacity = float(np.mean(room_capacities)) if room_capacities else 0.0
+    std_capacity = float(np.std(room_capacities)) if room_capacities else 0.0
 
     # Room type ratios (simplified: assume room names indicate type)
     lecture_halls = sum(
@@ -197,8 +206,8 @@ def _compute_room_utilization(
 
 
 def _compute_instructor_workload(
-    sessions: List, context: SchedulingContext
-) -> List[float]:
+    sessions: list, context: SchedulingContext
+) -> list[float]:
     """
     Compute instructor workload metrics.
 
@@ -208,7 +217,7 @@ def _compute_instructor_workload(
     - Max instructor load
     - Instructor idle time (proportion of instructors not assigned)
     """
-    instructor_loads = {inst_id: 0 for inst_id in context.instructors.keys()}
+    instructor_loads = dict.fromkeys(context.instructors.keys(), 0)
 
     for session in sessions:
         if session.instructor_id in instructor_loads:
@@ -216,9 +225,9 @@ def _compute_instructor_workload(
 
     loads = list(instructor_loads.values())
 
-    mean_load = np.mean(loads) if loads else 0.0
-    std_load = np.std(loads) if loads else 0.0
-    max_load = np.max(loads) if loads else 0.0
+    mean_load = float(np.mean(loads)) if loads else 0.0
+    std_load = float(np.std(loads)) if loads else 0.0
+    max_load = float(np.max(loads)) if loads else 0.0
 
     # Idle instructors (zero load)
     idle_instructors = sum(1 for load in loads if load == 0)
@@ -228,8 +237,8 @@ def _compute_instructor_workload(
 
 
 def _compute_course_distribution(
-    sessions: List, context: SchedulingContext
-) -> List[float]:
+    sessions: list, context: SchedulingContext
+) -> list[float]:
     """
     Compute course distribution metrics.
 
@@ -240,7 +249,7 @@ def _compute_course_distribution(
     - Course temporal spread (std of session times for same course)
     """
     course_sessions = {}
-    course_times = {}
+    course_times: dict[str, list[int]] = {}
 
     for session in sessions:
         course_id = session.course_id
@@ -252,8 +261,8 @@ def _compute_course_distribution(
         course_times[course_id].extend(session.session_quanta)
 
     sessions_per_course = list(course_sessions.values())
-    mean_sessions = np.mean(sessions_per_course) if sessions_per_course else 0.0
-    std_sessions = np.std(sessions_per_course) if sessions_per_course else 0.0
+    mean_sessions = float(np.mean(sessions_per_course)) if sessions_per_course else 0.0
+    std_sessions = float(np.std(sessions_per_course)) if sessions_per_course else 0.0
 
     # Temporal clustering: mean gap between consecutive sessions
     gaps = []
@@ -266,20 +275,20 @@ def _compute_course_distribution(
             ]
             gaps.extend(course_gaps)
 
-    mean_gap = np.mean(gaps) if gaps else 0.0
+    mean_gap = float(np.mean(gaps)) if gaps else 0.0
 
     # Temporal spread: std of session times
     spreads = []
     for times in course_times.values():
         if len(times) > 1:
-            spreads.append(np.std(times))
+            spreads.append(float(np.std(times)))
 
-    mean_spread = np.mean(spreads) if spreads else 0.0
+    mean_spread = float(np.mean(spreads)) if spreads else 0.0
 
     return [mean_sessions, std_sessions, mean_gap, mean_spread]
 
 
-def _compute_constraint_profile(individual: Individual) -> List[float]:
+def _compute_constraint_profile(individual: Individual) -> list[float]:
     """
     Compute constraint violation profile.
 

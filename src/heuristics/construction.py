@@ -27,15 +27,13 @@ Usage:
     individual = largest_degree_first(context)
 """
 
-from typing import List, Dict, Tuple, Set
 import random
 from collections import defaultdict
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import construction_heuristic
-
 
 # ================
 # LARGEST DEGREE FIRST (Schedule most conflicting courses first)
@@ -50,7 +48,7 @@ from src.heuristics.registry import construction_heuristic
     requires_population=False,
     modifies_individual=False,
 )
-def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
+def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most conflicting courses first.
 
@@ -89,12 +87,20 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
     sorted_courses = sorted(course_degrees.items(), key=lambda x: x[1], reverse=True)
 
     # Track assignments for conflict checking
-    assigned_times = defaultdict(set)  # {entity_id: {time_quanta}}
-    assigned_rooms = defaultdict(set)  # {room_id: {time_quanta}}
+    assigned_times: dict[str, set[int]] = defaultdict(set)  # {entity_id: {time_quanta}}
+    assigned_rooms: dict[str, set[int]] = defaultdict(set)  # {room_id: {time_quanta}}
 
     for course_id, _degree in sorted_courses:
         course = context.courses[course_id]
-        course_code, course_type = course_id  # Unpack tuple
+        # Unpack tuple - course_id is (course_code, course_type)
+        course_code: str
+        course_type: str
+        if isinstance(course_id, tuple) and len(course_id) == 2:
+            course_code, course_type = course_id
+        else:
+            # Fallback for legacy string keys
+            course_code = str(course_id)
+            course_type = "theory"
 
         # FIXED: Break into subsessions using canonical logic
         # Theory → [2, 2, ...] with [1] if odd
@@ -174,7 +180,7 @@ def largest_degree_first(context: SchedulingContext) -> List[SessionGene]:
     requires_population=False,
     modifies_individual=False,
 )
-def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
+def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most constrained sessions first.
 
@@ -207,8 +213,8 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
     individual = []
 
     # Track assignments
-    assigned_times = defaultdict(set)
-    assigned_rooms = defaultdict(set)
+    assigned_times: dict[str, set[int]] = defaultdict(set)
+    assigned_rooms: dict[str, set[int]] = defaultdict(set)
 
     # Build list of all sessions to schedule
     # FIXED: Include subsessions, not just courses
@@ -242,6 +248,8 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
                 most_constrained = (course_id, course, subsession_duration)
 
         # Remove from pending list
+        if most_constrained is None:
+            break  # No valid assignments possible
         sessions_to_schedule.remove(most_constrained)
         course_id, course, subsession_duration = most_constrained
 
@@ -310,7 +318,7 @@ def most_constrained_first(context: SchedulingContext) -> List[SessionGene]:
     requires_population=False,
     modifies_individual=False,
 )
-def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
+def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule prioritizing courses with higher session frequency.
 
@@ -349,12 +357,20 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
     sorted_courses = sorted(course_urgency.items(), key=lambda x: x[1], reverse=True)
 
     # Track assignments
-    assigned_times = defaultdict(set)
-    assigned_rooms = defaultdict(set)
+    assigned_times: dict[str, set[int]] = defaultdict(set)
+    assigned_rooms: dict[str, set[int]] = defaultdict(set)
 
     for course_id, _urgency in sorted_courses:
         course = context.courses[course_id]
-        course_code, course_type = course_id  # Unpack tuple
+        # Unpack tuple - course_id is (course_code, course_type)
+        course_code: str
+        course_type: str
+        if isinstance(course_id, tuple) and len(course_id) == 2:
+            course_code, course_type = course_id
+        else:
+            # Fallback for legacy string keys
+            course_code = str(course_id)
+            course_type = "theory"
 
         # FIXED: Break into subsessions
         subsession_durations = get_subsession_durations(
@@ -419,7 +435,7 @@ def earliest_deadline_first(context: SchedulingContext) -> List[SessionGene]:
 # ================
 
 
-def _calculate_conflict_degrees(context: SchedulingContext) -> Dict[str, int]:
+def _calculate_conflict_degrees(context: SchedulingContext) -> dict[tuple, int]:
     """Calculate conflict degree for each course (for largest degree first)."""
     degrees = {}
 
@@ -454,7 +470,7 @@ def _calculate_conflict_degrees(context: SchedulingContext) -> Dict[str, int]:
     return degrees
 
 
-def _calculate_urgency_scores(context: SchedulingContext) -> Dict[str, float]:
+def _calculate_urgency_scores(context: SchedulingContext) -> dict[tuple, float]:
     """Calculate urgency score for each course (for earliest deadline first)."""
     urgency = {}
 
@@ -483,20 +499,22 @@ def _count_valid_time_slots(
     context: SchedulingContext,
     course,
     time_system: QuantumTimeSystem,
-    assigned_times: Dict,
-    assigned_rooms: Dict,
-    required_duration: int = None,  # NEW: subsession duration
+    assigned_times: dict,
+    assigned_rooms: dict,
+    required_duration: int | None = None,  # NEW: subsession duration
 ) -> int:
     """
     Count number of valid time slots for a course session.
-    
+
     Args:
         required_duration: Duration in quanta for THIS subsession.
                           If None, uses course.quanta_per_week.
     """
     # Use subsession duration if provided, otherwise full course duration
-    duration = required_duration if required_duration is not None else course.quanta_per_week
-    
+    duration = (
+        required_duration if required_duration is not None else course.quanta_per_week
+    )
+
     valid_count = 0
 
     for time_quantum in context.available_quanta:
@@ -523,20 +541,22 @@ def _find_earliest_valid_time(
     context: SchedulingContext,
     course,
     time_system: QuantumTimeSystem,
-    assigned_times: Dict,
-    assigned_rooms: Dict,
-    required_duration: int = None,  # NEW: subsession duration
-) -> int:
+    assigned_times: dict,
+    assigned_rooms: dict,
+    required_duration: int | None = None,  # NEW: subsession duration
+) -> int | None:
     """
     Find earliest valid time slot for a course session.
-    
+
     Args:
         required_duration: Duration in quanta for THIS subsession (not full course).
                           If None, uses course.quanta_per_week.
     """
     # Use subsession duration if provided, otherwise full course duration
-    duration = required_duration if required_duration is not None else course.quanta_per_week
-    
+    duration = (
+        required_duration if required_duration is not None else course.quanta_per_week
+    )
+
     for time_quantum in context.available_quanta:
         # Check if slot is long enough for the subsession
         if time_quantum + duration > max(context.available_quanta):
@@ -562,7 +582,7 @@ def _find_suitable_room(
     context: SchedulingContext,
     course,
     time_quantum: int,
-    assigned_rooms: Dict,
+    assigned_rooms: dict,
 ) -> str:
     """Find suitable room for course session."""
     time_range = range(time_quantum, time_quantum + course.quanta_per_week)
@@ -587,7 +607,7 @@ def _select_qualified_instructor(
     context: SchedulingContext,
     course,
     time_quantum: int,
-    assigned_times: Dict,
+    assigned_times: dict,
 ) -> str:
     """Select qualified instructor for course session."""
     time_range = range(time_quantum, time_quantum + course.quanta_per_week)
@@ -616,10 +636,10 @@ def _select_qualified_instructor(
             available_instructors.append(instructor_id)
 
     if available_instructors:
-        return random.choice(available_instructors)
+        return str(random.choice(available_instructors))
 
     # Fallback: return first qualified instructor
-    return (
+    return str(
         course.qualified_instructor_ids[0]
         if course.qualified_instructor_ids
         else list(context.instructors.keys())[0]

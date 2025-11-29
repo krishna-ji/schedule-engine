@@ -1,13 +1,13 @@
-"""
-Room entity model for the timetabling system.
-Represents a room with its capacity, type, and availability.
-"""
+"""Room entity model for the timetabling system."""
 
-from typing import Set
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+__all__ = ["Room"]
 
 
-@dataclass
+@dataclass(slots=True)
 class Room:
     """
     Represents a room in the university timetabling system.
@@ -24,9 +24,9 @@ class Room:
     name: str
     capacity: int
     room_features: str
-    available_quanta: Set[int]
+    available_quanta: set[int] = field(default_factory=set)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate room data after initialization."""
         if self.capacity <= 0:
             raise ValueError(f"Room {self.room_id}: capacity must be positive")

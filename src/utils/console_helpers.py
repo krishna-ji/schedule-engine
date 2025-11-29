@@ -4,12 +4,18 @@ Provides consistent formatting for success, warning, error, and info messages
 throughout the application using Rich console formatting.
 """
 
+from __future__ import annotations
+
+from typing import Final
+
+from rich.console import Console
+
 from src.utils.console_service import get_console
 
-console = get_console()
+console: Final[Console] = get_console()
 
 
-def print_success(message: str, detail: str = None) -> None:
+def print_success(message: str, detail: str | None = None) -> None:
     """
     Print success message in green.
 
@@ -26,7 +32,7 @@ def print_success(message: str, detail: str = None) -> None:
         console.print(f"  [dim]{detail}[/dim]")
 
 
-def print_warning(message: str, detail: str = None) -> None:
+def print_warning(message: str, detail: str | None = None) -> None:
     """
     Print warning message in yellow.
 
@@ -42,7 +48,7 @@ def print_warning(message: str, detail: str = None) -> None:
         console.print(f"  [dim]{detail}[/dim]")
 
 
-def print_error(message: str, detail: str = None) -> None:
+def print_error(message: str, detail: str | None = None) -> None:
     """
     Print error message in red.
 
@@ -58,7 +64,7 @@ def print_error(message: str, detail: str = None) -> None:
         console.print(f"  [dim]{detail}[/dim]")
 
 
-def print_info(message: str, detail: str = None) -> None:
+def print_info(message: str, detail: str | None = None) -> None:
     """
     Print informational message in cyan.
 

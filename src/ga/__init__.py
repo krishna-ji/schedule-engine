@@ -7,6 +7,8 @@ Exposes:
     - SessionGene: Gene representation for course sessions
 """
 
+from __future__ import annotations
+
 from src.ga.creator_registry import get_creator
 from src.ga.individual import create_individual
 from src.ga.sessiongene import SessionGene

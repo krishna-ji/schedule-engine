@@ -472,6 +472,27 @@ def main_interactive():
     import subprocess
 
     commands = [
+        # Direct NSGA launcher (profile-aware freeform entry point)
+        (
+            "nsga-launcher",
+            [
+                (
+                    "n1",
+                    "nsga --test --mode nsga-full",
+                    "NSGA launcher (default mode) (~3 min, 30 gens)",
+                ),
+                (
+                    "n2",
+                    "nsga --prod --mode nsga-full",
+                    "NSGA launcher (default mode) (~4-6 hrs, 2000 gens)",
+                ),
+                (
+                    "n3",
+                    "nsga --test --config configs/nsga/5-nsga-full.yaml",
+                    "NSGA launcher (explicit config example)",
+                ),
+            ],
+        ),
         # Mode A: Baseline
         (
             "mode-a",
@@ -549,12 +570,17 @@ def main_interactive():
     while True:
         console.clear()
         console.print(
-            "\n[bold cyan]Schedule Engine - Progressive Experiments (A→F)[/bold cyan]\n"
+            "\n[bold cyan]Schedule Engine - NSGA Launcher + Progressive Experiments (A→F)[/bold cyan]\n"
         )
 
         for category, cmds in commands:
             # Category headers with descriptions
-            if category == "mode-a":
+            if category == "nsga-launcher":
+                console.print("[bold magenta]NSGA LAUNCHER[/bold magenta]")
+                console.print(
+                    "[dim]  Direct NSGA entry — pass any runtime via --mode or --config[/dim]"
+                )
+            elif category == "mode-a":
                 console.print("[bold magenta]MODE A: BASELINE[/bold magenta]")
                 console.print("[dim]  Pure NSGA-II (no repairs, no heuristics)[/dim]")
             elif category == "mode-b":

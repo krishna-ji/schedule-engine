@@ -12,7 +12,7 @@ Usage:
     >>> individual = creator.Individual([gene1, gene2, ...])
 """
 
-from deap import creator, base
+from deap import base, creator
 
 
 def _initialize_creator():

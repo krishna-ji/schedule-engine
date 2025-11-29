@@ -20,10 +20,10 @@ Usage:
         print(f"{gene_key}: {total_violations} violations")
 """
 
-from typing import Dict, List, Tuple
-from collections import defaultdict
 import json
+from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 from src.ga.sessiongene import SessionGene
 
@@ -43,9 +43,9 @@ class ViolationHeatmap:
         generation_history: Track violations per generation
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty heatmap."""
-        self.violations = defaultdict(
+        self.violations: dict[tuple, dict[str, int]] = defaultdict(
             lambda: {
                 "availability": 0,
                 "overlap": 0,
@@ -56,9 +56,11 @@ class ViolationHeatmap:
                 "total": 0,
             }
         )
-        self.generation_history = []  # List of {gen: int, violations: dict}
+        self.generation_history: list[dict[str, Any]] = (
+            []
+        )  # List of {gen: int, violations: dict}
 
-    def record_violation(self, gene: SessionGene, violation_type: str):
+    def record_violation(self, gene: SessionGene, violation_type: str) -> None:
         """
         Record that a gene violated a constraint.
 
@@ -74,7 +76,7 @@ class ViolationHeatmap:
             self.violations[key][violation_type] += 1
             self.violations[key]["total"] += 1
 
-    def record_generation(self, gen: int):
+    def record_generation(self, gen: int) -> None:
         """
         Save current violation state for this generation.
 
@@ -91,7 +93,7 @@ class ViolationHeatmap:
         }
         self.generation_history.append(snapshot)
 
-    def get_hotspots(self, top_n: int = 20) -> List[Tuple]:
+    def get_hotspots(self, top_n: int = 20) -> list[tuple]:
         """
         Get genes with most frequent violations (hotspots).
 
@@ -111,21 +113,21 @@ class ViolationHeatmap:
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_n]
 
-    def get_violations_by_type(self) -> Dict[str, int]:
+    def get_violations_by_type(self) -> dict[str, int]:
         """
         Get total violations grouped by type.
 
         Returns:
             Dict mapping violation_type → total_count
         """
-        totals = defaultdict(int)
+        totals: dict[str, int] = defaultdict(int)
         for counts in self.violations.values():
             for vtype, count in counts.items():
                 if vtype != "total":
                     totals[vtype] += count
         return dict(totals)
 
-    def save_to_file(self, filepath: str):
+    def save_to_file(self, filepath: str) -> None:
         """
         Persist heatmap to JSON file.
 
@@ -165,7 +167,7 @@ class ViolationHeatmap:
         if not Path(filepath).exists():
             return heatmap
 
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             data = json.load(f)
 
         # Restore violations (convert string keys back to tuples)
@@ -178,7 +180,7 @@ class ViolationHeatmap:
 
         return heatmap
 
-    def merge(self, other: "ViolationHeatmap"):
+    def merge(self, other: "ViolationHeatmap") -> None:
         """
         Merge another heatmap into this one (for multi-run analysis).
 
@@ -189,7 +191,7 @@ class ViolationHeatmap:
             for vtype, count in counts.items():
                 self.violations[key][vtype] += count
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear all violation data."""
         self.violations.clear()
         self.generation_history.clear()
@@ -206,7 +208,7 @@ class ViolationHeatmap:
         """
         return (gene.course_id, gene.course_type, tuple(sorted(gene.group_ids)))
 
-    def print_summary(self, console=None):
+    def print_summary(self, console: Any = None) -> None:
         """
         Print heatmap summary to console.
 
@@ -292,8 +294,8 @@ if __name__ == "__main__":
     # Simulate some violations
     from src.ga.sessiongene import SessionGene
 
-    gene1 = SessionGene("CS101", "theory", "INST1", ["GRP1"], "ROOM1", [0, 1, 2])
-    gene2 = SessionGene("CS102", "practical", "INST2", ["GRP2"], "ROOM2", [3, 4])
+    gene1 = SessionGene("CS101", "theory", "INST1", ["GRP1"], "ROOM1", 0, 3)
+    gene2 = SessionGene("CS102", "practical", "INST2", ["GRP2"], "ROOM2", 3, 2)
 
     # Record violations
     for _ in range(10):

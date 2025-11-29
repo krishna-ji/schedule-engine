@@ -4,11 +4,11 @@ This module provides GPU-based constraint checking for entire populations,
 achieving 10-50x speedup over CPU-based sequential evaluation.
 """
 
-import torch
-import numpy as np
-from typing import List, Dict, Tuple
-from src.ga.sessiongene import SessionGene
 import logging
+
+import torch
+
+from src.ga.sessiongene import SessionGene
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +67,8 @@ class GPUConstraintEvaluator:
             return 32
 
     def batch_evaluate_conflicts(
-        self, population: List[List[SessionGene]], batch_size: int = None
-    ) -> List[Tuple[int, int]]:
+        self, population: list[list[SessionGene]], batch_size: int = None
+    ) -> list[tuple[int, int]]:
         """Evaluate constraints for entire population on GPU.
 
         Args:
@@ -108,7 +108,7 @@ class GPUConstraintEvaluator:
 
         return results
 
-    def _population_to_tensor(self, batch: List[List[SessionGene]]) -> torch.Tensor:
+    def _population_to_tensor(self, batch: list[list[SessionGene]]) -> torch.Tensor:
         """Convert population batch to GPU tensor.
 
         Creates a 3D tensor: [batch_size, max_genes, features]
@@ -137,7 +137,7 @@ class GPUConstraintEvaluator:
         # Single batch transfer to GPU (much faster than creating on GPU directly)
         return tensor.to(self.device, non_blocking=True)
 
-    def _evaluate_batch_gpu(self, batch_tensor: torch.Tensor) -> List[Tuple[int, int]]:
+    def _evaluate_batch_gpu(self, batch_tensor: torch.Tensor) -> list[tuple[int, int]]:
         """Vectorized constraint checking on GPU.
 
         Detects:
@@ -215,12 +215,12 @@ class GPUConstraintEvaluator:
 
     def evaluate_batch(
         self,
-        population: List,
-        courses: List,
-        instructors: List,
-        groups: List,
-        rooms: List,
-    ) -> List[Tuple[float, float]]:
+        population: list,
+        courses: list,
+        instructors: list,
+        groups: list,
+        rooms: list,
+    ) -> list[tuple[float, float]]:
         """Evaluate fitness for entire population using GPU-accelerated constraints.
 
         Implements full constraint system on GPU using PyTorch for 10-50x speedup.
@@ -261,17 +261,22 @@ class GPUConstraintEvaluator:
 
         except Exception as e:
             import traceback
+
             logger.error(f"GPU batch evaluation failed: {e}")
             logger.error(f"Exception type: {type(e).__name__}")
             logger.error(f"Full traceback:\n{traceback.format_exc()}")
-            
+
             # Debug: Check first individual structure
             if population and len(population) > 0:
                 ind = population[0]
-                logger.error(f"DEBUG: population[0] type={type(ind)}, len={len(ind) if hasattr(ind, '__len__') else 'N/A'}")
-                if hasattr(ind, '__iter__') and len(ind) > 0:
-                    logger.error(f"DEBUG: population[0][0] type={type(ind[0])}, has_course_id={hasattr(ind[0], 'course_id')}")
-            
+                logger.error(
+                    f"DEBUG: population[0] type={type(ind)}, len={len(ind) if hasattr(ind, '__len__') else 'N/A'}"
+                )
+                if hasattr(ind, "__iter__") and len(ind) > 0:
+                    logger.error(
+                        f"DEBUG: population[0][0] type={type(ind[0])}, has_course_id={hasattr(ind[0], 'course_id')}"
+                    )
+
             logger.warning("Falling back to CPU evaluation")
             from src.ga.evaluator.fitness import evaluate
 
@@ -280,8 +285,8 @@ class GPUConstraintEvaluator:
             ]
 
     def _evaluate_batch_full_constraints(
-        self, batch: List, courses, instructors, groups, rooms
-    ) -> List[Tuple[float, float]]:
+        self, batch: list, courses, instructors, groups, rooms
+    ) -> list[tuple[float, float]]:
         """GPU-accelerated full constraint evaluation with all hard/soft constraints.
 
         Implements complete UCTP constraint system on GPU:
@@ -358,12 +363,12 @@ class GPUConstraintEvaluator:
 
     def _encode_batch_full(
         self,
-        batch: List,
+        batch: list,
         max_genes: int,
         course_map: dict,
         instructor_map: dict,
         room_map: dict,
-    ) -> Tuple[torch.Tensor, List]:
+    ) -> tuple[torch.Tensor, list]:
         """Encode batch with full constraint-relevant features.
 
         Returns:
@@ -412,16 +417,22 @@ class GPUConstraintEvaluator:
 
             # DEBUG: Log first individual structure for diagnosis
             if i == 0:
-                logger.info(f"DEBUG GPU Batch - First individual structure:")
+                logger.info("DEBUG GPU Batch - First individual structure:")
                 logger.info(f"  individual type: {type(individual)}")
                 logger.info(f"  individual class: {individual.__class__.__name__}")
                 logger.info(f"  individual len: {len(individual)}")
                 if len(individual) > 0:
                     logger.info(f"  individual[0] type: {type(individual[0])}")
-                    logger.info(f"  individual[0] class: {individual[0].__class__.__name__ if hasattr(individual[0], '__class__') else 'NO CLASS'}")
-                    logger.info(f"  individual[0] has course_id: {hasattr(individual[0], 'course_id')}")
-                    if hasattr(individual[0], '__dict__'):
-                        logger.info(f"  individual[0].__dict__ keys: {list(individual[0].__dict__.keys())[:5]}")
+                    logger.info(
+                        f"  individual[0] class: {individual[0].__class__.__name__ if hasattr(individual[0], '__class__') else 'NO CLASS'}"
+                    )
+                    logger.info(
+                        f"  individual[0] has course_id: {hasattr(individual[0], 'course_id')}"
+                    )
+                    if hasattr(individual[0], "__dict__"):
+                        logger.info(
+                            f"  individual[0].__dict__ keys: {list(individual[0].__dict__.keys())[:5]}"
+                        )
 
             for j, gene in enumerate(individual):
                 if j >= max_genes:
@@ -443,7 +454,7 @@ class GPUConstraintEvaluator:
                     # Check that _parallel_crossover and _parallel_mutation properly unpack tuples
                     # Crossover should: offspring[i], offspring[i+1] = toolbox.mate(...)
                     # Mutation should: offspring[i] = toolbox.mutate(...)[0]
-                    
+
                     # Skip this gene and continue (defensive programming)
                     # This allows partial encoding rather than full failure
                     continue
@@ -492,7 +503,10 @@ class GPUConstraintEvaluator:
                     # HC5: Check instructor time availability
                     if hasattr(inst, "available_quanta"):
                         available_quanta = inst.available_quanta
-                        all_available = all(q in available_quanta for q in range(gene.start_quanta, gene.end_quanta))
+                        all_available = all(
+                            q in available_quanta
+                            for q in range(gene.start_quanta, gene.end_quanta)
+                        )
                         tensor[i, j, FEAT_INST_AVAILABLE] = 1 if all_available else 0
                     else:
                         tensor[i, j, FEAT_INST_AVAILABLE] = 1  # Assume available
@@ -510,7 +524,8 @@ class GPUConstraintEvaluator:
                     if hasattr(room, "available_quanta"):
                         room_available_quanta = room.available_quanta
                         all_available = all(
-                            q in room_available_quanta for q in range(gene.start_quanta, gene.end_quanta)
+                            q in room_available_quanta
+                            for q in range(gene.start_quanta, gene.end_quanta)
                         )
                         tensor[i, j, FEAT_ROOM_AVAILABLE] = 1 if all_available else 0
                     else:
@@ -526,11 +541,11 @@ class GPUConstraintEvaluator:
         course_map: dict,
         instructor_map: dict,
         room_map: dict,
-        batch: List,
-        group_data: List,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        batch: list,
+        group_data: list,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute all 8 hard + 4 soft constraints using TRUE GPU vectorization.
-        
+
         PERFORMANCE: Vectorized tensor operations instead of Python loops.
         - Before: O(batch × genes²) = 500 × 527² = 138M Python iterations
         - After: O(batch × genes²) GPU tensor ops = 10-50x faster
@@ -558,49 +573,58 @@ class GPUConstraintEvaluator:
 
         # Compute time ranges for overlap detection
         time_end = time_start + duration  # [batch, genes]
-        
+
         # Valid gene mask (time_start > 0 indicates allocated gene)
         valid_mask = time_start > 0  # [batch, genes]
 
         # ============================================
         # VECTORIZED HARD CONSTRAINTS (GPU Accelerated)
         # ============================================
-        
+
         # Create pairwise comparison matrices for ALL individuals at once
         # Shape: [batch, genes, genes] - broadcasts across all pairs
         time_start_i = time_start.unsqueeze(2)  # [batch, genes, 1]
         time_start_j = time_start.unsqueeze(1)  # [batch, 1, genes]
-        time_end_i = time_end.unsqueeze(2)      # [batch, genes, 1]
-        time_end_j = time_end.unsqueeze(1)      # [batch, 1, genes]
-        
+        time_end_i = time_end.unsqueeze(2)  # [batch, genes, 1]
+        time_end_j = time_end.unsqueeze(1)  # [batch, 1, genes]
+
         # Vectorized time overlap detection for ALL pairs simultaneously
         # overlap[b, i, j] = True if gene i and gene j overlap in time
-        overlap = (time_start_i < time_end_j) & (time_start_j < time_end_i)  # [batch, genes, genes]
-        
+        overlap = (time_start_i < time_end_j) & (
+            time_start_j < time_end_i
+        )  # [batch, genes, genes]
+
         # Mask out self-comparisons and invalid genes
         valid_i = valid_mask.unsqueeze(2)  # [batch, genes, 1]
         valid_j = valid_mask.unsqueeze(1)  # [batch, 1, genes]
-        valid_pairs = valid_i & valid_j    # [batch, genes, genes]
-        
+        valid_pairs = valid_i & valid_j  # [batch, genes, genes]
+
         # Create upper triangular mask to avoid duplicate checking (i < j only)
-        triu_mask = torch.triu(torch.ones(max_genes, max_genes, device=self.device, dtype=torch.bool), diagonal=1)
+        triu_mask = torch.triu(
+            torch.ones(max_genes, max_genes, device=self.device, dtype=torch.bool),
+            diagonal=1,
+        )
         valid_pairs = valid_pairs & triu_mask.unsqueeze(0)  # [batch, genes, genes]
-        
+
         # Final overlap mask: time overlap AND valid pair AND upper triangular
         overlap_mask = overlap & valid_pairs  # [batch, genes, genes]
-        
+
         # HC2: Instructor exclusivity (vectorized)
         instructor_i = instructor_ids.unsqueeze(2)  # [batch, genes, 1]
         instructor_j = instructor_ids.unsqueeze(1)  # [batch, 1, genes]
-        instructor_conflicts = (instructor_i == instructor_j) & overlap_mask  # [batch, genes, genes]
-        hard_total += instructor_conflicts.sum(dim=(1, 2)).float() * 3.0  # Count conflicts per individual
-        
+        instructor_conflicts = (
+            instructor_i == instructor_j
+        ) & overlap_mask  # [batch, genes, genes]
+        hard_total += (
+            instructor_conflicts.sum(dim=(1, 2)).float() * 3.0
+        )  # Count conflicts per individual
+
         # HC8: Room exclusivity (vectorized)
         room_i = room_ids.unsqueeze(2)  # [batch, genes, 1]
         room_j = room_ids.unsqueeze(1)  # [batch, 1, genes]
         room_conflicts = (room_i == room_j) & overlap_mask  # [batch, genes, genes]
         hard_total += room_conflicts.sum(dim=(1, 2)).float() * 2.5
-        
+
         # HC1: Group exclusivity - requires CPU fallback for set intersection
         # Group conflict detection needs actual group IDs (not hashable in tensors)
         # Process only overlapping pairs to minimize CPU work
@@ -609,33 +633,40 @@ class GPUConstraintEvaluator:
             for idx in range(len(overlap_indices[0])):
                 i = overlap_indices[0][idx].item()
                 j = overlap_indices[1][idx].item()
-                
+
                 groups_i = group_data[b][i]
                 groups_j = group_data[b][j]
-                
+
                 if groups_i & groups_j:  # Set intersection
                     overlap_count = len(groups_i & groups_j)
                     hard_total[b] += 3.0 * overlap_count
-        
+
         # HC3: Instructor qualifications (vectorized)
         unqualified = (instructor_qualified == 0) & valid_mask
         hard_total += unqualified.sum(dim=1).float() * 3.0
-        
+
         # HC4: Room suitability (vectorized with compatibility rules)
-        feature_mismatch = (req_features > 0) & (room_features > 0) & (req_features != room_features) & valid_mask
+        feature_mismatch = (
+            (req_features > 0)
+            & (room_features > 0)
+            & (req_features != room_features)
+            & valid_mask
+        )
         # Allow compatible features (lecture=1 in tutorial=3 OK, practical=2 in lab=2 OK)
-        compatible = ((req_features == 1) & (room_features <= 3)) | ((req_features == 2) & (room_features == 2))
+        compatible = ((req_features == 1) & (room_features <= 3)) | (
+            (req_features == 2) & (room_features == 2)
+        )
         actual_mismatch = feature_mismatch & ~compatible
         hard_total += actual_mismatch.sum(dim=1).float() * 2.5
-        
+
         # HC5: Instructor availability (vectorized)
         unavailable_instructor = (instructor_available == 0) & valid_mask
         hard_total += unavailable_instructor.sum(dim=1).float() * 3.0
-        
+
         # HC6: Room availability (vectorized)
         unavailable_room = (room_available == 0) & valid_mask
         hard_total += unavailable_room.sum(dim=1).float() * 2.5
-        
+
         # HC7: Course completeness - approximation (count per course ID)
         # Simplified: penalize unusual session counts per course
         for b in range(batch_size):
@@ -649,23 +680,25 @@ class GPUConstraintEvaluator:
         # ============================================
         # VECTORIZED SOFT CONSTRAINTS (GPU Accelerated)
         # ============================================
-        
+
         # SC1 & SC2: Schedule compactness (vectorized gap detection)
         for b in range(batch_size):
             valid_times = time_start[b][valid_mask[b]]
             if len(valid_times) > 1:
                 sorted_times, _ = torch.sort(valid_times)
-                sorted_durations = duration[b][valid_mask[b]][torch.argsort(time_start[b][valid_mask[b]])]
-                
+                sorted_durations = duration[b][valid_mask[b]][
+                    torch.argsort(time_start[b][valid_mask[b]])
+                ]
+
                 session_ends = sorted_times + sorted_durations
                 gaps = sorted_times[1:] - session_ends[:-1]
-                
+
                 # Penalize large gaps (>2 quanta), excluding lunch time
                 # Simplified lunch detection: gaps during midday (quanta 15-20)
                 large_gaps = gaps > 2
                 gap_penalty = (gaps[large_gaps] * 1.5).sum()
                 soft_total[b] += gap_penalty
-        
+
         # SC3: Lunch break violations (vectorized)
         # Sessions during lunch time (quanta 3-5 per day, assuming 6 quanta/day)
         # For 42-quantum week (7 days × 6 slots), check each day
@@ -673,29 +706,31 @@ class GPUConstraintEvaluator:
             day_start = day * 6
             lunch_start = day_start + 3
             lunch_end = day_start + 5
-            
+
             # Check if any sessions overlap with lunch time
-            in_lunch = (time_start >= lunch_start) & (time_start < lunch_end) & valid_mask
+            in_lunch = (
+                (time_start >= lunch_start) & (time_start < lunch_end) & valid_mask
+            )
             soft_total += in_lunch.sum(dim=1).float() * 1.2
-        
+
         # SC4: Session continuity (vectorized)
         # Prefer consecutive sessions for same course
         for b in range(batch_size):
             valid_courses = course_ids[b][valid_mask[b]]
             valid_times = time_start[b][valid_mask[b]]
-            
+
             if len(valid_courses) > 1:
                 unique_courses = torch.unique(valid_courses)
                 for course in unique_courses:
                     course_mask = valid_courses == course
                     course_times = valid_times[course_mask]
-                    
+
                     if len(course_times) > 1:
                         sorted_times, _ = torch.sort(course_times)
                         gaps = sorted_times[1:] - sorted_times[:-1]
                         non_consecutive = (gaps > 1).sum()
                         soft_total[b] += non_consecutive.float() * 0.8
-        
+
         return hard_total, soft_total
 
     def is_available(self) -> bool:

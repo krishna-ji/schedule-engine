@@ -4,8 +4,8 @@ Novelty archive for maintaining behavioral diversity.
 ENHANCEMENT #5: Novelty search implementation.
 """
 
-from typing import List, Tuple
 from collections import deque
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -111,7 +111,7 @@ class NoveltyArchive:
 
     def get_novel_individuals(
         self, n: int = 10, prefer_feasible: bool = True
-    ) -> List[Individual]:
+    ) -> list[Individual]:
         """
         Get n most novel individuals from archive for injection.
 

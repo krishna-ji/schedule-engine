@@ -5,25 +5,26 @@ ENHANCEMENT #2: Provides fine-grained constraint violation analysis
 for RL state representation and targeted repair strategies.
 """
 
-from typing import Dict, List, Tuple
-from src.entities.decoded_session import CourseSession
-from src.entities.course import Course
+from __future__ import annotations
+
 from src.constraints.hard import (
-    student_group_exclusivity,
+    course_completeness,
     instructor_exclusivity,
     instructor_qualifications,
-    room_suitability,
     instructor_time_availability,
-    room_time_availability,
-    course_completeness,
     room_exclusivity,
+    room_suitability,
+    room_time_availability,
+    student_group_exclusivity,
 )
 from src.constraints.soft import (
-    student_schedule_compactness,
     instructor_schedule_compactness,
-    student_lunch_break,
     session_continuity,
+    student_lunch_break,
+    student_schedule_compactness,
 )
+from src.entities.course import Course
+from src.entities.decoded_session import CourseSession
 
 
 class ConstraintEvaluator:
@@ -54,7 +55,7 @@ class ConstraintEvaluator:
         "session_continuity": session_continuity,
     }
 
-    def __init__(self, course_map: Dict[Tuple, Course] = None):
+    def __init__(self, course_map: dict[tuple, Course] | None = None):
         """
         Initialize constraint evaluator.
 
@@ -64,7 +65,7 @@ class ConstraintEvaluator:
         """
         self.course_map = course_map or {}
 
-    def evaluate_hard_breakdown(self, sessions: List[CourseSession]) -> Dict[str, int]:
+    def evaluate_hard_breakdown(self, sessions: list[CourseSession]) -> dict[str, int]:
         """
         Evaluate all hard constraints individually.
 
@@ -91,7 +92,9 @@ class ConstraintEvaluator:
 
         return breakdown
 
-    def evaluate_soft_breakdown(self, sessions: List[CourseSession]) -> Dict[str, int]:
+    def evaluate_soft_breakdown(
+        self, sessions: list[CourseSession]
+    ) -> dict[str, float]:
         """
         Evaluate all soft constraints individually.
 
@@ -118,7 +121,9 @@ class ConstraintEvaluator:
 
         return breakdown
 
-    def evaluate_full_breakdown(self, sessions: List[CourseSession]) -> Dict[str, int]:
+    def evaluate_full_breakdown(
+        self, sessions: list[CourseSession]
+    ) -> dict[str, int | float]:
         """
         Evaluate all constraints and return combined breakdown.
 
@@ -135,8 +140,8 @@ class ConstraintEvaluator:
         return {**hard_breakdown, **soft_breakdown}
 
     def get_top_violators(
-        self, sessions: List[CourseSession], top_n: int = 3
-    ) -> List[Tuple[str, int]]:
+        self, sessions: list[CourseSession], top_n: int = 3
+    ) -> list[tuple[str, int | float]]:
         """
         Get the top N most violated constraints.
 
@@ -157,8 +162,8 @@ class ConstraintEvaluator:
         return sorted_violations[:top_n]
 
     def get_constraint_priorities(
-        self, sessions: List[CourseSession]
-    ) -> Dict[str, float]:
+        self, sessions: list[CourseSession]
+    ) -> dict[str, float]:
         """
         Calculate constraint priority scores for targeted repair.
 

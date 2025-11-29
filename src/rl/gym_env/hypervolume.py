@@ -21,7 +21,6 @@ This implementation provides:
 3. Hypervolume-based reward for RL agents
 """
 
-from typing import List, Tuple, Optional
 import numpy as np
 from numpy.typing import NDArray
 

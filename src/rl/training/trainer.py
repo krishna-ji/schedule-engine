@@ -10,20 +10,18 @@ for the GA scheduler. Supports:
 - Validation set evaluation
 """
 
-from typing import Optional, Dict, Any, List, Callable
-from pathlib import Path
-import time
 import json
+import time
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 import gymnasium as gym
 from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.callbacks import CallbackList, BaseCallback
-from stable_baselines3.common.logger import configure
-from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
-from src.rl.agents import create_ppo_agent, create_dqn_agent
 from src.config import get_config
+from src.rl.agents import create_dqn_agent, create_ppo_agent
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -116,8 +114,8 @@ class RLTrainer:
         self,
         env: gym.Env,
         agent_type: str = "ppo",
-        save_dir: Optional[str] = None,
-        tensorboard_log: Optional[str] = None,
+        save_dir: str | None = None,
+        tensorboard_log: str | None = None,
         verbose: int = 1,
         n_envs: int = 1,
         use_subproc: bool = False,
@@ -164,13 +162,13 @@ class RLTrainer:
         Path(self.tensorboard_log).mkdir(parents=True, exist_ok=True)
 
         # Initialize agent
-        self.agent: Optional[BaseAlgorithm] = None
+        self.agent: BaseAlgorithm | None = None
         self.agent_kwargs = agent_kwargs
 
         # Training statistics
-        self.training_start_time: Optional[float] = None
+        self.training_start_time: float | None = None
         self.total_timesteps_trained: int = 0
-        self.training_history: List[Dict[str, Any]] = []
+        self.training_history: list[dict[str, Any]] = []
 
         logger.info(f"Initialized RLTrainer with {agent_type.upper()} agent")
         logger.info(f"Save directory: {self.save_dir}")
@@ -225,8 +223,8 @@ class RLTrainer:
     def train(
         self,
         total_timesteps: int,
-        callbacks: Optional[List[BaseCallback]] = None,
-        tb_log_name: Optional[str] = None,
+        callbacks: list[BaseCallback] | None = None,
+        tb_log_name: str | None = None,
         reset_num_timesteps: bool = True,
         progress_bar: bool = False,
     ) -> BaseAlgorithm:
@@ -278,10 +276,10 @@ class RLTrainer:
             n_steps = getattr(self.agent, "n_steps", 2048)
             batch_size = getattr(self.agent, "batch_size", 64)
             n_epochs = getattr(self.agent, "n_epochs", 10)
-            logger.info(f"")
-            logger.info(f"=" * 60)
-            logger.info(f"PPO TRAINING DIAGNOSTICS")
-            logger.info(f"=" * 60)
+            logger.info("")
+            logger.info("=" * 60)
+            logger.info("PPO TRAINING DIAGNOSTICS")
+            logger.info("=" * 60)
             logger.info(
                 f"Rollout buffer: {n_steps} steps/env x {self.n_envs} envs = {n_steps * self.n_envs} total steps"
             )
@@ -291,22 +289,22 @@ class RLTrainer:
             logger.info(
                 f"Then train for {n_epochs} epochs with batch_size={batch_size}"
             )
-            logger.info(f"")
-            logger.info(f"EXPECTED BEHAVIOR:")
+            logger.info("")
+            logger.info("EXPECTED BEHAVIOR:")
             logger.info(
                 f"   1. Environments reset (you should see [ENV 0-{self.n_envs-1}] Reset logs)"
             )
             logger.info(
                 f"   2. Collect {n_steps} steps from each env (watch for step logs)"
             )
-            logger.info(f"   3. Policy update (progress bar increments)")
+            logger.info("   3. Policy update (progress bar increments)")
             logger.info(f"   4. Repeat until {total_timesteps:,} total steps")
-            logger.info(f"")
+            logger.info("")
             logger.info(
-                f"If no environment logs appear within 1 minute, training is likely frozen."
+                "If no environment logs appear within 1 minute, training is likely frozen."
             )
-            logger.info(f"=" * 60)
-            logger.info(f"")
+            logger.info("=" * 60)
+            logger.info("")
 
         logger.info("Starting rollout collection now...")
         logger.info(
@@ -358,7 +356,7 @@ class RLTrainer:
     def save_model(
         self,
         filename: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Path:
         """
         Save trained model with metadata.
@@ -446,7 +444,7 @@ class RLTrainer:
         self,
         n_eval_episodes: int = 10,
         deterministic: bool = True,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Evaluate trained agent.
 
@@ -505,7 +503,7 @@ class RLTrainer:
 
         return metrics
 
-    def get_training_statistics(self) -> Dict[str, Any]:
+    def get_training_statistics(self) -> dict[str, Any]:
         """Get training statistics."""
         total_time = sum(h["elapsed_seconds"] for h in self.training_history)
 
@@ -516,9 +514,7 @@ class RLTrainer:
             "training_history": self.training_history,
         }
 
-    def _prepare_agent_overrides(
-        self, total_timesteps: Optional[int]
-    ) -> Dict[str, Any]:
+    def _prepare_agent_overrides(self, total_timesteps: int | None) -> dict[str, Any]:
         """Auto-tune PPO rollout parameters for tiny smoke tests."""
 
         if total_timesteps is None or total_timesteps <= 0 or self.agent_type != "ppo":

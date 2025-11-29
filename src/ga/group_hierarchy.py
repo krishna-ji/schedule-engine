@@ -6,11 +6,10 @@ Identifies parent groups and their subgroups to enable proper scheduling:
 - Practical sessions for subgroups separately
 """
 
-from typing import Dict, List
 from src.entities.group import Group
 
 
-def analyze_group_hierarchy(groups: Dict[str, Group]) -> Dict:
+def analyze_group_hierarchy(groups: dict[str, Group]) -> dict:
     """
     Analyzes group relationships to identify parents and subgroups.
 
@@ -70,26 +69,26 @@ def analyze_group_hierarchy(groups: Dict[str, Group]) -> Dict:
     }
 
 
-def is_parent_group(group_id: str, hierarchy: Dict) -> bool:
+def is_parent_group(group_id: str, hierarchy: dict) -> bool:
     """Check if a group is a parent group."""
     return group_id in hierarchy["parents"]
 
 
-def is_subgroup(group_id: str, hierarchy: Dict) -> bool:
+def is_subgroup(group_id: str, hierarchy: dict) -> bool:
     """Check if a group is a subgroup."""
     return group_id in hierarchy["parent_map"]
 
 
-def get_parent(group_id: str, hierarchy: Dict) -> str:
+def get_parent(group_id: str, hierarchy: dict) -> str:
     """Get parent group ID for a subgroup."""
     return hierarchy["parent_map"].get(group_id)
 
 
-def get_subgroups(parent_id: str, hierarchy: Dict) -> List[str]:
+def get_subgroups(parent_id: str, hierarchy: dict) -> list[str]:
     """Get list of subgroup IDs for a parent."""
     return hierarchy["subgroups"].get(parent_id, [])
 
 
-def has_subgroups(group_id: str, hierarchy: Dict) -> bool:
+def has_subgroups(group_id: str, hierarchy: dict) -> bool:
     """Check if a group has subgroups."""
     return group_id in hierarchy["subgroups"]

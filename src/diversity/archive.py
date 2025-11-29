@@ -32,13 +32,13 @@ References:
 - Pugh et al. (2016): Quality Diversity
 """
 
-from typing import List, Tuple, Optional, Dict, Any
 from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
-from src.core.types import Individual, SchedulingContext
-from src.diversity.behavioral_features import extract_behavioral_features
+from src.core.types import Individual
 from src.diversity.novelty_metric import compute_novelty
 
 
@@ -48,7 +48,7 @@ class ArchiveEntry:
 
     individual: Individual
     behavioral_features: NDArray[np.float64]
-    fitness: Tuple[float, float]  # (hard_violations, soft_violations)
+    fitness: tuple[float, float]  # (hard_violations, soft_violations)
     novelty: float
     generation_added: int
 
@@ -79,7 +79,7 @@ class BehavioralArchive:
         self,
         max_size: int = 100,
         novelty_weight: float = 0.5,
-        quality_threshold: Optional[float] = None,
+        quality_threshold: float | None = None,
         k_nearest: int = 15,
         metric: str = "euclidean",
     ):
@@ -103,7 +103,7 @@ class BehavioralArchive:
         self.metric = metric
 
         # Archive storage
-        self.entries: List[ArchiveEntry] = []
+        self.entries: list[ArchiveEntry] = []
 
         # Statistics
         self.total_additions = 0
@@ -114,7 +114,7 @@ class BehavioralArchive:
         self,
         individual: Individual,
         behavioral_features: NDArray[np.float64],
-        fitness: Tuple[float, float],
+        fitness: tuple[float, float],
         generation: int,
     ) -> bool:
         """
@@ -196,7 +196,7 @@ class BehavioralArchive:
 
         return novelty
 
-    def _should_replace(self, new_entry: ArchiveEntry) -> Tuple[bool, Optional[int]]:
+    def _should_replace(self, new_entry: ArchiveEntry) -> tuple[bool, int | None]:
         """
         Determine if new entry should replace an existing entry.
 
@@ -248,7 +248,7 @@ class BehavioralArchive:
         else:
             return False, None
 
-    def get_diverse_subset(self, k: int = 10) -> List[Individual]:
+    def get_diverse_subset(self, k: int = 10) -> list[Individual]:
         """
         Get k most diverse solutions from archive.
 
@@ -266,12 +266,14 @@ class BehavioralArchive:
         k = min(k, len(self.entries))
 
         # Start with highest novelty solution
-        selected_indices = [np.argmax([e.novelty for e in self.entries])]
+        selected_indices: list[int] = [
+            int(np.argmax([e.novelty for e in self.entries]))
+        ]
 
         # Greedily add solutions farthest from selected set
         while len(selected_indices) < k:
-            max_min_distance = -1
-            best_idx = -1
+            max_min_distance: float = -1.0
+            best_idx: int = -1
 
             for i in range(len(self.entries)):
                 if i in selected_indices:
@@ -284,18 +286,18 @@ class BehavioralArchive:
                         self.entries[i].behavioral_features
                         - self.entries[j].behavioral_features
                     )
-                    min_distance = min(min_distance, dist)
+                    min_distance = float(min(min_distance, dist))  # type: ignore[arg-type]
 
                 # Track solution with maximum minimum distance
                 if min_distance > max_min_distance:
                     max_min_distance = min_distance
-                    best_idx = i
+                    best_idx = int(i)
 
             selected_indices.append(best_idx)
 
         return [self.entries[i].individual for i in selected_indices]
 
-    def get_best_quality(self, k: int = 10) -> List[Individual]:
+    def get_best_quality(self, k: int = 10) -> list[Individual]:
         """
         Get k best quality solutions from archive.
 
@@ -315,7 +317,7 @@ class BehavioralArchive:
 
         return [entry.individual for entry in sorted_entries[:k]]
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get archive statistics.
 

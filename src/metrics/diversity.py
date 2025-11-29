@@ -1,6 +1,8 @@
-from src.ga.sessiongene import SessionGene
-from typing import List
+from __future__ import annotations
+
 import numpy as np
+
+from src.ga.sessiongene import SessionGene
 
 
 def gene_distance(g1: SessionGene, g2: SessionGene) -> float:
@@ -30,7 +32,7 @@ def gene_distance(g1: SessionGene, g2: SessionGene) -> float:
     return score / 5  # Normalize to [0, 1]
 
 
-def individual_distance(ind1: List[SessionGene], ind2: List[SessionGene]) -> float:
+def individual_distance(ind1: list[SessionGene], ind2: list[SessionGene]) -> float:
     """
     Computes the average gene-level distance between two individuals.
     Optimized with NumPy vectorization for 20-100x speedup.
@@ -68,7 +70,7 @@ def individual_distance(ind1: List[SessionGene], ind2: List[SessionGene]) -> flo
 
 
 def average_pairwise_diversity(
-    population: List[List[SessionGene]], sample_size: int = 50
+    population: list[list[SessionGene]], sample_size: int = 50
 ) -> float:
     """
     Calculates the average pairwise diversity in a population using sampling.
@@ -97,11 +99,11 @@ def average_pairwise_diversity(
     else:
         sampled_pop = population
 
-    total = 0
+    total = 0.0
     count = 0
 
     for i in range(len(sampled_pop)):
         for j in range(i + 1, len(sampled_pop)):
             total += individual_distance(sampled_pop[i], sampled_pop[j])
             count += 1
-    return total / count if count else 0
+    return total / count if count else 0.0

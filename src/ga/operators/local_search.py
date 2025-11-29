@@ -30,20 +30,19 @@ Usage:
     )
 """
 
-from typing import List, Tuple, Optional
 import random
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
+from src.ga.sessiongene import SessionGene
 
 
 def optimize_gene_greedy(
     gene: SessionGene,
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     gene_index: int,
     context: SchedulingContext,
     max_iterations: int = 10,
-) -> Tuple[SessionGene, int]:
+) -> tuple[SessionGene, int]:
     """
     Greedy local search: hill climbing with first improvement acceptance.
 
@@ -109,11 +108,11 @@ def optimize_gene_greedy(
 
 def optimize_gene_exhaustive(
     gene: SessionGene,
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     gene_index: int,
     context: SchedulingContext,
     max_neighborhood_size: int = 100,
-) -> Tuple[SessionGene, int]:
+) -> tuple[SessionGene, int]:
     """
     Steepest descent: exhaustive neighborhood search with best improvement.
 
@@ -186,8 +185,8 @@ def optimize_gene_exhaustive(
 def _generate_neighborhood(
     gene: SessionGene,
     context: SchedulingContext,
-    max_samples: Optional[int] = None,
-) -> List[SessionGene]:
+    max_samples: int | None = None,
+) -> list[SessionGene]:
     """
     Generate neighborhood of alternative gene assignments.
 
@@ -234,7 +233,7 @@ def _generate_time_neighbors(
     gene: SessionGene,
     duration: int,
     context: SchedulingContext,
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """Generate neighbors by shifting time slots."""
     neighbors = []
 
@@ -272,7 +271,7 @@ def _generate_room_neighbors(
     gene: SessionGene,
     course,
     context: SchedulingContext,
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """Generate neighbors by changing room."""
     neighbors = []
 
@@ -302,7 +301,7 @@ def _generate_room_neighbors(
 
 
 def _is_room_suitable(
-    course, room, context: SchedulingContext, group_ids: List[str]
+    course, room, context: SchedulingContext, group_ids: list[str]
 ) -> bool:
     """Check if room is suitable for course and groups."""
     # Get max group size from all groups
@@ -333,7 +332,7 @@ def _is_room_suitable(
 
 def _count_gene_violations(
     gene: SessionGene,
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     gene_index: int,
     context: SchedulingContext,
 ) -> int:

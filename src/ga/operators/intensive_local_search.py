@@ -39,15 +39,13 @@ Usage:
     )
 """
 
-from typing import List, Dict, Tuple
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import multiprocessing
 
-from src.utils.system_info import get_cpu_count
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.ga.operators.local_search import optimize_gene_greedy, optimize_gene_exhaustive
+from src.ga.operators.local_search import optimize_gene_exhaustive, optimize_gene_greedy
+from src.ga.sessiongene import SessionGene
+from src.utils.system_info import get_cpu_count
 
 
 def _optimize_gene_wrapper_exhaustive(args):
@@ -93,13 +91,13 @@ def _optimize_gene_wrapper_greedy(args):
 
 
 def apply_exhaustive_search(
-    population: List[List[SessionGene]],
+    population: list[list[SessionGene]],
     context: SchedulingContext,
     population_coverage: float = 0.3,
     max_neighborhood_size: int = 100,
     timeout_seconds: int = 180,
     parallel: bool = True,  # NEW: Enable/disable parallelization
-) -> Tuple[List[List[SessionGene]], Dict]:
+) -> tuple[list[list[SessionGene]], dict]:
     """
     Apply exhaustive local search to population.
 
@@ -258,13 +256,13 @@ def apply_exhaustive_search(
 
 
 def apply_greedy_search(
-    population: List[List[SessionGene]],
+    population: list[list[SessionGene]],
     context: SchedulingContext,
     population_coverage: float = 0.5,
     max_iterations: int = 10,
     timeout_seconds: int = 60,
     parallel: bool = True,  # NEW: Enable/disable parallelization
-) -> Tuple[List[List[SessionGene]], Dict]:
+) -> tuple[list[list[SessionGene]], dict]:
     """
     Apply greedy local search to population.
 
@@ -423,10 +421,10 @@ def apply_greedy_search(
 
 
 def apply_selective_probabilistic(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     apply_probability: float = 0.3,
-) -> Tuple[List[SessionGene], bool]:
+) -> tuple[list[SessionGene], bool]:
     """
     Apply selective repair probabilistically.
 
@@ -450,8 +448,8 @@ def apply_selective_probabilistic(
         return individual, False
 
     # Apply selective repair (violations only)
-    from src.ga.operators.violation_detector import detect_violated_genes
     from src.ga.operators.repair import repair_individual_unified
+    from src.ga.operators.violation_detector import detect_violated_genes
 
     violations = detect_violated_genes(individual, context, strategy="hybrid")
 

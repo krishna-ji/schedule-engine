@@ -4,7 +4,6 @@ Rank-based multi-agent RL.
 ENHANCEMENT #8: Specialist agents for different Pareto ranks.
 """
 
-from typing import List, Dict
 import numpy as np
 from numpy.typing import NDArray
 
@@ -91,7 +90,7 @@ class RankBasedMultiAgent:
     - Agent 4: Rank 4+ (poor solutions)
     """
 
-    def __init__(self, config: Dict = None):
+    def __init__(self, config: dict = None):
         """
         Initialize rank-based multi-agent system.
 
@@ -111,7 +110,7 @@ class RankBasedMultiAgent:
     def select_action_for_individual(
         self,
         individual: Individual,
-        population: List[Individual],
+        population: list[Individual],
         observation: NDArray[np.float32],
     ) -> int:
         """
@@ -136,7 +135,7 @@ class RankBasedMultiAgent:
         return agent.select_action(observation)
 
     def _compute_pareto_rank(
-        self, individual: Individual, population: List[Individual]
+        self, individual: Individual, population: list[Individual]
     ) -> int:
         """
         Compute Pareto rank of individual in population.
@@ -179,7 +178,7 @@ class RankBasedMultiAgent:
         else:
             return 4
 
-    def get_statistics(self) -> Dict[str, int]:
+    def get_statistics(self) -> dict[str, int]:
         """Get usage statistics for all agents."""
         return {
             f"rank_{i+1}_activations": agent.activation_count

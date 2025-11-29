@@ -6,12 +6,14 @@ scattered across the codebase, ensuring consistent formatting and
 enabling easier output redirection for testing.
 """
 
-from rich.console import Console
-from typing import Optional
+from __future__ import annotations
+
 import sys
+from typing import TextIO
 
+from rich.console import Console
 
-_console: Optional[Console] = None
+_console: Console | None = None
 
 
 def get_console() -> Console:
@@ -45,10 +47,10 @@ def reset_console() -> None:
 
 def configure_console(
     *,
-    file=None,
-    width: Optional[int] = None,
-    force_terminal: Optional[bool] = None,
-    force_jupyter: Optional[bool] = None,
+    file: TextIO | None = None,
+    width: int | None = None,
+    force_terminal: bool | None = None,
+    force_jupyter: bool | None = None,
     no_color: bool = False,
     record: bool = False,
 ) -> Console:

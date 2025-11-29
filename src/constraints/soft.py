@@ -7,17 +7,20 @@ IMPORTANT: Uses CONTINUOUS quantum system. All time conversions must go through
 QuantumTimeSystem. Never use QUANTA_PER_DAY or day = q // QUANTA_PER_DAY.
 """
 
-import numpy as np
-from typing import List
+from __future__ import annotations
+
 from collections import defaultdict
-from src.entities.decoded_session import CourseSession
+
+import numpy as np
+
+from src.config import get_config
+from src.constraints.registry import soft_constraint
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.entities.decoded_session import CourseSession
 from src.utils.time_helpers import (
     get_midday_break_quanta,
     quantum_to_day_and_within_day,
 )
-from src.config import get_config
-from src.constraints.registry import soft_constraint
 
 # Global QuantumTimeSystem instance (initialized once)
 _QTS = QuantumTimeSystem()
@@ -29,7 +32,7 @@ _QTS = QuantumTimeSystem()
     default_weight=1.5,
     needs_courses=False,
 )
-def student_schedule_compactness(sessions: List[CourseSession]) -> int:
+def student_schedule_compactness(sessions: list[CourseSession]) -> int:
     """
     Encourages compact student schedules by minimizing idle time gaps.
 
@@ -51,7 +54,7 @@ def student_schedule_compactness(sessions: List[CourseSession]) -> int:
     # Get midday break quanta for each day
     break_quanta_by_day = get_midday_break_quanta(_QTS)
 
-    group_day_quanta = defaultdict(
+    group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
         lambda: defaultdict(set)
     )  # group_id -> day_name -> set of within-day quanta
 
@@ -94,7 +97,7 @@ def student_schedule_compactness(sessions: List[CourseSession]) -> int:
     default_weight=1.0,
     needs_courses=False,
 )
-def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
+def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
     """
     Encourages compact instructor schedules by minimizing idle time gaps.
 
@@ -117,7 +120,9 @@ def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
     # Get midday break quanta for each day
     break_quanta_by_day = get_midday_break_quanta(_QTS)
 
-    instructor_day_quanta = defaultdict(lambda: defaultdict(set))
+    instructor_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
 
     for session in sessions:
         iid = session.instructor_id
@@ -158,7 +163,7 @@ def instructor_schedule_compactness(sessions: List[CourseSession]) -> int:
     default_weight=1.2,
     needs_courses=False,
 )
-def student_lunch_break(sessions: List[CourseSession]) -> int:
+def student_lunch_break(sessions: list[CourseSession]) -> int:
     """
     Encourages students to have free time during the midday break period.
 
@@ -180,7 +185,9 @@ def student_lunch_break(sessions: List[CourseSession]) -> int:
     # Get break quanta for each day (day_name -> set of within-day quanta)
     break_quanta_by_day = get_midday_break_quanta(_QTS)
 
-    group_day_quanta = defaultdict(lambda: defaultdict(set))
+    group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
 
     for session in sessions:
         for gid in session.group_ids:
@@ -216,7 +223,7 @@ def student_lunch_break(sessions: List[CourseSession]) -> int:
     default_weight=2.0,
     needs_courses=False,
 )
-def session_continuity(sessions: List[CourseSession]) -> int:
+def session_continuity(sessions: list[CourseSession]) -> int:
     """
     Encourages sessions to be scheduled in continuous, appropriately-sized blocks.
 
@@ -253,8 +260,10 @@ def session_continuity(sessions: List[CourseSession]) -> int:
     penalty = 0
 
     # Group sessions by (course_id, course_type, day) to find blocks
-    course_day_quanta = defaultdict(lambda: defaultdict(list))
-    course_type_map = {}  # Track course types
+    course_day_quanta: dict[tuple[str, str], dict[str, list[int]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    course_type_map: dict[tuple[str, str], str] = {}  # Track course types
 
     for session in sessions:
         # Use course_id + course_type as unique identifier

@@ -3,11 +3,11 @@ Utilities for handling experiment names and output directories.
 """
 
 from __future__ import annotations
+
 import re
-from typing import Optional
 
 
-def sanitize_experiment_name(name: Optional[str]) -> Optional[str]:
+def sanitize_experiment_name(name: str | None) -> str | None:
     """Sanitize an experiment name into a safe filesystem-friendly string.
 
     Returns None for empty or whitespace-only input.

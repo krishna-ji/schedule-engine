@@ -4,10 +4,11 @@ Random agent baseline for RL evaluation.
 Simple baseline that selects actions uniformly at random.
 """
 
-from typing import Any, Dict, Tuple
+from typing import Any
+
+import gymnasium as gym
 import numpy as np
 from numpy.typing import NDArray
-import gymnasium as gym
 
 
 class RandomAgent:
@@ -35,7 +36,7 @@ class RandomAgent:
         self,
         observation: NDArray[np.float32],
         deterministic: bool = False,
-    ) -> Tuple[int, None]:
+    ) -> tuple[int, None]:
         """
         Predict action (randomly).
 
@@ -95,7 +96,7 @@ class RandomAgent:
         """
         return RandomAgent(env)
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         """Get agent configuration."""
         return {
             "type": "random",

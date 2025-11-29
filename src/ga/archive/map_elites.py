@@ -4,7 +4,6 @@ MAP-Elites algorithm for quality-diversity optimization.
 ENHANCEMENT #5: Maintain archive of diverse high-quality solutions.
 """
 
-from typing import List, Dict, Tuple, Optional
 import numpy as np
 from numpy.typing import NDArray
 
@@ -28,7 +27,7 @@ class MAPElites:
 
     def __init__(
         self,
-        feature_dimensions: List[Tuple[int, int]] = None,
+        feature_dimensions: list[tuple[int, int]] = None,
         feature_bins: int = 5,
     ):
         """
@@ -43,14 +42,14 @@ class MAPElites:
         self.feature_bins = feature_bins
 
         # Feature map: dict mapping (bin_x, bin_y, ...) → (individual, fitness)
-        self.feature_map: Dict[
-            Tuple[int, ...], Tuple[Individual, Tuple[float, float]]
+        self.feature_map: dict[
+            tuple[int, ...], tuple[Individual, tuple[float, float]]
         ] = {}
 
         # Behavioral descriptor extractor
         self.descriptor_extractor = BehavioralDescriptors()
 
-    def get_feature_indices(self, descriptor: NDArray[np.float64]) -> Tuple[int, ...]:
+    def get_feature_indices(self, descriptor: NDArray[np.float64]) -> tuple[int, ...]:
         """
         Map behavioral descriptor to feature map cell indices.
 
@@ -117,7 +116,7 @@ class MAPElites:
 
         return False
 
-    def get_all_elites(self) -> List[Individual]:
+    def get_all_elites(self) -> list[Individual]:
         """
         Get all elite solutions from feature map.
 
@@ -128,7 +127,7 @@ class MAPElites:
 
     def get_random_elites(
         self, n: int, prefer_feasible: bool = True
-    ) -> List[Individual]:
+    ) -> list[Individual]:
         """
         Sample n random elites for injection into population.
 
@@ -171,7 +170,7 @@ class MAPElites:
         occupied_cells = len(self.feature_map)
         return occupied_cells / total_cells
 
-    def get_statistics(self) -> Dict[str, float]:
+    def get_statistics(self) -> dict[str, float]:
         """Get archive statistics."""
         if len(self.feature_map) == 0:
             return {

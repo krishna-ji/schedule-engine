@@ -10,13 +10,13 @@ Features:
 - CPU-only device placement for consistent execution
 """
 
-from typing import Optional, Dict, Any
-from pathlib import Path
 import time
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
+from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3 import PPO, DQN
 
 from src.utils.logging_config import get_logger
 
@@ -50,7 +50,7 @@ class ModelLoader:
         self.device = self._normalize_device(device)
 
         # Model cache: {model_path: (model, load_time, metadata)}
-        self._cache: Dict[str, tuple] = {}
+        self._cache: dict[str, tuple] = {}
 
         # Loading statistics
         self.load_count = 0
@@ -202,8 +202,8 @@ class ModelLoader:
     def validate_model(
         self,
         model: BaseAlgorithm,
-        expected_action_space: Optional[Any] = None,
-        expected_observation_space: Optional[Any] = None,
+        expected_action_space: Any | None = None,
+        expected_observation_space: Any | None = None,
     ) -> bool:
         """
         Validate model has expected action/observation spaces.
@@ -242,7 +242,7 @@ class ModelLoader:
             logger.error(f"Model validation failed: {e}")
             return False
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get loader statistics."""
         avg_load_time = 0.0
         if self.load_count > 0:
@@ -264,7 +264,7 @@ class ModelLoader:
 
     def benchmark_load_time(
         self, model_path: str, agent_type: str = "ppo", runs: int = 10
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Benchmark model loading time.
 

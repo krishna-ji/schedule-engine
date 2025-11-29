@@ -7,7 +7,6 @@ Hypervolume measures the volume of objective space dominated by the Pareto front
 Increasing hypervolume = improving the Pareto front = good reward.
 """
 
-from typing import List
 import numpy as np
 from numpy.typing import NDArray
 
@@ -73,8 +72,8 @@ class HypervolumeReward(BaseRewardCalculator):
 
     def calculate(
         self,
-        prev_population: List[Individual],
-        current_population: List[Individual],
+        prev_population: list[Individual],
+        current_population: list[Individual],
         action_cost: float = 0.0,
     ) -> float:
         """
@@ -112,7 +111,7 @@ class HypervolumeReward(BaseRewardCalculator):
         return float(hv_improvement)
 
     def _extract_pareto_front(
-        self, population: List[Individual]
+        self, population: list[Individual]
     ) -> NDArray[np.float64]:
         """
         Extract non-dominated solutions (Pareto front) from population.
@@ -188,7 +187,7 @@ class HypervolumeReward(BaseRewardCalculator):
             print(f"Warning: HV calculation failed: {e}")
             return 0.0
 
-    def get_pareto_front_size(self, population: List[Individual]) -> int:
+    def get_pareto_front_size(self, population: list[Individual]) -> int:
         """
         Get number of solutions in Pareto front.
 

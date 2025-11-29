@@ -1,23 +1,25 @@
-import os
 import matplotlib.pyplot as plt
+
+from src.utils.output_paths import get_nsga_plot_dir
+
 from .thesis_style import (
     apply_thesis_style,
-    get_color,
-    save_figure,
     create_thesis_figure,
     format_axis,
+    get_color,
+    save_figure,
 )
 
 # Apply thesis styling
 apply_thesis_style()
 
 
-def plot_diversity_trend(diversity_trend, output_dir):
+def plot_diversity_trend(diversity_trend: list, output_dir: str) -> None:
     """
     Plot population diversity over generations.
 
     Note:
-        CSV data available in data/metrics.csv (diversity column)
+        CSV data available in csv/constraint_metrics.csv (diversity column)
     """
     fig, ax = create_thesis_figure(1, 1, figsize=(9, 5))
     ax.plot(
@@ -39,4 +41,5 @@ def plot_diversity_trend(diversity_trend, output_dir):
     )
 
     plt.tight_layout()
-    save_figure(fig, os.path.join(output_dir, "diversity.pdf"))
+    plot_dir = get_nsga_plot_dir(output_dir)
+    save_figure(fig, plot_dir / "diversity.pdf")

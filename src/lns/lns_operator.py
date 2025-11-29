@@ -4,30 +4,29 @@ This module implements the Large Neighborhood Search operator with IGLS
 (Iterated Guided Local Search) as the repair strategy.
 """
 
-from typing import List, Dict, Optional
 import logging
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from src.utils.system_info import get_cpu_count
 import random
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from src.ga.sessiongene import SessionGene
-from src.ga.individual import create_individual
 from src.entities.course import Course
-from src.entities.instructor import Instructor
 from src.entities.group import Group
+from src.entities.instructor import Instructor
 from src.entities.room import Room
+from src.ga.individual import create_individual
+from src.ga.sessiongene import SessionGene
 from src.lns.conflict_detection import (
     find_hard_conflict_sessions,
     select_worst_conflicts,
 )
-from src.utils.console_service import get_console
-from src.lns.heuristic_repair import repair_with_heuristic
 from src.lns.diagnostics import (
     SubproblemDiagnostics,
     build_conflict_graph,
     expand_neighborhood_bfs,
 )
-from src.utils.parallel_worker import init_worker, get_worker_context
+from src.lns.heuristic_repair import repair_with_heuristic
+from src.utils.console_service import get_console
+from src.utils.parallel_worker import get_worker_context, init_worker
+from src.utils.system_info import get_cpu_count
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -89,18 +88,18 @@ def reset_lns_stats():
 
 
 def lns_igls_repair(
-    individual: List[SessionGene],
-    courses: Optional[Dict[tuple, Course]] = None,
-    instructors: Optional[Dict[str, Instructor]] = None,
-    groups: Optional[Dict[str, Group]] = None,
-    rooms: Optional[Dict[str, Room]] = None,
+    individual: list[SessionGene],
+    courses: dict[tuple, Course] | None = None,
+    instructors: dict[str, Instructor] | None = None,
+    groups: dict[str, Group] | None = None,
+    rooms: dict[str, Room] | None = None,
     max_subproblem_size: int = 20,
     min_subproblem_size: int = 4,
     expand_hops: int = 0,
     igls_max_iterations: int = 500,
     igls_time_limit: float = 5.0,
     enable_diagnostics: bool = True,
-) -> List[SessionGene]:
+) -> list[SessionGene]:
     """
     Apply LNS-IGLS repair to an individual with hard constraint violations.
 
@@ -146,6 +145,14 @@ def lns_igls_repair(
     start_time = time.time()
     _lns_stats.total_attempts += 1
 
+    # Assert non-None for type checking (already guaranteed by context loading above)
+    assert (
+        courses is not None
+        and instructors is not None
+        and groups is not None
+        and rooms is not None
+    )
+
     # Step 1: Detect conflicts
     conflicted_indices, violations = find_hard_conflict_sessions(
         individual, courses, instructors, groups, rooms
@@ -168,7 +175,7 @@ def lns_igls_repair(
         console.print(
             f"[yellow]   [LNS] Detected {len(conflicted_indices)} conflicted sessions with {total_conflicts} violations[/yellow]"
         )
-        violation_types = {}
+        violation_types: dict[str, int] = {}
         for v in violations:
             vtype = v.constraint_name
             violation_types[vtype] = violation_types.get(vtype, 0) + v.violation_count
@@ -293,7 +300,8 @@ def lns_igls_repair(
                 f"[bold green]   [LNS-IGLS] (OK) Repair SUCCESSFUL: {len(conflicted_sessions)} sessions repaired "
                 f"(total_time={repair_time:.2f}s)[/bold green]"
             )
-        return new_individual
+        # Type cast for mypy (create_individual returns DEAP Individual which inherits from list)
+        return list(new_individual)  # type: ignore[return-value]
     else:
         _lns_stats.failed_repairs += 1
         repair_time = time.time() - start_time
@@ -309,16 +317,16 @@ def lns_igls_repair(
 
 
 def apply_lns_to_population(
-    population: List[List[SessionGene]],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
+    population: list[list[SessionGene]],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
     num_individuals: int = 1,
     max_subproblem_size: int = 20,
     igls_time_limit: float = 5.0,
     data_dir: str = "data",  # Added data_dir
-) -> List[List[SessionGene]]:
+) -> list[list[SessionGene]]:
     """
     Apply LNS-IGLS repair to the best individuals in a population.
 
@@ -438,7 +446,7 @@ def should_trigger_lns_repair(
     trigger_interval: int,
     stagnation_counter: int,
     stagnation_threshold: int,
-    force_trigger_generations: List[int] = None,
+    force_trigger_generations: list[int] | None = None,
 ) -> bool:
     """
     Determine if LNS-IGLS repair should be triggered.

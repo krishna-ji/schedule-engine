@@ -3,6 +3,11 @@ Centralized thesis-ready styling configuration for all plots.
 Applies Seaborn-inspired theme with Times New Roman font.
 """
 
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
 # CRITICAL: Set non-interactive backend BEFORE any other matplotlib imports
 # This prevents tkinter-related errors in CLI environments
 import matplotlib
@@ -11,7 +16,6 @@ matplotlib.use("Agg")  # Non-interactive backend for file generation
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 
 # Seaborn-inspired color palette
 COLORS = {
@@ -48,7 +52,7 @@ LINE_STYLES = ["-", "--", "-.", ":", "-", "--", "-.", ":", "-", "--", "-.", ":"]
 MARKERS = ["o", "s", "^", "D", "v", "p", "*", "X", "P", "h", "+", "x"]
 
 
-def apply_thesis_style():
+def apply_thesis_style() -> None:
     """
     Apply thesis-ready styling to matplotlib globally.
     Uses Seaborn style with Times New Roman font.
@@ -129,12 +133,12 @@ def apply_thesis_style():
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", PALETTE)
 
 
-def get_color(name):
+def get_color(name: str) -> str:
     """Get a color from the thesis palette by name."""
     return COLORS.get(name, COLORS["blue"])
 
 
-def get_constraint_colors():
+def get_constraint_colors() -> dict[str, str]:
     """
     Get distinct colors for constraint types.
     Returns dict with 'hard' and 'soft' keys.
@@ -145,7 +149,7 @@ def get_constraint_colors():
     }
 
 
-def save_figure(fig, filepath, **kwargs):
+def save_figure(fig: Any, filepath: str | Path, **kwargs: Any) -> None:
     """
     Save figure with thesis-ready settings.
 
@@ -166,7 +170,12 @@ def save_figure(fig, filepath, **kwargs):
     plt.close(fig)
 
 
-def create_thesis_figure(nrows=1, ncols=1, figsize=None, **kwargs):
+def create_thesis_figure(
+    nrows: int = 1,
+    ncols: int = 1,
+    figsize: tuple[float, float] | None = None,
+    **kwargs: Any,
+) -> tuple[Any, Any]:
     """
     Create a new figure with thesis-ready styling.
 
@@ -192,7 +201,13 @@ def create_thesis_figure(nrows=1, ncols=1, figsize=None, **kwargs):
     return fig, ax
 
 
-def format_axis(ax, xlabel=None, ylabel=None, title=None, legend=True):
+def format_axis(
+    ax: Any,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    title: str | None = None,
+    legend: bool = True,
+) -> None:
     """
     Apply consistent formatting to an axis.
 

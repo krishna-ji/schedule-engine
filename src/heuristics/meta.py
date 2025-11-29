@@ -27,18 +27,15 @@ Usage:
     improved = variable_neighborhood_descent(individual, context)
 """
 
-from typing import List, Dict, Optional, Callable
-import random
 import copy
+import random
 
-from src.ga.sessiongene import SessionGene
 from src.core.types import SchedulingContext
-from src.heuristics.registry import meta_heuristic
+from src.ga.sessiongene import SessionGene
 
 # Import other heuristic categories for orchestration
-from src.heuristics import perturbation
-from src.heuristics import improvement
-
+from src.heuristics import improvement, perturbation
+from src.heuristics.registry import meta_heuristic
 
 # ================
 # VARIABLE NEIGHBORHOOD DESCENT (Systematic neighborhood exploration)
@@ -54,7 +51,7 @@ from src.heuristics import improvement
     modifies_individual=True,
 )
 def variable_neighborhood_descent(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     max_neighborhoods: int = 3,
     max_iterations: int = 5,
@@ -126,7 +123,7 @@ def variable_neighborhood_descent(
     modifies_individual=True,
 )
 def iterated_local_search(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     num_iterations: int = 5,
     perturbation_strength: float = 0.3,
@@ -206,7 +203,7 @@ def iterated_local_search(
     modifies_individual=True,
 )
 def adaptive_large_neighborhood(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     num_iterations: int = 10,
     initial_destroy_rate: float = 0.3,
@@ -231,7 +228,6 @@ def adaptive_large_neighborhood(
     Returns:
         Number of improving iterations
     """
-    from src.heuristics import construction
 
     # Track operator performance
     operator_scores = {
@@ -311,7 +307,7 @@ def adaptive_large_neighborhood(
     modifies_individual=True,
 )
 def guided_local_search(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
     num_iterations: int = 10,
     penalty_factor: float = 0.1,
@@ -339,9 +335,9 @@ def guided_local_search(
         Number of improving iterations
     """
     # Feature penalties
-    time_penalties = {}
-    room_penalties = {}
-    instructor_penalties = {}
+    time_penalties: dict[tuple[str, int], float] = {}
+    room_penalties: dict[tuple[str, str], float] = {}
+    instructor_penalties: dict[tuple[str, str], float] = {}
 
     improvements = 0
     best_fitness = _simple_fitness(individual, context)
@@ -390,7 +386,7 @@ def guided_local_search(
 # ================
 
 
-def _simple_fitness(individual: List[SessionGene], context: SchedulingContext) -> float:
+def _simple_fitness(individual: list[SessionGene], context: SchedulingContext) -> float:
     """Simple fitness approximation (lower is better)."""
     violations = 0
 
@@ -424,11 +420,11 @@ def _simple_fitness(individual: List[SessionGene], context: SchedulingContext) -
 
 
 def _simple_fitness_with_penalties(
-    individual: List[SessionGene],
+    individual: list[SessionGene],
     context: SchedulingContext,
-    time_penalties: Dict,
-    room_penalties: Dict,
-    instructor_penalties: Dict,
+    time_penalties: dict,
+    room_penalties: dict,
+    instructor_penalties: dict,
     penalty_factor: float,
 ) -> float:
     """Fitness with GLS penalties."""
@@ -447,7 +443,7 @@ def _simple_fitness_with_penalties(
     return base_fitness + penalty * penalty_factor
 
 
-def _select_operator_adaptive(operator_scores: Dict[str, float]) -> str:
+def _select_operator_adaptive(operator_scores: dict[str, float]) -> str:
     """Select operator using roulette wheel selection based on scores."""
     total_score = sum(operator_scores.values())
 
@@ -466,8 +462,8 @@ def _select_operator_adaptive(operator_scores: Dict[str, float]) -> str:
 
 
 def _destroy_solution(
-    individual: List[SessionGene], destroy_rate: float, destroy_operator: str
-) -> List[int]:
+    individual: list[SessionGene], destroy_rate: float, destroy_operator: str
+) -> list[int]:
     """
     Destroy part of solution by randomizing genes.
 
@@ -511,8 +507,8 @@ def _destroy_solution(
 
 
 def _repair_solution(
-    individual: List[SessionGene],
-    destroyed_indices: List[int],
+    individual: list[SessionGene],
+    destroyed_indices: list[int],
     context: SchedulingContext,
 ) -> None:
     """

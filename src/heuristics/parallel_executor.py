@@ -4,12 +4,14 @@ Enables simultaneous application of heuristics to multiple individuals,
 achieving 10-16x speedup by fully utilizing all CPU cores.
 """
 
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from typing import List, Callable, Any
-from src.utils.system_info import get_cpu_count
 import logging
 import random
-from src.utils.parallel_worker import init_worker, get_worker_context
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from typing import Any
+
+from src.utils.parallel_worker import get_worker_context, init_worker
+from src.utils.system_info import get_cpu_count
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ class ParallelHeuristicExecutor:
     true parallel execution across all CPU cores.
     """
 
-    def __init__(self, max_workers: int = None, use_threads: bool = False):
+    def __init__(self, max_workers: int | None = None, use_threads: bool = False):
         """Initialize parallel executor.
 
         Args:
@@ -30,7 +32,7 @@ class ParallelHeuristicExecutor:
         """
         if max_workers is None:
             max_workers = get_cpu_count()
-        
+
         self.max_workers = max_workers
         self.use_threads = use_threads
 
@@ -42,10 +44,10 @@ class ParallelHeuristicExecutor:
     def apply_parallel(
         self,
         heuristic_func: Callable,
-        individuals: List,
+        individuals: list,
         context: Any,
-        chunk_size: int = None,
-    ) -> List:
+        chunk_size: int | None = None,
+    ) -> list:
         """Apply heuristic to population in parallel.
 
         Args:
@@ -62,7 +64,10 @@ class ParallelHeuristicExecutor:
 
         # For small populations, don't parallelize
         if len(individuals) < self.max_workers:
-            return [heuristic_func(ind, context) for ind in individuals]
+            return [
+                self._execute_heuristic(heuristic_func, ind, context)
+                for ind in individuals
+            ]
 
         # Determine chunk size
         if chunk_size is None:
@@ -78,7 +83,8 @@ class ParallelHeuristicExecutor:
         ExecutorClass = ThreadPoolExecutor if self.use_threads else ProcessPoolExecutor
 
         # Prepare args for executor
-        executor_kwargs = {"max_workers": self.max_workers}
+        initializer_func: Callable[[str, int], None] | None = None
+        initializer_args: tuple[str, int] | None = None
 
         # If using ProcessPoolExecutor, use initializer to avoid pickling context
         if not self.use_threads:
@@ -91,12 +97,25 @@ class ParallelHeuristicExecutor:
             ):
                 data_dir = context.config.io.data_dir
 
-            executor_kwargs["initializer"] = init_worker
-            executor_kwargs["initargs"] = (data_dir, random.randint(0, 10000))
+            initializer_func = init_worker
+            initializer_args = (data_dir, random.randint(0, 10000))
 
         try:
             # Process in parallel with order preservation
-            with ExecutorClass(**executor_kwargs) as executor:
+            from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+
+            executor_ctx: ThreadPoolExecutor | ProcessPoolExecutor
+            if self.use_threads:
+                executor_ctx = ThreadPoolExecutor(max_workers=self.max_workers)
+            else:
+                # Use type: ignore for initializer signature mismatch (ProcessPoolExecutor doesn't accept [str, int] args)
+                executor_ctx = ProcessPoolExecutor(
+                    max_workers=self.max_workers,
+                    initializer=initializer_func,  # type: ignore[arg-type]
+                    initargs=initializer_args or (),  # type: ignore[arg-type]
+                )
+
+            with executor_ctx as executor:
                 # If using processes, DO NOT pass context (it's loaded in worker)
                 submit_context = context if self.use_threads else None
 
@@ -120,7 +139,10 @@ class ParallelHeuristicExecutor:
                         # Fallback: process chunk sequentially
                         # Use enumerate index to directly access chunk (O(1) instead of O(n))
                         results.extend(
-                            [heuristic_func(ind, context) for ind in chunks[i]]
+                            [
+                                self._execute_heuristic(heuristic_func, ind, context)
+                                for ind in chunks[i]
+                            ]
                         )
 
             return results
@@ -131,7 +153,7 @@ class ParallelHeuristicExecutor:
             return [heuristic_func(ind, context) for ind in individuals]
 
     @staticmethod
-    def _apply_to_chunk(heuristic_func: Callable, chunk: List, context: Any) -> List:
+    def _apply_to_chunk(heuristic_func: Callable, chunk: list, context: Any) -> list:
         """Apply heuristic to a chunk of individuals.
 
         This runs in a separate process/thread.
@@ -150,7 +172,9 @@ class ParallelHeuristicExecutor:
         for ind in chunk:
             try:
                 modified_ind = heuristic_func(ind, context)
-                results.append(modified_ind)
+                results.append(
+                    ParallelHeuristicExecutor._prepare_result(modified_ind, ind)
+                )
             except Exception as e:
                 # If heuristic fails, keep original
                 logger.debug(f"Heuristic failed on individual: {e}")
@@ -159,7 +183,7 @@ class ParallelHeuristicExecutor:
         return results
 
     def apply_batch(
-        self, heuristic_funcs: List[Callable], individual: Any, context: Any
+        self, heuristic_funcs: list[Callable], individual: Any, context: Any
     ) -> Any:
         """Apply multiple heuristics to single individual in parallel.
 
@@ -215,12 +239,34 @@ class ParallelHeuristicExecutor:
             logger.error(f"Batch heuristic application failed: {e}")
             return individual
 
+    def _execute_heuristic(
+        self, heuristic_func: Callable, individual: Any, context: Any
+    ):
+        """Execute heuristic safely and return modified individual."""
+        try:
+            result = heuristic_func(individual, context)
+            return self._prepare_result(result, individual)
+        except Exception as exc:
+            logger.debug(f"Heuristic execution failed: {exc}")
+            return individual
+
+    @staticmethod
+    def _prepare_result(result: Any, original: Any):
+        """Normalize heuristic outputs to return mutated individuals."""
+        if isinstance(result, list):
+            return result
+        if isinstance(result, tuple):
+            for item in result:
+                if isinstance(item, list):
+                    return item
+        return original
+
 
 # Singleton instance
 _parallel_executor = None
 
 
-def get_parallel_executor(max_workers: int = None) -> ParallelHeuristicExecutor:
+def get_parallel_executor(max_workers: int | None = None) -> ParallelHeuristicExecutor:
     """Get or create parallel executor singleton.
 
     Args:

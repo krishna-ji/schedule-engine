@@ -5,19 +5,19 @@ This module identifies sessions involved in hard constraint violations
 and provides detailed violation information for targeted repair.
 """
 
-from typing import List, Dict, Set, Tuple
 from collections import defaultdict
-from src.ga.sessiongene import SessionGene
-from src.entities.decoded_session import CourseSession
-from src.entities.course import Course
-from src.entities.instructor import Instructor
-from src.entities.group import Group
-from src.entities.room import Room
-from src.decoder.individual_decoder import decode_individual
+
 from src.constraints.registry import (
-    get_enabled_hard_constraints,
     constraint_needs_courses,
+    get_enabled_hard_constraints,
 )
+from src.decoder.individual_decoder import decode_individual
+from src.entities.course import Course
+from src.entities.decoded_session import CourseSession
+from src.entities.group import Group
+from src.entities.instructor import Instructor
+from src.entities.room import Room
+from src.ga.sessiongene import SessionGene
 
 
 class ViolationInfo:
@@ -35,8 +35,8 @@ class ViolationInfo:
         self,
         constraint_name: str,
         violation_count: int,
-        affected_sessions: Set[int],
-        conflict_details: Dict = None,
+        affected_sessions: set[int],
+        conflict_details: dict | None = None,
     ):
         self.constraint_name = constraint_name
         self.violation_count = violation_count
@@ -45,12 +45,12 @@ class ViolationInfo:
 
 
 def find_hard_conflict_sessions(
-    individual: List[SessionGene],
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    groups: Dict[str, Group],
-    rooms: Dict[str, Room],
-) -> Tuple[List[int], List[ViolationInfo]]:
+    individual: list[SessionGene],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    groups: dict[str, Group],
+    rooms: dict[str, Room],
+) -> tuple[list[int], list[ViolationInfo]]:
     """
     Identifies sessions involved in hard constraint violations.
 
@@ -74,8 +74,8 @@ def find_hard_conflict_sessions(
     sessions = decode_individual(individual, courses, instructors, groups, rooms)
 
     # Track which sessions are involved in violations
-    conflicted_session_indices: Set[int] = set()
-    violations: List[ViolationInfo] = []
+    conflicted_session_indices: set[int] = set()
+    violations: list[ViolationInfo] = []
 
     # Get enabled hard constraints
     enabled_hard_constraints = get_enabled_hard_constraints()
@@ -116,9 +116,9 @@ def find_hard_conflict_sessions(
 def _evaluate_constraint_with_tracking(
     constraint_name: str,
     constraint_func,
-    sessions: List[CourseSession],
-    courses: Dict[tuple, Course] = None,
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+    courses: dict[tuple, Course] | None = None,
+) -> tuple[set[int], int, dict]:
     """
     Evaluates a constraint and tracks which sessions are involved.
 
@@ -142,6 +142,9 @@ def _evaluate_constraint_with_tracking(
     elif constraint_name == "room_exclusivity":
         return _track_room_conflicts(sessions)
     elif constraint_name == "instructor_qualifications":
+        # Courses is required for this constraint
+        if courses is None:
+            return set(), 0, {}
         return _track_qualification_violations(sessions, courses)
     elif constraint_name == "room_capacity":
         return _track_room_capacity_violations(sessions)
@@ -165,12 +168,12 @@ def _evaluate_constraint_with_tracking(
 
 
 def _track_student_group_conflicts(
-    sessions: List[CourseSession],
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+) -> tuple[set[int], int, dict]:
     """Track student group exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
-    group_time_map = defaultdict(
+    group_time_map: dict[tuple[str, int], list[int]] = defaultdict(
         list
     )  # Maps (group_id, quanta) to list of session indices
 
@@ -193,12 +196,12 @@ def _track_student_group_conflicts(
 
 
 def _track_instructor_conflicts(
-    sessions: List[CourseSession],
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+) -> tuple[set[int], int, dict]:
     """Track instructor exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
-    instructor_time_map = defaultdict(list)
+    instructor_time_map: dict[tuple[str, int], list[int]] = defaultdict(list)
 
     for idx, session in enumerate(sessions):
         iid = session.instructor_id
@@ -214,12 +217,12 @@ def _track_instructor_conflicts(
 
 
 def _track_room_conflicts(
-    sessions: List[CourseSession],
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+) -> tuple[set[int], int, dict]:
     """Track room exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
-    room_time_map = defaultdict(list)
+    room_time_map: dict[tuple[str, int], list[int]] = defaultdict(list)
 
     for idx, session in enumerate(sessions):
         rid = session.room_id
@@ -235,8 +238,8 @@ def _track_room_conflicts(
 
 
 def _track_qualification_violations(
-    sessions: List[CourseSession], courses: Dict[tuple, Course]
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession], courses: dict[tuple, Course]
+) -> tuple[set[int], int, dict]:
     """Track instructor qualification violations."""
     violations = 0
     conflicted_indices = set()
@@ -258,8 +261,8 @@ def _track_qualification_violations(
 
 
 def _track_room_capacity_violations(
-    sessions: List[CourseSession],
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+) -> tuple[set[int], int, dict]:
     """Track room capacity violations."""
     violations = 0
     conflicted_indices = set()
@@ -274,8 +277,8 @@ def _track_room_capacity_violations(
 
 
 def _track_room_feature_violations(
-    sessions: List[CourseSession],
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+) -> tuple[set[int], int, dict]:
     """Track room feature violations."""
     violations = 0
     conflicted_indices = set()
@@ -294,8 +297,8 @@ def _track_room_feature_violations(
 
 
 def _track_instructor_availability_violations(
-    sessions: List[CourseSession],
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+) -> tuple[set[int], int, dict]:
     """Track instructor availability violations."""
     violations = 0
     conflicted_indices = set()
@@ -312,8 +315,8 @@ def _track_instructor_availability_violations(
 
 
 def _track_group_availability_violations(
-    sessions: List[CourseSession],
-) -> Tuple[Set[int], int, Dict]:
+    sessions: list[CourseSession],
+) -> tuple[set[int], int, dict]:
     """Track group availability violations."""
     violations = 0
     conflicted_indices = set()
@@ -330,10 +333,10 @@ def _track_group_availability_violations(
 
 
 def select_worst_conflicts(
-    conflicted_indices: List[int],
-    violations: List[ViolationInfo],
+    conflicted_indices: list[int],
+    violations: list[ViolationInfo],
     max_sessions: int = 20,
-) -> List[int]:
+) -> list[int]:
     """
     Select up to max_sessions most problematic sessions for repair.
 
@@ -352,7 +355,7 @@ def select_worst_conflicts(
         return conflicted_indices
 
     # Count how many violations each session is involved in
-    session_violation_count = defaultdict(int)
+    session_violation_count: dict[int, int] = defaultdict(int)
     for violation in violations:
         for idx in violation.affected_sessions:
             session_violation_count[idx] += violation.violation_count

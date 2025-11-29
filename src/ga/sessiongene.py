@@ -1,5 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.encoder.quantum_time_system import QuantumTimeSystem
 
 
 @dataclass
@@ -25,7 +30,7 @@ class SessionGene:
     course_id: str
     course_type: str  # "theory" or "practical"
     instructor_id: str
-    group_ids: List[str]
+    group_ids: list[str]
     room_id: str
 
     # Contiguous block representation (NEW)
@@ -91,7 +96,7 @@ class SessionGene:
         """Number of quanta occupied by this session."""
         return self.num_quanta
 
-    def get_quanta_list(self) -> List[int]:
+    def get_quanta_list(self) -> list[int]:
         """
         Generate explicit quanta array when needed (e.g., for legacy APIs).
 
@@ -112,7 +117,7 @@ class SessionGene:
         self.start_quanta = new_start
         self.__post_init__()  # Re-validate after shift
 
-    def overlaps_with(self, other: "SessionGene") -> bool:
+    def overlaps_with(self, other: SessionGene) -> bool:
         """Check if this session overlaps with another session in time."""
         return not (
             self.end_quanta <= other.start_quanta
@@ -120,7 +125,7 @@ class SessionGene:
         )
 
 
-def _get_time_system_metadata() -> Tuple[Optional["QuantumTimeSystem"], int]:
+def _get_time_system_metadata() -> tuple[QuantumTimeSystem | None, int]:  # type: ignore[name-defined]
     """Fetch QuantumTimeSystem info with safe fallbacks."""
     global _SESSION_GENE_QTS
 
@@ -140,9 +145,7 @@ def _get_time_system_metadata() -> Tuple[Optional["QuantumTimeSystem"], int]:
     return qts, qts.total_quanta
 
 
-def _get_day_bounds(
-    qts: "QuantumTimeSystem", quantum: int
-) -> Optional[Tuple[int, int]]:
+def _get_day_bounds(qts: QuantumTimeSystem, quantum: int) -> tuple[int, int] | None:  # type: ignore[name-defined]
     """Return (day_offset, day_quanta_count) for the given quantum."""
     for day in qts.DAY_NAMES:
         day_offset = qts.day_quanta_offset.get(day)
@@ -154,4 +157,4 @@ def _get_day_bounds(
     return None
 
 
-_SESSION_GENE_QTS: Optional["QuantumTimeSystem"] = None
+_SESSION_GENE_QTS: QuantumTimeSystem | None = None  # type: ignore[name-defined]

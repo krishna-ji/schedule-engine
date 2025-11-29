@@ -26,7 +26,7 @@ Usage:
         return fixes_count
 """
 
-from typing import Callable, Dict, Optional
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -56,7 +56,7 @@ class RepairOperatorMetadata:
 # GLOBAL REPAIR REGISTRY
 # ================
 
-_REPAIR_OPERATORS: Dict[str, RepairOperatorMetadata] = {}
+_REPAIR_OPERATORS: dict[str, RepairOperatorMetadata] = {}
 
 
 # ================
@@ -129,7 +129,7 @@ def repair_operator(
 # ================
 
 
-def get_all_repair_operators() -> Dict[str, RepairOperatorMetadata]:
+def get_all_repair_operators() -> dict[str, RepairOperatorMetadata]:
     """
     Get all registered repair operators with their metadata.
 
@@ -139,7 +139,7 @@ def get_all_repair_operators() -> Dict[str, RepairOperatorMetadata]:
     return _REPAIR_OPERATORS.copy()
 
 
-def get_repair_operator_metadata(name: str) -> Optional[RepairOperatorMetadata]:
+def get_repair_operator_metadata(name: str) -> RepairOperatorMetadata | None:
     """
     Get repair operator metadata by name.
 
@@ -152,7 +152,7 @@ def get_repair_operator_metadata(name: str) -> Optional[RepairOperatorMetadata]:
     return _REPAIR_OPERATORS.get(name)
 
 
-def get_repair_operator_function(name: str) -> Optional[Callable]:
+def get_repair_operator_function(name: str) -> Callable | None:
     """
     Get repair operator function by name.
 
@@ -166,7 +166,7 @@ def get_repair_operator_function(name: str) -> Optional[Callable]:
     return metadata.function if metadata else None
 
 
-def get_enabled_repair_operators() -> Dict[str, RepairOperatorMetadata]:
+def get_enabled_repair_operators() -> dict[str, RepairOperatorMetadata]:
     """
     Get enabled repair operators from config, sorted by priority.
 
@@ -254,7 +254,7 @@ def list_all_repair_operators() -> None:
 # ================
 
 
-def get_repair_statistics_template() -> Dict[str, int]:
+def get_repair_statistics_template() -> dict[str, int]:
     """
     Returns template for repair statistics tracking.
 

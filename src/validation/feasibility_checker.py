@@ -21,23 +21,28 @@ Usage:
     )
 """
 
+from __future__ import annotations
+
 import sys
-from typing import Dict, List, Tuple, Any
-from dataclasses import dataclass, field
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from rich.table import Table
-from rich.panel import Panel
-from rich import box
+from dataclasses import dataclass, field
+from typing import Any
 
-from src.utils.system_info import get_cpu_count
+from rich import box
+from rich.panel import Panel
+from rich.table import Table
+
+from src.config import get_config
+from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.entities.course import Course
+from src.entities.group import Group
 from src.entities.instructor import Instructor
 from src.entities.room import Room
-from src.entities.group import Group
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.config import get_config
 from src.utils.console_service import get_console
+
+__all__ = ["check_feasibility", "FeasibilityReport"]
+from src.utils.system_info import get_cpu_count
 
 console = get_console()
 
@@ -50,8 +55,8 @@ class FeasibilityResult:
     passed: bool
     severity: str
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
-    recommendations: List[str] = field(default_factory=list)
+    details: dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -59,25 +64,25 @@ class FeasibilityReport:
     """Complete feasibility analysis report."""
 
     is_feasible: bool
-    results: List[FeasibilityResult]
-    summary: Dict[str, Any]
+    results: list[FeasibilityResult]
+    summary: dict[str, Any]
 
-    def get_failed_checks(self) -> List[FeasibilityResult]:
+    def get_failed_checks(self) -> list[FeasibilityResult]:
         """Get all failed checks."""
         return [r for r in self.results if not r.passed]
 
-    def get_critical_failures(self) -> List[FeasibilityResult]:
+    def get_critical_failures(self) -> list[FeasibilityResult]:
         """Get all critical failures."""
         return [r for r in self.results if not r.passed and r.severity == "critical"]
 
 
 def check_feasibility(
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
-    rooms: Dict[str, Room],
-    groups: Dict[str, Group],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
+    rooms: dict[str, Room],
+    groups: dict[str, Group],
     qts: QuantumTimeSystem,
-) -> Tuple[bool, FeasibilityReport]:
+) -> tuple[bool, FeasibilityReport]:
     """
     Performs comprehensive feasibility analysis on the scheduling problem.
 
@@ -109,8 +114,8 @@ def check_feasibility(
     total_operating_quanta = len(qts.get_all_operating_quanta())
 
     # PERFORMANCE: Run all checks in parallel (3-5x speedup)
-    # Build list of checks to run
-    checks_to_run = []
+    # Build list of checks to run - each check has different function signature
+    checks_to_run: list[tuple[str, Any, tuple[Any, ...]]] = []
 
     if get_config().feasibility.checks["instructor_workload"]["enabled"]:
         checks_to_run.append(
@@ -157,7 +162,6 @@ def check_feasibility(
 
     # Execute all checks concurrently
     results = []
-    from src.utils.system_info import get_cpu_count
 
     max_workers = get_cpu_count()  # Auto-detect all cores
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -231,8 +235,8 @@ def check_feasibility(
 
 
 def _check_instructor_workload(
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -312,8 +316,8 @@ def _check_instructor_workload(
 
 
 def _check_instructor_qualification_bottleneck(
-    courses: Dict[tuple, Course],
-    instructors: Dict[str, Instructor],
+    courses: dict[tuple, Course],
+    instructors: dict[str, Instructor],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -325,7 +329,7 @@ def _check_instructor_qualification_bottleneck(
     Note: courses dict is keyed by (course_code, course_type) tuples
     """
     all_operating_quanta = qts.get_all_operating_quanta()
-    bottlenecks = []
+    bottlenecks: list[dict[str, Any]] = []
     total_courses = len(courses)
     problematic_courses = 0
 
@@ -382,10 +386,15 @@ def _check_instructor_qualification_bottleneck(
     recommendations = []
     if not passed:
         # Show top 5 most problematic courses
-        bottlenecks.sort(key=lambda x: x["shortage"], reverse=True)
+        bottlenecks.sort(key=lambda x: x.get("shortage", 0), reverse=True)  # type: ignore[arg-type,return-value]
         recommendations.append("Most critical bottlenecks:")
         for b in bottlenecks[:5]:
-            shortage_hours = b["shortage"] * qts.QUANTUM_MINUTES // 60
+            shortage = b.get("shortage", 0)
+            shortage_hours = (
+                int(shortage) * qts.QUANTUM_MINUTES // 60
+                if isinstance(shortage, int)
+                else 0
+            )
             recommendations.append(
                 f"  • {b['course_name']} ({b['course_display']}): "
                 f"needs {shortage_hours}h more from qualified instructors "
@@ -422,9 +431,9 @@ def _check_instructor_qualification_bottleneck(
 
 
 def _check_room_capacity_bottleneck(
-    courses: Dict[tuple, Course],
-    rooms: Dict[str, Room],
-    groups: Dict[str, Group],
+    courses: dict[tuple, Course],
+    rooms: dict[str, Room],
+    groups: dict[str, Group],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -520,11 +529,12 @@ def _check_room_capacity_bottleneck(
             if isinstance(largest_class_key, tuple)
             else str(largest_class_key)
         )
+        course_name = largest_class_course.name if largest_class_course else "Unknown"
         recommendations.extend(
             [
                 "",
                 f"Largest single session has {largest_class_size} students but biggest room only holds {largest_room_capacity}",
-                f"   Problem course: {largest_class_course.name} ({course_display})",
+                f"   Problem course: {course_name} ({course_display})",
                 "   Note: This is the largest group size, not sum of all groups",
                 "Solutions:",
                 "• Split the large group into smaller sections",
@@ -569,8 +579,8 @@ def _check_room_capacity_bottleneck(
 
 
 def _check_room_feature_bottleneck(
-    courses: Dict[tuple, Course],
-    rooms: Dict[str, Room],
+    courses: dict[tuple, Course],
+    rooms: dict[str, Room],
     qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
@@ -584,12 +594,12 @@ def _check_room_feature_bottleneck(
     all_operating_quanta = qts.get_all_operating_quanta()
 
     # Group courses by required feature
-    feature_demand = defaultdict(int)
+    feature_demand: dict[str, int] = defaultdict(int)
     for course in courses.values():
         feature_demand[course.required_room_features] += course.quanta_per_week
 
     # Calculate supply for each feature
-    feature_supply = defaultdict(int)
+    feature_supply: dict[str, int] = defaultdict(int)
     for room in rooms.values():
         if room.available_quanta:
             availability = len(room.available_quanta)
@@ -599,7 +609,7 @@ def _check_room_feature_bottleneck(
         feature_supply[room.room_features] += availability
 
     # Check each feature
-    bottlenecks = []
+    bottlenecks: list[dict[str, Any]] = []
     for feature, demand in feature_demand.items():
         supply = feature_supply.get(feature, 0)
         adjusted_supply = supply * (1 + get_config().feasibility.tolerance_margin)
@@ -630,7 +640,12 @@ def _check_room_feature_bottleneck(
     if not passed:
         recommendations.append("Feature bottlenecks:")
         for b in bottlenecks:
-            shortage_hours = b["shortage"] * qts.QUANTUM_MINUTES // 60
+            shortage = b.get("shortage", 0)
+            shortage_hours = (
+                int(shortage) * qts.QUANTUM_MINUTES // 60
+                if isinstance(shortage, int)
+                else 0
+            )
             recommendations.append(
                 f"  • Feature '{b['feature']}': needs {shortage_hours}h more "
                 f"({b['room_count']} rooms currently have this feature)"
@@ -662,8 +677,8 @@ def _check_room_feature_bottleneck(
 
 
 def _check_group_pigeonhole(
-    courses: Dict[tuple, Course],
-    groups: Dict[str, Group],
+    courses: dict[tuple, Course],
+    groups: dict[str, Group],
     total_operating_quanta: int,
 ) -> FeasibilityResult:
     """
@@ -679,7 +694,7 @@ def _check_group_pigeonhole(
           We need to check BOTH theory and practical for each course_code.
     """
     overloaded_groups = []
-    max_utilization = 0
+    max_utilization: float = 0.0
 
     for group_id, group in groups.items():
         # Calculate total quanta needed for this group
@@ -772,7 +787,7 @@ def _check_group_pigeonhole(
     )
 
 
-def _print_check_result(result: FeasibilityResult):
+def _print_check_result(result: FeasibilityResult) -> None:
     """Print a single check result with rich formatting."""
     if result.passed:
         icon = "[!ok]"
@@ -801,7 +816,7 @@ def _print_check_result(result: FeasibilityResult):
     console.print()
 
 
-def _print_summary(report: FeasibilityReport):
+def _print_summary(report: FeasibilityReport) -> None:
     """Print overall feasibility summary."""
     console.print()
     console.print("[bold cyan]summary[/bold cyan]")
@@ -843,7 +858,9 @@ def _print_summary(report: FeasibilityReport):
     console.print()
 
 
-def generate_feasibility_report_file(report: FeasibilityReport, output_path: str):
+def generate_feasibility_report_file(
+    report: FeasibilityReport, output_path: str
+) -> None:
     """
     Generate a detailed text report file with feasibility analysis results.
 

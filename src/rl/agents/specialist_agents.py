@@ -35,12 +35,13 @@ References:
 - Teng et al. (2015): Multi-agent reinforcement learning for optimization
 """
 
-from typing import Optional, Tuple, Dict, Any
-import numpy as np
-from stable_baselines3 import PPO, DQN
-from stable_baselines3.common.base_class import BaseAlgorithm
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+from stable_baselines3 import DQN, PPO
+from stable_baselines3.common.base_class import BaseAlgorithm
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +63,8 @@ class SpecialistAgents:
 
     def __init__(
         self,
-        repair_agent: Optional[BaseAlgorithm] = None,
-        optimizer_agent: Optional[BaseAlgorithm] = None,
+        repair_agent: BaseAlgorithm | None = None,
+        optimizer_agent: BaseAlgorithm | None = None,
         switching_threshold: float = 0.5,
         use_soft_switching: bool = True,
     ):
@@ -129,7 +130,7 @@ class SpecialistAgents:
         state: np.ndarray,
         hard_violations: float,
         deterministic: bool = True,
-    ) -> Tuple[int, str]:
+    ) -> tuple[int, str]:
         """
         Select action using appropriate specialist agent.
 
@@ -200,7 +201,7 @@ class SpecialistAgents:
                 self.repair_actions += 1
                 return int(action), "repair"
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get usage statistics for specialist agents.
 
@@ -252,12 +253,12 @@ class AgentCoordinator:
 
     def __init__(self):
         """Initialize agent coordinator."""
-        self.agents: Dict[str, BaseAlgorithm] = {}
-        self.agent_specializations: Dict[str, str] = (
+        self.agents: dict[str, BaseAlgorithm] = {}
+        self.agent_specializations: dict[str, str] = (
             {}
         )  # Agent name -> specialization type
-        self.agent_performance: Dict[str, float] = {}  # Agent name -> success rate
-        self.agent_usage_count: Dict[str, int] = {}  # Agent name -> usage count
+        self.agent_performance: dict[str, float] = {}  # Agent name -> success rate
+        self.agent_usage_count: dict[str, int] = {}  # Agent name -> usage count
 
     def add_agent(
         self,
@@ -282,7 +283,7 @@ class AgentCoordinator:
 
     def select_agent(
         self,
-        context: Dict[str, float],
+        context: dict[str, float],
     ) -> str:
         """
         Select best agent based on current problem context.
@@ -323,9 +324,9 @@ class AgentCoordinator:
     def predict(
         self,
         state: np.ndarray,
-        context: Dict[str, float],
+        context: dict[str, float],
         deterministic: bool = True,
-    ) -> Tuple[int, str]:
+    ) -> tuple[int, str]:
         """
         Predict action using best specialist agent.
 
