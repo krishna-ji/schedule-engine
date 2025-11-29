@@ -254,7 +254,7 @@ def run_standard_workflow(
     if config.feasibility.generate_report and (
         is_feasible or config.feasibility.save_report_on_success
     ):
-        feasibility_report_path = os.path.join(output_dir, "feasibility.log")
+        feasibility_report_path = os.path.join(output_dir, "log_feasibility.log")
         generate_feasibility_report_file(feasibility_report, feasibility_report_path)
         console.print(f"  [dim]saved:[/dim] {feasibility_report_path}")
         console.print()

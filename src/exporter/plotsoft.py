@@ -1,6 +1,6 @@
-import os
-
 import matplotlib.pyplot as plt
+
+from src.utils.output_paths import get_nsga_plot_dir
 
 from .thesis_style import (
     apply_thesis_style,
@@ -26,7 +26,7 @@ def plot_soft_constraint_violation_over_generation(
         output_dir (str): Directory to save the plot.
 
     Note:
-        CSV data available in data/metrics.csv (soft_total column)
+        CSV data available in csv/constraint_metrics.csv (soft_total column)
     """
     fig, ax = create_thesis_figure(1, 1, figsize=(9, 5))
     ax.plot(
@@ -49,4 +49,5 @@ def plot_soft_constraint_violation_over_generation(
     )
 
     plt.tight_layout()
-    save_figure(fig, os.path.join(output_dir, "soft_constraint_trend.pdf"))
+    plot_dir = get_nsga_plot_dir(output_dir)
+    save_figure(fig, plot_dir / "soft_constraint_trend.pdf")
