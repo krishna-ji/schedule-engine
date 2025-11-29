@@ -83,7 +83,12 @@ def generate_reports(
 
     # Export schedule (JSON + PDF) - sequential (tightly coupled operations)
     print("  [+] Exporting schedule...")
-    export_everything(decoded_schedule, output_dir, qts)
+    export_everything(
+        decoded_schedule,
+        output_dir,
+        qts,
+        course_lookup=course_map,
+    )
     print("      [!ok] schedule.json")
     print("      [!ok] calendar.pdf")
 

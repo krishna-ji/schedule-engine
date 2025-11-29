@@ -12,6 +12,18 @@ from src.entities.course import Course
 from src.entities.decoded_session import CourseSession
 
 
+def _course_display(
+    course_id: str, course_type: str, course_map: dict[tuple[str, str], Course]
+) -> tuple[str, str]:
+    """Return a human-readable name plus the underlying course code."""
+
+    course = course_map.get((course_id, course_type))
+    base_name = course.name if course else course_id
+    course_code = course.course_code if course and course.course_code else course_id
+    suffix = "PR" if course_type == "practical" else "TH"
+    return f"{base_name} ({suffix})", course_code
+
+
 def generate_violation_report(
     sessions: list[CourseSession],
     course_map: dict[tuple[str, str], Course],
@@ -34,12 +46,12 @@ def generate_violation_report(
     report_lines.append("")
 
     # Generate each section
-    group_violations = _check_group_overlaps(sessions, qts)
-    instructor_violations = _check_instructor_conflicts(sessions, qts)
-    room_violations = _check_room_conflicts(sessions, qts)
+    group_violations = _check_group_overlaps(sessions, qts, course_map)
+    instructor_violations = _check_instructor_conflicts(sessions, qts, course_map)
+    room_violations = _check_room_conflicts(sessions, qts, course_map)
     qualification_violations = _check_instructor_qualifications(sessions, course_map)
-    room_type_violations = _check_room_type_mismatches(sessions)
-    availability_violations = _check_availability_violations(sessions, qts)
+    room_type_violations = _check_room_type_mismatches(sessions, course_map)
+    availability_violations = _check_availability_violations(sessions, qts, course_map)
     schedule_violations = _check_incomplete_schedules(sessions, course_map)
 
     # Count totals
@@ -114,7 +126,9 @@ def generate_violation_report(
 
 
 def _check_group_overlaps(
-    sessions: list[CourseSession], qts: QuantumTimeSystem
+    sessions: list[CourseSession],
+    qts: QuantumTimeSystem,
+    course_map: dict[tuple[str, str], Course],
 ) -> list[dict]:
     """Check for groups scheduled at the same time."""
     violations = []
@@ -132,10 +146,14 @@ def _check_group_overlaps(
             day, time = qts.quanta_to_time(quantum)
             time_str = f"{day} {time}"
             for session in session_list:
+                course_display, course_code = _course_display(
+                    session.course_id, session.course_type, course_map
+                )
                 violations.append(
                     {
                         "group": group_id,
-                        "course": session.course_id,
+                        "course": course_display,
+                        "course_code": course_code,
                         "room": session.room.name if session.room else session.room_id,
                         "time": time_str,
                         "instructor": (
@@ -150,7 +168,9 @@ def _check_group_overlaps(
 
 
 def _check_instructor_conflicts(
-    sessions: list[CourseSession], qts: QuantumTimeSystem
+    sessions: list[CourseSession],
+    qts: QuantumTimeSystem,
+    course_map: dict[tuple[str, str], Course],
 ) -> list[dict]:
     """Check for instructors scheduled at the same time."""
     violations = []
@@ -167,6 +187,9 @@ def _check_instructor_conflicts(
             day, time = qts.quanta_to_time(quantum)
             time_str = f"{day} {time}"
             for session in session_list:
+                course_display, course_code = _course_display(
+                    session.course_id, session.course_type, course_map
+                )
                 violations.append(
                     {
                         "instructor": (
@@ -174,7 +197,8 @@ def _check_instructor_conflicts(
                             if session.instructor
                             else instructor_id
                         ),
-                        "course": session.course_id,
+                        "course": course_display,
+                        "course_code": course_code,
                         "groups": ", ".join(session.group_ids),
                         "room": session.room.name if session.room else session.room_id,
                         "time": time_str,
@@ -185,7 +209,9 @@ def _check_instructor_conflicts(
 
 
 def _check_room_conflicts(
-    sessions: list[CourseSession], qts: QuantumTimeSystem
+    sessions: list[CourseSession],
+    qts: QuantumTimeSystem,
+    course_map: dict[tuple[str, str], Course],
 ) -> list[dict]:
     """Check for rooms scheduled at the same time."""
     violations = []
@@ -202,10 +228,14 @@ def _check_room_conflicts(
             day, time = qts.quanta_to_time(quantum)
             time_str = f"{day} {time}"
             for session in session_list:
+                course_display, course_code = _course_display(
+                    session.course_id, session.course_type, course_map
+                )
                 violations.append(
                     {
                         "room": session.room.name if session.room else room_id,
-                        "course": session.course_id,
+                        "course": course_display,
+                        "course_code": course_code,
                         "groups": ", ".join(session.group_ids),
                         "instructor": (
                             session.instructor.name
@@ -232,9 +262,13 @@ def _check_instructor_qualifications(
 
         course = course_map[course_key]
         if session.instructor_id not in course.qualified_instructor_ids:
+            course_display, course_code = _course_display(
+                session.course_id, session.course_type, course_map
+            )
             violations.append(
                 {
-                    "course": session.course_id,
+                    "course": course_display,
+                    "course_code": course_code,
                     "course_type": session.course_type,
                     "instructor": (
                         session.instructor.name
@@ -249,7 +283,10 @@ def _check_instructor_qualifications(
     return violations
 
 
-def _check_room_type_mismatches(sessions: list[CourseSession]) -> list[dict]:
+def _check_room_type_mismatches(
+    sessions: list[CourseSession],
+    course_map: dict[tuple[str, str], Course],
+) -> list[dict]:
     """Check for room type mismatches."""
     violations = []
 
@@ -269,9 +306,13 @@ def _check_room_type_mismatches(sessions: list[CourseSession]) -> list[dict]:
 
         if not required_features.issubset(room_features):
             missing = required_features - room_features
+            course_display, course_code = _course_display(
+                session.course_id, session.course_type, course_map
+            )
             violations.append(
                 {
-                    "course": session.course_id,
+                    "course": course_display,
+                    "course_code": course_code,
                     "groups": ", ".join(session.group_ids),
                     "room": session.room.name if session.room else session.room_id,
                     "required_features": ", ".join(required_features),
@@ -284,7 +325,9 @@ def _check_room_type_mismatches(sessions: list[CourseSession]) -> list[dict]:
 
 
 def _check_availability_violations(
-    sessions: list[CourseSession], qts: QuantumTimeSystem
+    sessions: list[CourseSession],
+    qts: QuantumTimeSystem,
+    course_map: dict[tuple[str, str], Course],
 ) -> list[dict]:
     """Check for availability violations."""
     violations = []
@@ -293,6 +336,10 @@ def _check_availability_violations(
         for q in session.session_quanta:
             day, time = qts.quanta_to_time(q)
             time_str = f"{day} {time}"
+
+            course_display, course_code = _course_display(
+                session.course_id, session.course_type, course_map
+            )
 
             # Check instructor availability
             if session.instructor and q not in session.instructor.available_quanta:
@@ -304,7 +351,8 @@ def _check_availability_violations(
                             if session.instructor
                             else session.instructor_id
                         ),
-                        "course": session.course_id,
+                        "course": course_display,
+                        "course_code": course_code,
                         "groups": ", ".join(session.group_ids),
                         "room": session.room.name if session.room else session.room_id,
                         "time": time_str,
@@ -319,7 +367,8 @@ def _check_availability_violations(
                         "entity": (
                             session.room.name if session.room else session.room_id
                         ),
-                        "course": session.course_id,
+                        "course": course_display,
+                        "course_code": course_code,
                         "groups": ", ".join(session.group_ids),
                         "instructor": (
                             session.instructor.name
@@ -336,7 +385,8 @@ def _check_availability_violations(
                     {
                         "type": "Group Unavailable",
                         "entity": session.group.group_id,
-                        "course": session.course_id,
+                        "course": course_display,
+                        "course_code": course_code,
                         "room": session.room.name if session.room else session.room_id,
                         "instructor": (
                             session.instructor.name
@@ -378,9 +428,15 @@ def _check_incomplete_schedules(
                     if actual_quanta < expected_quanta
                     else "Over-scheduled"
                 )
+                course_display = (
+                    f"{course.name} ({'PR' if course.course_type == 'practical' else 'TH'})"
+                    if course
+                    else f"{course_id[0]} ({course_id[1]})"
+                )
                 violations.append(
                     {
-                        "course": course_id,
+                        "course": course_display,
+                        "course_code": course.course_code if course else course_id[0],
                         "group": group_id,
                         "expected": expected_quanta,
                         "actual": actual_quanta,
