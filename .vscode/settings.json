@@ -38,7 +38,7 @@
     "python.analysis.extraPaths": [
         "./src"
     ],
-    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.typeCheckingMode": "standard",
     // Black formatter settings
     "black-formatter.args": [
         "--line-length=88",
@@ -49,7 +49,6 @@
     "ruff.lint.enable": true,
     "ruff.organizeImports": true,
     "ruff.fixAll": true,
-
     // ==================
     // FILE EXCLUSIONS
     // ==================
@@ -94,5 +93,4 @@
             }
         ]
     }
-}
 }

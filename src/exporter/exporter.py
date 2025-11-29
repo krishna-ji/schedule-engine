@@ -18,23 +18,41 @@ from src.config.calendar_config import (
     EXCAL_START_HOUR,
 )
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.entities.course import Course
 from src.entities.decoded_session import CourseSession
 
 
-def _format_course_name_with_type(course_id: str, course_type: str) -> str:
-    """Append (TH) or (PR) tag to course name based on course type.
+def _format_course_name_with_type(course_name: str, course_type: str) -> str:
+    """Append (TH) or (PR) tag to course name based on course type."""
 
-    Args:
-        course_id (str): The course ID.
-        course_type (str): The course type ('theory' or 'practical').
+    tag = "PR" if course_type == "practical" else "TH"
+    return f"{course_name} ({tag})"
 
-    Returns:
-        str: Course ID with appropriate tag appended.
-    """
-    if course_type == "practical":
-        return f"{course_id} (PR)"
-    else:
-        return f"{course_id} (TH)"
+
+def _resolve_course_details(
+    session: CourseSession,
+    course_lookup: dict[tuple[str, str], Course] | None,
+) -> tuple[str, str, str]:
+    """Return course name, course code, and display label for a session."""
+
+    course: Course | None = None
+    if course_lookup is not None:
+        course = course_lookup.get((session.course_id, session.course_type))
+
+    course_name = course.name if course else session.course_id
+    course_code = (
+        course.course_code if course and course.course_code else session.course_id
+    )
+    course_display = _format_course_name_with_type(course_name, session.course_type)
+    return course_name, course_code, course_display
+
+
+def _resolve_instructor_name(session: CourseSession) -> str:
+    """Return instructor name if available, otherwise fall back to ID."""
+
+    if session.instructor and session.instructor.name:
+        return session.instructor.name
+    return session.instructor_id
 
 
 def _get_time_schedule_format(
@@ -61,7 +79,10 @@ def _get_time_schedule_format(
 
 
 def _save_schedule_as_json(
-    schedule: list[CourseSession], output_path: str, qts: QuantumTimeSystem
+    schedule: list[CourseSession],
+    output_path: str,
+    qts: QuantumTimeSystem,
+    course_lookup: dict[tuple[str, str], Course] | None = None,
 ) -> str:
     """Saves a list of CourseSession objects as a JSON file.
 
@@ -84,17 +105,21 @@ def _save_schedule_as_json(
     result = []
     for session in schedule:
         time_schedule = _get_time_schedule_format(qts, session.session_quanta)
-        # Format course_id with (TH) or (PR) tag for display
-        display_course_id = _format_course_name_with_type(
-            session.course_id, session.course_type
+        course_name, course_code, course_display = _resolve_course_details(
+            session, course_lookup
         )
+        instructor_name = _resolve_instructor_name(session)
 
         result.append(
             {
-                "course_id": display_course_id,  # Display with (TH) or (PR) tag
-                "original_course_id": session.course_id,  # Keep original for reference
-                "course_type": session.course_type,  # Include course type
+                "course_id": course_name,
+                "course_name": course_name,
+                "course_display": course_display,
+                "course_code": course_code,
+                "original_course_id": session.course_id,
+                "course_type": session.course_type,
                 "instructor_id": session.instructor_id,
+                "instructor_name": instructor_name,
                 "group_ids": (
                     session.group_ids
                 ),  # Export as list for multi-group support
@@ -220,7 +245,8 @@ def _save_json_schedule_as_pdf(
             y = session["start"]
             height = session["end"] - session["start"]
             label = session["label"]
-            color = color_map.get(label, "#CCCCCC")
+            course_base = session.get("course_base", label)
+            color = color_map.get(course_base, "#CCCCCC")
 
             rect = plt.Rectangle(
                 (x + 0.05, y),
@@ -251,15 +277,17 @@ def _save_json_schedule_as_pdf(
         data = json.load(f)
 
     group_sessions = defaultdict(list)
-    course_ids = set()
+    course_ids: set[tuple[str, str]] = set()
 
     for entry in data:
         # Handle both old format (group_id) and new format (group_ids)
         group_ids = entry.get(
             "group_ids", [entry.get("group_id")] if entry.get("group_id") else []
         )
-        course = entry["course_id"]
-        course_ids.add(course)
+        course_label = entry.get("course_display") or entry.get("course_id")
+        instructor_label = entry.get("instructor_name") or entry.get("instructor_id")
+        course_type = entry.get("course_type", "theory")
+        course_ids.add((course_label, course_type))
 
         # Add session to all groups in the list
         for day, times in entry["time"].items():
@@ -268,17 +296,27 @@ def _save_json_schedule_as_pdf(
                 end = to_float(s["end"])
                 for group in group_ids:
                     if group:  # Skip None values
+                        label = course_label
+                        if instructor_label:
+                            label = f"{label}, {instructor_label}"
                         group_sessions[group].append(
-                            {"day": day, "start": start, "end": end, "label": course}
+                            {
+                                "day": day,
+                                "start": start,
+                                "end": end,
+                                "label": label,
+                                "course_base": course_label,
+                                "course_type": course_type,
+                            }
                         )
 
     # Assign colors based on course type: blue for theory, red for practical
     color_map = {}
-    for course in course_ids:
-        if "(PR)" in course:
-            color_map[course] = "#F16A6A"  # Red for practical
+    for course_label, c_type in course_ids:
+        if c_type == "practical" or "(PR)" in course_label:
+            color_map[course_label] = "#F16A6A"  # Red for practical
         else:
-            color_map[course] = "#8888F7"  # Blue for theory
+            color_map[course_label] = "#8888F7"  # Blue for theory
 
     # Save PDF
     with PdfPages(output_pdf_path) as pdf:
@@ -292,6 +330,7 @@ def export_everything(
     schedule: list[CourseSession],
     output_path: str,
     qts: QuantumTimeSystem,
+    course_lookup: dict[tuple[str, str], Course] | None = None,
     parallel: bool = True,
 ) -> None:
     """Exports schedule as both JSON and PDF to a single directory.
@@ -303,6 +342,8 @@ def export_everything(
         schedule (List[CourseSession]): Decoded sessions from genetic algorithm output.
         output_path (str): Output directory path. Will be created if it doesn't exist.
         qts (QuantumTimeSystem): Quantum time system instance for time conversion.
+        course_lookup (Dict[Tuple[str, str], Course], optional): Lookup table for
+            resolving human-friendly course names. Defaults to None.
         parallel (bool): If True, generate JSON and PDF concurrently (default: True, 2x faster)
 
     Example:
@@ -323,7 +364,9 @@ def export_everything(
 
     if not parallel:
         # Sequential export (for debugging)
-        json_path = _save_schedule_as_json(schedule, output_path, qts)
+        json_path = _save_schedule_as_json(
+            schedule, output_path, qts, course_lookup=course_lookup
+        )
         pdf_path = os.path.join(output_path, EXCAL_DEFAULT_OUTPUT_PDF)
         _save_json_schedule_as_pdf(
             json_path=json_path,
@@ -338,7 +381,9 @@ def export_everything(
 
         def save_json() -> str:
             """Worker function for JSON export."""
-            return _save_schedule_as_json(schedule, output_path, qts)
+            return _save_schedule_as_json(
+                schedule, output_path, qts, course_lookup=course_lookup
+            )
 
         def save_pdf(json_path_result: str) -> str:
             """Worker function for PDF export."""

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -68,7 +68,7 @@ class StructuredLogger:
     @classmethod
     def setup(
         cls,
-        log_file: Path | None = None,
+        log_file: Path | Literal["auto"] | None = "auto",
         console_level: str = "DEBUG",
         file_level: str = "DEBUG",
         show_time: bool = True,
@@ -78,21 +78,24 @@ class StructuredLogger:
         Configure global logging settings.
 
         Args:
-            log_file: Path to log file (auto-created with timestamp if None)
+            log_file: Custom path, "auto" for timestamped default, or None to disable file logging
             console_level: Console verbosity (DEBUG, INFO, WARNING, ERROR)
             file_level: File verbosity (typically DEBUG for full detail)
             show_time: Show timestamp in console (default False for cleaner output)
             show_path: Show file path in console (default False)
         """
-        # Create default log file if not specified
-        if log_file is None:
+        # Derive log file path (auto-create, custom, or disabled)
+        resolved_log_file: Path | None
+        if isinstance(log_file, str) and log_file == "auto":
             log_dir = Path("logs") / "training"
             log_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_file = log_dir / f"training_{timestamp}.log"
+            resolved_log_file = log_dir / f"training_{timestamp}.log"
+        elif log_file is None:
+            resolved_log_file = None
         else:
-            log_file = Path(log_file)
-            log_file.parent.mkdir(parents=True, exist_ok=True)
+            resolved_log_file = Path(log_file)
+            resolved_log_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Configure root logger
         root_logger = logging.getLogger("schedule_engine")
@@ -114,14 +117,18 @@ class StructuredLogger:
         root_logger.addHandler(console_handler)
 
         # File handler (detailed, structured)
-        file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
-        file_handler.setLevel(getattr(logging, file_level.upper(), logging.DEBUG))
-        file_handler.setFormatter(CompactFormatter())
-        root_logger.addHandler(file_handler)
+        if resolved_log_file is not None:
+            file_handler = logging.FileHandler(
+                resolved_log_file, mode="a", encoding="utf-8"
+            )
+            file_handler.setLevel(getattr(logging, file_level.upper(), logging.DEBUG))
+            file_handler.setFormatter(CompactFormatter())
+            root_logger.addHandler(file_handler)
 
         root_logger.propagate = False
 
-        console.print(f"[dim]Logs writing to: {log_file}[/dim]")
+        if resolved_log_file is not None:
+            console.print(f"[dim]Logs writing to: {resolved_log_file}[/dim]")
 
     @classmethod
     def get_logger(cls, name: str = "schedule_engine") -> StructuredLogger:
@@ -297,7 +304,7 @@ def get_logger(name: str = "schedule_engine") -> StructuredLogger:
 
 
 def setup_logging(
-    log_file: Path | None = None,
+    log_file: Path | Literal["auto"] | None = "auto",
     console_level: str = "DEBUG",
     file_level: str = "DEBUG",
     **kwargs: Any,
