@@ -1,15 +1,21 @@
-"""
-Custom exception hierarchy for Schedule Engine.
+"""Custom exception hierarchy for Schedule Engine."""
 
-Provides specific exception types for different failure modes,
-enabling better error handling and debugging.
-"""
+from __future__ import annotations
+
+__all__ = [
+    "ScheduleEngineError",
+    "ConfigurationError",
+    "DataValidationError",
+    "FeasibilityError",
+    "ConstraintViolationError",
+    "GAExecutionError",
+    "ExportError",
+    "RLTrainingError",
+]
 
 
 class ScheduleEngineError(Exception):
     """Base exception for all schedule engine errors."""
-
-    pass
 
 
 class ConfigurationError(ScheduleEngineError):
@@ -20,8 +26,6 @@ class ConfigurationError(ScheduleEngineError):
     - Config values fail validation
     - Runtime mode config violates mode constraints
     """
-
-    pass
 
 
 class DataValidationError(ScheduleEngineError):
@@ -34,8 +38,6 @@ class DataValidationError(ScheduleEngineError):
     - Duplicate enrollments detected
     """
 
-    pass
-
 
 class FeasibilityError(ScheduleEngineError):
     """Problem is provably infeasible.
@@ -47,8 +49,6 @@ class FeasibilityError(ScheduleEngineError):
     - Pigeonhole principle violation
     """
 
-    pass
-
 
 class ConstraintViolationError(ScheduleEngineError):
     """Hard constraint cannot be satisfied.
@@ -58,8 +58,6 @@ class ConstraintViolationError(ScheduleEngineError):
     - Individual is structurally invalid
     - Constraint is mathematically impossible
     """
-
-    pass
 
 
 class GAExecutionError(ScheduleEngineError):
@@ -71,8 +69,6 @@ class GAExecutionError(ScheduleEngineError):
     - Multiprocessing worker crashes
     """
 
-    pass
-
 
 class ExportError(ScheduleEngineError):
     """Result export or reporting failed.
@@ -82,8 +78,6 @@ class ExportError(ScheduleEngineError):
     - PDF generation fails
     - Plot rendering fails
     """
-
-    pass
 
 
 class RLTrainingError(ScheduleEngineError):
@@ -95,5 +89,3 @@ class RLTrainingError(ScheduleEngineError):
     - Model loading/saving fails
     - Checkpoint is corrupted
     """
-
-    pass

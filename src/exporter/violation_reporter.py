@@ -14,7 +14,7 @@ from src.entities.decoded_session import CourseSession
 
 def generate_violation_report(
     sessions: list[CourseSession],
-    course_map: dict[str, Course],
+    course_map: dict[tuple[str, str], Course],
     qts: QuantumTimeSystem,
     output_path: str,
 ) -> None:
@@ -220,7 +220,7 @@ def _check_room_conflicts(
 
 
 def _check_instructor_qualifications(
-    sessions: list[CourseSession], course_map: dict[tuple, Course]
+    sessions: list[CourseSession], course_map: dict[tuple[str, str], Course]
 ) -> list[dict]:
     """Check for unqualified instructors."""
     violations = []
@@ -259,6 +259,8 @@ def _check_room_type_mismatches(sessions: list[CourseSession]) -> list[dict]:
             if isinstance(session.required_room_features, list)
             else {session.required_room_features}
         )
+        if not session.room:
+            continue
         room_features = (
             set(session.room.room_features)
             if isinstance(session.room.room_features, list)
@@ -293,7 +295,7 @@ def _check_availability_violations(
             time_str = f"{day} {time}"
 
             # Check instructor availability
-            if q not in session.instructor.available_quanta:
+            if session.instructor and q not in session.instructor.available_quanta:
                 violations.append(
                     {
                         "type": "Instructor Unavailable",
@@ -310,7 +312,7 @@ def _check_availability_violations(
                 )
 
             # Check room availability
-            if q not in session.room.available_quanta:
+            if session.room and q not in session.room.available_quanta:
                 violations.append(
                     {
                         "type": "Room Unavailable",
@@ -349,16 +351,17 @@ def _check_availability_violations(
 
 
 def _check_incomplete_schedules(
-    sessions: list[CourseSession], course_map: dict[str, Course]
+    sessions: list[CourseSession], course_map: dict[tuple[str, str], Course]
 ) -> list[dict]:
     """Check for incomplete or over-scheduled courses."""
     violations = []
-    course_group_quanta = defaultdict(int)
+    # Key is ((course_id, course_type), group_id) to match course_map structure
+    course_group_quanta: dict[tuple[tuple[str, str], str], int] = defaultdict(int)
 
     # Count quanta per (course_id, group_id)
     for session in sessions:
         for group_id in session.group_ids:
-            key = (session.course_id, group_id)
+            key = ((session.course_id, session.course_type), group_id)
             course_group_quanta[key] += len(session.session_quanta)
 
     # Check each course's enrolled groups
@@ -366,7 +369,7 @@ def _check_incomplete_schedules(
         expected_quanta = course.quanta_per_week
 
         for group_id in course.enrolled_group_ids:
-            key = (course_id, group_id)
+            key = (course_id, group_id)  # course_id is tuple[str, str]
             actual_quanta = course_group_quanta.get(key, 0)
 
             if actual_quanta != expected_quanta:

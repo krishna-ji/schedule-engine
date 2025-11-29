@@ -6,7 +6,10 @@ scattered across the codebase, ensuring consistent formatting and
 enabling easier output redirection for testing.
 """
 
+from __future__ import annotations
+
 import sys
+from typing import TextIO
 
 from rich.console import Console
 
@@ -44,7 +47,7 @@ def reset_console() -> None:
 
 def configure_console(
     *,
-    file=None,
+    file: TextIO | None = None,
     width: int | None = None,
     force_terminal: bool | None = None,
     force_jupyter: bool | None = None,

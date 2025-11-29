@@ -46,8 +46,8 @@ class CheckpointMetadata:
     stage: str | None = None
     seed: int | None = None
     config_hash: str | None = None
-    validation_metrics: dict[str, float] = None
-    training_metrics: dict[str, float] = None
+    validation_metrics: dict[str, float] | None = None
+    training_metrics: dict[str, float] | None = None
     status: str = "checkpoint"
     notes: str = ""
 
@@ -249,20 +249,38 @@ class CheckpointManager:
         candidates = self.query_checkpoints(stage=stage, status=status)
 
         # Filter checkpoints with the metric
-        candidates = [cp for cp in candidates if metric_name in cp.validation_metrics]
+        candidates = [
+            cp
+            for cp in candidates
+            if cp.validation_metrics and metric_name in cp.validation_metrics
+        ]
 
         if not candidates:
             logger.warning(f"No checkpoints found with metric '{metric_name}'")
             return None
 
         # Find best
-        best = max(candidates, key=lambda cp: cp.validation_metrics[metric_name])
+        best = max(
+            candidates,
+            key=lambda cp: (
+                cp.validation_metrics[metric_name]
+                if cp.validation_metrics
+                else float("-inf")
+            ),
+        )
         if not maximize:
-            best = min(candidates, key=lambda cp: cp.validation_metrics[metric_name])
+            best = min(
+                candidates,
+                key=lambda cp: (
+                    cp.validation_metrics[metric_name]
+                    if cp.validation_metrics
+                    else float("inf")
+                ),
+            )
 
         logger.info(
             f"Best checkpoint: {best.checkpoint_id} "
-            f"({metric_name}={best.validation_metrics[metric_name]:.4f})"
+            f"({metric_name}={best.validation_metrics[metric_name] if best.validation_metrics else 'N/A':.4f})"
         )
 
         return best
@@ -305,12 +323,12 @@ class CheckpointManager:
             return {"total": 0}
 
         # Count by status
-        status_counts = {}
+        status_counts: dict[str, int] = {}
         for cp in self.checkpoints:
             status_counts[cp.status] = status_counts.get(cp.status, 0) + 1
 
         # Count by stage
-        stage_counts = {}
+        stage_counts: dict[str, int] = {}
         for cp in self.checkpoints:
             if cp.stage:
                 stage_counts[cp.stage] = stage_counts.get(cp.stage, 0) + 1

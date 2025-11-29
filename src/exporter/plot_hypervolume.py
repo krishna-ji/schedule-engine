@@ -29,7 +29,7 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_hypervolume_trend(hypervolume_history: list, output_dir: str):
+def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
     """
     Plot hypervolume evolution over generations.
 
@@ -129,8 +129,8 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str):
 
 
 def plot_hypervolume_with_confidence(
-    runs_hypervolumes: list, output_dir: str, run_labels: list = None
-):
+    runs_hypervolumes: list, output_dir: str, run_labels: list | None = None
+) -> None:
     """
     Plot hypervolume trends with confidence intervals for multiple runs.
 
@@ -271,7 +271,7 @@ def plot_hypervolume_comparison(
     output_dir: str,
     algo1_name: str = "Algorithm 1",
     algo2_name: str = "Algorithm 2",
-):
+) -> None:
     """
     Compare hypervolume evolution between two algorithms.
 

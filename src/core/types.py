@@ -4,6 +4,8 @@ Core Type Definitions
 This module contains type-safe data structures used throughout the system.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -12,6 +14,8 @@ from src.entities.group import Group
 from src.entities.instructor import Instructor
 from src.entities.room import Room
 from src.ga.sessiongene import SessionGene
+
+__all__ = ["Individual", "SchedulingContext"]
 
 # Alias used across GA and RL modules; DEAP wraps this list at runtime.
 Individual = list[SessionGene]

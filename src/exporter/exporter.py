@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import json
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from typing import Any
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -112,7 +115,7 @@ def _save_json_schedule_as_pdf(
     quantum_minutes: int,
     start_hour: int,
     end_hour: int,
-):
+) -> None:
     """Converts a structured JSON schedule into a calendar-style PDF.
 
     Creates a multi-page PDF with one calendar page per group. Sessions are
@@ -144,7 +147,7 @@ def _save_json_schedule_as_pdf(
     DAY_IDX = {day: i for i, day in enumerate(DAYS)}
     TIME_FORMAT = "%H:%M"
 
-    def to_float(time_str):
+    def to_float(time_str: str) -> float:
         """Convert time string to float hours.
 
         Args:
@@ -156,7 +159,7 @@ def _save_json_schedule_as_pdf(
         t = datetime.strptime(time_str, TIME_FORMAT)
         return t.hour + t.minute / 60.0
 
-    def merge_sessions(sessions):
+    def merge_sessions(sessions: list[dict]) -> list[dict]:
         """Merge consecutive sessions with the same label and day.
 
         Args:
@@ -186,7 +189,9 @@ def _save_json_schedule_as_pdf(
             i = j
         return merged
 
-    def plot_schedule(sessions, group_name, pdf, color_map):
+    def plot_schedule(
+        sessions: list[dict], group_name: str, pdf: Any, color_map: dict[str, str]
+    ) -> None:
         """Plot a weekly schedule for a specific group.
 
         Args:
@@ -288,7 +293,7 @@ def export_everything(
     output_path: str,
     qts: QuantumTimeSystem,
     parallel: bool = True,
-):
+) -> None:
     """Exports schedule as both JSON and PDF to a single directory.
 
     This is the main export function that combines JSON and PDF generation.
@@ -331,11 +336,11 @@ def export_everything(
         # Parallel export (2x faster)
         pdf_path = os.path.join(output_path, EXCAL_DEFAULT_OUTPUT_PDF)
 
-        def save_json():
+        def save_json() -> str:
             """Worker function for JSON export."""
             return _save_schedule_as_json(schedule, output_path, qts)
 
-        def save_pdf(json_path_result):
+        def save_pdf(json_path_result: str) -> str:
             """Worker function for PDF export."""
             _save_json_schedule_as_pdf(
                 json_path=json_path_result,

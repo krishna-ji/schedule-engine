@@ -18,7 +18,7 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_pareto_front(population, output_dir):
+def plot_pareto_front(population: list, output_dir: str) -> None:
     """
     Enhanced Pareto front visualization showing all points with better visibility.
     """
@@ -62,7 +62,7 @@ def plot_pareto_front(population, output_dir):
     fig, ((ax1, ax2), (ax3, ax4)) = create_thesis_figure(2, 2, figsize=(14, 11))
 
     # Plot 1: All population points with jitter to show overlapping points
-    unique_points = {}
+    unique_points: dict[tuple[int, int], int] = {}
     jittered_hard = []
     jittered_soft = []
 

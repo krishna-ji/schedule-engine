@@ -30,7 +30,7 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_spacing_trend(spacing_history: list, output_dir: str):
+def plot_spacing_trend(spacing_history: list, output_dir: str) -> None:
     """
     Plot spacing evolution over generations.
 
@@ -128,7 +128,7 @@ def plot_spacing_trend(spacing_history: list, output_dir: str):
     plt.close(fig)
 
 
-def plot_spacing_distribution(population: list, output_dir: str):
+def plot_spacing_distribution(population: list, output_dir: str) -> None:
     """
     Plot histogram of nearest-neighbor distances in final Pareto front.
 
@@ -220,7 +220,9 @@ def plot_spacing_distribution(population: list, output_dir: str):
     plt.close(fig)
 
 
-def plot_spacing_with_pareto(population: list, spacing_history: list, output_dir: str):
+def plot_spacing_with_pareto(
+    population: list, spacing_history: list, output_dir: str
+) -> None:
     """
     Combined visualization: Pareto front + spacing information.
 
@@ -334,8 +336,8 @@ def plot_spacing_with_pareto(population: list, spacing_history: list, output_dir
 
 
 def plot_spacing_multi_run(
-    runs_spacing: list, output_dir: str, run_labels: list = None
-):
+    runs_spacing: list, output_dir: str, run_labels: list | None = None
+) -> None:
     """
     Plot spacing trends for multiple runs with confidence intervals.
 

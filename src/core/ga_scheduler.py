@@ -5,10 +5,13 @@ Encapsulates NSGA-II genetic algorithm execution for course scheduling.
 Extracted from monolithic main.py for better testability and separation of concerns.
 """
 
+from __future__ import annotations
+
 import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from deap import base, tools
@@ -38,7 +41,10 @@ from src.ga.operators.mutation import mutate_individual
 
 # from concurrent.futures import ThreadPoolExecutor  # Removed: GIL limits CPU parallelism
 from src.ga.population import generate_course_group_aware_population
-from src.heuristics.parallel_executor import get_parallel_executor
+from src.heuristics.parallel_executor import (
+    ParallelHeuristicExecutor,
+    get_parallel_executor,
+)
 from src.heuristics.registry import get_heuristic_statistics_template
 from src.metrics.diversity import average_pairwise_diversity
 from src.utils.console_service import get_console
@@ -393,8 +399,8 @@ class GAScheduler:
         self.initial_best_hard = None
         self.initial_best_soft = None
         self.all_time_best = None  # Track best individual ever seen
-        self._cached_hard_details = {}
-        self._cached_soft_details = {}
+        self._cached_hard_details: dict[str, int] = {}
+        self._cached_soft_details: dict[str, int] = {}
 
         # PERFORMANCE CACHE: Store enabled constraints (computed once, used frequently)
         self._enabled_hard_constraints = get_enabled_hard_constraints()
@@ -402,9 +408,9 @@ class GAScheduler:
 
         # RL INTEGRATION: Components for hyper-heuristic control
         self.rl_enabled = False
-        self.rl_controller = None
-        self.rl_state_encoder = None
-        self.rl_action_mapper = None
+        self.rl_controller: Any | None = None  # HybridController (RL integration)
+        self.rl_state_encoder: Any | None = None  # StateEncoder (RL integration)
+        self.rl_action_mapper: Any | None = None  # ActionMapper (RL integration)
 
         # HEURISTIC TRACKING: Round-robin tracking and detailed statistics
         from src.ga.heuristic_tracker import HeuristicTracker
@@ -414,6 +420,7 @@ class GAScheduler:
         self._setup_heuristic_rotation()
 
         # PERFORMANCE: Parallel heuristic executor (10-16x speedup)
+        self.parallel_executor: ParallelHeuristicExecutor | None
         try:
             self.parallel_executor = get_parallel_executor()
             console.print(
@@ -631,17 +638,17 @@ class GAScheduler:
             return
 
         # Encode current state
-        state = self.rl_state_encoder.encode(
+        state = self.rl_state_encoder.encode(  # type: ignore[union-attr]
             population=self.population,
             current_generation=gen,
             generations_without_improvement=self.stagnation_counter,
         )
 
         # Get valid actions for current state
-        valid_actions = self.rl_action_mapper.enabled_actions
+        valid_actions = self.rl_action_mapper.enabled_actions  # type: ignore[union-attr]
 
         # Select action using RL controller (with fallback)
-        action_id = self.rl_controller.select_action(
+        action_id = self.rl_controller.select_action(  # type: ignore[union-attr]
             state=state,
             valid_actions=valid_actions,
             deterministic=True,  # Use deterministic policy for production

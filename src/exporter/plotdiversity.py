@@ -14,7 +14,7 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_diversity_trend(diversity_trend, output_dir):
+def plot_diversity_trend(diversity_trend: list, output_dir: str) -> None:
     """
     Plot population diversity over generations.
 

@@ -14,13 +14,15 @@ Key properties:
 Performance: pymoo's HV is 10-100x faster than pure Python implementations.
 """
 
+from typing import Any
+
 import numpy as np
 from deap import tools
 from pymoo.indicators.hv import HV
 
 
 def calculate_hypervolume(
-    population: list, ref_point: tuple[float, float] = None
+    population: list, ref_point: tuple[float, float] | None = None
 ) -> float:
     """
     Calculate hypervolume indicator for a population's Pareto front using pymoo.
@@ -128,7 +130,7 @@ def calculate_hypervolume_with_reference(
     return calculate_hypervolume(population, ref_point)
 
 
-def calculate_hypervolume_contribution(population: list, individual) -> float:
+def calculate_hypervolume_contribution(population: list, individual: Any) -> float:
     """
     Calculate the hypervolume contribution of a specific individual.
 
@@ -195,7 +197,7 @@ def get_hypervolume_reference_point(
 
 
 def track_hypervolume_over_generations(
-    populations: list[list], ref_point: tuple[float, float] = None
+    populations: list[list], ref_point: tuple[float, float] | None = None
 ) -> list[float]:
     """
     Calculate hypervolume for each generation's population.

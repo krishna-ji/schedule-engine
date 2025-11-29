@@ -2,7 +2,9 @@
     // ==================
     // EDITOR SETTINGS
     // ==================
+    // "editor.fontFamily":",
     "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit",
         "source.fixAll": "explicit"

@@ -29,7 +29,9 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_metrics_boxplot(runs_data: dict, output_dir: str, generation: int = -1):
+def plot_metrics_boxplot(
+    runs_data: dict, output_dir: str, generation: int = -1
+) -> None:
     """
     Create box plot comparing final metric values across multiple runs.
 
@@ -144,7 +146,7 @@ def plot_algorithm_comparison(
     output_dir: str,
     algo1_name: str = "Algorithm 1",
     algo2_name: str = "Algorithm 2",
-):
+) -> None:
     """
     Compare two algorithm configurations with statistical significance.
 
@@ -300,7 +302,7 @@ def plot_success_rate_comparison(
     runs_hard_violations: list,
     output_dir: str,
     thresholds: list = [0, 10, 50, 100],
-):
+) -> None:
     """
     Plot success rates at different feasibility thresholds.
 
@@ -371,7 +373,7 @@ def plot_convergence_speed_comparison(
     runs_hard_violations: list,
     output_dir: str,
     target_value: float = 0,
-):
+) -> None:
     """
     Compare convergence speed: generations needed to reach target.
 
@@ -466,7 +468,7 @@ def plot_convergence_speed_comparison(
     plt.close(fig)
 
 
-def generate_statistical_summary_table(runs_data: dict, output_dir: str):
+def generate_statistical_summary_table(runs_data: dict, output_dir: str) -> None:
     """
     Generate comprehensive statistical summary table (CSV).
 

@@ -1,9 +1,6 @@
-"""
-Parallel Worker Utilities
+"""Helper utilities for multiprocessing worker initialization."""
 
-Provides common initialization and context management for multiprocessing workers.
-This avoids pickling large objects (SchedulingContext) by reloading data in each worker.
-"""
+from __future__ import annotations
 
 import os
 import random
@@ -15,7 +12,7 @@ from typing import Any
 _WORKER_CONTEXT: dict[str, Any] | None = None
 
 
-def init_worker(data_dir: str, seed: int):
+def init_worker(data_dir: str, seed: int) -> None:
     """
     Initialize worker process by loading data from JSON files.
 
@@ -86,7 +83,7 @@ def init_worker(data_dir: str, seed: int):
             groups=groups,
             instructors=instructors,
             rooms=rooms,
-            available_quanta=qts.get_all_operating_quanta(),
+            available_quanta=list(qts.get_all_operating_quanta()),
             config=None,
         )
 

@@ -27,7 +27,7 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str):
+def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str) -> None:
     """
     Plot multiple normalized metrics on single graph for comparison.
 
@@ -124,7 +124,7 @@ def plot_convergence_dashboard(
     spacing: list,
     feasibility_rate: list,
     output_dir: str,
-):
+) -> None:
     """
     Create comprehensive 2x3 dashboard of all key metrics.
 
@@ -296,7 +296,7 @@ def plot_convergence_dashboard(
 
 def plot_convergence_rate(
     metric_history: list, output_dir: str, metric_name: str = "Hard Violations"
-):
+) -> None:
     """
     Plot convergence rate (improvement per generation) over time.
 
@@ -401,7 +401,9 @@ def plot_convergence_rate(
     plt.close(fig)
 
 
-def plot_constraint_satisfaction_evolution(feasibility_rates: list, output_dir: str):
+def plot_constraint_satisfaction_evolution(
+    feasibility_rates: list, output_dir: str
+) -> None:
     """
     Plot evolution of constraint satisfaction rate over generations.
 

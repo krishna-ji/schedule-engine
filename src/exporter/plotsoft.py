@@ -14,7 +14,9 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_soft_constraint_violation_over_generation(soft_trend, output_dir):
+def plot_soft_constraint_violation_over_generation(
+    soft_trend: list, output_dir: str
+) -> None:
     """
     Plots the trend of soft constraint penalties over generations.
 

@@ -1,13 +1,12 @@
-"""
-Time configuration helper functions.
-These are used across the codebase for time calculations.
-"""
+"""Time configuration helper functions used across the codebase."""
+
+from __future__ import annotations
 
 from src.config import get_config
 from src.encoder.quantum_time_system import QuantumTimeSystem
 
 
-def get_midday_break_quanta(qts: QuantumTimeSystem):
+def get_midday_break_quanta(qts: QuantumTimeSystem) -> dict[str, set[int]]:
     """
     Get quantum indices for midday break period.
 
@@ -18,7 +17,7 @@ def get_midday_break_quanta(qts: QuantumTimeSystem):
         Dict mapping day_name -> set of quantum indices (within-day) for break period
     """
     cfg = get_config()
-    break_quanta = {}
+    break_quanta: dict[str, set[int]] = {}
 
     for day in qts.DAY_NAMES:
         if not qts.is_operational(day):
@@ -29,6 +28,9 @@ def get_midday_break_quanta(qts: QuantumTimeSystem):
             break_end_q = qts.time_to_quanta(day, cfg.time.midday_break_end)
 
             day_offset = qts.day_quanta_offset[day]
+            if day_offset is None:
+                continue
+
             within_day_start = break_start_q - day_offset
             within_day_end = break_end_q - day_offset
 
@@ -39,7 +41,9 @@ def get_midday_break_quanta(qts: QuantumTimeSystem):
     return break_quanta
 
 
-def quantum_to_day_and_within_day(quantum, qts: QuantumTimeSystem):
+def quantum_to_day_and_within_day(
+    quantum: int, qts: QuantumTimeSystem
+) -> tuple[str, int]:
     """
     Convert continuous quantum to (day_name, within_day_quantum).
 
@@ -56,6 +60,9 @@ def quantum_to_day_and_within_day(quantum, qts: QuantumTimeSystem):
 
         day_offset = qts.day_quanta_offset[day]
         day_count = qts.day_quanta_count[day]
+
+        if day_offset is None or day_count is None:
+            continue
 
         if day_offset <= quantum < day_offset + day_count:
             within_day = quantum - day_offset

@@ -19,7 +19,7 @@ apply_thesis_style()
 
 def plot_individual_hard_constraints(
     hard_trends: dict[str, list[int]], output_dir: str
-):
+) -> None:
     """
     Plots each hard constraint trend separately and saves them in plots/constraints/hard/ subdirectory.
 
@@ -186,7 +186,7 @@ def plot_individual_hard_constraints(
 
 def plot_individual_soft_constraints(
     soft_trends: dict[str, list[int]], output_dir: str
-):
+) -> None:
     """
     Plots each soft constraint trend separately and saves them in plots/constraints/soft/ subdirectory.
 
@@ -355,7 +355,7 @@ def plot_constraint_summary(
     hard_trends: dict[str, list[int]],
     soft_trends: dict[str, list[int]],
     output_dir: str,
-):
+) -> None:
     """
     Creates a summary dashboard showing total trends and final constraint values.
 

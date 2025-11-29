@@ -26,7 +26,7 @@ class ProbabilityPolicy:
     - Converged: Reduce both to avoid disruption
     """
 
-    def __init__(self, mode: str = "discrete", config: dict = None):
+    def __init__(self, mode: str = "discrete", config: dict | None = None):
         """
         Initialize probability policy.
 

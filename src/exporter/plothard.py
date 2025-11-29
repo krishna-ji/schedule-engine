@@ -14,7 +14,9 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_hard_constraint_violation_over_generation(hard_trend, output_dir):
+def plot_hard_constraint_violation_over_generation(
+    hard_trend: list, output_dir: str
+) -> None:
     """
     Plots the trend of hard constraint violations over generations.
 

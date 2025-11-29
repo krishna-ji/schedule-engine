@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import random
 from concurrent.futures import ProcessPoolExecutor
 
@@ -319,9 +321,9 @@ def generate_course_group_aware_population(
         population = []
         for individual_idx in range(n):
             genes = []
-            used_quanta = set()
-            instructor_schedule = {}
-            group_schedule = {}
+            used_quanta: set[int] = set()
+            instructor_schedule: dict[str, set[int]] = {}
+            group_schedule: dict[str, set[int]] = {}
 
             for course_id, group_ids in course_group_pairs:
                 course = context.courses.get(course_id)
@@ -338,7 +340,7 @@ def generate_course_group_aware_population(
                 # Create one SessionGene per subsession
                 for subsession_idx, num_quanta in enumerate(subsession_durations):
                     session_gene = create_session_gene_with_conflict_avoidance(
-                        course_id,
+                        course_id[0] if isinstance(course_id, tuple) else course_id,
                         group_ids,
                         session_type,
                         num_quanta,
@@ -434,7 +436,7 @@ def extract_course_group_relationships(
             if practical_key in context.courses:
                 course_group_pairs.append((practical_key, group_id))
 
-    return course_group_pairs
+    return course_group_pairs  # type: ignore[return-value]
 
 
 def create_course_component_sessions(
@@ -584,9 +586,7 @@ def create_session_gene_with_conflict_avoidance(
         placeholder = Instructor(
             instructor_id="PLACEHOLDER",
             name="Unassigned",
-            qualifications=[],
-            preferred_times=[],
-            max_weekly_load=0,
+            qualified_courses=[],
         )
         qualified_instructors = [placeholder]
 
@@ -643,7 +643,7 @@ def create_session_gene_with_conflict_avoidance(
     if assigned_quanta:
         if len(assigned_quanta) != quanta_needed:
             print(
-                f" BUG DETECTED: {course_id} {course_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
+                f" BUG DETECTED: {course_id} {session_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
             )
             print(f"   assigned_quanta={assigned_quanta[:10]}...")
             logging.warning(
@@ -654,7 +654,7 @@ def create_session_gene_with_conflict_avoidance(
     # Repair operators will fix overlaps later - maintaining correct num_quanta is priority
     if not assigned_quanta:
         print(
-            f"️ WRAP-AROUND for {course_id} {course_type}: need {quanta_needed} from {len(context.available_quanta)} available"
+            f"️ WRAP-AROUND for {course_id} {session_type}: need {quanta_needed} from {len(context.available_quanta)} available"
         )
         logging.info(
             f"{course_id}: Using fallback (needed {quanta_needed}, available {len(context.available_quanta)})"
@@ -713,7 +713,7 @@ def create_session_gene_with_conflict_avoidance(
     # DEBUG: Verify num_q matches quanta_needed
     if num_q != quanta_needed:
         print(
-            f" CONVERSION BUG: {course_id} {course_type}: quanta_list_to_contiguous gave num_q={num_q} but quanta_needed={quanta_needed}"
+            f" CONVERSION BUG: {course_id} {session_type}: quanta_list_to_contiguous gave num_q={num_q} but quanta_needed={quanta_needed}"
         )
         print(f"   assigned_quanta length={len(assigned_quanta)}")
 
@@ -722,7 +722,7 @@ def create_session_gene_with_conflict_avoidance(
         course_type=actual_course_type,
         instructor_id=instructor_id,
         group_ids=group_ids,  # Can be multiple groups
-        room_id=room.room_id,
+        room_id=room.room_id if room else "UNASSIGNED",
         start_quanta=start_q,
         num_quanta=num_q,
     )
@@ -747,7 +747,9 @@ def create_component_session_with_conflict_avoidance(
     DEPRECATED: Use create_session_gene_with_conflict_avoidance instead.
     Kept for backwards compatibility with old population generators.
     """
-    course = context.courses[course_id]
+    course = context.courses.get((course_id, component_type)) or context.courses.get(course_id)  # type: ignore[arg-type, call-overload]
+    if not course:
+        return None  # type: ignore[return-value]
 
     # Find qualified instructors
     qualified_instructors = find_qualified_instructors(course_id, context)
@@ -755,7 +757,7 @@ def create_component_session_with_conflict_avoidance(
         qualified_instructors = list(context.instructors.values())
 
     if not qualified_instructors:
-        return None
+        return None  # type: ignore[return-value]
 
     instructor = random.choice(qualified_instructors)
 
@@ -767,7 +769,7 @@ def create_component_session_with_conflict_avoidance(
         suitable_rooms = list(context.rooms.values())
 
     if not suitable_rooms:
-        return None
+        return None  # type: ignore[return-value]
 
     room = random.choice(suitable_rooms)
 
@@ -787,7 +789,7 @@ def create_component_session_with_conflict_avoidance(
     # (removed: quanta_needed = min(quanta_needed, len(available_quanta)))
 
     if quanta_needed == 0:
-        return None
+        return None  # type: ignore[return-value]
 
     # Assign time quanta
     assigned_quanta = assign_conflict_free_quanta(
@@ -895,16 +897,16 @@ def assign_conflict_free_quanta(
         return consecutive_block
 
     # Cannot satisfy requirement - fail gene creation
-    return None
+    return None  # type: ignore[return-value]
 
 
-def _find_consecutive_block(free_quanta: list, block_size: int) -> list:
+def _find_consecutive_block(free_quanta: list, block_size: int) -> list | None:  # type: ignore[type-arg]
     """
     Find a single consecutive block of specified size.
     Returns None if not found.
     """
     if len(free_quanta) < block_size:
-        return None
+        return None  # type: ignore[return-value]
 
     sorted_free = sorted(free_quanta)
 
@@ -919,7 +921,7 @@ def _find_consecutive_block(free_quanta: list, block_size: int) -> list:
         if is_consecutive:
             return candidates
 
-    return None
+    return None  # type: ignore[return-value]
 
 
 def create_component_session(
@@ -944,7 +946,9 @@ def create_component_session(
     Returns:
         SessionGene object for this component (or None if creation fails)
     """
-    course = context.courses[course_id]
+    course = context.courses.get((course_id, component_type)) or context.courses.get(course_id)  # type: ignore[arg-type, call-overload]
+    if not course:
+        return None  # type: ignore[return-value]
 
     # Find qualified instructors
     qualified_instructors = find_qualified_instructors(course_id, context)
@@ -954,7 +958,7 @@ def create_component_session(
 
     if not qualified_instructors:
         print(f"Warning: No instructors available for course {course_id}")
-        return None
+        return None  # type: ignore[return-value]
 
     instructor = random.choice(qualified_instructors)
 
@@ -968,7 +972,7 @@ def create_component_session(
 
     if not suitable_rooms:
         print(f"Warning: No rooms available for course {course_id}")
-        return None
+        return None  # type: ignore[return-value]
 
     room = random.choice(suitable_rooms)
 
@@ -1232,7 +1236,7 @@ def generate_random_gene(
 
 
 def generate_population(
-    n: int, session_count: int = None, context: SchedulingContext = None
+    n: int, session_count: int | None = None, context: SchedulingContext | None = None
 ) -> list:
     """
     Wrapper function for backward compatibility.

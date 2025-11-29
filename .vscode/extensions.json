@@ -26,9 +26,10 @@
         "yzhang.markdown-all-in-one", // Markdown editing tools
         "davidanson.vscode-markdownlint", // Markdown linting
         // Quality of Life
-        "christian-kohler.path-intellisense", // Path autocomplete
-        "visualstudioexptteam.vscodeintellicode" // AI-assisted IntelliSense
-    ],
+    "christian-kohler.path-intellisense", // Path autocomplete
+    "visualstudioexptteam.vscodeintellicode", // AI-assisted IntelliSense
+    "tamasfe.even-better-toml"
+],
     "unwantedRecommendations": [
         "ms-python.autopep8", // We use Black instead
         "ms-python.flake8", // We use Ruff instead
