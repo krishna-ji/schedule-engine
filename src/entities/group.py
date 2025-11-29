@@ -1,12 +1,13 @@
-"""
-Group entity model for the timetabling system.
-Represents a student group with enrollment information.
-"""
+"""Group entity model for the timetabling system."""
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+__all__ = ["Group"]
 
 
-@dataclass
+@dataclass(slots=True)
 class Group:
     """
     Represents a student group in the university timetabling system.
@@ -22,10 +23,10 @@ class Group:
     group_id: str
     name: str
     student_count: int
-    enrolled_courses: list[str]
-    available_quanta: set[int]
+    enrolled_courses: list[str] = field(default_factory=list)
+    available_quanta: set[int] = field(default_factory=set)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate group data after initialization."""
         if self.student_count <= 0:
             raise ValueError(f"Group {self.group_id}: student_count must be positive")

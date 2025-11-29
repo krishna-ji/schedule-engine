@@ -1,12 +1,13 @@
-"""
-Course entity model for the timetabling system.
-Represents a course with its attributes and requirements.
-"""
+"""Course entity model for the timetabling system."""
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+__all__ = ["Course"]
 
 
-@dataclass
+@dataclass(slots=True)
 class Course:
     """
     Represents a course in the university timetabling system.
@@ -19,20 +20,32 @@ class Course:
         enrolled_group_ids: List of student group IDs enrolled in this course
         qualified_instructor_ids: List of instructor IDs qualified to teach this course
         course_type: Type of course - 'theory' or 'practical'
+        course_code: Course code (may differ from course_id if split into theory/practical)
+        department: Department offering the course
+        semester: Semester the course is offered
+        credits: Number of credits for the course
+        lecture_hours: Total lecture hours (L+T for theory courses)
+        practical_hours: Total practical hours (P for practical courses)
     """
 
     course_id: str
     name: str
     quanta_per_week: int
     required_room_features: str
-    enrolled_group_ids: list[str]
-    qualified_instructor_ids: list[str]
+    enrolled_group_ids: list[str] = field(default_factory=list)
+    qualified_instructor_ids: list[str] = field(default_factory=list)
     course_type: str = "theory"  # Default to theory
     L: int = 0  # Lecture hours (for theory type)
     T: int = 0  # Tutorial hours (for theory type)
     P: int = 0  # Practical hours (for practical type)
+    course_code: str = ""  # Course code from JSON
+    department: str = ""  # Department
+    semester: str = ""  # Semester
+    credits: int = 0  # Credits
+    lecture_hours: int = 0  # L+T for theory
+    practical_hours: int = 0  # P for practical
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate course data after initialization."""
         if self.quanta_per_week <= 0:
             raise ValueError(

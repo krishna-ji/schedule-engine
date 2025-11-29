@@ -1,37 +1,37 @@
-"""
-Configuration module - Clean YAML-based configuration.
+"""Configuration module: thin wrapper over the loader + Pydantic models."""
 
-Usage:
-    from src.config import config
+from __future__ import annotations
 
-    # Access config values
-    ngen = config.ga.ngen
-    pop_size = config.ga.pop_size
-    fail_on_infeasibility = config.feasibility.fail_on_infeasibility
-"""
+from pathlib import Path
+from typing import Final
 
 from src.config.loader import load_config
 from src.config.models import Config
 
-# Global config object (set by main.py)
-config: Config = None
+# Global config object (set during CLI bootstrap)
+_config: Config | None = None
 
 
-def init_config(config_path: str = None, config_obj: Config = None) -> Config:
-    """Initialize global config (called from main.py)"""
-    global config
+def init_config(
+    config_path: str | Path | None = None, config_obj: Config | None = None
+) -> Config:
+    """Initialize the global config once and return it."""
+
+    global _config
     if config_obj is not None:
-        # Use provided config object (from runtime mode loading)
-        config = config_obj
+        _config = config_obj
     else:
-        # Load from path
-        config = load_config(config_path)
-    return config
+        _config = load_config(str(config_path) if config_path else None)
+    return _config
 
 
 def get_config() -> Config:
-    """Get config, loading if necessary"""
-    global config
-    if config is None:
-        config = load_config()
-    return config
+    """Return the cached config, loading from disk if necessary."""
+
+    global _config
+    if _config is None:
+        _config = load_config()
+    return _config
+
+
+__all__: Final[list[str]] = ["get_config", "init_config", "Config"]

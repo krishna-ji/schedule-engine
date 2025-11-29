@@ -90,7 +90,7 @@ class CreditAssignmentTracker:
         self.total_fitness_improvement += total_improvement
 
     def get_success_rate(
-        self, cxpb: float, mutpb: float, window_size: int = None
+        self, cxpb: float, mutpb: float, window_size: int | None = None
     ) -> float:
         """
         Get success rate for given probability setting.

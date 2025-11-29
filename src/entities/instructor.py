@@ -1,8 +1,18 @@
+"""Instructor entity model for the timetabling system."""
+
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.encoder.quantum_time_system import QuantumTimeSystem
+
+__all__ = ["Instructor"]
 
 
-@dataclass
+@dataclass(slots=True)
 class Instructor:
     """
     Represents an instructor in the university timetabling system using quantum time representation.
@@ -10,7 +20,9 @@ class Instructor:
     Attributes:
         instructor_id: Unique identifier for the instructor
         name: Display name of the instructor
-        qualified_courses: List of course IDs the instructor is qualified to teach
+        qualified_courses: List of qualified courses - format varies:
+            - Initially: list[dict[str, str]] from JSON ({"coursecode": str, "coursetype": str})
+            - After linking: list[tuple[str, str]] of (course_code, course_type)
         available_quanta: Set of available quantum time slots (empty if full-time)
         booked_quanta: Set of booked quantum time slots:
         max_hours_per_week: Maximum teaching hours per week
@@ -26,13 +38,15 @@ class Instructor:
 
     instructor_id: str
     name: str
-    qualified_courses: list[str]
+    qualified_courses: list[
+        Any
+    ]  # Initially list[dict], becomes list[tuple] after linking
     is_full_time: bool = True
     available_quanta: set[int] = field(default_factory=set)
     booked_quanta: set[int] = field(default_factory=set)
     max_hours_per_week: int = 40
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate instructor data after initialization."""
         # Temporarily allow empty qualified_courses - will be populated via cross-referencing
         if not self.qualified_courses:
@@ -48,7 +62,9 @@ class Instructor:
         """Check if instructor is qualified to teach a specific course."""
         return course_id in self.qualified_courses
 
-    def is_available_at_quanta(self, quanta: int, time_system) -> bool:
+    def is_available_at_quanta(
+        self, quanta: int, time_system: QuantumTimeSystem
+    ) -> bool:
         """
         Check if instructor is available at a specific quantum time slot.
 
@@ -68,7 +84,7 @@ class Instructor:
         return quanta in self.available_quanta
 
     def get_available_quanta_ranges(
-        self, time_system
+        self, time_system: QuantumTimeSystem
     ) -> dict[str, list[tuple[int, int]]]:
         """
         Get available time ranges grouped by day.
@@ -83,7 +99,7 @@ class Instructor:
         if self.is_full_time:
             return self._get_full_time_availability(time_system)
 
-        ranges = defaultdict(list)
+        ranges: defaultdict[str, list[tuple[int, int]]] = defaultdict(list)
         sorted_quanta = sorted(self.available_quanta)
 
         if not sorted_quanta:
@@ -108,10 +124,10 @@ class Instructor:
         return dict(ranges)
 
     def _get_full_time_availability(
-        self, time_system
+        self, time_system: QuantumTimeSystem
     ) -> dict[str, list[tuple[int, int]]]:
         """Get all operating hours as available ranges for full-time instructors."""
-        ranges = defaultdict(list)
+        ranges: defaultdict[str, list[tuple[int, int]]] = defaultdict(list)
 
         for day, hours in time_system.operating_hours.items():
             if hours is None:

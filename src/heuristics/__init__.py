@@ -35,6 +35,8 @@ Usage:
         return individual
 """
 
+from __future__ import annotations
+
 # Import heuristic implementations to trigger decorator registration
 from src.heuristics import (
     construction,
@@ -44,13 +46,10 @@ from src.heuristics import (
     perturbation,
     repair,
 )
-from src.heuristics.registry import (
-    # Decorators
+from src.heuristics.registry import (  # Decorators; Registry access; Category access
     construction_heuristic,
     diversity_heuristic,
-    # Registry access
     get_all_heuristics,
-    # Category access
     get_construction_heuristics,
     get_diversity_heuristics,
     get_enabled_heuristics,

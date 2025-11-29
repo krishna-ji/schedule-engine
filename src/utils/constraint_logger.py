@@ -1,45 +1,16 @@
 """
 Constraint Logger Module
 
-Logs detailed constraint breakdowns, diversity metrics, and GA events to CSV.
-Separate from run.log - provides granular per-generation constraint analysis.
-
-Features:
-- Detailed hard/soft constraint breakdown per generation
-- Diversity metrics tracking
-- Advanced metrics (hypervolume, spacing, IGD, spread)
-- Event logging (repair, hypermutation, stagnation, etc.)
-- **Enhanced repair tracking:** individuals repaired, crossover/mutation/memetic counts
-- Timing metrics (time per generation)
-- Crash-safe: Flushes after each generation (no data loss on crash)
-- CSV format for easy analysis in Excel/Python
-
-Output: data/metrics.csv in output directory
-
-CSV Columns:
-- generation: Generation number (INIT for initial population)
-- hard_total: Sum of all hard constraint violations
-- soft_total: Sum of all soft constraint penalties
-- hard_<constraint_name>: Individual hard constraint values
-- soft_<constraint_name>: Individual soft constraint values
-- diversity: Population diversity metric (0-1)
-- hypervolume: NSGA-II quality indicator
-- spacing: Solution distribution uniformity
-- igd: Inverted Generational Distance
-- spread: Solution spread metric
-- time_seconds: Time taken for this generation
-- repairs_total: Total number of repairs performed
-- repairs_individuals_count: Number of individuals that received repairs
-- repairs_crossover_count: Total repairs applied after crossover
-- repairs_mutation_count: Total repairs applied after mutation
-- repairs_memetic_count: Total repairs from memetic local search
-- repairs_<type>: Breakdown by repair type (availability, overlap, room, etc.)
-- events: Semicolon-separated list of events (repair, stagnation, hypermutation, etc.)
-- notes: Optional notes (e.g., "Initial population", "Perfect solution")
+Detailed CSV logging for constraint breakdowns, diversity metrics, and GA events.
+Separate from log_run.log to provide granular per-generation analysis.
 """
+
+from __future__ import annotations
 
 import csv
 import os
+
+from src.utils.output_paths import get_csv_dir
 
 
 class ConstraintLogger:
@@ -68,16 +39,14 @@ class ConstraintLogger:
         Initialize constraint logger.
 
         Args:
-            output_dir: Directory to write data/metrics.csv
+            output_dir: Directory to write csv/constraint_metrics.csv
             hard_constraint_names: List of enabled hard constraint names
             soft_constraint_names: List of enabled soft constraint names
         """
         self.output_dir = output_dir
-        # Create data/ subdirectory for CSV files
-        data_dir = os.path.join(output_dir, "data")
-        # os.makedirs already creates all parent directories by default
-        os.makedirs(data_dir, exist_ok=True)
-        self.log_path = os.path.join(data_dir, "metrics.csv")
+        # Create csv/ subdirectory for all CSV exports
+        csv_dir = get_csv_dir(output_dir)
+        self.log_path = str(csv_dir / "constraint_metrics.csv")
         self.hard_names = hard_constraint_names
         self.soft_names = soft_constraint_names
 
@@ -87,7 +56,7 @@ class ConstraintLogger:
         # Initialize CSV file with header
         self._write_header()
 
-    def _write_header(self):
+    def _write_header(self) -> None:
         """Write CSV header with all constraint columns."""
         # Build column names dynamically based on enabled constraints
         columns = [
@@ -154,7 +123,7 @@ class ConstraintLogger:
         repair_stats: dict[str, int] | None = None,
         events: list[str] | None = None,
         notes: str = "",
-    ):
+    ) -> None:
         """
         Log constraint data for a single generation.
 
@@ -237,7 +206,7 @@ class ConstraintLogger:
         """Return the path to the constraint log CSV file."""
         return self.log_path
 
-    def update_last_generation_time(self, time_seconds: float):
+    def update_last_generation_time(self, time_seconds: float) -> None:
         """
         Update the time_seconds for the most recently logged generation.
 
@@ -319,21 +288,21 @@ class EventTracker:
     **Format:** Events are semicolon-separated in the CSV (e.g., "stagnation_detected; hypermutation_start; crossover_repair_applied")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.events: list[str] = []
 
-    def add(self, event: str):
+    def add(self, event: str) -> None:
         """Add an event to the tracker."""
         self.events.append(event)
 
     def has_events(self) -> bool:
         """Check if any events were recorded."""
-        return len(self.events) > 0
+        return bool(self.events)
 
     def get_events(self) -> list[str]:
         """Get list of events."""
-        return self.events
+        return list(self.events)
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all events."""
         self.events.clear()

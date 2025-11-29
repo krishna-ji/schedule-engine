@@ -164,7 +164,7 @@ def _heuristic_decorator(category: HeuristicCategory):
             registry = _get_registry(category)
             registry[name] = metadata
             # Store metadata on function for introspection
-            func._heuristic_metadata = metadata
+            func._heuristic_metadata = metadata  # type: ignore[attr-defined]
             return func
 
         return inner_decorator

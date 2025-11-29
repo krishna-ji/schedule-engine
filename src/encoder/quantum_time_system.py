@@ -1,39 +1,19 @@
-"""
-CONTINUOUS QUANTUM TIME SYSTEM
+"""CONTINUOUS QUANTUM TIME SYSTEM.
 
 This module implements a quantum-based time system where quantum indices are CONTINUOUS
 and only cover operating hours. Non-operating times receive NO quantum indices.
-
-CONSTANTS:
-QUANTUM_MINUTES: Duration of a Single Quantum in Minutes (also the Unit Course Duration)
-QUANTA_PER_HOUR: Number of Quanta in One Hour
-UNIT_SESSION_DURATION_QUANTA: Duration of a Single Session in Quanta
-DAY_NAMES: List of Days in a Week (Sunday-first order)
-DEFAULT_OPERATING_HOURS: Default Operating Hours for Each Day
-
-KEY FEATURES:
-- Continuous indexing: Only operational times get quantum indices
-- No gaps: Quantum 0, 1, 2, ... N-1 represent all operational time slots
-- Day-aware: Each operational day contributes its operating hours only
-- Efficient: No wasted indices on non-operational times (nights, weekends, etc.)
-
-EXAMPLE:
-If operating hours are:
-  Sunday: 08:00-20:00 (12 hours = 12 quanta with 60-min quantum)
-  Monday: 08:00-20:00 (12 hours = 12 quanta)
-
-Then quantum indices are:
-  0-11: Sunday 08:00-19:00
-  12-23: Monday 08:00-19:00
-  (No indices for Sunday 00:00-07:59, 20:00-23:59, etc.)
 """
+
+from __future__ import annotations
 
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from src.config import get_config
+
+__all__ = ["QuantumTimeSystem"]
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +77,7 @@ class QuantumTimeSystem:
 
     def __init__(
         self, operating_hours: dict[str, tuple[str, str] | None] | None = None
-    ):
+    ) -> None:
         """
         Initializes the QuantumTimeSystem with default operating hours.
         Precomputes continuous quantum mappings for each operational day.
@@ -156,7 +136,7 @@ class QuantumTimeSystem:
         return resolved
 
     @staticmethod
-    def _get_override_for_day(overrides: dict, day: str):
+    def _get_override_for_day(overrides: dict[str, Any], day: str) -> Any:
         """Fetch override entry ignoring case mismatches in config keys."""
 
         for key in (day, day.lower(), day.upper()):
@@ -165,7 +145,7 @@ class QuantumTimeSystem:
         return None
 
     @staticmethod
-    def _extract_override_hours(override) -> tuple[str, str] | None:
+    def _extract_override_hours(override: Any) -> tuple[str, str] | None:
         """Normalize override payloads to (start, end) tuples."""
 
         if override is None:
@@ -199,9 +179,9 @@ class QuantumTimeSystem:
             day_start_time = {'Sunday': 600, 'Monday': 600, ...}  # 10*60 = 600
             day_quanta_count = {'Sunday': 7, 'Monday': 7, ...}
         """
-        self.day_quanta_offset = {}
-        self.day_start_time = {}
-        self.day_quanta_count = {}
+        self.day_quanta_offset: dict[str, int | None] = {}
+        self.day_start_time: dict[str, int | None] = {}
+        self.day_quanta_count: dict[str, int] = {}
 
         current_offset = 0
 
@@ -270,8 +250,13 @@ class QuantumTimeSystem:
         start_minutes = self.day_start_time[day]
         quanta_offset = self.day_quanta_offset[day]
 
+        if start_minutes is None or quanta_offset is None:
+            raise ValueError(f"Day {day} has incomplete configuration")
+
         # Check if time is within operating hours
         operating_hours = self.operating_hours[day]
+        if operating_hours is None:
+            raise ValueError(f"Day {day} has no operating hours")
         end_hour, end_minute = map(int, operating_hours[1].split(":"))
         end_minutes = end_hour * 60 + end_minute
 
@@ -321,6 +306,9 @@ class QuantumTimeSystem:
             day_offset = self.day_quanta_offset[day]
             day_count = self.day_quanta_count[day]
 
+            if day_offset is None or day_count is None:
+                continue
+
             # Check if quantum falls within this day's range
             if day_offset <= quantum < day_offset + day_count:
                 # Calculate quantum position within the day
@@ -329,6 +317,10 @@ class QuantumTimeSystem:
                 # Convert to time
                 minutes_from_start = quantum_in_day * self.QUANTUM_MINUTES
                 start_minutes = self.day_start_time[day]
+
+                if start_minutes is None:
+                    raise ValueError(f"Day {day} has no start time")
+
                 total_minutes = start_minutes + minutes_from_start
 
                 hour = total_minutes // 60
@@ -372,7 +364,7 @@ class QuantumTimeSystem:
         """Check if a day has operating hours"""
         return self.operating_hours.get(day.capitalize()) is not None
 
-    def encode_schedule(self, schedule_json: dict) -> set[int]:
+    def encode_schedule(self, schedule_json: dict[str, Any]) -> set[int]:
         """
         Convert JSON schedule to quantum set
 
@@ -382,7 +374,7 @@ class QuantumTimeSystem:
         Returns:
             Set of quantum indices
         """
-        occupied_quanta = set()
+        occupied_quanta: set[int] = set()
 
         for day, periods in schedule_json.items():
             if not self.is_operational(day):
@@ -392,7 +384,7 @@ class QuantumTimeSystem:
 
         return occupied_quanta
 
-    def _get_period_quanta(self, day: str, period: dict) -> range:
+    def _get_period_quanta(self, day: str, period: dict[str, str]) -> range:
         """
         Get quantum index range for a single period
 
@@ -407,7 +399,7 @@ class QuantumTimeSystem:
         end = self.time_to_quanta(day, period["end"])  # Exclusive
         return range(start, end)
 
-    def decode_schedule(self, quanta_set: set[int]) -> dict[str, list[dict]]:
+    def decode_schedule(self, quanta_set: set[int]) -> dict[str, list[dict[str, str]]]:
         """
         Converts a set of continuous quantum indices back to readable JSON schedule.
 
@@ -417,7 +409,7 @@ class QuantumTimeSystem:
         Returns:
             { day: [ {"start": "HH:MM", "end": "HH:MM"}, ... ] }
         """
-        schedule = {day: [] for day in self.DAY_NAMES}
+        schedule: dict[str, list[dict[str, str]]] = {day: [] for day in self.DAY_NAMES}
         day_groups = self._group_quanta_by_day(quanta_set)
 
         for day, quanta_list in day_groups.items():
@@ -447,6 +439,9 @@ class QuantumTimeSystem:
                 day_offset = self.day_quanta_offset[day]
                 day_count = self.day_quanta_count[day]
 
+                if day_offset is None or day_count is None:
+                    continue
+
                 if day_offset <= quantum < day_offset + day_count:
                     # This quantum belongs to this day
                     day_groups[day].append(quantum)
@@ -454,7 +449,7 @@ class QuantumTimeSystem:
 
         return day_groups
 
-    def _merge_consecutive_quanta(self, quanta_list: list[int]) -> list[dict]:
+    def _merge_consecutive_quanta(self, quanta_list: list[int]) -> list[dict[str, str]]:
         """
         Merge consecutive continuous quanta into time periods.
 
@@ -464,7 +459,7 @@ class QuantumTimeSystem:
         Returns:
             List of period dictionaries with start/end times
         """
-        periods = []
+        periods: list[dict[str, str]] = []
         if not quanta_list:
             return periods
 
@@ -490,13 +485,15 @@ class QuantumTimeSystem:
         Returns:
             Set[int]: Set of all continuous operating quantum indices (0 to total_quanta-1)
         """
-        all_quanta = set()
+        all_quanta: set[int] = set()
 
         for day in self.DAY_NAMES:
             if self.day_quanta_offset[day] is not None:
                 day_offset = self.day_quanta_offset[day]
                 day_count = self.day_quanta_count[day]
-                all_quanta.update(range(day_offset, day_offset + day_count))
+
+                if day_offset is not None and day_count is not None:
+                    all_quanta.update(range(day_offset, day_offset + day_count))
 
         return all_quanta
 
@@ -534,4 +531,6 @@ class QuantumTimeSystem:
         """
         day, _ = self.quanta_to_time(quantum)
         operating_hours = self.operating_hours[day]
+        if operating_hours is None:
+            raise ValueError(f"Day {day} has no operating hours")
         return operating_hours[1]

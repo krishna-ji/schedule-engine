@@ -1,21 +1,18 @@
-"""
-Centralized logging configuration for the Schedule Engine.
+"""Centralized logging configuration for the Schedule Engine."""
 
-Provides a unified logging setup with configurable levels, formatters,
-and output destinations. Supports both file and console logging with
-different verbosity levels.
-"""
+from __future__ import annotations
 
 import logging
 import sys
 from pathlib import Path
+from typing import ClassVar
 
 
 class ColoredFormatter(logging.Formatter):
     """Custom formatter with color support for console output."""
 
     # ANSI color codes
-    COLORS = {
+    COLORS: ClassVar[dict[str, str]] = {
         "DEBUG": "\033[36m",  # Cyan
         "INFO": "\033[32m",  # Green
         "WARNING": "\033[33m",  # Yellow

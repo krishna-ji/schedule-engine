@@ -1,10 +1,8 @@
-"""
-Runtime mode selector for experiment management.
+"""Runtime mode selector for experiment management."""
 
-Provides enum-based runtime mode selection with killswitch validation
-and modular config loading for research experiments.
-"""
+from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -196,7 +194,7 @@ class RuntimeMode(str, Enum):
         }
         return descriptions[self]
 
-    def validate_config(self, config: dict[str, Any]) -> bool:
+    def validate_config(self, config: Mapping[str, Any]) -> bool:
         """
         Validate that config matches expected killswitches for this mode.
 
@@ -248,7 +246,7 @@ class RuntimeMode(str, Enum):
         return True
 
     @classmethod
-    def from_string(cls, mode_str: str) -> "RuntimeMode":
+    def from_string(cls, mode_str: str) -> RuntimeMode:
         """
         Parse runtime mode from string.
 
@@ -318,7 +316,7 @@ class RuntimeMode(str, Enum):
         )
 
     @classmethod
-    def from_config(cls, config: dict[str, Any]) -> "RuntimeMode":
+    def from_config(cls, config: Mapping[str, Any]) -> RuntimeMode:
         """
         Infer runtime mode from loaded config dictionary.
 
@@ -334,7 +332,7 @@ class RuntimeMode(str, Enum):
         # Convert Pydantic model to dict if needed
         if hasattr(config, "model_dump"):
             config = config.model_dump()
-        elif not isinstance(config, dict):
+        elif not isinstance(config, Mapping):
             raise ValueError(
                 f"Config must be dict or Pydantic model, got {type(config)}"
             )
@@ -444,7 +442,7 @@ class ExperimentConfig:
     seed: int = 69
     notes: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate config path exists."""
         if not self.config_path.exists():
             raise FileNotFoundError(

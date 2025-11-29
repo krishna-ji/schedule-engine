@@ -1,15 +1,16 @@
-"""
-Pydantic configuration models for Schedule Engine.
-All configs loaded from YAML files with full validation.
-"""
+"""Pydantic configuration models for Schedule Engine."""
 
-from typing import Any, Literal
+from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import model_validator as _model_validator
 
 from src.constants import DEFAULT_EARLIEST_TIME, DEFAULT_LATEST_TIME
 
-WEEKDAY_NAMES = [
+WEEKDAY_NAMES: list[str] = [
     "Sunday",
     "Monday",
     "Tuesday",
@@ -19,7 +20,20 @@ WEEKDAY_NAMES = [
     "Saturday",
 ]
 
-_WEEKDAY_LOOKUP = {name.lower(): name for name in WEEKDAY_NAMES}
+if TYPE_CHECKING:
+
+    def model_validator(
+        *args: Any, **kwargs: Any
+    ) -> Callable[
+        [Callable[..., Any]], Callable[..., Any]
+    ]:  # pragma: no cover - typing shim
+        ...
+
+else:  # pragma: no cover - runtime path
+    model_validator = _model_validator
+
+
+_WEEKDAY_LOOKUP: dict[str, str] = {name.lower(): name for name in WEEKDAY_NAMES}
 
 
 def _parse_time_to_minutes(time_str: str) -> int:
@@ -38,7 +52,7 @@ def _parse_time_to_minutes(time_str: str) -> int:
     return hour * 60 + minute
 
 
-def _normalize_day_name(day: str) -> str:
+def _normalize_day_name(day: str | None) -> str:
     """Normalize arbitrary day strings (case-insensitive) to canonical names."""
 
     if day is None:
@@ -66,7 +80,7 @@ class GAConfig(BaseModel):
 
     @field_validator("pop_size")
     @classmethod
-    def pop_size_must_be_even(cls, v):
+    def pop_size_must_be_even(cls, v: int) -> int:
         if v % 2 != 0:
             raise ValueError(f"Population size must be even for NSGA-II, got {v}")
         return v
@@ -240,8 +254,9 @@ class LNSConfig(BaseModel):
         description="Time limit for IGLS repair in seconds (0.0 to disable, max 3600s = 1 hour)",
     )
 
+    @classmethod
     @model_validator(mode="after")
-    def _validate_heuristic_thresholds(cls, m):
+    def _validate_heuristic_thresholds(cls, m: LNSConfig) -> LNSConfig:
         """Allow zero values for heuristics when repair_strategy is 'cp', otherwise apply minimums."""
         if m.repair_strategy != "cp":
             if m.igls_max_iterations < 10:
@@ -395,8 +410,9 @@ class DayOperatingHours(BaseModel):
     start: str
     end: str
 
+    @classmethod
     @model_validator(mode="after")
-    def validate_range(cls, values: "DayOperatingHours") -> "DayOperatingHours":
+    def validate_range(cls, values: DayOperatingHours) -> DayOperatingHours:
         start_minutes = _parse_time_to_minutes(values.start)
         end_minutes = _parse_time_to_minutes(values.end)
         if start_minutes >= end_minutes:
@@ -458,8 +474,9 @@ class TimeConfig(BaseModel):
 
     max_sessions_per_day: int = Field(ge=1, le=12)
 
+    @classmethod
     @model_validator(mode="after")
-    def validate_operating_hours(cls, values: "TimeConfig") -> "TimeConfig":
+    def validate_operating_hours(cls, values: TimeConfig) -> TimeConfig:
         open_minutes = _parse_time_to_minutes(values.opening_time)
         close_minutes = _parse_time_to_minutes(values.closing_time)
         if open_minutes >= close_minutes:
@@ -817,6 +834,8 @@ class Config(BaseModel):
     name: str = "default"
     environment: Literal["test", "prod"] = "test"
 
+    model_config = ConfigDict(validate_assignment=True, extra="allow")
+
     ga: GAConfig = Field(default_factory=GAConfig)
     parallel: ParallelConfig = Field(default_factory=ParallelConfig)
     performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
@@ -831,33 +850,29 @@ class Config(BaseModel):
         default_factory=SoftConstraintsConfig
     )
     feasibility: FeasibilityConfig = Field(default_factory=FeasibilityConfig)
-    time: TimeConfig = Field(default_factory=TimeConfig)
-    io: IOConfig = Field(default_factory=IOConfig)
+    time: TimeConfig = Field(default_factory=TimeConfig)  # type: ignore[arg-type]
+    io: IOConfig = Field(default_factory=IOConfig)  # type: ignore[arg-type]
     calendar: CalendarConfig = Field(default_factory=CalendarConfig)
     colors: ColorPaletteConfig = Field(default_factory=ColorPaletteConfig)
     enhancements: EnhancementConfig = Field(default_factory=EnhancementConfig)
     heuristics: HeuristicsConfig = Field(default_factory=HeuristicsConfig)
     rl: RLConfig = Field(default_factory=RLConfig)
 
-    class Config:
-        validate_assignment = True
-        extra = "allow"  # Allow extra fields for flexibility
-
     @classmethod
-    def from_yaml(cls, path: str) -> "Config":
+    def from_yaml(cls, path: str) -> Config:
         """Load config from YAML file"""
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return cls(**data)
 
-    def to_yaml(self, path: str):
+    def to_yaml(self, path: str) -> None:
         """Save config to YAML file"""
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
-        with open(path, "w") as f:
-            yaml.dump(self.dict(), f, default_flow_style=False, sort_keys=False)
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.dump(self.model_dump(), f, default_flow_style=False, sort_keys=False)
 
     def summary(self) -> str:
         """Human-readable configuration summary"""

@@ -11,11 +11,11 @@ Visualizations include:
 - Spacing + Pareto front combined view
 """
 
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 from deap import tools
+
+from src.utils.output_paths import get_nsga_plot_dir
 
 from .thesis_style import (
     PALETTE,
@@ -30,7 +30,7 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_spacing_trend(spacing_history: list, output_dir: str):
+def plot_spacing_trend(spacing_history: list, output_dir: str) -> None:
     """
     Plot spacing evolution over generations.
 
@@ -42,17 +42,16 @@ def plot_spacing_trend(spacing_history: list, output_dir: str):
         output_dir: Directory to save plots
 
     Saves:
-        - plots/spacing_trend.pdf: Main trend plot
+        - plots/nsga/spacing_trend.pdf: Main trend plot
 
     Note:
-        CSV data available in data/metrics.csv (spacing column)
+        CSV data available in csv/constraint_metrics.csv (spacing column)
     """
     if not spacing_history:
         return
 
     # Create plot directory
-    plot_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plot_dir, exist_ok=True)
+    plot_dir = get_nsga_plot_dir(output_dir)
 
     # Create plot
     fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))
@@ -123,12 +122,12 @@ def plot_spacing_trend(spacing_history: list, output_dir: str):
 
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    output_path = os.path.join(plot_dir, "spacing_trend.pdf")
+    output_path = plot_dir / "spacing_trend.pdf"
     save_figure(fig, output_path)
     plt.close(fig)
 
 
-def plot_spacing_distribution(population: list, output_dir: str):
+def plot_spacing_distribution(population: list, output_dir: str) -> None:
     """
     Plot histogram of nearest-neighbor distances in final Pareto front.
 
@@ -140,13 +139,12 @@ def plot_spacing_distribution(population: list, output_dir: str):
         output_dir: Directory to save plots
 
     Saves:
-        - plots/spacing_distribution.pdf: Histogram of distances
+        - plots/nsga/spacing_distribution.pdf: Histogram of distances
     """
     if not population:
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plot_dir, exist_ok=True)
+    plot_dir = get_nsga_plot_dir(output_dir)
 
     # Extract Pareto front
     pareto_front = tools.sortNondominated(
@@ -215,12 +213,14 @@ def plot_spacing_distribution(population: list, output_dir: str):
 
     ax.grid(True, alpha=0.3, linestyle="--", axis="y")
 
-    output_path = os.path.join(plot_dir, "spacing_distribution.pdf")
+    output_path = plot_dir / "spacing_distribution.pdf"
     save_figure(fig, output_path)
     plt.close(fig)
 
 
-def plot_spacing_with_pareto(population: list, spacing_history: list, output_dir: str):
+def plot_spacing_with_pareto(
+    population: list, spacing_history: list, output_dir: str
+) -> None:
     """
     Combined visualization: Pareto front + spacing information.
 
@@ -233,13 +233,12 @@ def plot_spacing_with_pareto(population: list, spacing_history: list, output_dir
         output_dir: Directory to save plots
 
     Saves:
-        - plots/spacing_pareto_combined.pdf: Combined visualization
+        - plots/nsga/spacing_pareto_combined.pdf: Combined visualization
     """
     if not population or not spacing_history:
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plot_dir, exist_ok=True)
+    plot_dir = get_nsga_plot_dir(output_dir)
 
     # Extract Pareto front
     pareto_front = tools.sortNondominated(
@@ -328,14 +327,14 @@ def plot_spacing_with_pareto(population: list, spacing_history: list, output_dir
 
     plt.tight_layout()
 
-    output_path = os.path.join(plot_dir, "spacing_pareto_combined.pdf")
+    output_path = plot_dir / "spacing_pareto_combined.pdf"
     save_figure(fig, output_path)
     plt.close(fig)
 
 
 def plot_spacing_multi_run(
-    runs_spacing: list, output_dir: str, run_labels: list = None
-):
+    runs_spacing: list, output_dir: str, run_labels: list | None = None
+) -> None:
     """
     Plot spacing trends for multiple runs with confidence intervals.
 
@@ -345,13 +344,12 @@ def plot_spacing_multi_run(
         run_labels: Optional labels for each run
 
     Saves:
-        - plots/spacing_multi_run.pdf: Multi-run comparison
+        - plots/nsga/spacing_multi_run.pdf: Multi-run comparison
     """
     if not runs_spacing:
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plot_dir, exist_ok=True)
+    plot_dir = get_nsga_plot_dir(output_dir)
 
     # Pad runs to same length
     max_gens = max(len(run) for run in runs_spacing)
@@ -433,6 +431,6 @@ def plot_spacing_multi_run(
 
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    output_path = os.path.join(plot_dir, "spacing_multi_run.pdf")
+    output_path = plot_dir / "spacing_multi_run.pdf"
     save_figure(fig, output_path)
     plt.close(fig)

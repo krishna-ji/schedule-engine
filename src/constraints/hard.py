@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 
 from src.constraints.registry import hard_constraint
@@ -238,14 +240,15 @@ def instructor_time_availability(sessions: list[CourseSession]) -> int:
         instructor = session.instructor
 
         # Full-time instructors are always available during operating hours
-        if instructor.is_full_time:
+        if instructor and instructor.is_full_time:
             continue
 
         # Part-time: check if session quanta are within available_quanta
-        for q in session.session_quanta:
-            if q not in instructor.available_quanta:
-                violations += 1
-                break  # Only count one violation per session
+        if instructor:
+            for q in session.session_quanta:
+                if q not in instructor.available_quanta:
+                    violations += 1
+                    break  # Only count one violation per session
 
     return violations
 
@@ -276,10 +279,11 @@ def room_time_availability(sessions: list[CourseSession]) -> int:
         room = session.room
 
         # Check if any session quantum is outside room's available quanta
-        for q in session.session_quanta:
-            if q not in room.available_quanta:
-                violations += 1
-                break  # Only count one violation per session
+        if room:
+            for q in session.session_quanta:
+                if q not in room.available_quanta:
+                    violations += 1
+                    break  # Only count one violation per session
 
     return violations
 
@@ -312,7 +316,7 @@ def course_completeness(
     """
     # Count quanta per (course_code, course_type, group_id) combination
     # Use (course_code, course_type) to distinguish theory from practical
-    course_group_quanta = defaultdict(int)
+    course_group_quanta: dict[tuple[tuple[str, str], str], int] = defaultdict(int)
 
     for session in sessions:
         course_code = session.course_id  # This is just the course code string
@@ -369,6 +373,8 @@ def room_exclusivity(sessions: list[CourseSession]) -> int:
     room_time_map = {}  # Maps (room_id, time_quanta) to course_id
 
     for session in sessions:
+        if not session.room:
+            continue
         room_id = session.room.room_id
         for q in session.session_quanta:
             key = (room_id, q)

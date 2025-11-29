@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from deap import tools
 
+from src.utils.output_paths import get_csv_dir, get_nsga_plot_dir
+
 from .thesis_style import (
     PALETTE,
     apply_thesis_style,
@@ -18,15 +20,14 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_pareto_front(population, output_dir):
+def plot_pareto_front(population: list, output_dir: str) -> None:
     """
     Enhanced Pareto front visualization showing all points with better visibility.
     """
     hard_vals, soft_vals = zip(*[ind.fitness.values for ind in population])
 
-    # Create CSVs subdirectory
-    csv_dir = os.path.join(output_dir, "CSVs")
-    os.makedirs(csv_dir, exist_ok=True)
+    # Route CSVs to consolidated csv/ directory
+    csv_dir = get_csv_dir(output_dir)
 
     # Save population data to CSV
     csv_path = os.path.join(csv_dir, "population_fitness.csv")
@@ -59,10 +60,11 @@ def plot_pareto_front(population, output_dir):
             writer.writerow([idx, h, s])
 
     # Create comprehensive plots showing all data
+    plot_dir = get_nsga_plot_dir(output_dir)
     fig, ((ax1, ax2), (ax3, ax4)) = create_thesis_figure(2, 2, figsize=(14, 11))
 
     # Plot 1: All population points with jitter to show overlapping points
-    unique_points = {}
+    unique_points: dict[tuple[int, int], int] = {}
     jittered_hard = []
     jittered_soft = []
 
@@ -301,7 +303,7 @@ def plot_pareto_front(population, output_dir):
     )
 
     plt.tight_layout()
-    save_figure(fig, os.path.join(output_dir, "pareto_front_comprehensive.pdf"))
+    save_figure(fig, plot_dir / "pareto_front_comprehensive.pdf")
 
     # Create the original single plot for backward compatibility
     fig, ax = create_thesis_figure(1, 1, figsize=(9, 7))
@@ -348,7 +350,7 @@ def plot_pareto_front(population, output_dir):
     )
 
     plt.tight_layout()
-    save_figure(fig, os.path.join(output_dir, "pareto_front.pdf"))
+    save_figure(fig, plot_dir / "pareto_front.pdf")
 
     # Create a separate plot focusing only on the Pareto front
     if len(pareto_front) > 1:
@@ -392,4 +394,4 @@ def plot_pareto_front(population, output_dir):
         )
 
         plt.tight_layout()
-        save_figure(fig, os.path.join(output_dir, "pareto_front_detail.pdf"))
+        save_figure(fig, plot_dir / "pareto_front_detail.pdf")

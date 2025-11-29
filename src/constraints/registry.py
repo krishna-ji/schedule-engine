@@ -26,6 +26,8 @@ Benefits:
     - Supports dynamic config generation
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -74,7 +76,7 @@ def hard_constraint(
     default_weight: float = 1.0,
     needs_courses: bool = False,
     enabled_by_default: bool = True,
-):
+) -> Callable[[Callable[..., int]], Callable[..., int]]:
     """
     Decorator to register a hard constraint function.
 
@@ -118,7 +120,7 @@ def hard_constraint(
         )
         _HARD_CONSTRAINTS[name] = metadata
         # Store metadata on function for introspection
-        func._constraint_metadata = metadata
+        func._constraint_metadata = metadata  # type: ignore[attr-defined]
         return func
 
     return decorator
@@ -130,7 +132,7 @@ def soft_constraint(
     default_weight: float = 1.0,
     needs_courses: bool = False,
     enabled_by_default: bool = True,
-):
+) -> Callable[[Callable[..., float]], Callable[..., float]]:
     """
     Decorator to register a soft constraint function.
 
@@ -174,7 +176,7 @@ def soft_constraint(
         )
         _SOFT_CONSTRAINTS[name] = metadata
         # Store metadata on function for introspection
-        func._constraint_metadata = metadata
+        func._constraint_metadata = metadata  # type: ignore[attr-defined]
         return func
 
     return decorator
@@ -321,7 +323,10 @@ def generate_constraint_config_template() -> dict[str, Any]:
     Returns:
         Dict with 'hard_constraints' and 'soft_constraints' sections
     """
-    config = {"hard_constraints": {}, "soft_constraints": {}}
+    config: dict[str, dict[str, dict[str, bool | float | str]]] = {
+        "hard_constraints": {},
+        "soft_constraints": {},
+    }
 
     for name, metadata in _HARD_CONSTRAINTS.items():
         config["hard_constraints"][name] = {
@@ -358,7 +363,7 @@ def validate_constraint_exists(name: str) -> bool:
     return name in _HARD_CONSTRAINTS or name in _SOFT_CONSTRAINTS
 
 
-def get_enabled_hard_constraints():
+def get_enabled_hard_constraints() -> dict[str, dict[str, Any]]:
     """
     Returns only the enabled hard constraints based on config.
 
@@ -383,7 +388,7 @@ def get_enabled_hard_constraints():
     return enabled
 
 
-def get_enabled_soft_constraints():
+def get_enabled_soft_constraints() -> dict[str, dict[str, Any]]:
     """
     Returns only the enabled soft constraints based on config.
 

@@ -1,20 +1,13 @@
-"""
-Input Data JSON Encoder Module
+"""Input Data JSON Encoder Module.
 
 This module provides functions to load and encode input data from JSON files
 into structured entities such as Course, Group, Instructor, and Room.
-
-Functions:
-- encode_availability
-- load_instructors
-- load_courses
-- load_groups
-- load_rooms
-- link_courses_and_groups
-- link_courses_and_instructors
 """
 
+from __future__ import annotations
+
 import json
+from typing import Any
 
 from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.entities.course import Course
@@ -22,8 +15,20 @@ from src.entities.group import Group
 from src.entities.instructor import Instructor
 from src.entities.room import Room
 
+__all__ = [
+    "encode_availability",
+    "load_instructors",
+    "load_courses",
+    "load_groups",
+    "load_rooms",
+    "link_courses_and_groups",
+    "link_courses_and_instructors",
+]
 
-def encode_availability(availability_dict: dict, qts: QuantumTimeSystem) -> set:
+
+def encode_availability(
+    availability_dict: dict[str, Any], qts: QuantumTimeSystem
+) -> set[int]:
     """
     Converts human-readable availability into a set of quantum indices.
     Automatically clips availability periods to operating hours.
@@ -35,7 +40,7 @@ def encode_availability(availability_dict: dict, qts: QuantumTimeSystem) -> set:
     Returns:
         set: Set of integer quantum indices available.
     """
-    quanta = set()
+    quanta: set[int] = set()
     for day, periods in availability_dict.items():
         day_cap = day.capitalize()
 
@@ -43,8 +48,14 @@ def encode_availability(availability_dict: dict, qts: QuantumTimeSystem) -> set:
         if not qts.is_operational(day_cap):
             continue
 
+        # Skip if periods is None
+        if periods is None:
+            continue
+
         # Get operating hours for this day
         operating_hours = qts.operating_hours[day_cap]
+        if operating_hours is None:
+            continue
         op_start_str, op_end_str = operating_hours
         op_start_minutes = int(op_start_str.split(":")[0]) * 60 + int(
             op_start_str.split(":")[1]
@@ -79,15 +90,21 @@ def encode_availability(availability_dict: dict, qts: QuantumTimeSystem) -> set:
 
             # For end time, if it equals operating hours end, use the last quantum
             # instead of trying to convert the boundary time
-            op_end_hour, op_end_minute = map(
-                int, qts.operating_hours[day_cap][1].split(":")
-            )
+            operating_hours = qts.operating_hours[day_cap]
+            if operating_hours is None:
+                raise ValueError(f"Day {day_cap} has no operating hours")
+
+            op_end_hour, op_end_minute = map(int, operating_hours[1].split(":"))
             op_end_minutes_check = op_end_hour * 60 + op_end_minute
 
             if clipped_end_minutes >= op_end_minutes_check:
                 # Available until end of operating hours - use total day quanta
                 day_offset = qts.day_quanta_offset[day_cap]
                 day_count = qts.day_quanta_count[day_cap]
+
+                if day_offset is None or day_count is None:
+                    raise ValueError(f"Day {day_cap} has incomplete configuration")
+
                 start_q = qts.time_to_quanta(day_cap, clipped_start)
                 end_q = day_offset + day_count  # Exclusive end
             else:
@@ -156,7 +173,7 @@ def load_instructors(path: str, qts: QuantumTimeSystem) -> dict[str, Instructor]
     return instructors
 
 
-def load_courses(path: str) -> dict[tuple, Course]:
+def load_courses(path: str) -> dict[tuple[str, str], Course]:
     """
     Loads courses from FullSyllabusAll format and creates separate theory/practical course objects.
 
@@ -205,13 +222,13 @@ def load_courses(path: str) -> dict[tuple, Course]:
                 L=int(L),  # Store lecture hours
                 T=int(T),  # Store tutorial hours
                 P=0,
+                course_code=course_code,
+                department=department,
+                semester=semester,
+                credits=credits,
+                lecture_hours=L + T,
+                practical_hours=0,
             )
-            course.course_code = course_code
-            course.department = department
-            course.semester = semester
-            course.credits = credits
-            course.lecture_hours = L + T
-            course.practical_hours = 0
             # Key by (course_code, course_type) for uniqueness
             courses[(course_code, "theory")] = course
 
@@ -228,13 +245,13 @@ def load_courses(path: str) -> dict[tuple, Course]:
                 L=0,
                 T=0,
                 P=int(P),  # Store practical hours
+                course_code=course_code,
+                department=department,
+                semester=semester,
+                credits=credits,
+                lecture_hours=0,
+                practical_hours=P,
             )
-            course.course_code = course_code
-            course.department = department
-            course.semester = semester
-            course.credits = credits
-            course.lecture_hours = 0
-            course.practical_hours = P
             # Key by (course_code, course_type) for uniqueness
             courses[(course_code, "practical")] = course
 
@@ -353,7 +370,7 @@ def load_rooms(path: str, qts: QuantumTimeSystem) -> dict[str, Room]:
 
 
 def link_courses_and_groups(
-    courses: dict[tuple, Course], groups: dict[str, Group]
+    courses: dict[tuple[str, str], Course], groups: dict[str, Group]
 ) -> None:
     """
     Links courses and groups based on group enrollment.
@@ -419,7 +436,7 @@ def link_courses_and_groups(
 
 
 def link_courses_and_instructors(
-    courses: dict[tuple, Course], instructors: dict[str, Instructor]
+    courses: dict[tuple[str, str], Course], instructors: dict[str, Instructor]
 ) -> None:
     """
     Links instructors to the courses they are qualified to teach.
@@ -433,14 +450,12 @@ def link_courses_and_instructors(
 
     Note:
         After linking, instructor.qualified_courses contains (course_code, course_type) tuples.
-        instructor.original_qualified_courses preserves the raw JSON data for validation.
+        Original qualifications are stored in instructor_original_courses dict for validation.
     """
     # Store original qualified courses BEFORE clearing
-    instructor_original_courses = {}
+    instructor_original_courses: dict[str, list[Any]] = {}
     for instructor_id, instructor in instructors.items():
         instructor_original_courses[instructor_id] = instructor.qualified_courses[:]
-        if not hasattr(instructor, "original_qualified_courses"):
-            instructor.original_qualified_courses = instructor.qualified_courses[:]
         instructor.qualified_courses = []
 
     for course in courses.values():

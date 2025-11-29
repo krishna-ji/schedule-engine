@@ -1,11 +1,17 @@
+"""Decoded course session entity."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from src.entities.group import Group
 from src.entities.instructor import Instructor
 from src.entities.room import Room
 
+__all__ = ["CourseSession"]
 
-@dataclass
+
+@dataclass(slots=True)
 class CourseSession:
     """
     Represents a fully decoded session of a course within the university timetabling system.
@@ -34,6 +40,6 @@ class CourseSession:
     session_quanta: list[int]
     required_room_features: str
     course_type: str = "theory"
-    instructor: Instructor = None
-    group: Group = None
-    room: Room = None
+    instructor: Instructor | None = None
+    group: Group | None = None
+    room: Room | None = None

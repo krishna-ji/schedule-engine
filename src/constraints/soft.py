@@ -7,6 +7,8 @@ IMPORTANT: Uses CONTINUOUS quantum system. All time conversions must go through
 QuantumTimeSystem. Never use QUANTA_PER_DAY or day = q // QUANTA_PER_DAY.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 
 import numpy as np
@@ -52,7 +54,7 @@ def student_schedule_compactness(sessions: list[CourseSession]) -> int:
     # Get midday break quanta for each day
     break_quanta_by_day = get_midday_break_quanta(_QTS)
 
-    group_day_quanta = defaultdict(
+    group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
         lambda: defaultdict(set)
     )  # group_id -> day_name -> set of within-day quanta
 
@@ -118,7 +120,9 @@ def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
     # Get midday break quanta for each day
     break_quanta_by_day = get_midday_break_quanta(_QTS)
 
-    instructor_day_quanta = defaultdict(lambda: defaultdict(set))
+    instructor_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
 
     for session in sessions:
         iid = session.instructor_id
@@ -181,7 +185,9 @@ def student_lunch_break(sessions: list[CourseSession]) -> int:
     # Get break quanta for each day (day_name -> set of within-day quanta)
     break_quanta_by_day = get_midday_break_quanta(_QTS)
 
-    group_day_quanta = defaultdict(lambda: defaultdict(set))
+    group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
 
     for session in sessions:
         for gid in session.group_ids:
@@ -254,8 +260,10 @@ def session_continuity(sessions: list[CourseSession]) -> int:
     penalty = 0
 
     # Group sessions by (course_id, course_type, day) to find blocks
-    course_day_quanta = defaultdict(lambda: defaultdict(list))
-    course_type_map = {}  # Track course types
+    course_day_quanta: dict[tuple[str, str], dict[str, list[int]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    course_type_map: dict[tuple[str, str], str] = {}  # Track course types
 
     for session in sessions:
         # Use course_id + course_type as unique identifier

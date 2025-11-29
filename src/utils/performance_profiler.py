@@ -1,19 +1,26 @@
-"""
-Performance Profiler for GA Evolution
+"""Detailed performance profiling utilities for GA evolution."""
 
-Tracks detailed timing and resource usage for each generation phase.
-Shows micro-breakdown of execution time and CPU core allocation.
-"""
+from __future__ import annotations
 
 import os
 import threading
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
+from typing import TypedDict
 
 import psutil
 from rich.console import Console
 from rich.table import Table
+
+
+class PhaseStats(TypedDict, total=False):
+    """Aggregate metrics tracked per phase across generations."""
+
+    total: float
+    count: int
+    min: float
+    max: float
+    avg: float
 
 
 @dataclass
@@ -50,7 +57,7 @@ class GenerationProfile:
     cpu_usage_peak: float = 0.0
     memory_usage_mb: float = 0.0
 
-    def add_phase(self, phase: PhaseProfile):
+    def add_phase(self, phase: PhaseProfile) -> None:
         """Add a phase profile."""
         self.phases[phase.name] = phase
         self.total_duration += phase.duration
@@ -100,7 +107,7 @@ class PerformanceProfiler:
         # Thread-local storage for worker tracking
         self._thread_local = threading.local()
 
-    def start_generation(self, gen: int):
+    def start_generation(self, gen: int) -> None:
         """Start profiling a new generation."""
         if not self.enabled:
             return
@@ -108,7 +115,7 @@ class PerformanceProfiler:
         self.current_generation = gen
         self.generation_profiles.append(GenerationProfile(generation=gen))
 
-    def end_generation(self):
+    def end_generation(self) -> None:
         """End profiling current generation and display results."""
         if not self.enabled or self.current_generation is None:
             return
@@ -123,7 +130,7 @@ class PerformanceProfiler:
 
     def start_phase(
         self, name: str, items_to_process: int = 0, worker_id: int | None = None
-    ):
+    ) -> None:
         """
         Start profiling a phase.
 
@@ -150,7 +157,7 @@ class PerformanceProfiler:
         except:
             pass  # Ignore if process monitoring fails
 
-    def end_phase(self):
+    def end_phase(self) -> None:
         """End profiling current phase."""
         if not self.enabled or self.current_phase is None:
             return
@@ -173,7 +180,7 @@ class PerformanceProfiler:
 
         self.current_phase = None
 
-    def _display_generation_profile(self, profile: GenerationProfile):
+    def _display_generation_profile(self, profile: GenerationProfile) -> None:
         """Display detailed profile for a generation."""
         if not self.console:
             return
@@ -214,34 +221,41 @@ class PerformanceProfiler:
 
         self.console.print(f"[{color}]      {breakdown}[/{color}]")
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> dict[str, PhaseStats]:
         """
         Get aggregate statistics across all generations.
 
         Returns:
             Dictionary with timing statistics for each phase
         """
-        stats = defaultdict(
-            lambda: {"total": 0.0, "count": 0, "min": float("inf"), "max": 0.0}
-        )
+        stats: dict[str, PhaseStats] = {}
 
         for gen_profile in self.generation_profiles:
             for phase_name, phase in gen_profile.phases.items():
-                stats[phase_name]["total"] += phase.duration
-                stats[phase_name]["count"] += 1
-                stats[phase_name]["min"] = min(stats[phase_name]["min"], phase.duration)
-                stats[phase_name]["max"] = max(stats[phase_name]["max"], phase.duration)
+                phase_stats = stats.setdefault(
+                    phase_name,
+                    {
+                        "total": 0.0,
+                        "count": 0,
+                        "min": float("inf"),
+                        "max": 0.0,
+                    },
+                )
+                phase_stats["total"] += phase.duration
+                phase_stats["count"] += 1
+                phase_stats["min"] = min(phase_stats["min"], phase.duration)
+                phase_stats["max"] = max(phase_stats["max"], phase.duration)
 
         # Calculate averages
-        for phase_name in stats:
-            if stats[phase_name]["count"] > 0:
-                stats[phase_name]["avg"] = (
-                    stats[phase_name]["total"] / stats[phase_name]["count"]
-                )
+        for phase_stats in stats.values():
+            if phase_stats["count"] > 0:
+                phase_stats["avg"] = phase_stats["total"] / phase_stats["count"]
+            else:
+                phase_stats["avg"] = 0.0
 
-        return dict(stats)
+        return stats
 
-    def print_summary_table(self):
+    def print_summary_table(self) -> None:
         """Print a summary table of all profiled phases."""
         if not self.enabled or not self.generation_profiles:
             return
@@ -272,7 +286,7 @@ class PerformanceProfiler:
             percentage = (total / total_time * 100) if total_time > 0 else 0
 
             # Format times
-            def fmt(t):
+            def fmt(t: float) -> str:
                 if t < 0.001:
                     return f"{t * 1000000:.0f}µs"
                 elif t < 1.0:
@@ -309,7 +323,7 @@ def get_profiler() -> PerformanceProfiler:
 
 def init_profiler(
     enabled: bool = True, console: Console | None = None, verbose: bool = False
-):
+) -> PerformanceProfiler:
     """
     Initialize global profiler.
 
@@ -325,7 +339,7 @@ def init_profiler(
     return _global_profiler
 
 
-def cleanup_profiler():
+def cleanup_profiler() -> None:
     """Cleanup and print summary."""
     global _global_profiler
     if _global_profiler and _global_profiler.enabled:

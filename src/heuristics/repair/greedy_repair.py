@@ -35,4 +35,4 @@ def greedy_repair(
         max_iterations=max_iterations,
     )
 
-    return metrics.get("total_improvements", 0)
+    return int(metrics.get("total_improvements", 0))

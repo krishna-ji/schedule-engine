@@ -15,6 +15,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from src.utils.output_paths import get_nsga_plot_dir
+
 from .thesis_style import (
     apply_thesis_style,
     create_thesis_figure,
@@ -27,7 +29,7 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str):
+def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str) -> None:
     """
     Plot multiple normalized metrics on single graph for comparison.
 
@@ -40,15 +42,15 @@ def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str):
         output_dir: Directory to save plots
 
     Saves:
-        - plots/convergence_multi_metric.pdf: Combined metric plot
+        - plots/nsga/convergence_multi_metric.pdf: Combined metric plot
 
     Note:
-        CSV data available in data/metrics.csv (individual metric columns)
+        CSV data available in csv/constraint_metrics.csv (individual metric columns)
     """
     if not metrics_dict:
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     # Normalize all metrics to [0, 1] range
@@ -124,7 +126,7 @@ def plot_convergence_dashboard(
     spacing: list,
     feasibility_rate: list,
     output_dir: str,
-):
+) -> None:
     """
     Create comprehensive 2x3 dashboard of all key metrics.
 
@@ -140,9 +142,9 @@ def plot_convergence_dashboard(
         output_dir: Directory to save plots
 
     Saves:
-        - plots/convergence_dashboard.pdf: Complete dashboard
+        - plots/nsga/convergence_dashboard.pdf: Complete dashboard
     """
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     # Create 2x3 subplot grid
@@ -296,7 +298,7 @@ def plot_convergence_dashboard(
 
 def plot_convergence_rate(
     metric_history: list, output_dir: str, metric_name: str = "Hard Violations"
-):
+) -> None:
     """
     Plot convergence rate (improvement per generation) over time.
 
@@ -308,12 +310,12 @@ def plot_convergence_rate(
         metric_name: Name of metric being analyzed
 
     Saves:
-        - plots/convergence_rate_{metric_name}.pdf: Rate analysis plot
+        - plots/nsga/convergence_rate_{metric_name}.pdf: Rate analysis plot
     """
     if len(metric_history) < 11:  # Need at least 11 generations for window=10
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     # Calculate convergence rate with window=10
@@ -401,7 +403,9 @@ def plot_convergence_rate(
     plt.close(fig)
 
 
-def plot_constraint_satisfaction_evolution(feasibility_rates: list, output_dir: str):
+def plot_constraint_satisfaction_evolution(
+    feasibility_rates: list, output_dir: str
+) -> None:
     """
     Plot evolution of constraint satisfaction rate over generations.
 
@@ -417,7 +421,7 @@ def plot_constraint_satisfaction_evolution(feasibility_rates: list, output_dir: 
     if not feasibility_rates:
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))

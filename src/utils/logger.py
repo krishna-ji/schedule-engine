@@ -1,12 +1,22 @@
-"""
-Runtime Logger Module
+"""Runtime logger for GA runs."""
 
-Logs generation-by-generation metrics and configuration to output/run.log.
-Provides detailed runtime analysis for each GA run.
-"""
+from __future__ import annotations
 
 import os
 from datetime import datetime
+from typing import Any, TypedDict
+
+
+class GenerationLog(TypedDict, total=False):
+    """Structured per-generation entry stored in memory."""
+
+    generation: int
+    hard_violations: float
+    soft_penalty: float
+    time_seconds: float
+    diversity: float
+    repairs: int
+    notes: str
 
 
 class GALogger:
@@ -19,20 +29,20 @@ class GALogger:
     - Runtime statistics (total time, avg time per generation, etc.)
     """
 
-    def __init__(self, output_dir: str, config: dict):
+    def __init__(self, output_dir: str, config: dict[str, Any]):
         """
         Initialize logger.
 
         Args:
-            output_dir: Directory to write run.log
+            output_dir: Directory to write log_run.log
             config: Configuration dictionary with GA parameters
         """
         self.output_dir = output_dir
-        self.log_path = os.path.join(output_dir, "run.log")
+        self.log_path = os.path.join(output_dir, "log_run.log")
         self.config = config
-        self.generation_logs: list[dict] = []
-        self.start_time = None
-        self.end_time = None
+        self.generation_logs: list[GenerationLog] = []
+        self.start_time: datetime | None = None
+        self.end_time: datetime | None = None
 
         # Ensure output directory exists (os.makedirs creates parents by default)
         os.makedirs(output_dir, exist_ok=True)
@@ -40,7 +50,7 @@ class GALogger:
         # Initialize log file with header
         self._write_header()
 
-    def _write_header(self):
+    def _write_header(self) -> None:
         """Write configuration and header to log file."""
         with open(self.log_path, "w", encoding="utf-8") as f:
             f.write("=" * 80 + "\n")
@@ -151,7 +161,7 @@ class GALogger:
         diversity: float,
         repairs: int = 0,
         notes: str = "",
-    ):
+    ) -> None:
         """
         Log metrics for a single generation.
 
@@ -185,11 +195,13 @@ class GALogger:
                 f"{time_seconds:<8.3f} {diversity:<10.4f} {repairs:<8} {notes}\n"
             )
 
-    def start_run(self):
+    def start_run(self) -> None:
         """Mark the start of the GA run."""
         self.start_time = datetime.now()
 
-    def end_run(self, best_hard: float, best_soft: float, final_schedule_sessions: int):
+    def end_run(
+        self, best_hard: float, best_soft: float, final_schedule_sessions: int
+    ) -> None:
         """
         Mark the end of the GA run and write summary.
 
@@ -198,6 +210,9 @@ class GALogger:
             best_soft: Final best soft penalty
             final_schedule_sessions: Number of sessions in final schedule
         """
+        if self.start_time is None:
+            raise RuntimeError("start_run must be called before end_run")
+
         self.end_time = datetime.now()
         total_time = (self.end_time - self.start_time).total_seconds()
 

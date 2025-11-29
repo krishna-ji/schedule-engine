@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 
+from src.utils.output_paths import get_csv_dir, get_nsga_plot_dir
+
 from .thesis_style import (
     apply_thesis_style,
     create_thesis_figure,
@@ -29,7 +31,9 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def plot_metrics_boxplot(runs_data: dict, output_dir: str, generation: int = -1):
+def plot_metrics_boxplot(
+    runs_data: dict, output_dir: str, generation: int = -1
+) -> None:
     """
     Create box plot comparing final metric values across multiple runs.
 
@@ -48,8 +52,8 @@ def plot_metrics_boxplot(runs_data: dict, output_dir: str, generation: int = -1)
     if not runs_data:
         return
 
-    plot_dir = os.path.join(output_dir, "plots")
-    csv_dir = os.path.join(output_dir, "CSVs")
+    plot_dir = get_nsga_plot_dir(output_dir)
+    csv_dir = get_csv_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
     os.makedirs(csv_dir, exist_ok=True)
 
@@ -144,7 +148,7 @@ def plot_algorithm_comparison(
     output_dir: str,
     algo1_name: str = "Algorithm 1",
     algo2_name: str = "Algorithm 2",
-):
+) -> None:
     """
     Compare two algorithm configurations with statistical significance.
 
@@ -162,8 +166,8 @@ def plot_algorithm_comparison(
         - plots/algorithm_comparison.pdf: Comparison bar plot
         - CSVs/algorithm_comparison_stats.csv: Statistical test results
     """
-    plot_dir = os.path.join(output_dir, "plots")
-    csv_dir = os.path.join(output_dir, "CSVs")
+    plot_dir = get_nsga_plot_dir(output_dir)
+    csv_dir = get_csv_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
     os.makedirs(csv_dir, exist_ok=True)
 
@@ -300,7 +304,7 @@ def plot_success_rate_comparison(
     runs_hard_violations: list,
     output_dir: str,
     thresholds: list = [0, 10, 50, 100],
-):
+) -> None:
     """
     Plot success rates at different feasibility thresholds.
 
@@ -314,7 +318,7 @@ def plot_success_rate_comparison(
     Saves:
         - plots/success_rate.pdf: Success rate bar plot
     """
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     # Calculate success rates
@@ -371,7 +375,7 @@ def plot_convergence_speed_comparison(
     runs_hard_violations: list,
     output_dir: str,
     target_value: float = 0,
-):
+) -> None:
     """
     Compare convergence speed: generations needed to reach target.
 
@@ -385,7 +389,7 @@ def plot_convergence_speed_comparison(
     Saves:
         - plots/convergence_speed.pdf: Histogram of convergence generations
     """
-    plot_dir = os.path.join(output_dir, "plots")
+    plot_dir = get_nsga_plot_dir(output_dir)
     os.makedirs(plot_dir, exist_ok=True)
 
     # Calculate generations to target for each run
@@ -466,7 +470,7 @@ def plot_convergence_speed_comparison(
     plt.close(fig)
 
 
-def generate_statistical_summary_table(runs_data: dict, output_dir: str):
+def generate_statistical_summary_table(runs_data: dict, output_dir: str) -> None:
     """
     Generate comprehensive statistical summary table (CSV).
 
@@ -477,7 +481,7 @@ def generate_statistical_summary_table(runs_data: dict, output_dir: str):
     Saves:
         - CSVs/statistical_summary.csv: Complete statistical table
     """
-    csv_dir = os.path.join(output_dir, "CSVs")
+    csv_dir = get_csv_dir(output_dir)
     os.makedirs(csv_dir, exist_ok=True)
 
     csv_path = os.path.join(csv_dir, "statistical_summary.csv")

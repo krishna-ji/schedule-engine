@@ -1,23 +1,16 @@
-"""
-Structured logging service for Schedule Engine.
+"""Structured logging service for Schedule Engine."""
 
-Provides clean, readable logs with:
-- Compact one-line format for key events
-- File output (everything) + console output (filtered by level)
-- Reduced redundancy (context shown once per group)
-- Visual hierarchy with Rich formatting
-- Thread-safe logging
-"""
+from __future__ import annotations
 
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from rich.console import Console
 from rich.logging import RichHandler
 
-console = Console()
+console: Console = Console()
 
 
 class CompactFormatter(logging.Formatter):
@@ -69,8 +62,8 @@ class StructuredLogger:
         >>> logger.debug("Step completed", action="heuristic_1", reward=0.5)
     """
 
-    _loggers: dict[str, logging.Logger] = {}
-    _context_stack: dict[str, dict[str, Any]] = {}
+    _loggers: ClassVar[dict[str, logging.Logger]] = {}
+    _context_stack: ClassVar[dict[str, dict[str, Any]]] = {}
 
     @classmethod
     def setup(
@@ -131,7 +124,7 @@ class StructuredLogger:
         console.print(f"[dim]Logs writing to: {log_file}[/dim]")
 
     @classmethod
-    def get_logger(cls, name: str = "schedule_engine") -> "StructuredLogger":
+    def get_logger(cls, name: str = "schedule_engine") -> StructuredLogger:
         """
         Get or create logger instance for a module.
 
@@ -168,7 +161,7 @@ class StructuredLogger:
         env_rank: int | None = None,
         generation: int | None = None,
         step: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         Set context for subsequent log messages.
@@ -198,7 +191,7 @@ class StructuredLogger:
         for key, value in self._context.items():
             setattr(record, key, value)
 
-    def _log(self, level: int, msg: str, *args, **kwargs) -> None:
+    def _log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
         """Internal log with context injection."""
         # Extract exc_info if present
         exc_info = kwargs.pop("exc_info", False)
@@ -216,31 +209,31 @@ class StructuredLogger:
         extra = self._context.copy()
         self._logger.log(level, msg, extra=extra, exc_info=exc_info)
 
-    def debug(self, msg: str, *args, **kwargs) -> None:
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log debug message."""
         self._log(logging.DEBUG, msg, *args, **kwargs)
 
-    def info(self, msg: str, *args, **kwargs) -> None:
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log info message."""
         self._log(logging.INFO, msg, *args, **kwargs)
 
-    def warning(self, msg: str, *args, **kwargs) -> None:
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log warning message."""
         self._log(logging.WARNING, msg, *args, **kwargs)
 
-    def error(self, msg: str, *args, **kwargs) -> None:
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log error message."""
         self._log(logging.ERROR, msg, *args, **kwargs)
 
-    def critical(self, msg: str, *args, **kwargs) -> None:
+    def critical(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log critical message."""
         self._log(logging.CRITICAL, msg, *args, **kwargs)
 
-    def success(self, msg: str, *args, **kwargs) -> None:
+    def success(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log success message (INFO level with green formatting)."""
         self.info(f"[green]✓[/green] {msg}", *args, **kwargs)
 
-    def action(self, action_name: str, success: bool, **kwargs) -> None:
+    def action(self, action_name: str, success: bool, **kwargs: Any) -> None:
         """
         Log action execution result.
 
@@ -262,7 +255,7 @@ class StructuredLogger:
         stagnation: int,
         duration_ms: float,
         improvement: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """
         Log compact step summary (one line).
@@ -307,7 +300,7 @@ def setup_logging(
     log_file: Path | None = None,
     console_level: str = "DEBUG",
     file_level: str = "DEBUG",
-    **kwargs,
+    **kwargs: Any,
 ) -> None:
     """Setup global logging configuration."""
     StructuredLogger.setup(

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 from src.ga.sessiongene import SessionGene
@@ -97,11 +99,11 @@ def average_pairwise_diversity(
     else:
         sampled_pop = population
 
-    total = 0
+    total = 0.0
     count = 0
 
     for i in range(len(sampled_pop)):
         for j in range(i + 1, len(sampled_pop)):
             total += individual_distance(sampled_pop[i], sampled_pop[j])
             count += 1
-    return total / count if count else 0
+    return total / count if count else 0.0

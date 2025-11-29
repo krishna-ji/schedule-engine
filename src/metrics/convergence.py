@@ -208,16 +208,16 @@ def calculate_run_statistics(
     if not values:
         return {}
 
-    values = np.array(values)
+    values = np.array(values)  # type: ignore[assignment]
 
     # Calculate statistics
-    mean_val = np.mean(values)
-    std_val = np.std(values, ddof=1)  # Sample std deviation
-    min_val = np.min(values)
-    max_val = np.max(values)
-    median_val = np.median(values)
-    q1 = np.percentile(values, 25)
-    q3 = np.percentile(values, 75)
+    mean_val = float(np.mean(values))
+    std_val = float(np.std(values, ddof=1))  # Sample std deviation
+    min_val = float(np.min(values))
+    max_val = float(np.max(values))
+    median_val = float(np.median(values))
+    q1 = float(np.percentile(values, 25))
+    q3 = float(np.percentile(values, 75))
 
     # 95% confidence interval
     confidence = 0.95
@@ -322,12 +322,12 @@ def compare_algorithm_performance(
     if not values1 or not values2:
         return {}
 
-    values1 = np.array(values1)
-    values2 = np.array(values2)
+    values1 = np.array(values1)  # type: ignore[assignment]
+    values2 = np.array(values2)  # type: ignore[assignment]
 
     # Calculate means
-    mean1 = np.mean(values1)
-    mean2 = np.mean(values2)
+    mean1 = float(np.mean(values1))
+    mean2 = float(np.mean(values2))
     difference = mean1 - mean2
 
     # Perform t-test

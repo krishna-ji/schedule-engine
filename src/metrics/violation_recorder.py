@@ -12,7 +12,7 @@ from src.metrics.violation_heatmap import ViolationHeatmap
 
 def record_violations_to_heatmap(
     individual: list[SessionGene], context: SchedulingContext, heatmap: ViolationHeatmap
-):
+) -> None:
     """
     Evaluate individual and record all violations to heatmap.
 
@@ -58,7 +58,7 @@ def record_violations_to_heatmap(
     from collections import defaultdict
 
     # Group overlaps
-    group_schedule = defaultdict(lambda: defaultdict(list))
+    group_schedule: dict[str, dict[int, list]] = defaultdict(lambda: defaultdict(list))
     for gene in individual:
         for group_id in gene.group_ids:
             for q in range(gene.start_quanta, gene.end_quanta):
@@ -72,7 +72,9 @@ def record_violations_to_heatmap(
                     heatmap.record_violation(gene, "overlap")
 
     # Instructor conflicts
-    instructor_schedule = defaultdict(lambda: defaultdict(list))
+    instructor_schedule: dict[str, dict[int, list]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for gene in individual:
         for q in range(gene.start_quanta, gene.end_quanta):
             instructor_schedule[gene.instructor_id][q].append(gene)
@@ -84,7 +86,7 @@ def record_violations_to_heatmap(
                     heatmap.record_violation(gene, "instructor_conflict")
 
     # Room conflicts
-    room_schedule = defaultdict(lambda: defaultdict(list))
+    room_schedule: dict[str, dict[int, list]] = defaultdict(lambda: defaultdict(list))
     for gene in individual:
         for q in range(gene.start_quanta, gene.end_quanta):
             room_schedule[gene.room_id][q].append(gene)
