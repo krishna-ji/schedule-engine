@@ -76,21 +76,21 @@ All pure Python packages must pass strict mypy type checking:
 
 ### Verified Packages (100% Coverage)
 
--  `src/utils/` - 10 files, comprehensive utilities
--  `src/config/` - 4 files, Pydantic models and loader
--  `src/constants.py`, `src/exceptions.py` - Core definitions
--  `src/entities/` - 6 files, domain models
--  `src/encoder/` - 2 files, JSON input processing
--  `src/decoder/` - 1 file, schedule decoding
--  `src/core/types.py` - Type definitions
--  `src/constraints/` - 5 files, hard/soft constraints
--  `src/metrics/` - 6 files, performance metrics
--  `src/exporter/` - 13 files, all plotting and export functions
--  `src/validation/` - 2 files, input validation and feasibility
--  `src/diversity/` - 4 files, diversity metrics and archive
--  `src/lns/` - 5 files, large neighborhood search
--  `src/heuristics/` - 16 files, repair heuristics and meta-strategies
--  `src/workflows/` - 4 files, orchestration and experiment management
+- `src/utils/` - 10 files, comprehensive utilities
+- `src/config/` - 4 files, Pydantic models and loader
+- `src/constants.py`, `src/exceptions.py` - Core definitions
+- `src/entities/` - 6 files, domain models
+- `src/encoder/` - 2 files, JSON input processing
+- `src/decoder/` - 1 file, schedule decoding
+- `src/core/types.py` - Type definitions
+- `src/constraints/` - 5 files, hard/soft constraints
+- `src/metrics/` - 6 files, performance metrics
+- `src/exporter/` - 13 files, all plotting and export functions
+- `src/validation/` - 2 files, input validation and feasibility
+- `src/diversity/` - 4 files, diversity metrics and archive
+- `src/lns/` - 5 files, large neighborhood search
+- `src/heuristics/` - 16 files, repair heuristics and meta-strategies
+- `src/workflows/` - 4 files, orchestration and experiment management
 
 ### Excluded Packages (Library Dependencies)
 
