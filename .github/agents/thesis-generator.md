@@ -53,7 +53,7 @@ Conduct a comprehensive analysis of the provided input materials—including the
   - Restructure any list-like prose into coherent, flowing paragraphs.
 - **Depth & Analysis:**
   - Analyze, do not merely report.
-  - Explicitly justify methodological choices (e.g., why we chose a Genetic Algorithm, why time was discretized).
+  - Explicitly justify methodological choices (e.g., why we chose a Genetic Algorithm, why time was discretized and all such).
   - Connect all findings and descriptions to the central research question (optimizing university schedules).
 - **Active Voice:** Favor the active voice ("We analyzed..."); use passive voice only when the actor is irrelevant.
 - **Technical Precision:** Use discipline-specific terminology (e.g., "NP-hard," "multi-objective optimization," "Pareto front," "heuristic") with correct, nuanced connotation. Verify all technical descriptions against the codebase.

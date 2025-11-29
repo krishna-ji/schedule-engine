@@ -28,9 +28,14 @@ Then quantum indices are:
   (No indices for Sunday 00:00-07:59, 20:00-23:59, etc.)
 """
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import ClassVar
+
+from src.config import get_config
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -81,16 +86,18 @@ class QuantumTimeSystem:
     ]
 
     DEFAULT_OPERATING_HOURS: ClassVar[dict[str, tuple[str, str] | None]] = {
-        "Sunday": ("10:00", "17:00"),  # Closed by default
+        "Sunday": ("10:00", "17:00"),
         "Monday": ("10:00", "17:00"),
         "Tuesday": ("10:00", "17:00"),
         "Wednesday": ("10:00", "17:00"),
         "Thursday": ("10:00", "17:00"),
         "Friday": ("10:00", "17:00"),
-        "Saturday": None,  # Shorter Saturday (or fully Closed)
+        "Saturday": None,
     }
 
-    def __init__(self):
+    def __init__(
+        self, operating_hours: dict[str, tuple[str, str] | None] | None = None
+    ):
         """
         Initializes the QuantumTimeSystem with default operating hours.
         Precomputes continuous quantum mappings for each operational day.
@@ -98,8 +105,83 @@ class QuantumTimeSystem:
         Example:
             qts = QuantumTimeSystem()
         """
-        self.operating_hours = self.DEFAULT_OPERATING_HOURS.copy()
+        resolved_hours = (
+            operating_hours
+            or self._resolve_operating_hours_from_config()
+            or self.DEFAULT_OPERATING_HOURS
+        )
+        self.operating_hours = resolved_hours.copy()
         self._build_quanta_map()
+
+    def _resolve_operating_hours_from_config(
+        self,
+    ) -> dict[str, tuple[str, str] | None] | None:
+        """Derive operating hours from the active configuration if present."""
+
+        try:
+            cfg = get_config()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug(
+                "QuantumTimeSystem using defaults (config unavailable): %s", exc
+            )
+            return None
+
+        time_cfg = getattr(cfg, "time", None)
+        if time_cfg is None:
+            return None
+
+        base_start = getattr(time_cfg, "opening_time", None)
+        base_end = getattr(time_cfg, "closing_time", None)
+        if not base_start or not base_end:
+            return None
+
+        closed_days = {
+            day.capitalize() for day in (getattr(time_cfg, "closed_days", []) or [])
+        }
+        overrides = getattr(time_cfg, "day_overrides", {}) or {}
+
+        resolved: dict[str, tuple[str, str] | None] = {}
+        for day in self.DAY_NAMES:
+            if day in closed_days:
+                resolved[day] = None
+                continue
+
+            override = self._get_override_for_day(overrides, day)
+            if override is None:
+                resolved[day] = (base_start, base_end)
+                continue
+
+            resolved[day] = self._extract_override_hours(override)
+
+        return resolved
+
+    @staticmethod
+    def _get_override_for_day(overrides: dict, day: str):
+        """Fetch override entry ignoring case mismatches in config keys."""
+
+        for key in (day, day.lower(), day.upper()):
+            if key in overrides:
+                return overrides[key]
+        return None
+
+    @staticmethod
+    def _extract_override_hours(override) -> tuple[str, str] | None:
+        """Normalize override payloads to (start, end) tuples."""
+
+        if override is None:
+            return None
+
+        start = getattr(override, "start", None)
+        end = getattr(override, "end", None)
+
+        if start is None and isinstance(override, dict):
+            start = override.get("start")
+            end = override.get("end")
+
+        if not start or not end:
+            return None
+
+        return (start, end)
 
     def _build_quanta_map(self) -> None:
         """
@@ -429,11 +511,16 @@ class QuantumTimeSystem:
         Returns:
             Dict with 'start' and 'end' time strings
         """
-        _, start_time = self.quanta_to_time(start)
-        if end < self.total_quanta:
-            _, end_time = self.quanta_to_time(end)
-        else:
+        start_day, start_time = self.quanta_to_time(start)
+
+        day_offset = self.day_quanta_offset[start_day] or 0
+        day_quanta = self.day_quanta_count[start_day]
+        day_end_quantum = day_offset + day_quanta
+
+        if end >= day_end_quantum:
             end_time = self._get_day_end_time(start)
+        else:
+            _, end_time = self.quanta_to_time(end)
 
         return {
             "start": start_time,

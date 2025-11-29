@@ -105,7 +105,7 @@ class ExperimentManager:
                 backup_path = self.manifest_path.with_suffix(".json.backup")
                 self.manifest_path.rename(backup_path)
                 console.print(
-                    f"[yellow]⚠️  Corrupted manifest backed up to {backup_path}[/yellow]"
+                    f"[yellow]️  Corrupted manifest backed up to {backup_path}[/yellow]"
                 )
                 self.runs = []
                 self._save_manifest()  # Create fresh manifest

@@ -167,6 +167,14 @@ def run_standard_workflow(
             else:
                 # Some configs only have base_dir - create a new attribute for runtime
                 config.output.output_dir = output_dir
+
+        if hasattr(config, "io"):
+            # GA scheduler and other systems read io.output_dir; ensure it points
+            # to this specific run instead of the global default "output".
+            if hasattr(config.io, "output_dir"):
+                config.io.output_dir = output_dir
+            else:
+                config.io.output_dir = output_dir
     except Exception:
         # Don't fail the run if mutation fails; fall back to passing output_dir
         console.print(

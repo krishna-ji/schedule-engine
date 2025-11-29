@@ -7,6 +7,48 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from src.constants import DEFAULT_EARLIEST_TIME, DEFAULT_LATEST_TIME
+
+WEEKDAY_NAMES = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+]
+
+_WEEKDAY_LOOKUP = {name.lower(): name for name in WEEKDAY_NAMES}
+
+
+def _parse_time_to_minutes(time_str: str) -> int:
+    """Convert HH:MM string to minutes since midnight."""
+
+    try:
+        hour_str, minute_str = time_str.split(":", maxsplit=1)
+        hour = int(hour_str)
+        minute = int(minute_str)
+    except ValueError as exc:  # pragma: no cover - defensive parsing
+        raise ValueError(f"Invalid time format '{time_str}' (expected HH:MM)") from exc
+
+    if not (0 <= hour < 24 and 0 <= minute < 60):
+        raise ValueError(f"Time '{time_str}' out of 24h bounds")
+
+    return hour * 60 + minute
+
+
+def _normalize_day_name(day: str) -> str:
+    """Normalize arbitrary day strings (case-insensitive) to canonical names."""
+
+    if day is None:
+        raise ValueError("Day name cannot be null")
+
+    normalized = _WEEKDAY_LOOKUP.get(day.strip().lower())
+    if normalized is None:
+        raise ValueError(f"Invalid day name '{day}'")
+    return normalized
+
 
 class GAConfig(BaseModel):
     """Genetic Algorithm parameters"""
@@ -347,12 +389,41 @@ class FeasibilityConfig(BaseModel):
     )
 
 
+class DayOperatingHours(BaseModel):
+    """Operating window for a single day."""
+
+    start: str
+    end: str
+
+    @model_validator(mode="after")
+    def validate_range(cls, values: "DayOperatingHours") -> "DayOperatingHours":
+        start_minutes = _parse_time_to_minutes(values.start)
+        end_minutes = _parse_time_to_minutes(values.end)
+        if start_minutes >= end_minutes:
+            raise ValueError("Day operating hours must have end time after start time")
+        return values
+
+
 class TimeConfig(BaseModel):
     """Time and quantum settings"""
 
     quantum_minutes: int = Field(ge=15, le=120)
-    earliest_preferred_time: str
-    latest_preferred_time: str
+    opening_time: str = Field(
+        default="10:00", description="Campus opening time (HH:MM)"
+    )
+    closing_time: str = Field(
+        default="17:00", description="Campus closing time (HH:MM)"
+    )
+    closed_days: list[str] = Field(
+        default_factory=lambda: ["Saturday"],
+        description="Days where the campus is closed (no operating hours)",
+    )
+    day_overrides: dict[str, DayOperatingHours | None] = Field(
+        default_factory=dict,
+        description="Optional per-day overrides (use null to close a day)",
+    )
+    earliest_preferred_time: str = Field(default=DEFAULT_EARLIEST_TIME)
+    latest_preferred_time: str = Field(default=DEFAULT_LATEST_TIME)
     midday_break_start: str
     midday_break_end: str
     max_session_coalescence: int = Field(ge=1, le=6)
@@ -386,6 +457,26 @@ class TimeConfig(BaseModel):
     oversized_block_penalty_per_quantum: int = Field(default=1, ge=0, le=10)
 
     max_sessions_per_day: int = Field(ge=1, le=12)
+
+    @model_validator(mode="after")
+    def validate_operating_hours(cls, values: "TimeConfig") -> "TimeConfig":
+        open_minutes = _parse_time_to_minutes(values.opening_time)
+        close_minutes = _parse_time_to_minutes(values.closing_time)
+        if open_minutes >= close_minutes:
+            raise ValueError("time.closing_time must be later than time.opening_time")
+
+        normalized_closed = []
+        for day in values.closed_days:
+            normalized_closed.append(_normalize_day_name(day))
+        values.closed_days = normalized_closed
+
+        normalized_overrides: dict[str, DayOperatingHours | None] = {}
+        for day, override in values.day_overrides.items():
+            normalized_day = _normalize_day_name(day)
+            normalized_overrides[normalized_day] = override
+        values.day_overrides = normalized_overrides
+
+        return values
 
 
 class IOConfig(BaseModel):
