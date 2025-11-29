@@ -111,11 +111,11 @@ Output: chapter_8_conclusion.md
 ## Prerequisites
 
 ### Required Files
-- ✅ Full codebase (`src/**/*.py`)
-- ✅ Configuration files (`configs/**/*.yaml`)
-- ✅ Experimental results (`output/*/`)
-- ✅ Experiment manifest (`output/experiment_manifest.json`)
-- ✅ Project TODO list (`Todo.md`)
+-  Full codebase (`src/**/*.py`)
+-  Configuration files (`configs/**/*.yaml`)
+-  Experimental results (`output/*/`)
+-  Experiment manifest (`output/experiment_manifest.json`)
+-  Project TODO list (`Todo.md`)
 
 ### Optional but Recommended
 - Recent experimental runs (within last week)
@@ -256,7 +256,7 @@ To add new chapters or modify synthesis:
 
 Edit the "Writing Standards" section in each agent file:
 - Change persona description
-- Modify tone guidelines (formal ↔ conversational)
+- Modify tone guidelines (formal  conversational)
 - Add/remove prohibited phrases
 - Adjust equation/notation standards
 
