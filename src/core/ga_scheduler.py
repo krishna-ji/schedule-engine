@@ -58,7 +58,7 @@ console = get_console()
 logger = StructuredLogger.get_logger(__name__)
 
 
-def _worker_evaluate(individual):
+def _worker_evaluate(individual: Any) -> tuple[float, float]:
     """
     Evaluate individual using worker-local context.
 
@@ -87,7 +87,9 @@ def _worker_evaluate(individual):
 # ================
 
 
-def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
+def _parallel_crossover(
+    offspring: list[Any], cxpb: float, toolbox: Any, max_workers: int | None = None
+) -> list[Any]:
     """
     Apply crossover sequentially.
 
@@ -110,7 +112,8 @@ def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
             # Some DEAP operators or custom implementations may return new
             # objects
             offspring[i], offspring[i + 1] = result
-            # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
+            # Failure to reassign causes GPU evaluator to receive
+            # tuple-corrupted individuals
             offspring[i], offspring[i + 1] = result
 
             # CRITICAL FIX: Force fitness invalidation (DEAP bug workaround)
@@ -122,7 +125,9 @@ def _parallel_crossover(offspring, cxpb, toolbox, max_workers=None):
     return offspring
 
 
-def _parallel_mutation(offspring, mutpb, toolbox, max_workers=None):
+def _parallel_mutation(
+    offspring: list[Any], mutpb: float, toolbox: Any, max_workers: int | None = None
+) -> list[Any]:
     """
     Apply mutation sequentially.
 
@@ -140,7 +145,8 @@ def _parallel_mutation(offspring, mutpb, toolbox, max_workers=None):
 
             # CRITICAL: Must unpack and reassign even if modified in-place
             # DEAP convention: mutation returns (ind,) single-element tuple
-            # Failure to reassign causes GPU evaluator to receive tuple-corrupted individuals
+            # Failure to reassign causes GPU evaluator to receive
+            # tuple-corrupted individuals
             offspring[i] = result[0]
 
             # CRITICAL FIX: Force fitness invalidation
@@ -157,7 +163,7 @@ class AlwaysShowTimeRemainingColumn(ProgressColumn):
     - Smooths estimates using exponential moving average (reduces wild fluctuations)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._last_update_time: float = 0.0
         self._cached_text: Text = Text("~calculating~", style="dim progress.remaining")
@@ -237,8 +243,10 @@ class GAConfig:
         generations: Number of generations to evolve
         crossover_prob: Probability of crossover operation
         mutation_prob: Probability of mutation operation
-        repair_config: Repair heuristics configuration dict (from ga_params.get_config().repair)
-                       Includes selective_mode, adaptive_repair settings, and enabled heuristics
+        repair_config: Repair heuristics configuration dict
+                       (from ga_params.get_config().repair)
+                       Includes selective_mode, adaptive_repair settings,
+                       and enabled heuristics
     """
 
     pop_size: int
@@ -335,13 +343,19 @@ class GAScheduler:
         Initialize GA scheduler with adaptive repair tracking.
 
         Args:
-            config: GA configuration (includes repair_config with adaptive_repair settings)
-            context: Scheduling context with courses, groups, instructors, rooms
+            config: GA configuration
+                    (includes repair_config with adaptive_repair settings)
+            context: Scheduling context with courses, groups, instructors,
+                     rooms
             hard_constraint_names: Names of enabled hard constraints
             soft_constraint_names: Names of enabled soft constraints
-            pool: Optional multiprocessing.Pool for parallel fitness evaluation
-            logger: Optional GALogger for file-based logging (writes to logger.txt, not console)
-            constraint_logger: Optional ConstraintLogger for detailed constraint logging (writes to logger_constraints.csv)
+            pool: Optional multiprocessing.Pool for parallel fitness
+                  evaluation
+            logger: Optional GALogger for file-based logging
+                    (writes to logger.txt, not console)
+            constraint_logger: Optional ConstraintLogger for detailed
+                               constraint logging
+                               (writes to logger_constraints.csv)
             seed: Random seed for reproducibility
 
         Adaptive Repair:
@@ -513,7 +527,8 @@ class GAScheduler:
             mutate_individual,
             context=self.context,
             mut_prob=self.config.mutation_prob,
-            guided=get_config().ga.use_constraint_guided_mutation,  # Enable constraint-guided mutation
+            # Enable constraint-guided mutation
+            guided=get_config().ga.use_constraint_guided_mutation,
         )
 
     def _init_rl(self) -> bool:
@@ -532,10 +547,11 @@ class GAScheduler:
         # Check mode (must be 'inference' or 'hybrid' for GA integration)
         if rl_config.mode not in ["inference", "hybrid"]:
             console.print(
-                f"[yellow]RL mode '{rl_config.mode}' not compatible with GA integration[/yellow]"
+                f"[yellow]RL mode '{rl_config.mode}' not compatible with "
+                f"GA integration[/yellow]"
             )
             console.print(
-                "[dim]   Use mode 'inference' or 'hybrid' for production runs[/dim]"
+                "[dim]   Use mode 'inference' or 'hybrid' for " "production runs[/dim]"
             )
             return False
 
@@ -694,7 +710,8 @@ class GAScheduler:
                 before_fitness = [tuple(ind.fitness.values) for ind in top_individuals]
 
                 logger.debug(
-                    f"Gen {gen}: RL applying '{action_info.name}' to {num_targets} individuals in parallel"
+                    f"Gen {gen}: RL applying '{action_info.name}' to "
+                    f"{num_targets} individuals in parallel"
                 )
 
                 heuristic_func = action_info.function
@@ -789,7 +806,9 @@ class GAScheduler:
 
         if repair_heuristics:
             console.print(
-                f"[dim]   Round-robin rotation: {len(heuristic_names)} heuristics (including {len(repair_heuristics)} repair operators)[/dim]"
+                f"[dim]   Round-robin rotation: {len(heuristic_names)} "
+                f"heuristics (including {len(repair_heuristics)} repair "
+                f"operators)[/dim]"
             )
         else:
             console.print(

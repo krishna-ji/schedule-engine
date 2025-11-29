@@ -147,6 +147,7 @@ select = [
 
 ignore = [
     "E402",   # Module level import not at top of file (for console init)
+    "E501",   # Line too long (handled by Black, many are comments/strings)
     "N812",   # Lowercase imported as non-lowercase (DEAP conventions)
     "SIM108", # Use ternary operator (sometimes less readable)
 ]
