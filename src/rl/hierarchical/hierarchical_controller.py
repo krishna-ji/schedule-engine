@@ -30,7 +30,7 @@ class HighLevelPolicy:
             model_path: Path to trained model
         """
         self.model_path = model_path
-        self.model = None
+        self.model: PPO | None = None  # type: ignore[name-defined]
         self.categories = [
             "construction",
             "perturbation",
@@ -58,10 +58,10 @@ class HighLevelPolicy:
         if self.model:
             action, _ = self.model.predict(observation, deterministic=deterministic)
             category_idx = int(action) % len(self.categories)
-            return self.categories[category_idx]
+            return self.categories[category_idx]  # type: ignore[no-any-return]
         else:
             # Fallback: round-robin or random
-            return np.random.choice(self.categories)
+            return np.random.choice(self.categories)  # type: ignore[no-any-return]
 
     def _load_model(self) -> None:
         """Load trained model."""
@@ -96,7 +96,7 @@ class LowLevelPolicy:
         """
         self.category = category
         self.model_path = model_path
-        self.model = None
+        self.model: PPO | None = None  # type: ignore[name-defined]
 
         # Heuristic mappings per category
         self.heuristics = {
@@ -152,10 +152,10 @@ class LowLevelPolicy:
         if self.model:
             action, _ = self.model.predict(observation, deterministic=deterministic)
             local_idx = int(action) % len(category_heuristics)
-            return category_heuristics[local_idx]
+            return category_heuristics[local_idx]  # type: ignore[no-any-return]
         else:
             # Fallback: random from category
-            return np.random.choice(category_heuristics)
+            return np.random.choice(category_heuristics)  # type: ignore[no-any-return]
 
     def _load_model(self) -> None:
         """Load trained model."""
@@ -184,7 +184,7 @@ class HierarchicalController:
     - More interpretable decisions
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize hierarchical controller.
 
@@ -206,7 +206,7 @@ class HierarchicalController:
 
         # Statistics
         self.category_counts = dict.fromkeys(self.high_level.categories, 0)
-        self.heuristic_counts = {}
+        self.heuristic_counts: dict[int, int] = {}
 
     def select_heuristic(
         self, observation: NDArray[np.float32], deterministic: bool = True

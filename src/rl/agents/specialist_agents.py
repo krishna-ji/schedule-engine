@@ -313,7 +313,7 @@ class AgentCoordinator:
 
         # Fallback: select most successful agent
         if self.agent_performance:
-            return max(self.agent_performance, key=self.agent_performance.get)
+            return max(self.agent_performance, key=self.agent_performance.get)  # type: ignore[arg-type]
 
         # Final fallback: first agent
         return list(self.agents.keys())[0]

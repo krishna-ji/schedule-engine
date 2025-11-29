@@ -130,14 +130,9 @@ def _has_group_overlap(
             continue
 
         # Check if any group in session overlaps with any group in other
-        session_groups = (
-            session.group_ids
-            if isinstance(session.group_ids, list)
-            else [session.group_ids]
-        )
-        other_groups = (
-            other.group_ids if isinstance(other.group_ids, list) else [other.group_ids]
-        )
+        # group_ids is always a list[str] per SessionGene definition
+        session_groups = session.group_ids
+        other_groups = other.group_ids
 
         # Same group and overlapping time?
         if (set(session_groups) & set(other_groups)) and (

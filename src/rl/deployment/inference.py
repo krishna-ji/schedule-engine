@@ -83,13 +83,20 @@ class RLInference:
                 return None
 
             # Predict action
-            action, _states = self.model.predict(state, deterministic=deterministic)
+            action_result, _states = self.model.predict(
+                state, deterministic=deterministic
+            )
 
             # Extract scalar action
-            if isinstance(action, np.ndarray):
-                action = int(action[0]) if action.size == 1 else int(action)
+            action: int
+            if isinstance(action_result, np.ndarray):
+                action = (
+                    int(action_result[0])
+                    if action_result.size == 1
+                    else int(action_result)
+                )
             else:
-                action = int(action)
+                action = int(action_result)
 
             # Track performance
             elapsed_ms = (time.time() - start_time) * 1000
@@ -134,13 +141,16 @@ class RLInference:
 
         try:
             # Predict for batch
-            actions, _states = self.model.predict(states, deterministic=deterministic)
+            actions_result, _states = self.model.predict(
+                states, deterministic=deterministic
+            )
 
             # Convert to list
-            if isinstance(actions, np.ndarray):
-                actions = [int(a) for a in actions]
+            actions: list[int]
+            if isinstance(actions_result, np.ndarray):
+                actions = [int(a) for a in actions_result]
             else:
-                actions = [int(actions)]
+                actions = [int(actions_result)]
 
             # Track performance
             elapsed_ms = (time.time() - start_time) * 1000
@@ -158,7 +168,7 @@ class RLInference:
                 f"({avg_per_sample:.2f}ms/sample)"
             )
 
-            return actions
+            return actions  # type: ignore[return-value]
 
         except Exception as e:
             elapsed_ms = (time.time() - start_time) * 1000

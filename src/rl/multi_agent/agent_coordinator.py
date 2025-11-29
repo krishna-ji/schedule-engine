@@ -4,7 +4,12 @@ Agent coordinator for multi-agent RL system.
 ENHANCEMENT #4: Coordinates specialist agent selection and execution.
 """
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from stable_baselines3 import PPO
 
 import numpy as np
 from numpy.typing import NDArray
@@ -29,7 +34,7 @@ class AgentCoordinator:
     3. Meta-agent: RL agent learns which specialist to use
     """
 
-    def __init__(self, strategy: str = "state_based", config: dict = None):
+    def __init__(self, strategy: str = "state_based", config: dict | None = None):
         """
         Initialize agent coordinator.
 
@@ -54,13 +59,13 @@ class AgentCoordinator:
         self.total_selections = 0
 
         # Meta-agent (if strategy=meta_agent)
-        self.meta_agent = None
+        self.meta_agent: PPO | None = None  # type: ignore[name-defined]
 
     def select_agent(
         self,
         population: list[Individual],
         state: dict[str, Any],
-        observation: NDArray[np.float32] = None,
+        observation: NDArray[np.float32] | None = None,
     ) -> SpecialistAgent:
         """
         Select which specialist agent to use.
@@ -80,7 +85,11 @@ class AgentCoordinator:
             return self._select_ucb()
 
         elif self.strategy == "meta_agent":
-            return self._select_meta_agent(observation)
+            if observation is not None:
+                return self._select_meta_agent(observation)
+            else:
+                # Fallback when no observation provided
+                return self.agents[1]  # OptimizerAgent
 
         else:
             # Fallback: round-robin
@@ -158,7 +167,8 @@ class AgentCoordinator:
                 try:
                     from stable_baselines3 import PPO
 
-                    self.meta_agent = PPO.load(meta_model_path)
+                    loaded_model = PPO.load(meta_model_path)
+                    self.meta_agent = loaded_model
                 except Exception as e:
                     print(f"Warning: Failed to load meta-agent: {e}")
                     self.meta_agent = None

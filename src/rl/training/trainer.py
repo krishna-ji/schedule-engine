@@ -35,8 +35,8 @@ class RolloutProgressCallback(BaseCallback):
         self.log_interval_steps = max(1, log_interval_steps)
         self.total_timesteps = total_timesteps
         self._last_logged = 0
-        self._start_time = None
-        self._last_time = None
+        self._start_time: float | None = None
+        self._last_time: float | None = None
 
     def _on_step(self) -> bool:
         import time
@@ -50,6 +50,8 @@ class RolloutProgressCallback(BaseCallback):
 
         if self.num_timesteps - self._last_logged >= self.log_interval_steps:
             # Calculate timing metrics
+            assert self._start_time is not None
+            assert self._last_time is not None
             elapsed = current_time - self._start_time
             interval_time = current_time - self._last_time
             steps_in_interval = self.num_timesteps - self._last_logged
@@ -192,14 +194,16 @@ class RLTrainer:
 
         # Create agent based on type
         if self.agent_type == "ppo":
-            agent = create_ppo_agent(
+
+            self.agent = create_ppo_agent(
                 env=self.env,
                 tensorboard_log=self.tensorboard_log,
                 verbose=self.verbose,
                 **agent_kwargs,
             )
         elif self.agent_type == "dqn":
-            agent = create_dqn_agent(
+
+            self.agent = create_dqn_agent(
                 env=self.env,
                 tensorboard_log=self.tensorboard_log,
                 verbose=self.verbose,
@@ -209,7 +213,7 @@ class RLTrainer:
             raise ValueError(f"Unknown agent type: {self.agent_type}")
 
         if self.debug_logging and self.agent_type == "ppo":
-            rollout_steps = getattr(agent, "n_steps", 0)
+            rollout_steps = getattr(self.agent, "n_steps", 0)
             total_steps = rollout_steps * max(1, self.n_envs)
             logger.info(
                 "PPO rollout size: %s steps/env (total %s per update)",
@@ -218,7 +222,7 @@ class RLTrainer:
             )
 
         logger.info(f"Created {self.agent_type.upper()} agent")
-        return agent
+        return self.agent  # type: ignore[return-value]
 
     def train(
         self,
@@ -412,9 +416,9 @@ class RLTrainer:
         Returns:
             Loaded agent
         """
-        model_path = Path(model_path)
+        model_path_obj = Path(model_path)
 
-        if not model_path.exists():
+        if not model_path_obj.exists():
             raise FileNotFoundError(f"Model not found: {model_path}")
 
         logger.info(f"Loading model from {model_path}...")
@@ -422,16 +426,16 @@ class RLTrainer:
         if self.agent_type == "ppo":
             from src.rl.agents.ppo_agent import load_ppo_agent
 
-            self.agent = load_ppo_agent(str(model_path), env=self.env)
+            self.agent = load_ppo_agent(str(model_path_obj), env=self.env)
         elif self.agent_type == "dqn":
             from src.rl.agents.dqn_agent import load_dqn_agent
 
-            self.agent = load_dqn_agent(str(model_path), env=self.env)
+            self.agent = load_dqn_agent(str(model_path_obj), env=self.env)
         else:
             raise ValueError(f"Unknown agent type: {self.agent_type}")
 
         # Load metadata if exists
-        metadata_path = model_path.with_suffix(".json")
+        metadata_path = model_path_obj.with_suffix(".json")
         if metadata_path.exists():
             with open(metadata_path) as f:
                 metadata = json.load(f)
@@ -461,24 +465,24 @@ class RLTrainer:
         logger.info(f"Evaluating agent over {n_eval_episodes} episodes...")
 
         episode_rewards = []
-        episode_lengths = []
+        episode_lengths: list[int | float] = []
 
         for episode in range(n_eval_episodes):
             obs, _ = self.env.reset()
             done = False
-            episode_reward = 0
-            episode_length = 0
+            episode_reward: float = 0.0
+            episode_length = 0  # Will be cast to float for calculations
 
             while not done:
                 action, _ = self.agent.predict(obs, deterministic=deterministic)
                 obs, reward, terminated, truncated, _ = self.env.step(action)
                 done = terminated or truncated
 
-                episode_reward += reward
+                episode_reward += float(reward)
                 episode_length += 1
 
             episode_rewards.append(episode_reward)
-            episode_lengths.append(episode_length)
+            episode_lengths.append(float(episode_length))  # Convert to float for mypy
 
             if self.verbose > 0:
                 logger.debug(

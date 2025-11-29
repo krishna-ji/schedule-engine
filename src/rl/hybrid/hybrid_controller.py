@@ -220,7 +220,7 @@ class HybridController:
                 return random.choice(valid_actions)
 
             # Select best
-            best_action = max(valid_recent, key=lambda a: np.mean(valid_recent[a]))
+            best_action: int = max(valid_recent, key=lambda a: np.mean(valid_recent[a]))  # type: ignore[no-any-return]
             return best_action
 
         else:

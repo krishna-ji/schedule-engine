@@ -4,8 +4,15 @@ Rank-based multi-agent RL.
 ENHANCEMENT #8: Specialist agents for different Pareto ranks.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from stable_baselines3 import PPO
 
 from src.core.types import Individual
 
@@ -19,7 +26,7 @@ class RankBasedAgent:
     Rank 4+ (poor): Aggressive repair and exploration
     """
 
-    def __init__(self, rank: int, model_path: str = None):
+    def __init__(self, rank: int, model_path: str | None = None):
         """
         Initialize rank-based agent.
 
@@ -29,7 +36,7 @@ class RankBasedAgent:
         """
         self.rank = rank
         self.model_path = model_path
-        self.model = None
+        self.model: PPO | None = None
         self.activation_count = 0
 
     def select_action(
@@ -51,7 +58,7 @@ class RankBasedAgent:
         if self.model:
             action, _ = self.model.predict(observation, deterministic=deterministic)
             self.activation_count += 1
-            return int(action)
+            return int(action)  # type: ignore[no-any-return]
         else:
             # Fallback: rank-dependent heuristic selection
             return self._fallback_action()
@@ -60,13 +67,13 @@ class RankBasedAgent:
         """Fallback heuristic selection based on rank."""
         if self.rank == 1:
             # Elite: gentle refinement (VDS, GLS)
-            return np.random.choice([12, 18])
+            return int(np.random.choice([12, 18]))  # type: ignore[no-any-return]
         elif self.rank <= 3:
             # Good: standard optimization (Kempe, ejection)
-            return np.random.choice([10, 11, 12])
+            return int(np.random.choice([10, 11, 12]))  # type: ignore[no-any-return]
         else:
             # Poor: aggressive repair (multi-perturbation, exploration)
-            return np.random.choice([7, 8, 14])
+            return int(np.random.choice([7, 8, 14]))  # type: ignore[no-any-return]
 
     def _load_model(self) -> None:
         """Load trained model."""
@@ -90,7 +97,7 @@ class RankBasedMultiAgent:
     - Agent 4: Rank 4+ (poor solutions)
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize rank-based multi-agent system.
 

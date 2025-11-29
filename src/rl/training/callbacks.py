@@ -11,6 +11,7 @@ Provides Stable-Baselines3 compatible callbacks:
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
@@ -56,7 +57,7 @@ class PeriodicEvaluationCallback(BaseCallback):
         self.deterministic = deterministic
         self.log_path = Path(log_path) if log_path else None
 
-        self.eval_history = []
+        self.eval_history: list[dict[str, float]] = []
         self.best_mean_reward = -np.inf
 
         if self.log_path:
@@ -71,7 +72,11 @@ class PeriodicEvaluationCallback(BaseCallback):
             episode_lengths = []
 
             for _ in range(self.n_eval_episodes):
-                obs = self.eval_env.reset()
+                reset_result = self.eval_env.reset()
+                # Handle both old gym (obs) and new gymnasium (obs, info) returns
+                obs = (
+                    reset_result[0] if isinstance(reset_result, tuple) else reset_result
+                )
                 done = False
                 episode_reward = 0
                 episode_length = 0
@@ -79,24 +84,37 @@ class PeriodicEvaluationCallback(BaseCallback):
                 while not done:
                     action, _ = self.model.predict(
                         obs, deterministic=self.deterministic
-                    )
-                    obs, reward, done, _ = self.eval_env.step(action)
+                    )  # type: ignore[arg-type]
+                    step_result = self.eval_env.step(action)
+
+                    # Handle both old gym and new gymnasium APIs
+                    if (
+                        len(step_result) == 5
+                    ):  # gymnasium: obs, reward, terminated, truncated, info
+                        obs_new, reward, terminated, truncated, _ = step_result
+                        obs = obs_new  # type: ignore[assignment]
+                        done = terminated or truncated
+                    else:  # old gym: obs, reward, done, info
+                        obs_new, reward, done_result, _ = step_result
+                        obs = obs_new  # type: ignore[assignment]
+                        done = (
+                            done_result
+                            if isinstance(done_result, bool)
+                            else bool(done_result[0])
+                        )
+
                     episode_reward += (
                         reward[0] if isinstance(reward, np.ndarray) else reward
                     )
                     episode_length += 1
 
-                    # Check for termination
-                    if isinstance(done, np.ndarray):
-                        done = done[0]
-
                 episode_rewards.append(episode_reward)
                 episode_lengths.append(episode_length)
 
             # Compute statistics
-            mean_reward = np.mean(episode_rewards)
-            std_reward = np.std(episode_rewards)
-            mean_length = np.mean(episode_lengths)
+            mean_reward = float(np.mean(episode_rewards))
+            std_reward = float(np.std(episode_rewards))
+            mean_length = float(np.mean(episode_lengths))
 
             # Log to TensorBoard
             self.logger.record("eval/mean_reward", mean_reward)
@@ -111,16 +129,16 @@ class PeriodicEvaluationCallback(BaseCallback):
                 self.best_mean_reward = mean_reward
 
             # Store history
-            eval_result = {
-                "timestep": self.n_calls,
-                "mean_reward": float(mean_reward),
-                "std_reward": float(std_reward),
-                "mean_length": float(mean_length),
+            eval_result: dict[str, float | str] = {
+                "timestep": float(self.n_calls),
+                "mean_reward": mean_reward,
+                "std_reward": std_reward,
+                "mean_length": mean_length,
                 "min_reward": float(np.min(episode_rewards)),
                 "max_reward": float(np.max(episode_rewards)),
                 "timestamp": datetime.now().isoformat(),
             }
-            self.eval_history.append(eval_result)
+            self.eval_history.append(eval_result)  # type: ignore[arg-type]
 
             # Log to console
             if self.verbose > 0:
@@ -320,11 +338,11 @@ class ManifestCallback(BaseCallback):
         # Load existing manifest
         self.manifest = self._load_manifest()
 
-    def _load_manifest(self) -> list:
+    def _load_manifest(self) -> list[Any]:
         """Load existing manifest or create empty."""
         if self.manifest_path.exists():
             with open(self.manifest_path) as f:
-                return json.load(f)
+                return json.load(f)  # type: ignore[no-any-return]
         return []
 
     def _save_manifest(self):
