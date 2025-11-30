@@ -74,37 +74,46 @@ def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
     Returns:
         List[SessionGene] representing a complete schedule
     """
-    # Import subsession breaker (canonical L/T/P logic)
+    # Import subsession breaker and course-group pair generator
+    from src.ga.course_group_pairs import generate_course_group_pairs
+    from src.ga.group_hierarchy import analyze_group_hierarchy
     from src.ga.population import get_subsession_durations
 
     time_system = QuantumTimeSystem()
     individual = []
 
-    # Calculate conflict degrees
-    course_degrees = _calculate_conflict_degrees(context)
+    # Generate course-group pairs (ensures consistent structure with smart population)
+    hierarchy = analyze_group_hierarchy(context.groups)
+    pair_tuples = generate_course_group_pairs(
+        context.courses, context.groups, hierarchy, silent=True
+    )
 
-    # Sort courses by degree (descending - most conflicts first)
-    sorted_courses = sorted(course_degrees.items(), key=lambda x: x[1], reverse=True)
+    # Calculate conflict degrees for course-group pairs
+    pair_degrees = _calculate_pair_conflict_degrees(pair_tuples, context)
+
+    # Sort pairs by degree (descending - most conflicts first)
+    sorted_pairs = sorted(pair_degrees.items(), key=lambda x: x[1], reverse=True)
 
     # Track assignments for conflict checking
     assigned_times: dict[str, set[int]] = defaultdict(set)  # {entity_id: {time_quanta}}
     assigned_rooms: dict[str, set[int]] = defaultdict(set)  # {room_id: {time_quanta}}
 
-    for course_id, _degree in sorted_courses:
-        course = context.courses[course_id]
-        # Unpack tuple - course_id is (course_code, course_type)
+    for (course_key, group_ids, _session_type, _num_quanta), _degree in sorted_pairs:
+        course = context.courses.get(course_key)
+        if not course:
+            continue
+
+        # Unpack tuple - course_key is (course_code, course_type)
         course_code: str
         course_type: str
-        if isinstance(course_id, tuple) and len(course_id) == 2:
-            course_code, course_type = course_id
+        if isinstance(course_key, tuple) and len(course_key) == 2:
+            course_code, course_type = course_key
         else:
             # Fallback for legacy string keys
-            course_code = str(course_id)
+            course_code = str(course_key)
             course_type = "theory"
 
-        # FIXED: Break into subsessions using canonical logic
-        # Theory → [2, 2, ...] with [1] if odd
-        # Practical → [full_duration]
+        # Break into subsessions using canonical logic
         subsession_durations = get_subsession_durations(
             course.quanta_per_week, course.course_type
         )
@@ -144,11 +153,11 @@ def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
                 context, course, time_quantum, assigned_times
             )
 
-            # Create gene with subsession duration
+            # Create gene with subsession duration and correct group_ids from pair
             gene = SessionGene(
                 course_id=course_code,
                 course_type=course_type,
-                group_ids=course.enrolled_group_ids,
+                group_ids=group_ids,  # Use group_ids from pair, not course.enrolled_group_ids
                 room_id=room_id,
                 instructor_id=instructor_id,
                 start_quanta=time_quantum,
@@ -159,7 +168,7 @@ def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
 
             # Update assignments for THIS subsession
             for q in range(time_quantum, time_quantum + subsession_duration):
-                for group_id in course.enrolled_group_ids:
+                for group_id in group_ids:  # Use group_ids from pair
                     assigned_times[group_id].add(q)
                 assigned_times[instructor_id].add(q)
                 assigned_rooms[room_id].add(q)
@@ -206,7 +215,9 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
     Returns:
         List[SessionGene] representing a complete schedule
     """
-    # Import subsession breaker (canonical L/T/P logic)
+    # Import utilities for course-group pairs
+    from src.ga.course_group_pairs import generate_course_group_pairs
+    from src.ga.group_hierarchy import analyze_group_hierarchy
     from src.ga.population import get_subsession_durations
 
     time_system = QuantumTimeSystem()
@@ -216,15 +227,25 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
     assigned_times: dict[str, set[int]] = defaultdict(set)
     assigned_rooms: dict[str, set[int]] = defaultdict(set)
 
-    # Build list of all sessions to schedule
-    # FIXED: Include subsessions, not just courses
+    # Generate course-group pairs (ensures consistent structure)
+    hierarchy = analyze_group_hierarchy(context.groups)
+    pair_tuples = generate_course_group_pairs(
+        context.courses, context.groups, hierarchy, silent=True
+    )
+
+    # Build list of all sessions to schedule (with subsessions)
     sessions_to_schedule = []
-    for course_id, course in context.courses.items():
+    for course_key, group_ids, _session_type, _num_quanta in pair_tuples:
+        course = context.courses.get(course_key)
+        if not course:
+            continue
         subsession_durations = get_subsession_durations(
             course.quanta_per_week, course.course_type
         )
         for _subsession_idx, subsession_duration in enumerate(subsession_durations):
-            sessions_to_schedule.append((course_id, course, subsession_duration))
+            sessions_to_schedule.append(
+                (course_key, group_ids, course, subsession_duration)
+            )
 
     # Schedule sessions in constraint order
     while sessions_to_schedule:
@@ -232,7 +253,7 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
         most_constrained = None
         min_options = float("inf")
 
-        for course_id, course, subsession_duration in sessions_to_schedule:
+        for course_key, group_ids, course, subsession_duration in sessions_to_schedule:
             # Count valid time slots for THIS subsession duration
             valid_slots = _count_valid_time_slots(
                 context,
@@ -245,13 +266,13 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
 
             if valid_slots < min_options:
                 min_options = valid_slots
-                most_constrained = (course_id, course, subsession_duration)
+                most_constrained = (course_key, group_ids, course, subsession_duration)
 
         # Remove from pending list
         if most_constrained is None:
             break  # No valid assignments possible
         sessions_to_schedule.remove(most_constrained)
-        course_id, course, subsession_duration = most_constrained
+        course_key, group_ids, course, subsession_duration = most_constrained
 
         # Find best time slot for THIS subsession
         time_quantum = _find_earliest_valid_time(
@@ -281,12 +302,12 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
             context, course, time_quantum, assigned_times
         )
 
-        # Create gene with subsession duration
-        course_code, course_type = course_id  # Unpack tuple
+        # Create gene with subsession duration and correct group_ids from pair
+        course_code, course_type = course_key  # Unpack tuple
         gene = SessionGene(
             course_id=course_code,
             course_type=course_type,
-            group_ids=course.enrolled_group_ids,
+            group_ids=group_ids,  # Use group_ids from pair, not course.enrolled_group_ids
             room_id=room_id,
             instructor_id=instructor_id,
             start_quanta=time_quantum,
@@ -297,7 +318,7 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
 
         # Update assignments for THIS subsession
         for q in range(time_quantum, time_quantum + subsession_duration):
-            for group_id in course.enrolled_group_ids:
+            for group_id in group_ids:  # Use group_ids from pair
                 assigned_times[group_id].add(q)
             assigned_times[instructor_id].add(q)
             assigned_rooms[room_id].add(q)
@@ -344,35 +365,46 @@ def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
     Returns:
         List[SessionGene] representing a complete schedule
     """
-    # Import subsession breaker (canonical L/T/P logic)
+    # Import utilities for course-group pairs
+    from src.ga.course_group_pairs import generate_course_group_pairs
+    from src.ga.group_hierarchy import analyze_group_hierarchy
     from src.ga.population import get_subsession_durations
 
     time_system = QuantumTimeSystem()
     individual = []
 
-    # Calculate urgency scores
-    course_urgency = _calculate_urgency_scores(context)
+    # Generate course-group pairs (ensures consistent structure)
+    hierarchy = analyze_group_hierarchy(context.groups)
+    pair_tuples = generate_course_group_pairs(
+        context.courses, context.groups, hierarchy, silent=True
+    )
+
+    # Calculate urgency scores for pairs
+    pair_urgency = _calculate_pair_urgency_scores(pair_tuples, context)
 
     # Sort by urgency (descending)
-    sorted_courses = sorted(course_urgency.items(), key=lambda x: x[1], reverse=True)
+    sorted_pairs = sorted(pair_urgency.items(), key=lambda x: x[1], reverse=True)
 
     # Track assignments
     assigned_times: dict[str, set[int]] = defaultdict(set)
     assigned_rooms: dict[str, set[int]] = defaultdict(set)
 
-    for course_id, _urgency in sorted_courses:
-        course = context.courses[course_id]
-        # Unpack tuple - course_id is (course_code, course_type)
+    for (course_key, group_ids, _session_type, _num_quanta), _urgency in sorted_pairs:
+        course = context.courses.get(course_key)
+        if not course:
+            continue
+
+        # Unpack tuple - course_key is (course_code, course_type)
         course_code: str
         course_type: str
-        if isinstance(course_id, tuple) and len(course_id) == 2:
-            course_code, course_type = course_id
+        if isinstance(course_key, tuple) and len(course_key) == 2:
+            course_code, course_type = course_key
         else:
             # Fallback for legacy string keys
-            course_code = str(course_id)
+            course_code = str(course_key)
             course_type = "theory"
 
-        # FIXED: Break into subsessions
+        # Break into subsessions
         subsession_durations = get_subsession_durations(
             course.quanta_per_week, course.course_type
         )
@@ -407,11 +439,11 @@ def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
                 context, course, time_quantum, assigned_times
             )
 
-            # Create gene with subsession duration
+            # Create gene with subsession duration and correct group_ids from pair
             gene = SessionGene(
                 course_id=course_code,
                 course_type=course_type,
-                group_ids=course.enrolled_group_ids,
+                group_ids=group_ids,  # Use group_ids from pair, not course.enrolled_group_ids
                 room_id=room_id,
                 instructor_id=instructor_id,
                 start_quanta=time_quantum,
@@ -422,7 +454,7 @@ def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
 
             # Update assignments for THIS subsession
             for q in range(time_quantum, time_quantum + subsession_duration):
-                for group_id in course.enrolled_group_ids:
+                for group_id in group_ids:  # Use group_ids from pair
                     assigned_times[group_id].add(q)
                 assigned_times[instructor_id].add(q)
                 assigned_rooms[room_id].add(q)
@@ -644,3 +676,105 @@ def _select_qualified_instructor(
         if course.qualified_instructor_ids
         else list(context.instructors.keys())[0]
     )
+
+
+# ================
+# PAIR-BASED HELPER FUNCTIONS (Use course-group pairs)
+# ================
+
+
+def _calculate_pair_conflict_degrees(
+    pair_tuples: list[tuple], context: SchedulingContext
+) -> dict[tuple, int]:
+    """
+    Calculate conflict degree for each course-group pair.
+
+    Args:
+        pair_tuples: List of (course_key, group_ids, session_type, num_quanta)
+        context: SchedulingContext
+
+    Returns:
+        Dictionary mapping pair tuple to conflict degree
+    """
+    degrees = {}
+
+    for pair in pair_tuples:
+        course_key, group_ids, _session_type, _num_quanta = pair
+        course = context.courses.get(course_key)
+        if not course:
+            degrees[pair] = 0
+            continue
+
+        degree = 0
+
+        # Count instructor conflicts with other pairs
+        for other_pair in pair_tuples:
+            if other_pair == pair:
+                continue
+
+            other_key, other_groups, _, _ = other_pair
+            other_course = context.courses.get(other_key)
+            if not other_course:
+                continue
+
+            # Check for shared qualified instructors
+            shared_instructors = set(course.qualified_instructor_ids) & set(
+                other_course.qualified_instructor_ids
+            )
+            if shared_instructors:
+                degree += len(shared_instructors)
+
+            # Check for shared groups
+            shared_groups = set(group_ids) & set(other_groups)
+            if shared_groups:
+                degree += len(shared_groups) * 2  # Group conflicts more critical
+
+        # Lab courses have higher degree (fewer room options)
+        if course.course_type == "practical":
+            degree += 5
+
+        degrees[pair] = degree
+
+    return degrees
+
+
+def _calculate_pair_urgency_scores(
+    pair_tuples: list[tuple], context: SchedulingContext
+) -> dict[tuple, float]:
+    """
+    Calculate urgency score for each course-group pair.
+
+    Args:
+        pair_tuples: List of (course_key, group_ids, session_type, num_quanta)
+        context: SchedulingContext
+
+    Returns:
+        Dictionary mapping pair tuple to urgency score
+    """
+    urgency = {}
+
+    for pair in pair_tuples:
+        course_key, _group_ids, _session_type, num_quanta = pair
+        course = context.courses.get(course_key)
+        if not course:
+            urgency[pair] = 0.0
+            continue
+
+        score = 0.0
+
+        # More quanta = higher urgency
+        score += num_quanta * 10
+
+        # Lab courses higher urgency (limited room options)
+        if course.course_type == "practical":
+            score += 5
+
+        # Courses with part-time instructors have higher urgency
+        for instructor_id in course.qualified_instructor_ids:
+            instructor = context.instructors.get(instructor_id)
+            if instructor and not instructor.is_full_time:
+                score += 3
+
+        urgency[pair] = score
+
+    return urgency
