@@ -15,7 +15,7 @@ Usage:
 from deap import base, creator
 
 
-def _initialize_creator():
+def _initialize_creator() -> None:
     """
     Initialize DEAP creator types if not already registered.
 
@@ -39,7 +39,7 @@ def _initialize_creator():
         creator.create("Individual", list, fitness=creator.FitnessMulti)
 
 
-def get_creator():
+def get_creator() -> type[creator]:  # type: ignore[name-defined,no-any-return]
     """
     Get the initialized DEAP creator instance.
 
@@ -52,7 +52,7 @@ def get_creator():
         >>> ind = creator.Individual()
     """
     _initialize_creator()
-    return creator
+    return creator  # type: ignore[no-any-return]
 
 
 # Auto-initialize on module import for convenience

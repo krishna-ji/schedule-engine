@@ -881,7 +881,7 @@ class Config(BaseModel):
 
     def to_yaml(self, path: str) -> None:
         """Save config to YAML file"""
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         with open(path, "w", encoding="utf-8") as f:
             yaml.dump(self.model_dump(), f, default_flow_style=False, sort_keys=False)
