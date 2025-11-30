@@ -45,7 +45,7 @@ uv run analyze-results    # Generate comparison analysis
 
 ### **Experiment Output Structure**
 
-```
+```txt
 output/
 ├── experiments/{method}/{type}/evaluation_TIMESTAMP/  # Results per run
 ├── logs/           # Execution logs, TensorBoard data
