@@ -39,6 +39,9 @@ class BaselineTestConfig(TestConfig):
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
+    # === MUTATION: Pure random (no constraint guidance) ===
+    use_constraint_guided_mutation: bool = False
+
     # === POPULATION STRATEGY: Random only ===
     population_strategy: str = "random"
 
@@ -68,6 +71,9 @@ class BaselineProdConfig(ProdConfig):
     lns_enabled: bool = False
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
+
+    # === MUTATION: Pure random (no constraint guidance) ===
+    use_constraint_guided_mutation: bool = False
 
     # === POPULATION STRATEGY: Random only ===
     population_strategy: str = "random"

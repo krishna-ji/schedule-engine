@@ -59,6 +59,9 @@ class BaseConfig:
     # Selection
     tournament_size: int = 2
 
+    # Mutation strategy (DEFAULT: DISABLED - enable per experiment)
+    use_constraint_guided_mutation: bool = False
+
     # ==========================================
     # PARALLEL PROCESSING
     # ==========================================
@@ -66,27 +69,27 @@ class BaseConfig:
     num_workers: int | None = None  # None = CPU count
 
     # ==========================================
-    # POPULATION STRATEGY
+    # POPULATION STRATEGY (DEFAULT: RANDOM - enable smart/hybrid per experiment)
     # ==========================================
-    population_strategy: str = "hybrid"  # hybrid, random, greedy
+    population_strategy: str = "random"  # random, smart, hybrid
     greedy_percentage: float = 0.25
     smart_percentage: float = 0.50
     random_percentage: float = 0.25
 
     # ==========================================
-    # KILLSWITCHES (Master controls)
+    # KILLSWITCHES (DEFAULT: ALL DISABLED - enable per experiment)
     # ==========================================
-    repair_enabled: bool = True
-    heuristics_master_enabled: bool = True
+    repair_enabled: bool = False
+    heuristics_master_enabled: bool = False
     lns_enabled: bool = False
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
     # ==========================================
-    # REPAIR CONFIGURATION
+    # REPAIR CONFIGURATION (DEFAULT: DISABLED - enable per experiment)
     # ==========================================
     repair_max_iterations: int = 100
-    repair_apply_after_mutation: bool = True
+    repair_apply_after_mutation: bool = False
     repair_apply_after_crossover: bool = False
     repair_memetic_mode: bool = False
     repair_elite_percentage: float = 0.20
@@ -250,6 +253,7 @@ class BaseConfig:
                 "elite_preservation": self.elite_preservation,
                 "elite_size": self.elite_size,
                 "population_strategy": self.population_strategy,
+                "use_constraint_guided_mutation": self.use_constraint_guided_mutation,
             },
             "parallel": {
                 "use_multiprocessing": self.use_multiprocessing,

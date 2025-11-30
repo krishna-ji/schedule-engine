@@ -16,9 +16,14 @@ from configs.profiles import ProdConfig, TestConfig
 class AdaptiveBaseConfig(BaseConfig):
     """Adaptive heuristic selection base settings."""
 
+    # Genetic operators
+    use_constraint_guided_mutation: bool = True
+    population_strategy: str = "hybrid"
+
     # Repair system
     repair_enabled: bool = True
     repair_memetic_mode: bool = True
+    repair_apply_after_mutation: bool = True
 
     # GA enhancements
     ga_use_adaptive_probabilities: bool = True
@@ -39,12 +44,12 @@ class AdaptiveBaseConfig(BaseConfig):
 
 
 @dataclass
-class AdaptiveTestConfig(TestConfig, AdaptiveBaseConfig):
+class AdaptiveTestConfig(AdaptiveBaseConfig, TestConfig):
     """Adaptive heuristics - test profile (30 gens, 10 pop)."""
 
 
 @dataclass
-class AdaptiveProdConfig(ProdConfig, AdaptiveBaseConfig):
+class AdaptiveProdConfig(AdaptiveBaseConfig, ProdConfig):
     """Adaptive heuristics - production profile (2000 gens, 200 pop)."""
 
 
@@ -55,8 +60,11 @@ EXPERIMENT_DESCRIPTION = "NSGA-II + adaptive performance-based heuristic selecti
 
 # Killswitches (explicit documentation)
 KILLSWITCHES = {
+    "use_constraint_guided_mutation": True,
+    "population_strategy": "hybrid",
     "repair.enabled": True,
     "repair.memetic_mode": True,
+    "repair.apply_after_mutation": True,
     "ga.use_adaptive_probabilities": True,
     "heuristics.master_enabled": True,
     "heuristics.adaptive_priority.enabled": True,  # KEY: Adaptive selection

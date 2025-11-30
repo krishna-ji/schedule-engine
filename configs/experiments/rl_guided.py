@@ -16,9 +16,14 @@ from configs.profiles import ProdConfig, TestConfig
 class RlGuidedBaseConfig(BaseConfig):
     """RL-guided heuristic selection base settings."""
 
+    # Genetic operators
+    use_constraint_guided_mutation: bool = True
+    population_strategy: str = "hybrid"
+
     # Repair system
     repair_enabled: bool = True
     repair_memetic_mode: bool = True
+    repair_apply_after_mutation: bool = True
 
     # GA enhancements
     ga_use_adaptive_probabilities: bool = True
@@ -47,12 +52,12 @@ class RlGuidedBaseConfig(BaseConfig):
 
 
 @dataclass
-class RlGuidedTestConfig(TestConfig, RlGuidedBaseConfig):
+class RlGuidedTestConfig(RlGuidedBaseConfig, TestConfig):
     """RL-guided - test profile (30 gens, 10 pop)."""
 
 
 @dataclass
-class RlGuidedProdConfig(ProdConfig, RlGuidedBaseConfig):
+class RlGuidedProdConfig(RlGuidedBaseConfig, ProdConfig):
     """RL-guided - production profile (2000 gens, 200 pop)."""
 
 
@@ -63,8 +68,11 @@ EXPERIMENT_DESCRIPTION = "Full NSGA-II + RL-guided heuristic selection"
 
 # Killswitches (explicit documentation)
 KILLSWITCHES = {
+    "use_constraint_guided_mutation": True,
+    "population_strategy": "hybrid",
     "repair.enabled": True,
     "repair.memetic_mode": True,
+    "repair.apply_after_mutation": True,
     "ga.use_adaptive_probabilities": True,
     "heuristics.master_enabled": True,
     "heuristics.adaptive_priority.enabled": False,  # RL takes over

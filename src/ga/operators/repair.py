@@ -473,9 +473,13 @@ def _find_compatible_room(
     occupied = _build_occupied_quanta_map(individual, current_gene)
     duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
 
+    # Determine required room type
+    required_type = "practical" if needs_lab else "lecture"
+
     for room in context.rooms.values():
-        is_lab = getattr(room, "room_features", None) == "lab"
-        if needs_lab != is_lab:
+        # Check room type compatibility using proper matching logic
+        room_type = getattr(room, "room_features", "lecture").lower().strip()
+        if not _room_type_compatible(required_type, room_type):
             continue
 
         conflict = False
@@ -490,6 +494,32 @@ def _find_compatible_room(
         return room.room_id
 
     return None
+
+
+def _room_type_compatible(required: str, room_type: str) -> bool:
+    """Check if room type satisfies requirement with flexible compatibility."""
+    # Exact match
+    if required == room_type:
+        return True
+
+    # Lecture/theory courses: Accept lecture, classroom, auditorium
+    if required in ["lecture", "classroom", "theory"] and room_type in [
+        "lecture",
+        "classroom",
+        "auditorium",
+        "seminar",
+        "tutorial",
+    ]:
+        return True
+
+    # Practical/lab courses: Accept practical, lab variants
+    return required in ["practical", "lab", "laboratory"] and room_type in [
+        "practical",
+        "lab",
+        "laboratory",
+        "computer_lab",
+        "science_lab",
+    ]
 
 
 # ================
@@ -554,12 +584,17 @@ def repair_individual_unified(
     Returns:
         Dict with repair statistics
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     if selective:
         try:
             from src.config import get_config
             from src.ga.operators.repair_selective import repair_individual_selective
 
             detection_strategy = get_config().repair.detection_strategy
+            logger.debug(f" Applying selective repair (strategy={detection_strategy})")
             selective_stats = repair_individual_selective(
                 individual,
                 context,
@@ -582,7 +617,10 @@ def repair_individual_unified(
     enabled_repairs = get_enabled_repair_operators()
 
     if not enabled_repairs:
+        logger.debug(" Repair system: No operators enabled")
         return stats
+
+    logger.debug(f" Applying full repair ({len(enabled_repairs)} operators enabled)")
 
     # Apply repairs iteratively
     for _iteration in range(max_iterations):

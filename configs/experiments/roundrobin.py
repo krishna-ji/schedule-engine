@@ -16,9 +16,14 @@ from configs.profiles import ProdConfig, TestConfig
 class RoundRobinBaseConfig(BaseConfig):
     """Round-robin heuristic selection base settings."""
 
+    # Genetic operators
+    use_constraint_guided_mutation: bool = True
+    population_strategy: str = "hybrid"
+
     # Repair system
     repair_enabled: bool = True
     repair_memetic_mode: bool = True
+    repair_apply_after_mutation: bool = True
 
     # Heuristics (round-robin = fixed rotation, NOT adaptive)
     heuristics_master_enabled: bool = True
@@ -35,12 +40,12 @@ class RoundRobinBaseConfig(BaseConfig):
 
 
 @dataclass
-class RoundRobinTestConfig(TestConfig, RoundRobinBaseConfig):
+class RoundRobinTestConfig(RoundRobinBaseConfig, TestConfig):
     """Round-robin heuristics - test profile (30 gens, 10 pop)."""
 
 
 @dataclass
-class RoundRobinProdConfig(ProdConfig, RoundRobinBaseConfig):
+class RoundRobinProdConfig(RoundRobinBaseConfig, ProdConfig):
     """Round-robin heuristics - production profile (2000 gens, 200 pop)."""
 
 
@@ -51,8 +56,11 @@ EXPERIMENT_DESCRIPTION = "NSGA-II + round-robin heuristic selection"
 
 # Killswitches (explicit documentation)
 KILLSWITCHES = {
+    "use_constraint_guided_mutation": True,
+    "population_strategy": "hybrid",
     "repair.enabled": True,
     "repair.memetic_mode": True,
+    "repair.apply_after_mutation": True,
     "heuristics.master_enabled": True,
     "heuristics.adaptive_priority.enabled": False,  # Fixed rotation, not adaptive
     "heuristics.construction.largest_degree_first.enabled": True,

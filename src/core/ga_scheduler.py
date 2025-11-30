@@ -398,6 +398,9 @@ class GAScheduler:
         self.last_restart_gen = -1000  # Track last restart generation
         self.prolonged_stagnation_counter = 0  # Separate counter for restart
 
+        # Banner tracking (prevent duplicate printing)
+        self._banner_printed = False
+
         # ENHANCEMENT: Violation heatmap for targeted repair
         self.violation_heatmap = None
         enhancement_cfg = get_config().enhancements
@@ -693,13 +696,17 @@ class GAScheduler:
             deterministic=True,  # Use deterministic policy for production
         )
 
+        # DEBUG: Log RL decision
+        action_info = self.rl_action_mapper.get_action_info(action_id)
+        if action_info:
+            logger.debug(f" RL selected: {action_info.name} (action_id={action_id})")
+
         # Record heuristic application for state tracking
         self.rl_state_encoder.record_heuristic_application(action_id)
 
         # Apply selected heuristic to population
         try:
             # Get action info to determine heuristic type
-            action_info = self.rl_action_mapper.get_action_info(action_id)
 
             # Apply heuristic in parallel to top N individuals for 10-16x speedup
             # (improvement heuristics benefit from parallel application)
@@ -883,6 +890,11 @@ class GAScheduler:
                 f"Heuristic '{heuristic_name}' not found in enabled heuristics"
             )
             return
+
+        # DEBUG: Log heuristic application
+        logger.debug(
+            f" Applying heuristic: {heuristic_name} ({heuristic_meta.category.value})"
+        )
 
         # Skip construction heuristics (they generate NEW individuals, not modify existing)
         if heuristic_meta.category.value == "construction":
@@ -1300,6 +1312,87 @@ class GAScheduler:
         except Exception as e:
             logger.warning(f"Error during RL cleanup: {e}")
 
+    def _print_startup_banner(self):
+        """Print configuration banner before evolution starts."""
+        # Prevent duplicate printing
+        if self._banner_printed:
+            return
+        self._banner_printed = True
+
+        from rich.panel import Panel
+        from rich.table import Table
+
+        config = get_config()
+
+        # Build feature table - ONLY show enabled features
+        feature_table = Table(show_header=False, box=None, padding=(0, 2))
+        feature_table.add_column("Feature", style="bold green")
+        feature_table.add_column("Value", justify="right", style="cyan")
+
+        enabled_features = []
+
+        # === GENETIC OPERATORS ===
+        if config.ga.use_constraint_guided_mutation:
+            enabled_features.append(("Constraint-guided mutation", "ON"))
+
+        if config.ga.population_strategy != "random":
+            enabled_features.append(
+                ("Population strategy", config.ga.population_strategy)
+            )
+
+        # === REPAIR SYSTEM ===
+        if config.repair.enabled:
+            enabled_features.append(("Repair system", "ON"))
+            if config.repair.memetic_mode:
+                enabled_features.append(("  > Memetic mode", "ON"))
+            if config.repair.apply_after_mutation:
+                enabled_features.append(("  > Apply after mutation", "ON"))
+
+        # === HEURISTICS ===
+        if config.heuristics.master_enabled:
+            enabled_features.append(("Heuristics", "ON"))
+            if config.heuristics.adaptive_priority.enabled:
+                enabled_features.append(("  > Adaptive priority", "ON"))
+
+        # === LARGE NEIGHBORHOOD SEARCH ===
+        if config.lns.enabled:
+            enabled_features.append(("Large Neighborhood Search", "ON"))
+
+        # === RL SYSTEM ===
+        if config.rl.enabled:
+            enabled_features.append(("RL hyper-heuristic", "ON"))
+            enabled_features.append(("  > Mode", config.rl.mode))
+
+        # === ENHANCEMENTS ===
+        if config.enhancements.master_enabled:
+            enabled_features.append(("Enhancements", "ON"))
+            if config.enhancements.hypermutation.enabled:
+                enabled_features.append(("  > Hypermutation", "ON"))
+            if config.enhancements.population_restart.enabled:
+                enabled_features.append(("  > Population restart", "ON"))
+
+        # Add rows to table
+        if enabled_features:
+            for feature, value in enabled_features:
+                feature_table.add_row(feature, value)
+        else:
+            # Pure baseline - no enhancements
+            feature_table.add_row(
+                "[dim]Pure NSGA-II baseline[/dim]", "[dim](no enhancements)[/dim]"
+            )
+
+        # Print banner
+        console.print()
+        console.print(
+            Panel(
+                feature_table,
+                title="[bold white]Active Features[/bold white]",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
+        console.print()
+
     def evolve(self):
         """Run genetic algorithm evolution loop."""
         try:
@@ -1312,6 +1405,11 @@ class GAScheduler:
         """Internal evolution loop implementation."""
         gen_times = []
         profiler = get_profiler()
+
+        # ========================================
+        # STARTUP CONFIGURATION BANNER
+        # ========================================
+        self._print_startup_banner()
 
         # Create elapsed/remaining time bar (shows above progress bar)
         time_bar = Progress(

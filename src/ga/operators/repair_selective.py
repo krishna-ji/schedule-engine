@@ -517,19 +517,23 @@ def repair_room_type_mismatches_selective(
         if not course or not room:
             continue
 
-        # Check if room type matches (Room uses 'room_features' not 'room_type')
-        needs_lab = course.course_type == "practical"
-        is_lab = room.room_features == "lab"
+        # Get required and actual room types
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+        )
+        room_type = getattr(room, "room_features", "lecture").lower().strip()
 
-        if needs_lab == is_lab:
+        # Check if already compatible
+        if _room_type_compatible(required_type, room_type):
             continue  # Already matches
 
         # Find compatible room
         compatible_rooms = [
             r.room_id
             for r in context.rooms.values()
-            if (needs_lab and r.room_features == "lab")
-            or (not needs_lab and r.room_features != "lab")
+            if _room_type_compatible(
+                required_type, getattr(r, "room_features", "lecture").lower().strip()
+            )
         ]
 
         if compatible_rooms:
@@ -537,6 +541,32 @@ def repair_room_type_mismatches_selective(
             fixes += 1
 
     return fixes
+
+
+def _room_type_compatible(required: str, room_type: str) -> bool:
+    """Check if room type satisfies requirement with flexible compatibility."""
+    # Exact match
+    if required == room_type:
+        return True
+
+    # Lecture/theory courses: Accept lecture, classroom, auditorium
+    if required in ["lecture", "classroom", "theory"] and room_type in [
+        "lecture",
+        "classroom",
+        "auditorium",
+        "seminar",
+        "tutorial",
+    ]:
+        return True
+
+    # Practical/lab courses: Accept practical, lab variants
+    return required in ["practical", "lab", "laboratory"] and room_type in [
+        "practical",
+        "lab",
+        "laboratory",
+        "computer_lab",
+        "science_lab",
+    ]
 
 
 def repair_session_clustering_selective(

@@ -148,9 +148,8 @@ def find_suitable_rooms_for_course(
     if not course:
         return list(context.rooms.keys())
 
-    # Get course requirements
-    required_features = getattr(course, "required_room_features", [])
-    room_type_needed = getattr(course, "room_type", "")
+    # Get course requirements (always a string like "lecture" or "practical")
+    required_room_features = getattr(course, "required_room_features", "lecture")
 
     # Get group size for capacity matching
     group_size = getattr(group, "student_count", 30) if group else 30
@@ -158,52 +157,57 @@ def find_suitable_rooms_for_course(
     suitable_room_ids = []
 
     for room_id, room in context.rooms.items():
-        room_features = getattr(room, "room_features", [])
+        # room.room_features is a string like "lecture" or "practical"
+        room_features = getattr(room, "room_features", "lecture")
         room_capacity = getattr(room, "capacity", 50)
-        room_type = getattr(room, "type", "Classroom")
 
         # Check capacity requirement first
         if room_capacity < group_size:
             continue
 
-        # Check feature requirements
-        if required_features:
-            # Normalize to list
-            req_list = (
-                required_features
-                if isinstance(required_features, list)
-                else [required_features]
-            )
-            room_list = (
-                room_features if isinstance(room_features, list) else [room_features]
-            )
-
-            # Check if ALL required features match ANY room feature (substring matching)
-            # This handles cases where course needs "computer" and room has "computer graphics"
-            all_matched = True
-            for req in req_list:
-                req_lower = req.lower().strip()
-                if not req_lower:  # Skip empty requirements
-                    continue
-                # Check if this requirement matches any room feature
-                matched = any(req_lower in room_feat.lower() for room_feat in room_list)
-                if not matched:
-                    all_matched = False
-                    break
-
-            if (
-                all_matched and req_list
-            ):  # Only add if there were requirements and all matched
-                suitable_room_ids.append(room_id)
-        elif room_type_needed:
-            # Check room type requirement
-            if room_type_needed.lower() in room_type.lower():
-                suitable_room_ids.append(room_id)
-        else:
-            # No specific requirements, any room with adequate capacity
+        # Check room type compatibility using the same logic as constraints
+        if _room_type_matches(
+            required_room_features.lower().strip(), room_features.lower().strip()
+        ):
             suitable_room_ids.append(room_id)
 
     return suitable_room_ids if suitable_room_ids else list(context.rooms.keys())
+
+
+def _room_type_matches(required: str, room_type: str) -> bool:
+    """
+    Check if room type satisfies requirement with flexible compatibility.
+    Uses same logic as constraints.hard._room_type_matches for consistency.
+
+    Args:
+        required: Required room type (e.g., "lecture", "practical")
+        room_type: Actual room type (e.g., "lecture", "practical")
+
+    Returns:
+        True if compatible, False otherwise
+    """
+    # Exact match
+    if required == room_type:
+        return True
+
+    # Lecture/theory courses: Accept lecture, classroom, auditorium
+    if required in ["lecture", "classroom", "theory"] and room_type in [
+        "lecture",
+        "classroom",
+        "auditorium",
+        "seminar",
+        "tutorial",
+    ]:
+        return True
+
+    # Practical/lab courses: Accept practical, lab variants
+    return required in ["practical", "lab", "laboratory"] and room_type in [
+        "practical",
+        "lab",
+        "laboratory",
+        "computer_lab",
+        "science_lab",
+    ]
 
 
 def mutate_individual(individual, context, mut_prob=0.2, guided=True):
@@ -222,8 +226,13 @@ def mutate_individual(individual, context, mut_prob=0.2, guided=True):
     Returns:
         Tuple containing modified individual (DEAP compatibility)
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     if guided:
         # PHASE 2: Constraint-guided mutation (smarter, targets violations)
+        logger.debug(" Using constraint-guided mutation (targets violations)")
         from src.ga.operators.constraint_guided_mutation import (
             constraint_guided_mutation,
         )
@@ -232,6 +241,7 @@ def mutate_individual(individual, context, mut_prob=0.2, guided=True):
         return (modified_individual,)
     else:
         # Traditional random mutation (original behavior)
+        logger.debug(" Using random mutation (pure NSGA-II)")
         for i in range(len(individual)):
             if random.random() < mut_prob:
                 individual[i] = mutate_gene(individual[i], context)

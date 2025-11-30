@@ -38,6 +38,9 @@ class MemeticTestConfig(TestConfig):
     repair_elite_percentage: float = 0.20
     repair_max_iterations: int = 100
 
+    # === MUTATION: Enable constraint-guided ===
+    use_constraint_guided_mutation: bool = True
+
     # === KILLSWITCHES: Disable other enhancements ===
     heuristics_master_enabled: bool = False
     heuristics_adaptive_priority_enabled: bool = False
@@ -45,7 +48,7 @@ class MemeticTestConfig(TestConfig):
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
-    # === POPULATION STRATEGY ===
+    # === POPULATION STRATEGY: Hybrid initialization ===
     population_strategy: str = "hybrid"
     greedy_percentage: float = 0.25
     smart_percentage: float = 0.50
@@ -75,6 +78,9 @@ class MemeticProdConfig(ProdConfig):
     repair_elite_percentage: float = 0.20
     repair_max_iterations: int = 100
 
+    # === MUTATION: Enable constraint-guided ===
+    use_constraint_guided_mutation: bool = True
+
     # === KILLSWITCHES: Disable other enhancements ===
     heuristics_master_enabled: bool = False
     heuristics_adaptive_priority_enabled: bool = False
@@ -82,7 +88,7 @@ class MemeticProdConfig(ProdConfig):
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
-    # === POPULATION STRATEGY ===
+    # === POPULATION STRATEGY: Hybrid initialization ===
     population_strategy: str = "hybrid"
     greedy_percentage: float = 0.25
     smart_percentage: float = 0.50

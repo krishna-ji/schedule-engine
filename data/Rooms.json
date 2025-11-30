@@ -26,7 +26,7 @@
         "type": "Practical",
         "features": [
             "Digital Architecture Lab",
-            "Drawing Hall"
+            "General Programming Lab"
         ]
     },
     {
@@ -192,7 +192,7 @@
         "room_id": "B202",
         "name": "Lecture Room [B-202]",
         "capacity": 48,
-        "type": "Practical",
+        "type": "Lecture",
         "features": [
             "Language and Communication Lab"
         ]
@@ -219,7 +219,7 @@
         "room_id": "B207",
         "name": "Lecture Room [B-207]",
         "capacity": 48,
-        "type": "Practical",
+        "type": "Lecture",
         "features": [
             "Design Studio",
             "Seminar Room"
@@ -229,16 +229,16 @@
         "room_id": "B304",
         "name": "Lecture Room [B-304]",
         "capacity": 48,
-        "type": "Practical",
+        "type": "Lecture",
         "features": [
-            "General Programming Lab"
+            "Lecture Hall"
         ]
     },
     {
         "room_id": "B308",
         "name": "Lecture Room [B-308]",
         "capacity": 48,
-        "type": "Practical",
+        "type": "Lecture",
         "features": [
             "Metrology Lab",
             "Production Workshop"
@@ -257,7 +257,7 @@
         "room_id": "B310",
         "name": "Lecture Room [B-310]",
         "capacity": 48,
-        "type": "Practical",
+        "type": "Lecture",
         "features": [
             "Production Workshop",
             "Seminar Room"
@@ -455,7 +455,7 @@
     {
         "room_id": "F207",
         "name": "Classroom F-207",
-        "type": "Practical",
+        "type": "Lecture",
         "capacity": 24,
         "features": [
             "Construction Yard",
@@ -465,7 +465,7 @@
     {
         "room_id": "F207x",
         "name": "Classroom F-207",
-        "type": "Practical",
+        "type": "Lecture",
         "capacity": 24,
         "features": [
             "Architectural Conservation Lab",
