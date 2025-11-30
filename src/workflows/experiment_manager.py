@@ -57,10 +57,36 @@ class ExperimentRun:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ExperimentRun":
-        """Load from dictionary."""
+        """Load from dictionary with backward compatibility for legacy fields."""
         data = data.copy()
+
+        # Handle legacy field names
+        if "config_path" in data:
+            data["config_reference"] = data.pop("config_path")
+
+        # Set defaults for new fields
         data.setdefault("config_reference", "legacy")
         data.setdefault("experiment_name", None)
+
+        # Remove any unknown fields
+        valid_fields = {
+            "run_id",
+            "runtime_mode",
+            "config_reference",
+            "output_path",
+            "seed",
+            "timestamp",
+            "experiment_name",
+            "duration_seconds",
+            "generations",
+            "population_size",
+            "best_hard_violations",
+            "best_soft_penalty",
+            "final_hypervolume",
+            "notes",
+        }
+        data = {k: v for k, v in data.items() if k in valid_fields}
+
         return cls(**data)
 
     @property
@@ -157,53 +183,27 @@ class ExperimentManager:
             timestamp = datetime.now()
 
         # Parse mode value
-        mode_value = runtime_mode.value  # e.g., "1-pure-nsga" or "a-pure-nsga"
-        mode_prefix = mode_value.split("-")[0]  # "1" or "a"
+        mode_value = runtime_mode  # e.g., "a", "b", "c", "d", "e"
+        mode_prefix = mode_value  # Single letter experiment ID
 
-        # Build clean folder name with mode prefix
-        # Progressive modes (a-e): Use simple descriptive names
-        # Numbered modes (1-10): Use original structure with categories
-        if mode_prefix in ["a", "b", "c", "d", "e"]:
-            # Progressive thesis experiments - flat structure with mode prefix
-            folder_map = {
-                "a": "a-baseline-nsga-only",
-                "b": "b-nsga-memetic",
-                "c": "c-roundrobin",
-                "d": "d-adaptive",
-                "e": "e-rl-guided",
-            }
-            mode_folder = folder_map.get(mode_prefix, mode_value)
+        # Build clean folder name for experiment
+        # Experiment IDs: a, b, c, d, e
+        folder_map = {
+            "a": "a-baseline-nsga-only",
+            "b": "b-nsga-memetic",
+            "c": "c-roundrobin",
+            "d": "d-adaptive",
+            "e": "e-rl-guided",
+        }
+        mode_folder = folder_map.get(mode_value, f"experiment-{mode_value}")
 
-            # Build directory path (flat structure)
-            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
-            dir_name = f"evaluation_{timestamp_str}"
-            if experiment_name:
-                dir_name = f"{dir_name}_{experiment_name}"
+        # Build directory path (flat structure)
+        timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+        dir_name = f"evaluation_{timestamp_str}"
+        if experiment_name:
+            dir_name = f"{dir_name}_{experiment_name}"
 
-            output_path = self.base_dir / mode_folder / dir_name
-        else:
-            # Numbered modes (1-10): Keep category-based structure
-            mode_number, mode_name = mode_value.split("-", 1)
-            category_map = {
-                "1": "baseline",
-                "2": "nsga",
-                "3": "nsga",
-                "4": "nsga",
-                "5": "rl",
-                "6": "hybrid",
-                "7": "rl",
-                "8": "hybrid",
-                "9": "rl",
-                "10": "rl",
-            }
-            category = category_map.get(mode_number, "other")
-
-            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
-            dir_name = f"evaluation_{timestamp_str}"
-            if experiment_name:
-                dir_name = f"{dir_name}_{experiment_name}"
-
-            output_path = self.base_dir / category / mode_name / dir_name
+        output_path = self.base_dir / mode_folder / dir_name
 
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -237,7 +237,7 @@ class ExperimentManager:
 
         run = ExperimentRun(
             run_id=run_id,
-            runtime_mode=runtime_mode.value,
+            runtime_mode=runtime_mode,
             experiment_name=experiment_name,
             config_reference=config_reference,
             output_path=str(output_path),
@@ -301,7 +301,7 @@ class ExperimentManager:
         Returns:
             List of ExperimentRun objects
         """
-        runs = [r for r in self.runs if r.runtime_mode == runtime_mode.value]
+        runs = [r for r in self.runs if r.runtime_mode == runtime_mode]
         if complete_only:
             runs = [r for r in runs if r.is_complete]
         return runs
@@ -359,7 +359,7 @@ class ExperimentManager:
         Returns:
             Latest ExperimentRun or None
         """
-        runs = self.get_runs_by_mode(runtime_mode) if runtime_mode else self.runs
+        runs = self.get_runs_for_mode(runtime_mode) if runtime_mode else self.runs
         if not runs:
             return None
         return max(runs, key=lambda r: r.timestamp)
@@ -387,7 +387,7 @@ class ExperimentManager:
         table.add_column("Latest", style="dim")
 
         for mode in modes:
-            runs = self.get_runs_by_mode(mode)
+            runs = self.get_runs_for_mode(mode)
             display_name = EXPERIMENTS.get(mode, mode)
             if not runs:
                 table.add_row(display_name, "0", "-", "-", "-", "-")
@@ -420,7 +420,7 @@ class ExperimentManager:
             latest = recent[0].timestamp.split("T")[0] if recent else "-"
 
             table.add_row(
-                mode.display_name,
+                display_name,
                 str(len(runs)),
                 best_hard,
                 best_soft,
@@ -452,7 +452,7 @@ class ExperimentManager:
         # Per-experiment statistics
         mode_stats = {}
         for exp_id in EXPERIMENTS:
-            mode_runs = self.get_runs_by_mode(exp_id)
+            mode_runs = self.get_runs_for_mode(exp_id)
             if mode_runs:
                 mode_complete = [r for r in mode_runs if r.is_complete]
                 mode_stats[exp_id] = {
@@ -510,7 +510,7 @@ class ExperimentManager:
             )
 
             for mode in modes:
-                runs = self.get_runs_by_mode(mode)
+                runs = self.get_runs_for_mode(mode)
                 for run in runs:
                     writer.writerow(
                         [
@@ -541,7 +541,7 @@ class ExperimentManager:
 
         for mode in modes:
             runs = sorted(
-                self.get_runs_by_mode(mode), key=lambda r: r.timestamp, reverse=True
+                self.get_runs_for_mode(mode), key=lambda r: r.timestamp, reverse=True
             )
 
             if len(runs) <= keep_last_n:
@@ -552,8 +552,9 @@ class ExperimentManager:
                 output_path = Path(run.output_path)
                 if output_path.exists():
                     shutil.rmtree(output_path)
+                    mode_name = EXPERIMENTS.get(mode, mode)
                     console.print(
-                        f"[dim]Deleted old run: {run.run_id} ({mode.display_name})[/dim]"
+                        f"[dim]Deleted old run: {run.run_id} ({mode_name})[/dim]"
                     )
 
             # Remove from manifest

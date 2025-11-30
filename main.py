@@ -157,6 +157,11 @@ def main() -> int:
 
     config = load_config(blueprint, profile)
 
+    # Initialize global config for modules that use get_config()
+    from src.config import init_config
+
+    init_config(config_obj=config)
+
     # Experiment manager
     manager = ExperimentManager()
 
@@ -167,35 +172,41 @@ def main() -> int:
         exp_name = f"experiment_{experiment_key}_{profile.value}"
 
     # Create output directory
-    output_dir = manager.create_output_dir_simple(exp_name)
+    output_dir = manager.create_output_dir(
+        runtime_mode=experiment_key,
+        experiment_name=exp_name,
+    )
     console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
     console.print()
 
     # Register experiment
     experiment_run = manager.register_run(
-        experiment_id=experiment_key,
+        runtime_mode=experiment_key,
         config_reference=f"{blueprint.name}:{profile.value}",
         output_path=output_dir,
-        profile=profile.value,
+        experiment_name=exp_name,
     )
 
     # Run workflow
     try:
         result = run_standard_workflow(
+            pop_size=config.ga.pop_size,
+            generations=config.ga.ngen,
             config=config,
-            output_dir=output_dir,
+            output_dir=str(output_dir),
         )
 
-        if result.best_individual is None:
+        if result["best_individual"] is None:
             console.print("[yellow]Warning:[/yellow] No valid solution found")
-            manager.mark_failed(experiment_run.run_id, "No valid solution found")
             return 1
 
-        # Mark as complete
-        manager.mark_complete(
-            experiment_run.run_id,
-            best_fitness=float(result.best_individual.fitness.values[0]),
-            generation_completed=result.generation,
+        # Update run with results
+        manager.update_run_results(
+            run=experiment_run,
+            best_hard_violations=float(result["best_individual"].fitness.values[0]),
+            best_soft_penalty=float(result["best_individual"].fitness.values[1]),
+            generations=config.ga.ngen,
+            population_size=config.ga.pop_size,
         )
 
         console.print()
@@ -205,11 +216,9 @@ def main() -> int:
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
-        manager.mark_failed(experiment_run.run_id, "Interrupted by user")
         return 130
     except Exception as e:
         console.print(f"\n[red]Error:[/red] {e}")
-        manager.mark_failed(experiment_run.run_id, str(e))
         raise
 
 
