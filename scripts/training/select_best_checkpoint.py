@@ -10,9 +10,9 @@ Usage:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
-import json
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -152,7 +152,7 @@ def main():
             logger.info(f"By stage: {stats['by_stage']}")
 
         # Find best checkpoint
-        logger.info(f"\nSearching for best checkpoint...")
+        logger.info("\nSearching for best checkpoint...")
 
         best = manager.get_best_checkpoint(
             metric_name=args.metric,
@@ -180,7 +180,7 @@ def main():
                 notes=f"Selected as best by {args.metric}={best.validation_metrics[args.metric]:.4f}",
             )
 
-            logger.info(f"✓ Promoted checkpoint to 'validated' status")
+            logger.info("✓ Promoted checkpoint to 'validated' status")
 
         # Save to output file
         if args.output:

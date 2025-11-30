@@ -4,29 +4,19 @@ from __future__ import annotations
 
 from typing import Final
 
-from src.config.loader import load_config
 from src.config.models import Config
-from src.config.presets.base import ConfigBlueprint
-from src.config.presets.profiles import Profile
 
 # Global config object (set during CLI bootstrap)
 _config: Config | None = None
 
 
 def init_config(
-    profile: Profile | str | None = None,
-    config_obj: Config | None = None,
-    blueprint: ConfigBlueprint | None = None,
+    config_obj: Config,
 ) -> Config:
     """Initialize the global config once and return it."""
 
     global _config
-    if config_obj is not None:
-        _config = config_obj
-    else:
-        if blueprint is None:
-            raise ValueError("Either config_obj or blueprint must be provided")
-        _config = load_config(blueprint=blueprint, profile=profile)
+    _config = config_obj
     return _config
 
 

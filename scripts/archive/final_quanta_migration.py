@@ -32,7 +32,7 @@ def main():
 
         print(f"\n Processing {file_path_str}...")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         original_content = content

@@ -22,7 +22,7 @@ notes:
 ### Phase 1: Architecture & Implementation (4-5 hours)
 **Agent**: `ch4-5-synthesizer.md`
 **Input**: Full codebase (`src/**`), config files (`configs/**`)
-**Output**: 
+**Output**:
 - `chapter_4_system_architecture_methodology.md`
 - `chapter_5_implementation_details.md`
 **Process**:
@@ -43,7 +43,7 @@ notes:
 
 ### Phase 3: Results & Future Work (5-7 hours)
 **Agent**: `ch6-7-synthesizer.md`
-**Input**: 
+**Input**:
 - `result_analysis_report.md` (from Phase 2)
 - Chapters 4-5 (from Phase 1)
 - `Todo.md`, inline TODO comments

@@ -24,20 +24,20 @@ def validate_input(context: SchedulingContext) -> Tuple[bool, List[str]]:
         (is_valid, warnings): True if passable, warnings list
     """
     warnings = []
-    
+
     # Check 1: References
     for group in context.groups.values():
         for course_code in group.enrolled_courses:
             if course_code not in context.courses:
                 warnings.append(f"Group {group.id} enrolled in missing course {course_code}")
-    
+
     # Check 2: Availability
     for instructor in context.instructors.values():
         if not instructor.available_quanta:
             warnings.append(f"Instructor {instructor.id} has no availability")
-    
+
     # More checks...
-    
+
     is_valid = len(warnings) == 0
     return is_valid, warnings
 ```
@@ -151,7 +151,7 @@ def check_lab_equipment(context: SchedulingContext, config) -> Tuple[bool, str, 
     lab_courses = [c for c in context.courses.values() if c.type == "lab"]
     equipment_hours = sum(room.equipment_slots for room in context.rooms)
     required_hours = sum(c.total_hours for c in lab_courses)
-    
+
     if equipment_hours < required_hours:
         return False, "critical", {
             "required": required_hours,

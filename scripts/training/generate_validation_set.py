@@ -10,16 +10,16 @@ Usage:
 """
 
 import argparse
-import sys
-from pathlib import Path
 import json
 import random
+import sys
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.encoder import load_scheduling_data, SchedulingContext
+from src.encoder import SchedulingContext, load_scheduling_data
 from src.rl.training.curriculum import create_default_curriculum
 from src.utils.logging_config import get_logger
 

@@ -194,7 +194,6 @@ class RLTrainer:
 
         # Create agent based on type
         if self.agent_type == "ppo":
-
             self.agent = create_ppo_agent(
                 env=self.env,
                 tensorboard_log=self.tensorboard_log,
@@ -202,7 +201,6 @@ class RLTrainer:
                 **agent_kwargs,
             )
         elif self.agent_type == "dqn":
-
             self.agent = create_dqn_agent(
                 env=self.env,
                 tensorboard_log=self.tensorboard_log,

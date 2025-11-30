@@ -97,9 +97,9 @@ def run_standard_workflow(
 
         config = get_config()
         if config is None:
-            from src.config.loader import load_config
-
-            config = load_config()
+            raise ValueError(
+                "Config not initialized. Call init_config() first or pass config parameter."
+            )
 
     # ═══════════════════════════════════════════════════════════════
     # INITIALIZATION
@@ -255,10 +255,12 @@ def run_standard_workflow(
 
         # Create pool with worker initialization
         # Workers load data from JSON files (no pickling of complex objects!)
+        # Also pass serialized config for constraint evaluation
+        config_dict = config.model_dump()
         pool = multiprocessing.Pool(
             processes=num_workers,
             initializer=init_worker,
-            initargs=(data_dir, seed),
+            initargs=(data_dir, seed, config_dict),
         )
         console.print(f"[cyan][!info] parallel mode:[/cyan] {pool._processes} workers")  # type: ignore[attr-defined]
         console.print()

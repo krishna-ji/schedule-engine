@@ -12,7 +12,9 @@ from typing import Any
 _WORKER_CONTEXT: dict[str, Any] | None = None
 
 
-def init_worker(data_dir: str, seed: int) -> None:
+def init_worker(
+    data_dir: str, seed: int, config_dict: dict[str, Any] | None = None
+) -> None:
     """
     Initialize worker process by loading data from JSON files.
 
@@ -22,6 +24,7 @@ def init_worker(data_dir: str, seed: int) -> None:
     Args:
         data_dir: Directory containing input JSON files
         seed: Random seed for reproducibility
+        config_dict: Serialized config dict to reinitialize in worker
     """
     global _WORKER_CONTEXT
 
@@ -35,6 +38,8 @@ def init_worker(data_dir: str, seed: int) -> None:
     try:
         from deap import base, creator
 
+        from src.config import init_config
+        from src.config.models import Config
         from src.core.types import SchedulingContext
         from src.encoder.input_encoder import (
             link_courses_and_groups,
@@ -45,6 +50,11 @@ def init_worker(data_dir: str, seed: int) -> None:
             load_rooms,
         )
         from src.encoder.quantum_time_system import QuantumTimeSystem
+
+        # Initialize config in worker process (required for constraint evaluation)
+        if config_dict is not None:
+            config_obj = Config.model_validate(config_dict)
+            init_config(config_obj=config_obj)
 
         # Set up DEAP creator types (required for Windows spawn)
         if not hasattr(creator, "FitnessMulti"):

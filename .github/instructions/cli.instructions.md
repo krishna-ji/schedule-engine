@@ -184,7 +184,7 @@ def main_new_command():
     parser = create_parser()
     parser.add_argument('--custom-flag', help='Custom flag')
     args = parser.parse_args()
-    
+
     profile = args.profile or 'test'
     # Implementation here
 ```
@@ -294,10 +294,10 @@ def main_nsga():
     parser = create_parser()
     args = parser.parse_args()
     profile = args.profile or 'test'
-    
+
     # Map profile to environment
     env_name = PROFILE_MAP[profile]['env']
-    
+
     # Route to main.py
     from main import main
     sys.argv = ['main.py', '--env', env_name]

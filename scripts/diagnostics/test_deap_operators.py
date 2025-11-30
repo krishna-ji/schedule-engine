@@ -5,12 +5,14 @@ Tests that crossover and mutation operators properly return and unpack tuples
 to prevent GPU evaluation failures caused by tuple corruption.
 """
 
+import random
+
 from deap import base, creator, tools
-from src.ga.sessiongene import SessionGene
+
+from src.core.types import SchedulingContext
 from src.ga.operators.crossover import crossover_course_group_aware
 from src.ga.operators.mutation import mutate_individual
-from src.core.types import SchedulingContext
-import random
+from src.ga.sessiongene import SessionGene
 
 # Setup DEAP types
 if not hasattr(creator, "FitnessMulti"):
@@ -41,8 +43,8 @@ def create_mock_individual():
 def create_mock_context():
     """Create minimal SchedulingContext for testing."""
     from src.entities.course import Course
-    from src.entities.instructor import Instructor
     from src.entities.group import Group
+    from src.entities.instructor import Instructor
     from src.entities.room import Room
 
     context = SchedulingContext(
@@ -92,27 +94,35 @@ def test_crossover_operator():
     ind1 = create_mock_individual()
     ind2 = create_mock_individual()
 
-    print(f"Before crossover:")
+    print("Before crossover:")
     print(f"  ind1 type: {type(ind1)}, len: {len(ind1)}")
-    print(f"  ind1[0] type: {type(ind1[0])}, has course_id: {hasattr(ind1[0], 'course_id')}")
+    print(
+        f"  ind1[0] type: {type(ind1[0])}, has course_id: {hasattr(ind1[0], 'course_id')}"
+    )
     print(f"  ind2 type: {type(ind2)}, len: {len(ind2)}")
-    print(f"  ind2[0] type: {type(ind2[0])}, has course_id: {hasattr(ind2[0], 'course_id')}")
+    print(
+        f"  ind2[0] type: {type(ind2[0])}, has course_id: {hasattr(ind2[0], 'course_id')}"
+    )
 
     # Call crossover
     result = toolbox.mate(ind1, ind2)
 
-    print(f"\nAfter crossover (result):")
+    print("\nAfter crossover (result):")
     print(f"  result type: {type(result)}")
     print(f"  result length: {len(result)}")
 
     # Unpack tuple (correct DEAP pattern)
     child1, child2 = result
 
-    print(f"\nAfter unpacking:")
+    print("\nAfter unpacking:")
     print(f"  child1 type: {type(child1)}, len: {len(child1)}")
-    print(f"  child1[0] type: {type(child1[0])}, has course_id: {hasattr(child1[0], 'course_id')}")
+    print(
+        f"  child1[0] type: {type(child1[0])}, has course_id: {hasattr(child1[0], 'course_id')}"
+    )
     print(f"  child2 type: {type(child2)}, len: {len(child2)}")
-    print(f"  child2[0] type: {type(child2[0])}, has course_id: {hasattr(child2[0], 'course_id')}")
+    print(
+        f"  child2[0] type: {type(child2[0])}, has course_id: {hasattr(child2[0], 'course_id')}"
+    )
 
     # Verify genes are SessionGene objects
     assert isinstance(
@@ -134,28 +144,34 @@ def test_mutation_operator():
 
     toolbox = base.Toolbox()
     context = create_mock_context()
-    toolbox.register("mutate", mutate_individual, context=context, mut_prob=1.0, guided=False)
+    toolbox.register(
+        "mutate", mutate_individual, context=context, mut_prob=1.0, guided=False
+    )
 
     # Create individual
     ind = create_mock_individual()
 
-    print(f"Before mutation:")
+    print("Before mutation:")
     print(f"  ind type: {type(ind)}, len: {len(ind)}")
-    print(f"  ind[0] type: {type(ind[0])}, has course_id: {hasattr(ind[0], 'course_id')}")
+    print(
+        f"  ind[0] type: {type(ind[0])}, has course_id: {hasattr(ind[0], 'course_id')}"
+    )
 
     # Call mutation
     result = toolbox.mutate(ind)
 
-    print(f"\nAfter mutation (result):")
+    print("\nAfter mutation (result):")
     print(f"  result type: {type(result)}")
     print(f"  result length: {len(result)}")
 
     # Unpack tuple (correct DEAP pattern)
     mutant = result[0]
 
-    print(f"\nAfter unpacking:")
+    print("\nAfter unpacking:")
     print(f"  mutant type: {type(mutant)}, len: {len(mutant)}")
-    print(f"  mutant[0] type: {type(mutant[0])}, has course_id: {hasattr(mutant[0], 'course_id')}")
+    print(
+        f"  mutant[0] type: {type(mutant[0])}, has course_id: {hasattr(mutant[0], 'course_id')}"
+    )
 
     # Verify genes are SessionGene objects
     assert isinstance(
@@ -178,7 +194,9 @@ def test_operator_chain():
     toolbox.register("clone", lambda x: creator.Individual(list(x)))
 
     context = create_mock_context()
-    toolbox.register("mutate", mutate_individual, context=context, mut_prob=1.0, guided=False)
+    toolbox.register(
+        "mutate", mutate_individual, context=context, mut_prob=1.0, guided=False
+    )
 
     # Create population
     population = [create_mock_individual() for _ in range(10)]
@@ -204,7 +222,7 @@ def test_operator_chain():
             del offspring[i].fitness.values
             del offspring[i + 1].fitness.values
 
-    print(f"\nAfter crossover:")
+    print("\nAfter crossover:")
     print(f"  offspring[0] type: {type(offspring[0])}")
     print(f"  offspring[0][0] type: {type(offspring[0][0])}")
 
@@ -216,7 +234,7 @@ def test_operator_chain():
             offspring[i] = result[0]  # CRITICAL: Unpack tuple
             del offspring[i].fitness.values
 
-    print(f"\nAfter mutation:")
+    print("\nAfter mutation:")
     print(f"  offspring[0] type: {type(offspring[0])}")
     print(f"  offspring[0][0] type: {type(offspring[0][0])}")
 

@@ -7,10 +7,9 @@ Cross-platform Python replacement for commit_squash.ps1
 
 import subprocess
 import sys
-from typing import Optional
 
 
-def run_git_command(cmd: list[str], check: bool = True) -> Optional[str]:
+def run_git_command(cmd: list[str], check: bool = True) -> str | None:
     """Run git command and return output."""
     try:
         result = subprocess.run(
@@ -28,7 +27,7 @@ def get_current_branch() -> str:
     return branch if branch else "unknown"
 
 
-def get_commits(n: int) -> Optional[str]:
+def get_commits(n: int) -> str | None:
     """Get last N commits."""
     return run_git_command(["log", "--oneline", f"-{n}"])
 

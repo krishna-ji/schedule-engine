@@ -57,11 +57,11 @@ def test_course_initialization(sample_course):
 
 #### 2. Use descriptive test names
 ```python
-# Good 
+# Good
 def test_fitness_evaluation_with_no_violations_returns_zero():
     ...
 
-# Bad 
+# Bad
 def test_fitness():
     ...
 ```
@@ -72,10 +72,10 @@ def test_constraint_evaluation():
     # Arrange - Setup test data
     courses = [sample_course1, sample_course2]
     schedule = create_test_schedule(courses)
-    
+
     # Act - Execute function being tested
     violations = evaluate_constraints(schedule)
-    
+
     # Assert - Verify expected outcome
     assert violations == 0
 ```
@@ -155,10 +155,10 @@ def test_complete_scheduling_workflow(tmp_path):
     # tmp_path is pytest fixture for temporary directory
     config_path = tmp_path / "config.yaml"
     output_dir = tmp_path / "output"
-    
+
     # Run workflow
     result = run_scheduling_workflow(config_path, output_dir)
-    
+
     # Verify outputs
     assert (output_dir / "schedule.json").exists()
     assert (output_dir / "calendar.pdf").exists()

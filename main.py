@@ -9,10 +9,20 @@ from __future__ import annotations
 import argparse
 import sys
 
-# Import all experiments
-from configs import experiment_a, experiment_b, experiment_c, experiment_d, experiment_e
-from src.config.loader import load_config
-from src.config.presets.profiles import Profile
+# Import all experiments and their metadata
+from configs import (
+    experiment_a,
+    experiment_a_baseline,
+    experiment_b,
+    experiment_b_memetic,
+    experiment_c,
+    experiment_c_roundrobin,
+    experiment_d,
+    experiment_d_adaptive,
+    experiment_e,
+    experiment_e_rl_guided,
+)
+from configs.profiles import Profile
 from src.utils.console_service import get_console
 from src.utils.experiment import sanitize_experiment_name
 from src.utils.structured_logger import setup_logging
@@ -21,18 +31,30 @@ from src.workflows.experiment_manager import ExperimentManager
 
 console = get_console()
 
-# Experiment registry
+# Experiment registry: (name, config_instance, module_with_metadata)
 EXPERIMENTS = {
-    "a": ("Experiment A: Pure NSGA-II", experiment_a),
-    "b": ("Experiment B: Memetic NSGA-II", experiment_b),
-    "c": ("Experiment C: Round-Robin Heuristics", experiment_c),
-    "d": ("Experiment D: Adaptive Selection", experiment_d),
-    "e": ("Experiment E: RL-Guided", experiment_e),
-    "baseline": ("Experiment A: Pure NSGA-II", experiment_a),
-    "memetic": ("Experiment B: Memetic NSGA-II", experiment_b),
-    "roundrobin": ("Experiment C: Round-Robin Heuristics", experiment_c),
-    "adaptive": ("Experiment D: Adaptive Selection", experiment_d),
-    "rl": ("Experiment E: RL-Guided", experiment_e),
+    "a": ("Experiment A: Pure NSGA-II", experiment_a, experiment_a_baseline),
+    "b": ("Experiment B: Memetic NSGA-II", experiment_b, experiment_b_memetic),
+    "c": (
+        "Experiment C: Round-Robin Heuristics",
+        experiment_c,
+        experiment_c_roundrobin,
+    ),
+    "d": ("Experiment D: Adaptive Selection", experiment_d, experiment_d_adaptive),
+    "e": ("Experiment E: RL-Guided", experiment_e, experiment_e_rl_guided),
+    "baseline": ("Experiment A: Pure NSGA-II", experiment_a, experiment_a_baseline),
+    "memetic": ("Experiment B: Memetic NSGA-II", experiment_b, experiment_b_memetic),
+    "roundrobin": (
+        "Experiment C: Round-Robin Heuristics",
+        experiment_c,
+        experiment_c_roundrobin,
+    ),
+    "adaptive": (
+        "Experiment D: Adaptive Selection",
+        experiment_d,
+        experiment_d_adaptive,
+    ),
+    "rl": ("Experiment E: RL-Guided", experiment_e, experiment_e_rl_guided),
 }
 
 
@@ -45,10 +67,10 @@ def list_experiments() -> str:
         if key in seen:
             continue
         seen.add(key)
-        name, blueprint = EXPERIMENTS[key]
+        name, _config, module = EXPERIMENTS[key]
         lines.append(f"  {key}")
         lines.append(f"    {name}")
-        lines.append(f"    {blueprint.description}")
+        lines.append(f"    {module.EXPERIMENT_DESCRIPTION}")
         lines.append("")
 
     return "\n".join(lines)
@@ -143,19 +165,20 @@ def main() -> int:
         console.print("Use --list for details")
         return 1
 
-    experiment_name, blueprint = EXPERIMENTS[experiment_key]
+    experiment_name, dataclass_config, module = EXPERIMENTS[experiment_key]
 
     # Determine profile
     profile_str = args.profile or "test"
     profile = Profile(profile_str)
 
-    # Build config
+    # Build config using dataclass get_config() helper
     console.print(f"[cyan]Experiment:[/cyan] {experiment_name}")
-    console.print(f"[cyan]Profile:[/cyan] {profile.value.upper()}")
-    console.print(f"[cyan]Blueprint:[/cyan] {blueprint.name}")
+    console.print(f"[cyan]Profile:[/cyan] {profile_str.upper()}")
+    console.print(f"[cyan]Config:[/cyan] {module.EXPERIMENT_NAME}")
     console.print()
 
-    config = load_config(blueprint, profile)
+    # Get Pydantic config from experiment module
+    config = module.get_config(profile, name=args.name)
 
     # Initialize global config for modules that use get_config()
     from src.config import init_config
@@ -182,7 +205,7 @@ def main() -> int:
     # Register experiment
     experiment_run = manager.register_run(
         runtime_mode=experiment_key,
-        config_reference=f"{blueprint.name}:{profile.value}",
+        config_reference=f"{module.EXPERIMENT_NAME}:{profile_str}",
         output_path=output_dir,
         experiment_name=exp_name,
     )

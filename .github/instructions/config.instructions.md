@@ -133,7 +133,7 @@ metrics:
 repair:
   enabled: true                  # Master killswitch
   memetic_mode: false            # Elite local search
-  
+
   stagnation_repair:
     enabled: true
     patience: 8                  # Gens without improvement
@@ -141,7 +141,7 @@ repair:
     max_iterations: 15
     timeout_seconds: 120
     cooldown: 5                  # Gens before re-trigger
-  
+
   selective_repair:
     enabled: true
     apply_probability: 0.4       # 40% chance per generation
@@ -159,14 +159,14 @@ heuristics:
     most_constrained_first:
       enabled: true
       priority: 2
-  
+
   perturbation:
     random_swap:
       enabled: true
       priority: 1
       swap_type: time            # Options: time, room, both
       num_swaps: 1
-  
+
   improvement:
     kempe_chain:
       enabled: true
@@ -180,11 +180,11 @@ rl:
   enabled: false                 # Master RL killswitch
   mode: disabled                 # disabled, guided, specialists, etc.
   model_path: models/rl_agents/best_model.zip
-  
+
   state_encoder:
     constraint_specific: true    # Detailed constraint state
     history_window: 10           # Gens to track
-  
+
   reward:
     fitness_weight: 1.0
     diversity_weight: 0.3

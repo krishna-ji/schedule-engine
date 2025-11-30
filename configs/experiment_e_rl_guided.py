@@ -5,48 +5,45 @@ Full NSGA-II stack with RL controlling heuristic selection.
 Tests effectiveness of reinforcement learning guidance.
 """
 
-from src.config.presets.blueprints import RlGuidedBlueprint
-from src.config.presets.profiles import Profile
+from configs.experiments.rl_guided import (
+    EXPERIMENT_DESCRIPTION as _EXPERIMENT_DESCRIPTION,
+)
+from configs.experiments.rl_guided import EXPERIMENT_ID as _EXPERIMENT_ID
+from configs.experiments.rl_guided import EXPERIMENT_NAME as _EXPERIMENT_NAME
+from configs.experiments.rl_guided import KILLSWITCHES as _KILLSWITCHES
+from configs.experiments.rl_guided import RlGuidedProdConfig, RlGuidedTestConfig
+from configs.profiles import Profile
 
-# Instantiate blueprint
-experiment_e = RlGuidedBlueprint()
+# Use dataclass configs
+experiment_e_test = RlGuidedTestConfig()
+experiment_e_prod = RlGuidedProdConfig()
 
-# Experiment metadata
-EXPERIMENT_ID = "E"
-EXPERIMENT_NAME = "RL-Guided Hyper-Heuristic"
-EXPERIMENT_DESCRIPTION = "Full NSGA-II + RL-guided heuristic selection"
-
-# Killswitches (explicit documentation)
-KILLSWITCHES = {
-    "repair.enabled": True,
-    "repair.memetic_mode": True,
-    "ga.use_adaptive_probabilities": True,
-    "heuristics.adaptive_priority.enabled": False,  # RL takes over
-    "heuristics.construction.largest_degree_first.enabled": True,
-    "heuristics.perturbation.random_swap.enabled": True,
-    "heuristics.improvement.kempe_chain.enabled": True,
-    "heuristics.meta.variable_neighborhood_descent.enabled": True,
-    "lns.enabled": True,
-    "rl.enabled": True,  # KEY: RL enabled
-    "rl.mode": "rl_primary",
-    "rl.hybrid.rl_probability": 0.8,
-    "enhancements.master_enabled": True,
-    "enhancements.memetic_mode": True,
-    "enhancements.hypermutation.enabled": True,
-    "enhancements.population_restart.enabled": True,
-}
+# Experiment metadata (imported from dataclass module)
+EXPERIMENT_ID = _EXPERIMENT_ID
+EXPERIMENT_NAME = _EXPERIMENT_NAME
+EXPERIMENT_DESCRIPTION = _EXPERIMENT_DESCRIPTION
+KILLSWITCHES = _KILLSWITCHES
 
 
 # Quick usage
-def get_config(profile: Profile = Profile.TEST):
+def get_config(profile: Profile = Profile.TEST, **overrides):
     """Get config for Experiment E."""
-    return experiment_e.build(profile)
+    # Filter out None values
+    overrides = {k: v for k, v in overrides.items() if v is not None}
+
+    if profile == Profile.TEST:
+        config = RlGuidedTestConfig(**overrides)
+    else:
+        config = RlGuidedProdConfig(**overrides)
+    return config.to_pydantic()
 
 
 if __name__ == "__main__":
-    config = get_config(Profile.TEST)
+    test_cfg = experiment_e_test
     print(f"✓ {EXPERIMENT_NAME}")
-    print(f"  RL enabled: {config.rl.enabled}")
-    print(f"  RL mode: {config.rl.mode}")
+    print(f"  ngen={test_cfg.ngen}, pop={test_cfg.pop_size}")
+    print(f"  rl_enabled={test_cfg.rl_enabled}")
+    print(f"  rl_mode={test_cfg.rl_mode}")
+    print(f"  lns={test_cfg.lns_enabled}")
     print(f"  LNS enabled: {config.lns.enabled}")
     print(f"  Memetic mode: {config.enhancements.memetic_mode}")

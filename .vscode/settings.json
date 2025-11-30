@@ -2,8 +2,9 @@
     // ==================
     // EDITOR SETTINGS
     // ==================
-    // "editor.fontFamily":",
+    "editor.fontFamily": "Source Code Pro",
     "editor.formatOnSave": true,
+    // Global fallback (overridden by specific languages below)
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit",
@@ -30,6 +31,14 @@
         "editor.insertSpaces": true,
         "editor.tabSize": 2
     },
+    // NEW: Auto-fix Markdown issues (headers, spacing)
+    "[markdown]": {
+        "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.markdownlint": "explicit"
+        }
+    },
     // ==================
     // PYTHON CONFIGURATION
     // ==================
@@ -38,7 +47,8 @@
     "python.analysis.extraPaths": [
         "./src"
     ],
-    "python.analysis.typeCheckingMode": "standard",
+    // Disabled Pylance type checking to let Mypy be the authority
+    "python.analysis.typeCheckingMode": "off",
     // Black formatter settings
     "black-formatter.args": [
         "--line-length=88",
@@ -47,8 +57,13 @@
     // Ruff linter settings
     "ruff.enable": true,
     "ruff.lint.enable": true,
-    "ruff.organizeImports": true,
-    "ruff.fixAll": true,
+    // Mypy settings
+    "mypy-type-checker.reportingScope": "workspace",
+    "mypy-type-checker.args": [
+        "--ignore-missing-imports",
+        "--disallow-untyped-defs",
+        "--check-untyped-defs"
+    ],
     // ==================
     // FILE EXCLUSIONS
     // ==================
@@ -62,7 +77,9 @@
         "**/*.db": true,
         "**/*.sqlite3": true,
         ".pytest_cache/": true,
-        ".data": true
+        ".data": true,
+        ".mypy_cache/": true,
+        ".ruff_cache/": true
     },
     // ==================
     // TERMINAL SETTINGS

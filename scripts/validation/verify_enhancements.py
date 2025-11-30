@@ -72,10 +72,10 @@ def check_console_helpers():
 
     try:
         from src.utils.console_helpers import (
-            print_success,
-            print_warning,
             print_error,
             print_info,
+            print_success,
+            print_warning,
         )
 
         # These should not raise exceptions
@@ -96,7 +96,7 @@ def check_logging_config():
     print("\n Testing logging configuration...")
 
     try:
-        from src.utils.logging_config import setup_logging, get_logger
+        from src.utils.logging_config import get_logger, setup_logging
 
         logger = setup_logging(level="WARNING")
         module_logger = get_logger("test_module")
@@ -142,7 +142,7 @@ def check_package_metadata():
     print("\n Checking package metadata...")
 
     try:
-        from src import __version__, __author__, __license__
+        from src import __author__, __license__, __version__
 
         print(f"   Version: {__version__}")
         print(f"   Author: {__author__}")

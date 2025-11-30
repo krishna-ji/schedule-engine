@@ -10,21 +10,21 @@ Usage:
 """
 
 import argparse
-import time
 import json
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any
 import sys
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config.loader import load_config
+from configs.experiments.baseline import BaselineTestConfig
 from src.workflows.standard_run import run_scheduling_workflow
 
 
-def run_baseline_benchmark(output_dir: Path) -> Dict[str, Any]:
+def run_baseline_benchmark(output_dir: Path) -> dict[str, Any]:
     """
     Run baseline GA (without LNS-CP) and collect metrics.
 
@@ -37,13 +37,8 @@ def run_baseline_benchmark(output_dir: Path) -> Dict[str, Any]:
     print("\n" + "=" * 80)
     print("BASELINE GA BENCHMARK (without LNS-CP)")
 
-    # Load test config and ensure LNS is disabled
-    config = load_config(environment="test")
-    config.lns.enabled = False
-
-    # Save modified config
-    config_path = output_dir / "baseline_config.yaml"
-    config.to_yaml(str(config_path))
+    # Load test config with LNS disabled
+    config = BaselineTestConfig(lns_enabled=False).to_pydantic()
 
     print(f"\nConfiguration: {config.name} (LNS disabled)")
     print(f"Generations: {config.ga.ngen}")
@@ -101,7 +96,7 @@ def run_baseline_benchmark(output_dir: Path) -> Dict[str, Any]:
         return {"mode": "baseline", "error": str(e)}
 
 
-def run_lns_cp_benchmark(output_dir: Path) -> Dict[str, Any]:
+def run_lns_cp_benchmark(output_dir: Path) -> dict[str, Any]:
     """
     Run GA+LNS-CP and collect metrics.
 
@@ -114,18 +109,8 @@ def run_lns_cp_benchmark(output_dir: Path) -> Dict[str, Any]:
     print("\n" + "=" * 80)
     print("LNS-CP HYBRID BENCHMARK (with LNS-CP)")
 
-    # Load test config and enable LNS
-    config = load_config(environment="test")
-    config.lns.enabled = True
-    config.lns.trigger_interval = 10  # More frequent for test
-    config.lns.stagnation_threshold = 5
-    config.lns.max_subproblem_size = 20
-    config.lns.cp_time_limit = 10.0
-    config.lns.apply_to_best_n = 1
-
-    # Save modified config
-    config_path = output_dir / "lns_cp_config.yaml"
-    config.to_yaml(str(config_path))
+    # Load test config with LNS enabled
+    config = BaselineTestConfig(lns_enabled=True).to_pydantic()
 
     print(f"\nConfiguration: {config.name} (LNS enabled)")
     print(f"Generations: {config.ga.ngen}")

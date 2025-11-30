@@ -93,7 +93,7 @@ uv run check-data
 
 - **Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)
 - **Type Safety**: mypy 1.13.0 strict mode (100% coverage for all pure Python packages)
-- **Core Libraries**: 
+- **Core Libraries**:
   - DEAP 1.4.1 (genetic algorithms)
   - PyTorch 2.4.1 + CUDA 12.1 (RL training/inference only - NOT used for GA fitness evaluation)
   - Stable-Baselines3 2.3.2 (RL agents)
@@ -228,7 +228,7 @@ uv run memetic --prod --name "thesis-memetic-r01"    # 2-4 hours
 - **Experiment Management**: `src/workflows/experiment_manager.py` tracks runs in `manifest.json` with `ExperimentManager` class
 - **Workflow**: `src/workflows/standard_run.py` orchestrates: load → validate → feasibility → GA → decode → report
 - **GA Core**: `src/core/ga_scheduler.py` - GAScheduler class with DEAP toolbox, population init, evolution
-- **Parallel Processing**: 
+- **Parallel Processing**:
   - CPU multiprocessing for fitness evaluation (`parallel.use_multiprocessing`)
   - Parallel crossover/mutation operators (3-5x speedup)
   - Concurrent feasibility checks (3-5x speedup)
@@ -304,12 +304,12 @@ Always log notable runs in `output/` and reference them inside documentation or 
 - **Import Order**: Standard lib → third-party → local (sorted alphabetically)
 - **Type Hints**: Required for function signatures, use `from __future__ import annotations`
 - **Error Handling**: Raise informative exceptions with context
-- **Logging**: 
+- **Logging**:
   - Use `from src.utils.console_service import get_console` for user-facing output (Rich)
   - Use `logging.getLogger(__name__)` for debugging
 - **Docstrings**: Google-style docstrings for all public APIs
   - **NO separate .md files for code documentation** - docstrings only!
-- **Config Access**: 
+- **Config Access**:
   - Always use `from src.config import get_config; config = get_config()`
   - Never import deprecated `config.ga_params`
 

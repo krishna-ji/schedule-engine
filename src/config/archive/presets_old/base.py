@@ -2,16 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from src.config.models import Config
+from src.config.runtime_mode import RuntimeMode
 
 from .data import BASE_DEFAULTS, MODE_OVERRIDES
 from .profiles import Profile, apply_profile_overrides
 from .utils import apply_dynamic_overrides, deep_merge
-
-if TYPE_CHECKING:  # pragma: no cover
-    from src.config.runtime_mode import RuntimeMode
 
 
 class ConfigBlueprint:

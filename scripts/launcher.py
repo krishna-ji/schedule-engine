@@ -22,7 +22,7 @@ sys.path.insert(0, str(project_root))
 
 console = Console()
 
-from src.config.presets.profiles import Profile
+from configs.profiles import Profile
 
 PROFILE_DESCRIPTIONS: dict[Profile, str] = {
     Profile.TEST: "Smoke test (~30 gens, 10 pop, 2-5 min)",
@@ -54,7 +54,8 @@ def create_parser() -> argparse.ArgumentParser:
     """Create shared CLI parser with unified profile/config flags."""
 
     parser = argparse.ArgumentParser(
-        description="Schedule Engine", add_help=False  # No --help drama
+        description="Schedule Engine",
+        add_help=False,  # No --help drama
     )
 
     # Profile selection (explicit flag + shorthand toggles)

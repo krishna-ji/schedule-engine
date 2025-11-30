@@ -115,7 +115,7 @@ heuristics:
       enabled: false  # Disable for Mode B isolation
     exhaustive_search:
       enabled: false  # Too expensive
-  
+
   construction:
     largest_degree_first:
       enabled: false

@@ -55,7 +55,8 @@ def create_parser() -> argparse.ArgumentParser:
     """Create shared CLI parser with unified profile/config flags."""
 
     parser = argparse.ArgumentParser(
-        description="Schedule Engine", add_help=False  # No --help drama
+        description="Schedule Engine",
+        add_help=False,  # No --help drama
     )
 
     # Profile selection (explicit flag + shorthand toggles)
