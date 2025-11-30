@@ -161,6 +161,7 @@ class ExperimentManager:
         runtime_mode: str,
         experiment_name: str | None = None,
         timestamp: datetime | None = None,
+        output_subdir: str | None = None,
     ) -> Path:
         """
         Create structured output directory for experiment.
@@ -175,6 +176,7 @@ class ExperimentManager:
             runtime_mode: Runtime mode enum
             experiment_name: Optional experiment name
             timestamp: Optional timestamp (defaults to now)
+            output_subdir: Optional custom subdirectory (e.g., "f-construction")
 
         Returns:
             Path to created output directory
@@ -186,15 +188,21 @@ class ExperimentManager:
         mode_value = runtime_mode  # e.g., "a", "b", "c", "d", "e"
 
         # Build clean folder name for experiment
-        # Experiment IDs: a, b, c, d, e
+        # Experiment IDs: a, b, c, d, e, f
         folder_map = {
             "a": "a-baseline-nsga-only",
             "b": "b-nsga-memetic",
             "c": "c-roundrobin",
             "d": "d-adaptive",
             "e": "e-rl-guided",
+            "f": "f-heuristic-testing",
         }
-        mode_folder = folder_map.get(mode_value, f"experiment-{mode_value}")
+
+        # Use custom subdirectory if provided, otherwise use mode folder
+        if output_subdir:
+            mode_folder = output_subdir
+        else:
+            mode_folder = folder_map.get(mode_value, f"experiment-{mode_value}")
 
         # Build directory path (flat structure)
         timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")

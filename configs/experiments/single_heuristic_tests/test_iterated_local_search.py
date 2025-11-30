@@ -9,6 +9,7 @@ from configs.profiles import TestConfig
 class SingleHeuristicTestConfig(TestConfig):
     name: str = "test-iterated-local-search"
     experiment_id: str = "F"
+    output_subdir: str = "f-meta"  # Category-specific output folder
     heuristics_master_enabled: bool = True
     repair_enabled: bool = False
 

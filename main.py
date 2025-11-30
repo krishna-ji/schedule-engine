@@ -210,6 +210,7 @@ def main() -> int:
     output_dir = manager.create_output_dir(
         runtime_mode=experiment_key,
         experiment_name=exp_name,
+        output_subdir=getattr(config, "output_subdir", None) or None,
     )
     console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
     console.print()

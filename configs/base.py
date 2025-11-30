@@ -160,6 +160,7 @@ class BaseConfig:
     # ==========================================
     data_dir: str = "data"
     output_dir: str = "output"
+    output_subdir: str = ""  # Subdirectory within output_dir (e.g., "f-construction")
 
     # ==========================================
     # METADATA (Experiment tracking)

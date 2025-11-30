@@ -9,6 +9,7 @@ from configs.profiles import TestConfig
 class SingleHeuristicTestConfig(TestConfig):
     name: str = "test-adaptive-diversity-maintenance"
     experiment_id: str = "F"
+    output_subdir: str = "f-diversity"  # Category-specific output folder
     heuristics_master_enabled: bool = True
     repair_enabled: bool = False
 

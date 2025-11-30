@@ -285,10 +285,98 @@ def main_rl():
 
 def main_heuristic_testing():
     """Run Mode F experiment (individual heuristic testing)."""
+    from pathlib import Path
+
     parser = create_parser()
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
+
+    # Auto-copy template if name matches pattern
+    if args.name and args.name.startswith("test-"):
+        # Map test name to template file
+        template_map = {
+            "test-largest-degree-first": "test_largest_degree_first.py",
+            "test-most-constrained-first": "test_most_constrained_first.py",
+            "test-earliest-deadline-first": "test_earliest_deadline_first.py",
+            "test-random-swap": "test_random_swap.py",
+            "test-temporal-shift": "test_temporal_shift.py",
+            "test-room-shuffle": "test_room_shuffle.py",
+            "test-instructor-reassign": "test_instructor_reassign.py",
+            "test-multi-perturbation": "test_multi_perturbation.py",
+            "test-kempe-chain": "test_kempe_chain.py",
+            "test-ejection-chain": "test_ejection_chain.py",
+            "test-variable-depth-search": "test_variable_depth_search.py",
+            "test-distance-preserving-crossover": (
+                "test_distance_preserving_crossover.py"
+            ),
+            "test-crowding-mutation": "test_crowding_mutation.py",
+            "test-niching-selection": "test_niching_selection.py",
+            "test-adaptive-diversity-maintenance": (
+                "test_adaptive_diversity_maintenance.py"
+            ),
+            "test-variable-neighborhood-descent": (
+                "test_variable_neighborhood_descent.py"
+            ),
+            "test-iterated-local-search": "test_iterated_local_search.py",
+            "test-adaptive-large-neighborhood": "test_adaptive_large_neighborhood.py",
+            "test-guided-local-search": "test_guided_local_search.py",
+            "test-exhaustive-repair": "test_exhaustive_repair.py",
+            "test-greedy-repair": "test_greedy_repair.py",
+            "test-igls-repair": "test_igls_repair.py",
+            "test-lns-repair": "test_lns_repair.py",
+            "test-memetic-repair": "test_memetic_repair.py",
+            "test-selective-repair": "test_selective_repair.py",
+        }
+
+        template_file = template_map.get(args.name)
+        if template_file:
+            template_path = (
+                Path("configs/experiments/single_heuristic_tests") / template_file
+            )
+            target_path = Path("configs/experiments/heuristic_testing.py")
+
+            if template_path.exists():
+                # Read template content
+                with open(template_path) as f:
+                    template_content = f.read()
+
+                # Read current config to preserve structure
+                with open(target_path) as f:
+                    current_content = f.read()
+
+                # Extract the SingleHeuristicTestConfig class from template
+                import re
+
+                match = re.search(
+                    r"@dataclass\nclass SingleHeuristicTestConfig\(TestConfig\):.*?(?=\n\n|\Z)",
+                    template_content,
+                    re.DOTALL,
+                )
+
+                if match:
+                    new_config_class = match.group(0)
+
+                    # Replace HeuristicTestingTestConfig in target file
+                    updated_content = re.sub(
+                        r"@dataclass\nclass HeuristicTestingTestConfig\(TestConfig\):.*?(?=\n\n@dataclass|\n\n# LEGACY|\Z)",
+                        new_config_class.replace(
+                            "SingleHeuristicTestConfig", "HeuristicTestingTestConfig"
+                        ),
+                        current_content,
+                        flags=re.DOTALL,
+                    )
+
+                    # Write updated config
+                    with open(target_path, "w") as f:
+                        f.write(updated_content)
+
+                    console.print(
+                        f"[green]✓ Auto-configured heuristic: {args.name}[/green]"
+                    )
+                    console.print(
+                        f"[dim]  (copied from {template_file} to heuristic_testing.py)[/dim]"
+                    )
 
     from main import main
 
@@ -305,28 +393,7 @@ def main_heuristic_testing():
     console.print(
         f"[green]Mode F: Individual Heuristic Testing ({_profile_banner(profile)})[/green]"
     )
-    console.print(
-        "[dim]  Test individual heuristics in isolation (edit configs/experiments/heuristic_testing.py to enable specific heuristics).[/dim]"
-    )
-    console.print("[dim]  Available heuristics:[/dim]")
-    console.print(
-        "[dim]    - Construction: largest_degree_first, most_constrained_first, earliest_deadline_first[/dim]"
-    )
-    console.print(
-        "[dim]    - Perturbation: random_swap, temporal_shift, room_shuffle, instructor_reassign, multi_perturbation[/dim]"
-    )
-    console.print(
-        "[dim]    - Improvement: kempe_chain, ejection_chain, variable_depth_search[/dim]"
-    )
-    console.print(
-        "[dim]    - Diversity: distance_preserving_crossover, crowding_mutation, niching_selection, adaptive_diversity_maintenance[/dim]"
-    )
-    console.print(
-        "[dim]    - Meta: variable_neighborhood_descent, iterated_local_search, adaptive_large_neighborhood, guided_local_search[/dim]"
-    )
-    console.print(
-        "[dim]    - Repair: exhaustive_repair, greedy_repair, igls_repair, lns_repair, memetic_repair, selective_repair[/dim]"
-    )
+
     sys.exit(main() or 0)
 
 
@@ -606,6 +673,143 @@ def main_interactive():
                 ("u4", "list-experiments", "List experiment history"),
             ],
         ),
+        # Isolated Heuristic Testing
+        (
+            "heuristic-testing",
+            [
+                # Construction Heuristics (3)
+                (
+                    "h1",
+                    "heuristic-testing --test --name test-largest-degree-first",
+                    "Construction: largest_degree_first",
+                ),
+                (
+                    "h2",
+                    "heuristic-testing --test --name test-most-constrained-first",
+                    "Construction: most_constrained_first",
+                ),
+                (
+                    "h3",
+                    "heuristic-testing --test --name test-earliest-deadline-first",
+                    "Construction: earliest_deadline_first",
+                ),
+                # Perturbation Heuristics (5)
+                (
+                    "h4",
+                    "heuristic-testing --test --name test-random-swap",
+                    "Perturbation: random_swap",
+                ),
+                (
+                    "h5",
+                    "heuristic-testing --test --name test-temporal-shift",
+                    "Perturbation: temporal_shift",
+                ),
+                (
+                    "h6",
+                    "heuristic-testing --test --name test-room-shuffle",
+                    "Perturbation: room_shuffle",
+                ),
+                (
+                    "h7",
+                    "heuristic-testing --test --name test-instructor-reassign",
+                    "Perturbation: instructor_reassign",
+                ),
+                (
+                    "h8",
+                    "heuristic-testing --test --name test-multi-perturbation",
+                    "Perturbation: multi_perturbation",
+                ),
+                # Improvement Heuristics (3)
+                (
+                    "h9",
+                    "heuristic-testing --test --name test-kempe-chain",
+                    "Improvement: kempe_chain",
+                ),
+                (
+                    "h10",
+                    "heuristic-testing --test --name test-ejection-chain",
+                    "Improvement: ejection_chain",
+                ),
+                (
+                    "h11",
+                    "heuristic-testing --test --name test-variable-depth-search",
+                    "Improvement: variable_depth_search",
+                ),
+                # Diversity Heuristics (4)
+                (
+                    "h12",
+                    "heuristic-testing --test --name test-distance-preserving-crossover",
+                    "Diversity: distance_preserving_crossover",
+                ),
+                (
+                    "h13",
+                    "heuristic-testing --test --name test-crowding-mutation",
+                    "Diversity: crowding_mutation",
+                ),
+                (
+                    "h14",
+                    "heuristic-testing --test --name test-niching-selection",
+                    "Diversity: niching_selection",
+                ),
+                (
+                    "h15",
+                    "heuristic-testing --test --name test-adaptive-diversity-maintenance",
+                    "Diversity: adaptive_diversity_maintenance",
+                ),
+                # Meta Heuristics (4)
+                (
+                    "h16",
+                    "heuristic-testing --test --name test-variable-neighborhood-descent",
+                    "Meta: variable_neighborhood_descent",
+                ),
+                (
+                    "h17",
+                    "heuristic-testing --test --name test-iterated-local-search",
+                    "Meta: iterated_local_search",
+                ),
+                (
+                    "h18",
+                    "heuristic-testing --test --name test-adaptive-large-neighborhood",
+                    "Meta: adaptive_large_neighborhood",
+                ),
+                (
+                    "h19",
+                    "heuristic-testing --test --name test-guided-local-search",
+                    "Meta: guided_local_search",
+                ),
+                # Repair Heuristics (6)
+                (
+                    "h20",
+                    "heuristic-testing --test --name test-exhaustive-repair",
+                    "Repair: exhaustive_repair",
+                ),
+                (
+                    "h21",
+                    "heuristic-testing --test --name test-greedy-repair",
+                    "Repair: greedy_repair",
+                ),
+                (
+                    "h22",
+                    "heuristic-testing --test --name test-igls-repair",
+                    "Repair: igls_repair",
+                ),
+                (
+                    "h23",
+                    "heuristic-testing --test --name test-lns-repair",
+                    "Repair: lns_repair",
+                ),
+                (
+                    "h24",
+                    "heuristic-testing --test --name test-memetic-repair",
+                    "Repair: memetic_repair",
+                ),
+                (
+                    "h25",
+                    "heuristic-testing --test --name test-selective-repair",
+                    "Repair: selective_repair",
+                ),
+            ],
+        ),
     ]
 
     while True:
@@ -647,6 +851,13 @@ def main_interactive():
                 )
             elif category == "utilities":
                 console.print("\n[bold magenta]UTILITIES[/bold magenta]")
+            elif category == "heuristic-testing":
+                console.print(
+                    "\n[bold magenta]ISOLATED HEURISTIC TESTING[/bold magenta]"
+                )
+                console.print(
+                    "[dim]  Test individual heuristics in isolation (edit configs/experiments/heuristic_testing.py first)[/dim]"
+                )
 
             # Commands in category
             for num, cmd, desc in cmds:
