@@ -11,11 +11,11 @@ from src.entities.group import Group
 
 
 def generate_course_group_pairs(
-    courses: dict[tuple, Course],
+    courses: dict[tuple[str, ...], Course],
     groups: dict[str, Group],
-    hierarchy: dict,
+    hierarchy: dict[str, list[str] | dict[str, list[str]] | dict[str, str]],
     silent: bool = False,
-) -> list[tuple[tuple, list[str], str, int]]:
+) -> list[tuple[tuple[str, ...], list[str], str, int]]:
     """
     Generates (course_id, group_ids, session_type, num_quanta) tuples.
 
@@ -43,7 +43,7 @@ def generate_course_group_pairs(
 
     Note: course_id is now tuple key (course_code, course_type) from courses dict.
     """
-    pairs = []
+    pairs: list[tuple[tuple[str, ...], list[str], str, int]] = []
 
     # Group all subgroups by their parent prefix (e.g., BAE2A, BAE2B -> BAE2)
     # This allows us to find siblings that should attend theory together
@@ -107,12 +107,14 @@ def generate_course_group_pairs(
     return pairs
 
 
-def count_total_genes(pairs: list[tuple]) -> int:
+def count_total_genes(pairs: list[tuple[tuple[str, ...], list[str], str, int]]) -> int:
     """Count total number of genes that will be created."""
     return sum(num_quanta for _, _, _, num_quanta in pairs)
 
 
-def group_pairs_by_course(pairs: list[tuple]) -> dict[tuple, list[tuple]]:
+def group_pairs_by_course(
+    pairs: list[tuple[tuple[str, ...], list[str], str, int]],
+) -> dict[tuple[str, ...], list[tuple[tuple[str, ...], list[str], str, int]]]:
     """Group pairs by course for analysis."""
     from collections import defaultdict
 

@@ -122,7 +122,7 @@ class ExperimentManager:
         self.manifest_path = self.base_dir / "experiment_manifest.json"
         self._load_manifest()
 
-    def _load_manifest(self):
+    def _load_manifest(self) -> None:
         """Load experiment manifest from disk."""
         if self.manifest_path.exists():
             try:
@@ -150,7 +150,7 @@ class ExperimentManager:
             self.runs = []
             self._save_manifest()  # Create manifest if it doesn't exist
 
-    def _save_manifest(self):
+    def _save_manifest(self) -> None:
         """Save experiment manifest to disk."""
         data = {"runs": [run.to_dict() for run in self.runs], "version": "1.0"}
         with open(self.manifest_path, "w") as f:
@@ -184,7 +184,6 @@ class ExperimentManager:
 
         # Parse mode value
         mode_value = runtime_mode  # e.g., "a", "b", "c", "d", "e"
-        mode_prefix = mode_value  # Single letter experiment ID
 
         # Build clean folder name for experiment
         # Experiment IDs: a, b, c, d, e
@@ -260,7 +259,7 @@ class ExperimentManager:
         best_hard_violations: float | None = None,
         best_soft_penalty: float | None = None,
         final_hypervolume: float | None = None,
-    ):
+    ) -> None:
         """
         Update experiment run with results.
 
@@ -464,7 +463,7 @@ class ExperimentManager:
         stats["by_mode"] = mode_stats
         return stats
 
-    def print_manifest_stats(self):
+    def print_manifest_stats(self) -> None:
         """Print manifest statistics to console."""
         stats = self.get_manifest_stats()
 
@@ -479,7 +478,9 @@ class ExperimentManager:
                 "\n[yellow]Tip:[/yellow] Run [cyan]manager.archive_incomplete_runs()[/cyan] to clean manifest."
             )
 
-    def export_comparison_csv(self, output_path: Path, modes: list[str] | None = None):
+    def export_comparison_csv(
+        self, output_path: Path, modes: list[str] | None = None
+    ) -> None:
         """
         Export comparison data to CSV for analysis.
 
@@ -529,7 +530,9 @@ class ExperimentManager:
 
         console.print(f"[green]Exported comparison data to {output_path}[/green]")
 
-    def cleanup_old_runs(self, keep_last_n: int = 10, runtime_mode: str | None = None):
+    def cleanup_old_runs(
+        self, keep_last_n: int = 10, runtime_mode: str | None = None
+    ) -> None:
         """
         Clean up old experiment outputs to save disk space.
 

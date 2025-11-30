@@ -9,7 +9,9 @@ Identifies parent groups and their subgroups to enable proper scheduling:
 from src.entities.group import Group
 
 
-def analyze_group_hierarchy(groups: dict[str, Group]) -> dict:
+def analyze_group_hierarchy(
+    groups: dict[str, Group],
+) -> dict[str, list[str] | dict[str, list[str]] | dict[str, str]]:
     """
     Analyzes group relationships to identify parents and subgroups.
 
@@ -69,28 +71,45 @@ def analyze_group_hierarchy(groups: dict[str, Group]) -> dict:
     }
 
 
-def is_parent_group(group_id: str, hierarchy: dict) -> bool:
+def is_parent_group(
+    group_id: str,
+    hierarchy: dict[str, list[str] | dict[str, list[str]] | dict[str, str]],
+) -> bool:
     """Check if a group is a parent group."""
     return group_id in hierarchy["parents"]
 
 
-def is_subgroup(group_id: str, hierarchy: dict) -> bool:
+def is_subgroup(
+    group_id: str,
+    hierarchy: dict[str, list[str] | dict[str, list[str]] | dict[str, str]],
+) -> bool:
     """Check if a group is a subgroup."""
     return group_id in hierarchy["parent_map"]
 
 
-def get_parent(group_id: str, hierarchy: dict) -> str:
+def get_parent(
+    group_id: str,
+    hierarchy: dict[str, list[str] | dict[str, list[str]] | dict[str, str]],
+) -> str:
     """Get parent group ID for a subgroup."""
-    result = hierarchy["parent_map"].get(group_id)
+    parent_map: dict[str, str] = hierarchy["parent_map"]  # type: ignore[assignment]
+    result = parent_map.get(group_id)
     return str(result) if result is not None else ""
 
 
-def get_subgroups(parent_id: str, hierarchy: dict) -> list[str]:
+def get_subgroups(
+    parent_id: str,
+    hierarchy: dict[str, list[str] | dict[str, list[str]] | dict[str, str]],
+) -> list[str]:
     """Get list of subgroup IDs for a parent."""
-    result = hierarchy["subgroups"].get(parent_id, [])
-    return list(result) if result is not None else []
+    subgroups: dict[str, list[str]] = hierarchy["subgroups"]  # type: ignore[assignment]
+    result: list[str] = subgroups.get(parent_id, [])
+    return result
 
 
-def has_subgroups(group_id: str, hierarchy: dict) -> bool:
+def has_subgroups(
+    group_id: str,
+    hierarchy: dict[str, list[str] | dict[str, list[str]] | dict[str, str]],
+) -> bool:
     """Check if a group has subgroups."""
     return group_id in hierarchy["subgroups"]

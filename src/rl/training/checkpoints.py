@@ -51,7 +51,7 @@ class CheckpointMetadata:
     status: str = "checkpoint"
     notes: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.validation_metrics is None:
             self.validation_metrics = {}
         if self.training_metrics is None:
@@ -103,7 +103,7 @@ class CheckpointManager:
             logger.error(f"Failed to load manifest: {e}")
             return []
 
-    def _save_manifest(self):
+    def _save_manifest(self) -> None:
         """Save manifest to file."""
         try:
             data = [asdict(cp) for cp in self.checkpoints]
@@ -290,7 +290,7 @@ class CheckpointManager:
         checkpoint_id: str,
         new_status: str,
         notes: str | None = None,
-    ):
+    ) -> None:
         """
         Update checkpoint status.
 
@@ -345,7 +345,7 @@ def create_checkpoint_metadata(
     model_path: str,
     timestep: int,
     validation_metrics: dict[str, float],
-    **kwargs,
+    **kwargs: float | str | dict[str, float] | int | None,  # type: ignore[misc]
 ) -> CheckpointMetadata:
     """
     Convenience function to create checkpoint metadata.
@@ -367,5 +367,5 @@ def create_checkpoint_metadata(
         timestep=timestep,
         timestamp=datetime.now().isoformat(),
         validation_metrics=validation_metrics,
-        **kwargs,
+        **kwargs,  # type: ignore[arg-type]
     )

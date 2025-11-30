@@ -37,7 +37,7 @@ class SessionGene:
     start_quanta: int  # Starting quantum index (e.g., 10 = Monday 10:00 AM)
     num_quanta: int  # Duration in quanta (e.g., 2 = 2-hour block)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate quantum range and continuity constraints."""
         qts, total_quanta = _get_time_system_metadata()
 

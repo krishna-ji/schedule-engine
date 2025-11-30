@@ -4,6 +4,13 @@ Helper function for SessionGene migration.
 Converts quanta list to start_quanta + num_quanta format.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.ga.sessiongene import SessionGene
+
 
 def quanta_list_to_contiguous(quanta_list: list[int]) -> tuple[int, int]:
     """
@@ -34,7 +41,7 @@ def quanta_list_to_contiguous(quanta_list: list[int]) -> tuple[int, int]:
     return (start_quanta, num_quanta)
 
 
-def assign_quanta_to_gene(gene, quanta_list: list[int]) -> None:
+def assign_quanta_to_gene(gene: SessionGene, quanta_list: list[int]) -> None:
     """
     Assign quanta list to SessionGene using new API.
 
