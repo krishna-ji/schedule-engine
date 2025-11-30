@@ -42,15 +42,15 @@ if ([string]::IsNullOrWhiteSpace($commitMessage)) {
 try {
     # Soft reset to N commits back
     git reset --soft "HEAD~$numCommits"
-    
+
     # Create new commit with all changes
     git commit -m $commitMessage
-    
+
     Write-Host ""
     Write-Host "Successfully squashed $numCommits commits!" -ForegroundColor Green
     Write-Host "New commit:" -ForegroundColor Cyan
     git log --oneline -1
-    
+
     Write-Host ""
     Write-Host "To push (if already pushed before):" -ForegroundColor Yellow
     Write-Host "  git push --force-with-lease" -ForegroundColor White

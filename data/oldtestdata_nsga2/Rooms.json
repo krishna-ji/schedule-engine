@@ -265,10 +265,10 @@
             "Metrology and Instrumentation",
             "industrial_elective_III",
             "industrial_elective_I(Pneumatics)"
-            
+
         ]
     },
-    
+
     {
         "room_id": "B309",
         "name": "Classroom B-309",
@@ -291,7 +291,7 @@
         ]
 
     },
-    
+
     {
         "room_id": "B311",
         "name": "Classroom B-311",
@@ -369,7 +369,7 @@
         "capacity": 24,
         "type": "Practical",
         "features": [
-            
+
             "Numerical Methods",
             "Numerical Methods Mechanical",
             "Data Communication",

@@ -14,29 +14,29 @@ Usage:
 """
 
 import argparse
-import time
 import json
-from pathlib import Path
-from typing import Dict, Optional
 import sys
+import time
+from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
-from src.rl.agents import create_ppo_agent
-from src.rl.gym_env.schedule_env import create_schedule_env
+
+from src.core.types import SchedulingContext
 from src.encoder.input_encoder import (
+    link_courses_and_groups,
+    link_courses_and_instructors,
     load_courses,
     load_groups,
     load_instructors,
     load_rooms,
-    link_courses_and_groups,
-    link_courses_and_instructors,
 )
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.core.types import SchedulingContext
 from src.ga.population import generate_course_group_aware_population
+from src.rl.agents import create_ppo_agent
+from src.rl.gym_env.schedule_env import create_schedule_env
 
 
 def load_context(data_dir: str = "data") -> SchedulingContext:
@@ -68,9 +68,9 @@ def load_context(data_dir: str = "data") -> SchedulingContext:
 def benchmark_device(
     device: str,
     timesteps: int = 10000,
-    context: Optional[SchedulingContext] = None,
+    context: SchedulingContext | None = None,
     verbose: bool = True,
-) -> Dict:
+) -> dict:
     """
     Benchmark RL training on specific device.
 
@@ -146,7 +146,7 @@ def benchmark_device(
     return results
 
 
-def print_comparison(cpu_results: Dict, gpu_results: Dict):
+def print_comparison(cpu_results: dict, gpu_results: dict):
     """Print comparison table."""
     speedup = cpu_results["elapsed_seconds"] / gpu_results["elapsed_seconds"]
     time_saved = cpu_results["elapsed_seconds"] - gpu_results["elapsed_seconds"]
@@ -176,7 +176,7 @@ def print_comparison(cpu_results: Dict, gpu_results: Dict):
     print(f"{'='*60}")
 
     # Extrapolate to full training
-    print(f"\nEXTRAPOLATION TO FULL TRAINING:")
+    print("\nEXTRAPOLATION TO FULL TRAINING:")
     print(f"{'-'*60}")
 
     training_scenarios = [

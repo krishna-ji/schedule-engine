@@ -15,7 +15,7 @@ This directory contains autonomous AI agents for synthesizing graduate-level the
 
 #### 1. Chapter 4-5 Synthesizer
 - **File**: `ch4-5-synthesizer.md`
-- **Chapters**: 
+- **Chapters**:
   - Chapter 4: System Architecture and Methodology
   - Chapter 5: Implementation Details
 - **Focus**: Mathematical rigor, technical depth, algorithm analysis
@@ -264,7 +264,7 @@ Edit the "Writing Standards" section in each agent file:
 
 ### Agent Produces `[TBD]` Placeholders
 **Cause**: Missing experimental data or incomplete runs  
-**Fix**: 
+**Fix**:
 - Run experiments: `uv run baseline --test`
 - Check manifest: `output/experiment_manifest.json`
 - Ensure `ga_stats.json` exists in run directories

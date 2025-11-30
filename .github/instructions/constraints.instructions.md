@@ -15,7 +15,7 @@ def constraint_name(
 ) -> int:
     """
     Evaluate constraint violations over decoded phenotype.
-    
+
     Returns:
         int: Violation count (hard) or penalty score (soft)
              - Hard: 0 = feasible, >0 = infeasible (count of conflicts)
@@ -48,7 +48,7 @@ def my_constraint(decoded_schedule, context):
     config = get_config()
     if not config.hard_constraints.my_constraint.enabled:
         return 0
-    
+
     weight = config.hard_constraints.my_constraint.weight
     violations = count_violations(decoded_schedule)
     return violations * weight

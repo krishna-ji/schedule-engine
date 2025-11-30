@@ -271,12 +271,22 @@ def get_enabled_heuristics(
             if meta.enabled_by_default:
                 enabled_heuristics[name] = meta
     else:
+        # Check master killswitch FIRST
+        master_enabled = getattr(heuristics_config, "master_enabled", True)
+        if not master_enabled:
+            # Master killswitch OFF - disable all heuristics
+            return {}
+
         # Check each category's config
         for name, meta in heuristics_to_check.items():
-            category_config = (
-                getattr(heuristics_config, meta.category.value, None) or {}
-            )
-            heuristic_config = category_config.get(name, {})
+            category_config = getattr(heuristics_config, meta.category.value, None)
+
+            # If category_config is explicitly set to empty dict {}, disable all heuristics in that category
+            # This allows blueprints to use {} to mean "disable all" rather than "use defaults"
+            if category_config is not None and not category_config:
+                continue  # Skip all heuristics in this category
+
+            heuristic_config = category_config.get(name, {}) if category_config else {}
 
             # Check if enabled
             is_enabled = heuristic_config.get("enabled", meta.enabled_by_default)

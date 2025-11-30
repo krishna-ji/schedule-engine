@@ -5,8 +5,8 @@ Checks Groups.json for duplicate course enrollments and other data integrity iss
 
 import json
 import sys
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
 
 
 def check_duplicate_enrollments(groups_file="data/Groups.json"):
@@ -18,7 +18,7 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
     print(f"Checking file: {groups_file}\n")
 
     try:
-        with open(groups_file, "r", encoding="utf-8") as f:
+        with open(groups_file, encoding="utf-8") as f:
             data = json.load(f)
     except FileNotFoundError:
         print(f"[err!] ERROR: File not found: {groups_file}")
@@ -160,7 +160,7 @@ def check_data_consistency(base_dir="data"):
     data = {}
     for key, path in files.items():
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data[key] = json.load(f)
             print(f"[!yes] Loaded {len(data[key])} {key}")
         except Exception as e:

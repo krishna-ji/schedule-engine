@@ -5,41 +5,43 @@ NSGA-II with performance-based adaptive heuristic priority.
 Tests effectiveness of adaptive selection mechanism.
 """
 
-from src.config.presets.blueprints import AdaptiveHeuristicBlueprint
-from src.config.presets.profiles import Profile
+from configs.experiments.adaptive import (
+    EXPERIMENT_DESCRIPTION as _EXPERIMENT_DESCRIPTION,
+)
+from configs.experiments.adaptive import EXPERIMENT_ID as _EXPERIMENT_ID
+from configs.experiments.adaptive import EXPERIMENT_NAME as _EXPERIMENT_NAME
+from configs.experiments.adaptive import KILLSWITCHES as _KILLSWITCHES
+from configs.experiments.adaptive import AdaptiveProdConfig, AdaptiveTestConfig
+from configs.profiles import Profile
 
-# Instantiate blueprint
-experiment_d = AdaptiveHeuristicBlueprint()
+# Use dataclass configs
+experiment_d_test = AdaptiveTestConfig()
+experiment_d_prod = AdaptiveProdConfig()
 
-# Experiment metadata
-EXPERIMENT_ID = "D"
-EXPERIMENT_NAME = "Adaptive Heuristic Selection"
-EXPERIMENT_DESCRIPTION = "NSGA-II + adaptive performance-based heuristic selection"
-
-# Killswitches (explicit documentation)
-KILLSWITCHES = {
-    "repair.enabled": True,
-    "repair.memetic_mode": True,
-    "ga.use_adaptive_probabilities": True,
-    "heuristics.adaptive_priority.enabled": True,  # KEY: Adaptive selection
-    "heuristics.adaptive_priority.evaluation_window": 10,
-    "heuristics.adaptive_priority.reorder_interval": 10,
-    "lns.enabled": False,
-    "rl.enabled": False,
-    "enhancements.master_enabled": True,
-    "enhancements.hypermutation.enabled": True,
-}
+# Experiment metadata (imported from dataclass module)
+EXPERIMENT_ID = _EXPERIMENT_ID
+EXPERIMENT_NAME = _EXPERIMENT_NAME
+EXPERIMENT_DESCRIPTION = _EXPERIMENT_DESCRIPTION
+KILLSWITCHES = _KILLSWITCHES
 
 
 # Quick usage
-def get_config(profile: Profile = Profile.TEST):
+def get_config(profile: Profile = Profile.TEST, **overrides):
     """Get config for Experiment D."""
-    return experiment_d.build(profile)
+    # Filter out None values
+    overrides = {k: v for k, v in overrides.items() if v is not None}
+
+    if profile == Profile.TEST:
+        config = AdaptiveTestConfig(**overrides)
+    else:
+        config = AdaptiveProdConfig(**overrides)
+    return config.to_pydantic()
 
 
 if __name__ == "__main__":
-    config = get_config(Profile.TEST)
+    test_cfg = experiment_d_test
     print(f"✓ {EXPERIMENT_NAME}")
-    print(f"  Adaptive priority: {config.heuristics.adaptive_priority.enabled}")
-    print(f"  Adaptive probabilities: {config.ga.use_adaptive_probabilities}")
-    print(f"  Hypermutation: {config.enhancements.hypermutation.enabled}")
+    print(f"  ngen={test_cfg.ngen}, pop={test_cfg.pop_size}")
+    print(f"  adaptive_priority={test_cfg.heuristics_adaptive_priority_enabled}")
+    print(f"  adaptive_prob={test_cfg.ga_use_adaptive_probabilities}")
+    print(f"  hypermutation={test_cfg.enhancements_hypermutation_enabled}")

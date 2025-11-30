@@ -3,14 +3,15 @@ Display current repair heuristics configuration.
 Quick utility to see which repair heuristics are enabled and their priorities.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
+
 from src.config import get_config  # get_config().repair
 from src.ga.operators.repair_registry import (
     get_all_repair_heuristics,

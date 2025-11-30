@@ -154,7 +154,7 @@ def export_my_format(decoded_schedule, output_path, context):
 # In src/workflows/reporting.py
 def generate_reports(...):
     # ... existing exports ...
-    
+
     # Add new export
     console.print("  [+] Generating my format...")
     export_my_format(decoded_schedule, output_dir, context)

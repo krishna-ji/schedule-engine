@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+import platform
+import shutil
 import subprocess
 import sys
 from pathlib import Path
-import shutil
-import platform
+
 
 def check_uv_installed():
     try:
@@ -11,24 +12,41 @@ def check_uv_installed():
     except FileNotFoundError:
         return False
 
+
 def install_uv():
     try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "uv"], check=True)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "uv"], check=True
+        )
     except subprocess.CalledProcessError:
         system = platform.system()
         if system == "Windows":
-            subprocess.run(["powershell", "-Command", "irm https://astral.sh/uv/install.ps1 | iex"], check=True)
+            subprocess.run(
+                [
+                    "powershell",
+                    "-Command",
+                    "irm https://astral.sh/uv/install.ps1 | iex",
+                ],
+                check=True,
+            )
         else:
-            subprocess.run("curl -LsSf https://astral.sh/uv/install.sh | sh", shell=True, check=True)
+            subprocess.run(
+                "curl -LsSf https://astral.sh/uv/install.sh | sh",
+                shell=True,
+                check=True,
+            )
         sys.exit(0)
+
 
 def remove_venv():
     venv_path = Path(".venv")
     if venv_path.exists():
         shutil.rmtree(venv_path)
 
+
 def create_venv():
     subprocess.run(["uv", "venv", ".venv"], check=True)
+
 
 def install_dependencies():
     if Path("pyproject.toml").exists():
@@ -36,12 +54,14 @@ def install_dependencies():
     else:
         sys.exit("pyproject.toml not found")
 
+
 def main():
     if not check_uv_installed():
         install_uv()
     remove_venv()
     create_venv()
     install_dependencies()
+
 
 if __name__ == "__main__":
     main()

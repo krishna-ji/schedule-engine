@@ -21,7 +21,8 @@ uv run baseline --test    # Quick smoke test
 
 ## Experiment Framework
 
-###  **Unified Launcher & Experiment Management**
+### **Unified Launcher & Experiment Management**
+
 ```bash
 uv run launcher           # Interactive TUI menu for all experiments
 uv run clean              # Clear all experimental artifacts
@@ -29,7 +30,8 @@ uv run migrate            # Organize output structure
 uv run analyze-results    # Generate comparison analysis
 ```
 
-###  **Available Experiments**
+### **Available Experiments**
+
 | Command | Method | Description |
 |---------|--------|-------------|
 | `uv run baseline --test/prod` | **A1: Pure NSGA-II** | Minimal baseline (no repairs, no heuristics) |
@@ -41,7 +43,8 @@ uv run analyze-results    # Generate comparison analysis
 
 **Profiles:** `--test` (30 gens, ~2 min) • `--prod` (2000 gens, ~3-5 hours)
 
-###  **Experiment Output Structure**
+### **Experiment Output Structure**
+
 ```
 output/
 ├── experiments/{method}/{type}/evaluation_TIMESTAMP/  # Results per run

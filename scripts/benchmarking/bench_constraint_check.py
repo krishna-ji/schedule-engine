@@ -17,37 +17,35 @@ Usage:
 """
 
 import argparse
-import time
-import statistics
-from pathlib import Path
-from typing import Dict, List, Tuple
-from dataclasses import dataclass
 import json
+import statistics
 
 # Add src to path
 import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.constraints.registry import (
+    constraint_needs_courses,
+    get_enabled_hard_constraints,
+    get_enabled_soft_constraints,
+)
+from src.core.types import SchedulingContext
+from src.decoder.individual_decoder import decode_individual
 from src.encoder.input_encoder import (
+    link_courses_and_groups,
+    link_courses_and_instructors,
     load_courses,
     load_groups,
     load_instructors,
     load_rooms,
-    link_courses_and_groups,
-    link_courses_and_instructors,
 )
 from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.core.types import SchedulingContext
-from src.ga.population import generate_course_group_aware_population
 from src.ga.evaluator.fitness import evaluate
-from src.constraints.registry import (
-    get_enabled_hard_constraints,
-    get_enabled_soft_constraints,
-    constraint_needs_courses,
-)
-from src.decoder.individual_decoder import decode_individual
-from src.config import get_config
+from src.ga.population import generate_course_group_aware_population
 
 
 @dataclass
@@ -66,7 +64,7 @@ class BenchmarkResult:
     total_time_ms: float
 
     # Per-constraint breakdown
-    constraint_times: Dict[str, float]
+    constraint_times: dict[str, float]
 
     # Statistical measures
     std_dev_ms: float
@@ -95,7 +93,7 @@ class BenchmarkResult:
         }
 
 
-def benchmark_decoding(individual, context, num_runs: int = 100) -> Tuple[float, float]:
+def benchmark_decoding(individual, context, num_runs: int = 100) -> tuple[float, float]:
     """
     Benchmark decoding performance.
 
@@ -121,7 +119,7 @@ def benchmark_decoding(individual, context, num_runs: int = 100) -> Tuple[float,
 
 def benchmark_constraint(
     constraint_name: str, constraint_func, sessions, courses=None, num_runs: int = 100
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Benchmark a single constraint function.
 
@@ -146,7 +144,7 @@ def benchmark_constraint(
 
 def benchmark_full_evaluation(
     individual, context, num_runs: int = 50
-) -> Tuple[List[float], Dict[str, float]]:
+) -> tuple[list[float], dict[str, float]]:
     """
     Benchmark full evaluation with per-constraint breakdown.
 
@@ -242,7 +240,9 @@ def run_benchmark(
     if verbose:
         print(f"Generating population (size={population_size})...")
     population = generate_course_group_aware_population(
-        n=population_size, context=context, parallel=True  # Use production settings
+        n=population_size,
+        context=context,
+        parallel=True,  # Use production settings
     )
 
     # Use first individual for benchmarking
@@ -315,8 +315,8 @@ def run_benchmark(
 
 
 def compare_datasets(
-    data_dirs: List[Path], population_size: int = 50, num_runs: int = 50
-) -> List[BenchmarkResult]:
+    data_dirs: list[Path], population_size: int = 50, num_runs: int = 50
+) -> list[BenchmarkResult]:
     """Run benchmarks on multiple datasets and compare."""
     results = []
 

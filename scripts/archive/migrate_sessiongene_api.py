@@ -13,7 +13,6 @@ WARNING: This is a BREAKING CHANGE. Run tests after migration!
 import re
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 # Migration patterns
 PATTERNS = [
@@ -40,7 +39,7 @@ PATTERNS = [
 ]
 
 
-def migrate_file(filepath: Path, dry_run: bool = True) -> Tuple[bool, List[str]]:
+def migrate_file(filepath: Path, dry_run: bool = True) -> tuple[bool, list[str]]:
     """
     Migrate a single file to new SessionGene API.
 
@@ -123,7 +122,7 @@ def migrate_directory(directory: Path, pattern: str = "**/*.py", dry_run: bool =
             all_warnings.extend(warnings)
 
     print("\n" + "=" * 80)
-    print(f"Summary:")
+    print("Summary:")
     print(f"  Files changed: {len(changed_files)}")
     print(f"  Total warnings: {len(all_warnings)}")
     print(

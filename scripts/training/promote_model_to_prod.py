@@ -258,13 +258,13 @@ def main():
 Examples:
   # Promote best checkpoint from manifest
   python scripts/promote_model_to_prod.py --checkpoint-id ppo_stage3_20250115_123045
-  
+
   # Promote specific model file
   python scripts/promote_model_to_prod.py --model-path models/rl_agents/best_model.zip --agent-type ppo
-  
+
   # Rollback to previous deployment
   python scripts/promote_model_to_prod.py --rollback
-  
+
   # List deployment history
   python scripts/promote_model_to_prod.py --list
         """,

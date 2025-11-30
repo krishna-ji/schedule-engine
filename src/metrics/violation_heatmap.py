@@ -56,9 +56,9 @@ class ViolationHeatmap:
                 "total": 0,
             }
         )
-        self.generation_history: list[dict[str, Any]] = (
-            []
-        )  # List of {gen: int, violations: dict}
+        self.generation_history: list[
+            dict[str, Any]
+        ] = []  # List of {gen: int, violations: dict}
 
     def record_violation(self, gene: SessionGene, violation_type: str) -> None:
         """

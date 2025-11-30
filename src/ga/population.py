@@ -746,7 +746,9 @@ def create_component_session_with_conflict_avoidance(
     DEPRECATED: Use create_session_gene_with_conflict_avoidance instead.
     Kept for backwards compatibility with old population generators.
     """
-    course = context.courses.get((course_id, component_type)) or context.courses.get(course_id)  # type: ignore[arg-type, call-overload]
+    course = context.courses.get((course_id, component_type)) or context.courses.get(
+        course_id
+    )  # type: ignore[arg-type, call-overload]
     if not course:
         return None  # type: ignore[return-value]
 
@@ -944,7 +946,9 @@ def create_component_session(
     Returns:
         SessionGene object for this component (or None if creation fails)
     """
-    course = context.courses.get((course_id, component_type)) or context.courses.get(course_id)  # type: ignore[arg-type, call-overload]
+    course = context.courses.get((course_id, component_type)) or context.courses.get(
+        course_id
+    )  # type: ignore[arg-type, call-overload]
     if not course:
         return None  # type: ignore[return-value]
 

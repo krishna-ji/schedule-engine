@@ -36,12 +36,8 @@ class PureNsgaBlueprint(ConfigBlueprint):
             "rl": {"enabled": False, "mode": "disabled"},
             "enhancements": {"master_enabled": False},
             "heuristics": {
+                "master_enabled": False,  # MASTER KILLSWITCH: Disable ALL heuristics
                 "adaptive_priority": {"enabled": False},
-                "construction": {},
-                "perturbation": {},
-                "improvement": {},
-                "meta": {},
-                "diversity": {},
             },
         }
 

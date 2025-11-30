@@ -5,39 +5,43 @@ NSGA-II with fixed rotation through heuristic operators.
 Tests effectiveness of heuristic toolbox.
 """
 
-from src.config.presets.blueprints import RoundRobinHeuristicBlueprint
-from src.config.presets.profiles import Profile
+from configs.experiments.roundrobin import (
+    EXPERIMENT_DESCRIPTION as _EXPERIMENT_DESCRIPTION,
+)
+from configs.experiments.roundrobin import EXPERIMENT_ID as _EXPERIMENT_ID
+from configs.experiments.roundrobin import EXPERIMENT_NAME as _EXPERIMENT_NAME
+from configs.experiments.roundrobin import KILLSWITCHES as _KILLSWITCHES
+from configs.experiments.roundrobin import RoundRobinProdConfig, RoundRobinTestConfig
+from configs.profiles import Profile
 
-# Instantiate blueprint
-experiment_c = RoundRobinHeuristicBlueprint()
+# Use dataclass configs
+experiment_c_test = RoundRobinTestConfig()
+experiment_c_prod = RoundRobinProdConfig()
 
-# Experiment metadata
-EXPERIMENT_ID = "C"
-EXPERIMENT_NAME = "Round-Robin Heuristics"
-EXPERIMENT_DESCRIPTION = "NSGA-II + round-robin heuristic selection"
-
-# Killswitches (explicit documentation)
-KILLSWITCHES = {
-    "repair.enabled": True,
-    "repair.memetic_mode": True,
-    "heuristics.adaptive_priority.enabled": False,  # Fixed rotation, not adaptive
-    "heuristics.construction.largest_degree_first.enabled": True,
-    "heuristics.perturbation.random_swap.enabled": True,
-    "lns.enabled": False,
-    "rl.enabled": False,
-    "enhancements.master_enabled": True,
-}
+# Experiment metadata (imported from dataclass module)
+EXPERIMENT_ID = _EXPERIMENT_ID
+EXPERIMENT_NAME = _EXPERIMENT_NAME
+EXPERIMENT_DESCRIPTION = _EXPERIMENT_DESCRIPTION
+KILLSWITCHES = _KILLSWITCHES
 
 
 # Quick usage
-def get_config(profile: Profile = Profile.TEST):
+def get_config(profile: Profile = Profile.TEST, **overrides):
     """Get config for Experiment C."""
-    return experiment_c.build(profile)
+    # Filter out None values
+    overrides = {k: v for k, v in overrides.items() if v is not None}
+
+    if profile == Profile.TEST:
+        config = RoundRobinTestConfig(**overrides)
+    else:
+        config = RoundRobinProdConfig(**overrides)
+    return config.to_pydantic()
 
 
 if __name__ == "__main__":
-    config = get_config(Profile.TEST)
+    test_cfg = experiment_c_test
     print(f"✓ {EXPERIMENT_NAME}")
-    print(f"  Repair: {config.repair.enabled}")
-    print(f"  Adaptive priority: {config.heuristics.adaptive_priority.enabled}")
-    print(f"  Enhancements: {config.enhancements.master_enabled}")
+    print(f"  ngen={test_cfg.ngen}, pop={test_cfg.pop_size}")
+    print(f"  repair={test_cfg.repair_enabled}")
+    print(f"  heuristics={test_cfg.heuristics_master_enabled}")
+    print(f"  adaptive={test_cfg.heuristics_adaptive_priority_enabled}")

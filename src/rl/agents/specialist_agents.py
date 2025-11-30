@@ -251,9 +251,9 @@ class AgentCoordinator:
     def __init__(self):
         """Initialize agent coordinator."""
         self.agents: dict[str, BaseAlgorithm] = {}
-        self.agent_specializations: dict[str, str] = (
-            {}
-        )  # Agent name -> specialization type
+        self.agent_specializations: dict[
+            str, str
+        ] = {}  # Agent name -> specialization type
         self.agent_performance: dict[str, float] = {}  # Agent name -> success rate
         self.agent_usage_count: dict[str, int] = {}  # Agent name -> usage count
 

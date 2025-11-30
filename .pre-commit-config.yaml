@@ -1,0 +1,66 @@
+# Pre-commit hooks for schedule-engine
+# Install: uv pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# Skip hooks: git commit --no-verify
+
+repos:
+  # Ruff - Fast Python linter and formatter (replaces black, isort, flake8)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Run ruff linter
+      - id: ruff
+        args: [--fix]
+        types_or: [python, pyi]
+      # Run ruff formatter (replaces black)
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  # MyPy - Static type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        args: [--strict, --config-file=pyproject.toml]
+        additional_dependencies:
+          - pydantic==2.10.3
+          - numpy==1.26.4
+          - types-pyyaml
+        files: ^src/
+        # Exclude third-party libraries that don't have type stubs
+        exclude: ^(test/|scripts/|configs/)
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom YAML tags
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Pytest - Run fast unit tests (optional, can be slow)
+  # Uncomment to enable test running on pre-commit
+  # - repo: local
+  #   hooks:
+  #     - id: pytest
+  #       name: pytest-fast
+  #       entry: uv run pytest test/unit/ -x --tb=short
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+  #       stages: [pre-push]  # Only run on push, not commit
+
+# Configuration
+default_language_version:
+  python: python3.12
+
+# Stages configuration
+default_stages: [pre-commit]

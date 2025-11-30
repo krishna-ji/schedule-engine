@@ -182,11 +182,11 @@ def run_my_stage(context, config, output_dir):
 ```python
 def run_standard_workflow(...):
     # ... existing stages ...
-    
+
     # Stage N: My Stage
     if config.my_stage.enabled:
         my_result = run_my_stage(context, config, output_dir)
-    
+
     # ... continue workflow ...
 ```
 

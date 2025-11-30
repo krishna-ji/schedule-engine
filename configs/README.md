@@ -336,7 +336,7 @@ from src.config.presets.profiles import Profile
 
 class MyCustomBlueprint(ModeERlGuidedBlueprint):
     name = "My Custom Mode"
-    
+
     def additional_overrides(self, profile: Profile):
         return {
             "ga": {"cxpb": 0.9, "mutpb": 0.1},
@@ -356,7 +356,7 @@ from src.config.presets.blueprints import ModeERlGuidedBlueprint
 
 class MyCustomBlueprint(ModeERlGuidedBlueprint):
     name = "My Custom Mode"
-    
+
     def base_overrides(self, profile):
         overrides = super().base_overrides(profile)
         overrides["ga"]["cxpb"] = 0.9
@@ -397,3 +397,9 @@ config = load_config(RuntimeMode.RL_GUIDED, Profile.PROD)  # ✅
 - **Implementation**: `docs/06-development/implementation-notes/PYTHON_CONFIG_MIGRATION.md`
 - **User Guide**: `docs/02-user-guides/runtime-modes.md` (TODO: update)
 - **Copilot Instructions**: `.github/copilot-instructions.md` (TODO: update)
+
+---
+
+## NEW: Dataclass Configs
+
+See **docs/dataclass-config-guide.md** for Python dataclass-based configs with IDE support!

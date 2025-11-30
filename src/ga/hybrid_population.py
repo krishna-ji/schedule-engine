@@ -169,9 +169,9 @@ def _greedy_construction(
     individual = []
     group_schedule: dict[tuple[str, int], bool] = {}  # {(group_id, quantum): True}
     room_usage: dict[tuple[str, int], bool] = {}  # {(room_id, quantum): True}
-    instructor_usage: dict[tuple[str, int], bool] = (
-        {}
-    )  # {(instructor_id, quantum): True}
+    instructor_usage: dict[
+        tuple[str, int], bool
+    ] = {}  # {(instructor_id, quantum): True}
 
     # Import subsession breaker (canonical L/T/P logic)
     from src.ga.population import get_subsession_durations

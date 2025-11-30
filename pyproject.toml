@@ -20,18 +20,18 @@ dependencies = [
     "pyyaml==6.0.2",
     "rich==13.9.4",
     "tqdm==4.67.1",
-    
+
     # Scientific computing - Windows-compatible versions (no Fortran required)
     "numpy==1.26.4",          # Last stable 1.x before 2.0 breaking changes
     "scipy==1.11.4",          # Last version with pre-built Windows wheels (no Fortran)
     "matplotlib==3.9.4",
     "seaborn==0.13.2",
     "pandas==2.2.3",
-    
+
     # System utilities
     "psutil==6.1.1",
     "plotext==5.3.2",
-    
+
     # Phase 2: RL Integration - pinned to tested versions
     "gymnasium==0.29.1",
     "stable-baselines3==2.3.2",
@@ -49,10 +49,12 @@ dev = [
     "black==24.10.0",
     "ruff==0.8.4",
     "mypy==1.13.0",
+    "pre-commit==4.0.1",
+    "types-pyyaml==6.0.12.20240917",
 ]
 analysis = [
-    "pandas>=2.0.0", 
-    "matplotlib>=3.7.0", 
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
     "seaborn>=0.12.0"
 ]
 

@@ -662,6 +662,10 @@ class HeuristicsConfig(BaseModel):
     Heuristics are integrated via decorator-based registry (like constraints).
     """
 
+    master_enabled: bool = Field(
+        default=True,
+        description="Master killswitch for ALL heuristics (overrides individual settings)",
+    )
     adaptive_priority: dict[str, Any] = Field(
         default_factory=lambda: {
             "enabled": False,
