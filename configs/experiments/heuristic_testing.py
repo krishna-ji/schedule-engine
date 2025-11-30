@@ -1,0 +1,189 @@
+"""
+Experiment F: Individual Heuristic Testing
+
+Mode F: Test individual heuristics in isolation.
+Enable/disable specific heuristics via config flags.
+
+Usage:
+    # Enable only specific heuristics by setting them to True
+    # All others default to False for isolated testing
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from configs.profiles import ProdConfig, TestConfig
+
+EXPERIMENT_NAME = "Experiment F: Heuristic Testing"
+EXPERIMENT_DESCRIPTION = "Test individual heuristics in isolation"
+
+
+@dataclass
+class HeuristicTestingTestConfig(TestConfig):
+    """
+    Mode F: Heuristic Testing (test profile).
+
+    Test individual heuristics with test scaling (30 gens, 10 pop).
+    Typical runtime: 2-5 minutes per heuristic.
+    """
+
+    name: str = "heuristic-testing-test"
+    experiment_id: str = "F"
+
+    # === KILLSWITCHES: Enable heuristics subsystem ===
+    repair_enabled: bool = False  # Keep repair disabled by default
+    heuristics_master_enabled: bool = True  # Enable heuristics
+    heuristics_adaptive_priority_enabled: bool = False
+    lns_enabled: bool = False
+    rl_enabled: bool = False
+    enhancements_master_enabled: bool = False
+
+    # === POPULATION STRATEGY ===
+    population_strategy: str = "hybrid"
+
+    # === INDIVIDUAL HEURISTIC TOGGLES ===
+    # Construction Heuristics (3 total)
+    heuristic_largest_degree_first: bool = False
+    heuristic_most_constrained_first: bool = False
+    heuristic_earliest_deadline_first: bool = False
+
+    # Perturbation Heuristics (5 total)
+    heuristic_random_swap: bool = False
+    heuristic_temporal_shift: bool = False
+    heuristic_room_shuffle: bool = False
+    heuristic_instructor_reassign: bool = False
+    heuristic_multi_perturbation: bool = False
+
+    # Improvement Heuristics (3 total)
+    heuristic_kempe_chain: bool = False
+    heuristic_ejection_chain: bool = False
+    heuristic_variable_depth_search: bool = False
+
+    # Diversity Heuristics (4 total)
+    heuristic_distance_preserving_crossover: bool = False
+    heuristic_crowding_mutation: bool = False
+    heuristic_niching_selection: bool = False
+    heuristic_adaptive_diversity_maintenance: bool = False
+
+    # Meta Heuristics (4 total)
+    heuristic_variable_neighborhood_descent: bool = False
+    heuristic_iterated_local_search: bool = False
+    heuristic_adaptive_large_neighborhood: bool = False
+    heuristic_guided_local_search: bool = False
+
+    # Repair Heuristics (6 total)
+    heuristic_exhaustive_repair: bool = False
+    heuristic_greedy_repair: bool = False
+    heuristic_igls_repair: bool = False
+    heuristic_lns_repair: bool = False
+    heuristic_memetic_repair: bool = False
+    heuristic_selective_repair: bool = False
+
+    # === NOTES ===
+    notes: str = (
+        "Heuristic testing mode - enable individual heuristics for isolated evaluation"
+    )
+
+
+@dataclass
+class HeuristicTestingProdConfig(ProdConfig):
+    """
+    Mode F: Heuristic Testing (production profile).
+
+    Test individual heuristics with production scaling (2000 gens, 200 pop).
+    Typical runtime: 1-3 hours per heuristic.
+    """
+
+    name: str = "heuristic-testing-prod"
+    experiment_id: str = "F"
+
+    # === KILLSWITCHES: Enable heuristics subsystem ===
+    repair_enabled: bool = False
+    heuristics_master_enabled: bool = True
+    heuristics_adaptive_priority_enabled: bool = False
+    lns_enabled: bool = False
+    rl_enabled: bool = False
+    enhancements_master_enabled: bool = False
+
+    # === POPULATION STRATEGY ===
+    population_strategy: str = "hybrid"
+
+    # === INDIVIDUAL HEURISTIC TOGGLES ===
+    # Construction Heuristics (3 total)
+    heuristic_largest_degree_first: bool = False
+    heuristic_most_constrained_first: bool = False
+    heuristic_earliest_deadline_first: bool = False
+
+    # Perturbation Heuristics (5 total)
+    heuristic_random_swap: bool = False
+    heuristic_temporal_shift: bool = False
+    heuristic_room_shuffle: bool = False
+    heuristic_instructor_reassign: bool = False
+    heuristic_multi_perturbation: bool = False
+
+    # Improvement Heuristics (3 total)
+    heuristic_kempe_chain: bool = False
+    heuristic_ejection_chain: bool = False
+    heuristic_variable_depth_search: bool = False
+
+    # Diversity Heuristics (4 total)
+    heuristic_distance_preserving_crossover: bool = False
+    heuristic_crowding_mutation: bool = False
+    heuristic_niching_selection: bool = False
+    heuristic_adaptive_diversity_maintenance: bool = False
+
+    # Meta Heuristics (4 total)
+    heuristic_variable_neighborhood_descent: bool = False
+    heuristic_iterated_local_search: bool = False
+    heuristic_adaptive_large_neighborhood: bool = False
+    heuristic_guided_local_search: bool = False
+
+    # Repair Heuristics (6 total)
+    heuristic_exhaustive_repair: bool = False
+    heuristic_greedy_repair: bool = False
+    heuristic_igls_repair: bool = False
+    heuristic_lns_repair: bool = False
+    heuristic_memetic_repair: bool = False
+    heuristic_selective_repair: bool = False
+
+    # === NOTES ===
+    notes: str = "Heuristic testing mode (production) - enable individual heuristics for isolated evaluation"
+
+
+# LEGACY COMPATIBILITY (Optional)
+# ============================================
+# For backward compatibility with existing launcher system
+
+EXPERIMENT_ID = "F"
+
+KILLSWITCHES = {
+    "repair.enabled": False,
+    "heuristics.master_enabled": True,
+    "lns.enabled": False,
+    "rl.enabled": False,
+    "enhancements.master_enabled": False,
+}
+
+
+def get_test_config() -> HeuristicTestingTestConfig:
+    """Get test profile config (30 gens, 10 pop)."""
+    return HeuristicTestingTestConfig()
+
+
+def get_prod_config() -> HeuristicTestingProdConfig:
+    """Get production profile config (2000 gens, 200 pop)."""
+    return HeuristicTestingProdConfig()
+
+
+# Convenience config loader
+def get_heuristic_testing_config(
+    profile: str = "test",
+) -> HeuristicTestingTestConfig | HeuristicTestingProdConfig:
+    """Load heuristic testing config for given profile."""
+    if profile == "test":
+        return HeuristicTestingTestConfig()
+    elif profile == "prod":
+        return HeuristicTestingProdConfig()
+    else:
+        raise ValueError(f"Unknown profile: {profile}")

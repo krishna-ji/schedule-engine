@@ -99,6 +99,44 @@ class BaseConfig:
     heuristics_evaluation_window: int = 10
     heuristics_min_applications: int = 3
 
+    # Individual Heuristic Toggles (default: all enabled via registry)
+    # Construction Heuristics
+    heuristic_largest_degree_first: bool | None = None
+    heuristic_most_constrained_first: bool | None = None
+    heuristic_earliest_deadline_first: bool | None = None
+
+    # Perturbation Heuristics
+    heuristic_random_swap: bool | None = None
+    heuristic_temporal_shift: bool | None = None
+    heuristic_room_shuffle: bool | None = None
+    heuristic_instructor_reassign: bool | None = None
+    heuristic_multi_perturbation: bool | None = None
+
+    # Improvement Heuristics
+    heuristic_kempe_chain: bool | None = None
+    heuristic_ejection_chain: bool | None = None
+    heuristic_variable_depth_search: bool | None = None
+
+    # Diversity Heuristics
+    heuristic_distance_preserving_crossover: bool | None = None
+    heuristic_crowding_mutation: bool | None = None
+    heuristic_niching_selection: bool | None = None
+    heuristic_adaptive_diversity_maintenance: bool | None = None
+
+    # Meta Heuristics
+    heuristic_variable_neighborhood_descent: bool | None = None
+    heuristic_iterated_local_search: bool | None = None
+    heuristic_adaptive_large_neighborhood: bool | None = None
+    heuristic_guided_local_search: bool | None = None
+
+    # Repair Heuristics
+    heuristic_exhaustive_repair: bool | None = None
+    heuristic_greedy_repair: bool | None = None
+    heuristic_igls_repair: bool | None = None
+    heuristic_lns_repair: bool | None = None
+    heuristic_memetic_repair: bool | None = None
+    heuristic_selective_repair: bool | None = None
+
     # ==========================================
     # CONSTRAINT WEIGHTS (Fitness function)
     # ==========================================
@@ -162,7 +200,7 @@ class BaseConfig:
         """Export as dictionary for Pydantic conversion."""
         return asdict(self)
 
-    def to_pydantic(self) -> Config:
+    def to_pydantic(self) -> BaseConfig:
         """
         Convert to Pydantic model for validation.
 
@@ -232,12 +270,12 @@ class BaseConfig:
                     "evaluation_window": self.heuristics_evaluation_window,
                     "min_applications": self.heuristics_min_applications,
                 },
-                "construction": {},  # Individual heuristics populated by registry
-                "perturbation": {},
-                "improvement": {},
-                "diversity": {},
-                "meta": {},
-                "repair": {},
+                "construction": self._build_heuristic_toggles("construction"),
+                "perturbation": self._build_heuristic_toggles("perturbation"),
+                "improvement": self._build_heuristic_toggles("improvement"),
+                "diversity": self._build_heuristic_toggles("diversity"),
+                "meta": self._build_heuristic_toggles("meta"),
+                "repair": self._build_heuristic_toggles("repair"),
             },
             "lns": {
                 "enabled": self.lns_enabled,
@@ -259,6 +297,60 @@ class BaseConfig:
                 "profiling_enabled": self.performance_profiling_enabled,
             },
         }
+
+    def _build_heuristic_toggles(self, category: str) -> dict[str, bool]:
+        """Extract heuristic toggles for a specific category."""
+        category_heuristics = {
+            "construction": [
+                "largest_degree_first",
+                "most_constrained_first",
+                "earliest_deadline_first",
+            ],
+            "perturbation": [
+                "random_swap",
+                "temporal_shift",
+                "room_shuffle",
+                "instructor_reassign",
+                "multi_perturbation",
+            ],
+            "improvement": [
+                "kempe_chain",
+                "ejection_chain",
+                "variable_depth_search",
+            ],
+            "diversity": [
+                "distance_preserving_crossover",
+                "crowding_mutation",
+                "niching_selection",
+                "adaptive_diversity_maintenance",
+            ],
+            "meta": [
+                "variable_neighborhood_descent",
+                "iterated_local_search",
+                "adaptive_large_neighborhood",
+                "guided_local_search",
+            ],
+            "repair": [
+                "exhaustive_repair",
+                "greedy_repair",
+                "igls_repair",
+                "lns_repair",
+                "memetic_repair",
+                "selective_repair",
+            ],
+        }
+
+        heuristics = category_heuristics.get(category, [])
+        toggles = {}
+
+        for heuristic in heuristics:
+            field_name = f"heuristic_{heuristic}"
+            value = getattr(self, field_name, None)
+            # Only include explicit toggles (None means use registry default)
+            if value is not None:
+                toggles[heuristic] = value
+
+        return toggles
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BaseConfig:

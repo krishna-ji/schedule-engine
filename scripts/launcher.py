@@ -126,8 +126,8 @@ def main_train_rl():
     if exit_code == 0:
         console.print("[green]RL training finished successfully.[/green]")
         console.print(
-            "[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
-            "and launch the GA via Mode F: 'uv run rl --%s'.[/dim]" % profile.value
+            f"[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
+            f"and launch the GA via Mode F: 'uv run rl --{profile.value}'.[/dim]"
         )
 
     sys.exit(exit_code)
@@ -279,6 +279,53 @@ def main_rl():
     )
     console.print(
         "[dim]  Update rl.agent.model_path in configs/experiment_e_rl_guided.py before running to point at your promoted model.[/dim]"
+    )
+    sys.exit(main() or 0)
+
+
+def main_heuristic_testing():
+    """Run Mode F experiment (individual heuristic testing)."""
+    parser = create_parser()
+    args = parser.parse_args()
+
+    profile = _resolve_profile(args.profile)
+
+    from main import main
+
+    sys.argv = [
+        "main.py",
+        "--experiment",
+        "f",
+        "--profile",
+        profile.value,
+    ]
+    if args.name:
+        sys.argv.extend(["--name", args.name])
+
+    console.print(
+        f"[green]Mode F: Individual Heuristic Testing ({_profile_banner(profile)})[/green]"
+    )
+    console.print(
+        "[dim]  Test individual heuristics in isolation (edit configs/experiments/heuristic_testing.py to enable specific heuristics).[/dim]"
+    )
+    console.print("[dim]  Available heuristics:[/dim]")
+    console.print(
+        "[dim]    - Construction: largest_degree_first, most_constrained_first, earliest_deadline_first[/dim]"
+    )
+    console.print(
+        "[dim]    - Perturbation: random_swap, temporal_shift, room_shuffle, instructor_reassign, multi_perturbation[/dim]"
+    )
+    console.print(
+        "[dim]    - Improvement: kempe_chain, ejection_chain, variable_depth_search[/dim]"
+    )
+    console.print(
+        "[dim]    - Diversity: distance_preserving_crossover, crowding_mutation, niching_selection, adaptive_diversity_maintenance[/dim]"
+    )
+    console.print(
+        "[dim]    - Meta: variable_neighborhood_descent, iterated_local_search, adaptive_large_neighborhood, guided_local_search[/dim]"
+    )
+    console.print(
+        "[dim]    - Repair: exhaustive_repair, greedy_repair, igls_repair, lns_repair, memetic_repair, selective_repair[/dim]"
     )
     sys.exit(main() or 0)
 

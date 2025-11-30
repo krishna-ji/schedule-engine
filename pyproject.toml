@@ -79,12 +79,14 @@ nsga = "scripts.launcher:main_nsga"
 # Mode C: + Round-robin (heuristics + repair)    [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed)]
 # Mode D: + Adaptive heuristics                  [repairs: YES, memetic: NO,  heuristics: YES (adaptive)]
 # Mode E: + RL-guided (deploys all techniques)   [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
+# Mode F: + Heuristic testing (individual tests) [test individual heuristics in isolation]
 
 baseline = "scripts.launcher:main_baseline"           # Mode A: Pure NSGA-II
 memetic = "scripts.launcher:main_memetic"             # Mode B: + Memetic local search
 roundrobin = "scripts.launcher:main_roundrobin"       # Mode C: + Round-robin heuristics
 adaptive = "scripts.launcher:main_adaptive"           # Mode D: + Adaptive selection
 rl = "scripts.launcher:main_rl"                       # Mode E: + RL-guided
+heuristic-testing = "scripts.launcher:main_heuristic_testing"  # Mode F: Individual heuristic testing
 
 # RL Training
 train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
