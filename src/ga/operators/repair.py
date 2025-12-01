@@ -258,8 +258,12 @@ def repair_room_conflicts(
 
         course_key = (gene.course_id, gene.course_type)
         course = context.courses.get(course_key)
-        needs_lab = course.course_type == "practical" if course else False
-        new_room = _find_compatible_room(individual, gene, context, needs_lab)
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+            if course
+            else "lecture"
+        )
+        new_room = _find_compatible_room(individual, gene, context, required_type)
         if new_room is not None:
             gene.room_id = new_room
             fixes += 1
@@ -366,13 +370,22 @@ def repair_room_type_mismatches(
         if not course or not room:
             continue
 
-        needs_lab = course.course_type == "practical"
-        is_lab = getattr(room, "room_features", None) == "lab"
+        # Get required and actual room types
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+        )
+        room_type = getattr(room, "room_features", "lecture").lower().strip()
 
-        if needs_lab == is_lab:
-            continue
+        # Check if already compatible using flexible matching
+        from src.utils.room_compatibility import is_room_type_compatible
 
-        replacement_room = _find_compatible_room(individual, gene, context, needs_lab)
+        if is_room_type_compatible(required_type, room_type):
+            continue  # Already matches
+
+        # Find compatible room (pass required_type directly)
+        replacement_room = _find_compatible_room(
+            individual, gene, context, required_type
+        )
         if replacement_room is not None:
             gene.room_id = replacement_room
             fixes += 1
@@ -467,19 +480,28 @@ def _find_compatible_room(
     individual: list[SessionGene],
     current_gene: SessionGene,
     context: SchedulingContext,
-    needs_lab: bool,
+    required_type: str,
 ) -> str | None:
-    """Find a room matching lab/theory requirement without conflicts."""
+    """Find a room matching required type without conflicts.
+
+    Args:
+        individual: Current schedule
+        current_gene: Gene to find room for
+        context: Scheduling context
+        required_type: Required room type ("lecture", "practical", etc.)
+
+    Returns:
+        Room ID if found, None otherwise
+    """
     occupied = _build_occupied_quanta_map(individual, current_gene)
     duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
 
-    # Determine required room type
-    required_type = "practical" if needs_lab else "lecture"
+    from src.utils.room_compatibility import is_room_type_compatible
 
     for room in context.rooms.values():
-        # Check room type compatibility using proper matching logic
+        # Check room type compatibility using centralized logic
         room_type = getattr(room, "room_features", "lecture").lower().strip()
-        if not _room_type_compatible(required_type, room_type):
+        if not is_room_type_compatible(required_type, room_type):
             continue
 
         conflict = False
@@ -494,32 +516,6 @@ def _find_compatible_room(
         return room.room_id
 
     return None
-
-
-def _room_type_compatible(required: str, room_type: str) -> bool:
-    """Check if room type satisfies requirement with flexible compatibility."""
-    # Exact match
-    if required == room_type:
-        return True
-
-    # Lecture/theory courses: Accept lecture, classroom, auditorium
-    if required in ["lecture", "classroom", "theory"] and room_type in [
-        "lecture",
-        "classroom",
-        "auditorium",
-        "seminar",
-        "tutorial",
-    ]:
-        return True
-
-    # Practical/lab courses: Accept practical, lab variants
-    return required in ["practical", "lab", "laboratory"] and room_type in [
-        "practical",
-        "lab",
-        "laboratory",
-        "computer_lab",
-        "science_lab",
-    ]
 
 
 # ================

@@ -165,49 +165,15 @@ def find_suitable_rooms_for_course(
         if room_capacity < group_size:
             continue
 
-        # Check room type compatibility using the same logic as constraints
-        if _room_type_matches(
+        # Check room type compatibility using centralized logic
+        from src.utils.room_compatibility import is_room_type_compatible
+
+        if is_room_type_compatible(
             required_room_features.lower().strip(), room_features.lower().strip()
         ):
             suitable_room_ids.append(room_id)
 
     return suitable_room_ids if suitable_room_ids else list(context.rooms.keys())
-
-
-def _room_type_matches(required: str, room_type: str) -> bool:
-    """
-    Check if room type satisfies requirement with flexible compatibility.
-    Uses same logic as constraints.hard._room_type_matches for consistency.
-
-    Args:
-        required: Required room type (e.g., "lecture", "practical")
-        room_type: Actual room type (e.g., "lecture", "practical")
-
-    Returns:
-        True if compatible, False otherwise
-    """
-    # Exact match
-    if required == room_type:
-        return True
-
-    # Lecture/theory courses: Accept lecture, classroom, auditorium
-    if required in ["lecture", "classroom", "theory"] and room_type in [
-        "lecture",
-        "classroom",
-        "auditorium",
-        "seminar",
-        "tutorial",
-    ]:
-        return True
-
-    # Practical/lab courses: Accept practical, lab variants
-    return required in ["practical", "lab", "laboratory"] and room_type in [
-        "practical",
-        "lab",
-        "laboratory",
-        "computer_lab",
-        "science_lab",
-    ]
 
 
 def mutate_individual(individual, context, mut_prob=0.2, guided=True):

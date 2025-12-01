@@ -524,14 +524,16 @@ def repair_room_type_mismatches_selective(
         room_type = getattr(room, "room_features", "lecture").lower().strip()
 
         # Check if already compatible
-        if _room_type_compatible(required_type, room_type):
+        from src.utils.room_compatibility import is_room_type_compatible
+
+        if is_room_type_compatible(required_type, room_type):
             continue  # Already matches
 
         # Find compatible room
         compatible_rooms = [
             r.room_id
             for r in context.rooms.values()
-            if _room_type_compatible(
+            if is_room_type_compatible(
                 required_type, getattr(r, "room_features", "lecture").lower().strip()
             )
         ]
@@ -541,32 +543,6 @@ def repair_room_type_mismatches_selective(
             fixes += 1
 
     return fixes
-
-
-def _room_type_compatible(required: str, room_type: str) -> bool:
-    """Check if room type satisfies requirement with flexible compatibility."""
-    # Exact match
-    if required == room_type:
-        return True
-
-    # Lecture/theory courses: Accept lecture, classroom, auditorium
-    if required in ["lecture", "classroom", "theory"] and room_type in [
-        "lecture",
-        "classroom",
-        "auditorium",
-        "seminar",
-        "tutorial",
-    ]:
-        return True
-
-    # Practical/lab courses: Accept practical, lab variants
-    return required in ["practical", "lab", "laboratory"] and room_type in [
-        "practical",
-        "lab",
-        "laboratory",
-        "computer_lab",
-        "science_lab",
-    ]
 
 
 def repair_session_clustering_selective(

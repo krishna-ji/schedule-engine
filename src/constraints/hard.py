@@ -174,45 +174,12 @@ def room_suitability(sessions: list[CourseSession]) -> int:
         )
 
         # Check if room type matches (with flexibility)
-        if not _room_type_matches(required_str, room_str):
+        from src.utils.room_compatibility import is_room_type_compatible
+
+        if not is_room_type_compatible(required_str, room_str):
             violations += 1
 
     return violations
-
-
-def _room_type_matches(required: str, room_type: str) -> bool:
-    """
-    Check if room type satisfies requirement with flexible compatibility.
-
-    Args:
-        required: Required room type (e.g., "lecture", "practical")
-        room_type: Actual room type (e.g., "lecture", "practical")
-
-    Returns:
-        True if compatible, False otherwise
-    """
-    # Exact match
-    if required == room_type:
-        return True
-
-    # Lecture/theory courses: Accept lecture, classroom, auditorium
-    if required in ["lecture", "classroom", "theory"] and room_type in [
-        "lecture",
-        "classroom",
-        "auditorium",
-        "seminar",
-        "tutorial",
-    ]:
-        return True
-
-    # Practical/lab courses: Accept practical, lab variants
-    return required in ["practical", "lab", "laboratory"] and room_type in [
-        "practical",
-        "lab",
-        "laboratory",
-        "computer_lab",
-        "science_lab",
-    ]
 
 
 @hard_constraint(
