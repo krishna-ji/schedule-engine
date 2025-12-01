@@ -56,7 +56,7 @@ def _get_config_class(experiment: str, profile: str) -> type[BaseConfig]:
     """Get dataclass config class for experiment+profile combination."""
 
     # Registry mapping
-    REGISTRY = {
+    registry_map = {
         ("baseline", "test"): "configs.experiments.baseline:BaselineTestConfig",
         ("baseline", "prod"): "configs.experiments.baseline:BaselineProdConfig",
         ("memetic", "test"): "configs.experiments.memetic:MemeticTestConfig",
@@ -70,12 +70,12 @@ def _get_config_class(experiment: str, profile: str) -> type[BaseConfig]:
     }
 
     key = (experiment.lower(), profile.lower())
-    class_path = REGISTRY.get(key)
+    class_path = registry_map.get(key)
 
     if not class_path:
         raise ValueError(
             f"Unknown experiment+profile: {experiment}/{profile}. "
-            f"Available: {list(REGISTRY.keys())}"
+            f"Available: {list(registry_map.keys())}"
         )
 
     # Import dynamically

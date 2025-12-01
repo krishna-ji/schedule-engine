@@ -128,21 +128,21 @@ def generate_comparison_table(experiments: list[dict[str, Any]]) -> Table:
             group,
             (
                 f"{hard_violations:.0f}"
-                if isinstance(hard_violations, (int, float))
+                if isinstance(hard_violations, int | float)
                 else str(hard_violations)
             ),
             (
                 f"{soft_penalty:.2f}"
-                if isinstance(soft_penalty, (int, float))
+                if isinstance(soft_penalty, int | float)
                 else str(soft_penalty)
             ),
             f"{runtime_hours:.1f}",
             (
                 f"{hypervolume:.3f}"
-                if isinstance(hypervolume, (int, float))
+                if isinstance(hypervolume, int | float)
                 else str(hypervolume)
             ),
-            f"{igd:.2f}" if isinstance(igd, (int, float)) else str(igd),
+            f"{igd:.2f}" if isinstance(igd, int | float) else str(igd),
         )
 
     return table
@@ -237,8 +237,6 @@ def plot_runtime_vs_quality(experiments: list[dict[str, Any]]) -> None:
     Args:
         experiments: List of experiment results
     """
-    plt.figure(figsize=(12, 8))
-
     # Extract data for plotting
     methods = []
     runtimes = []
@@ -262,9 +260,7 @@ def plot_runtime_vs_quality(experiments: list[dict[str, Any]]) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
     # Runtime vs Hard Violations
-    scatter1 = ax1.scatter(
-        runtimes, hard_violations, s=100, alpha=0.7, c=range(len(methods))
-    )
+    ax1.scatter(runtimes, hard_violations, s=100, alpha=0.7, c=range(len(methods)))
     ax1.set_xlabel("Runtime (hours)")
     ax1.set_ylabel("Hard Constraint Violations")
     ax1.set_title("Runtime vs Hard Violations Trade-off")
@@ -281,9 +277,7 @@ def plot_runtime_vs_quality(experiments: list[dict[str, Any]]) -> None:
         )
 
     # Runtime vs Soft Penalties
-    scatter2 = ax2.scatter(
-        runtimes, soft_penalties, s=100, alpha=0.7, c=range(len(methods))
-    )
+    ax2.scatter(runtimes, soft_penalties, s=100, alpha=0.7, c=range(len(methods)))
     ax2.set_xlabel("Runtime (hours)")
     ax2.set_ylabel("Soft Constraint Penalties")
     ax2.set_title("Runtime vs Soft Penalties Trade-off")
@@ -300,6 +294,8 @@ def plot_runtime_vs_quality(experiments: list[dict[str, Any]]) -> None:
         )
 
     plt.tight_layout()
+    output_path = Path("output/analysis")
+    output_path.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path / "runtime_vs_quality.png", dpi=300, bbox_inches="tight")
     plt.close()
 

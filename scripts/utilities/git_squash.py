@@ -42,9 +42,10 @@ def squash_commits(n: int, message: str) -> bool:
         run_git_command(["commit", "-m", message])
 
         return True
-    except:
+    except Exception as exc:  # noqa: BLE001 - general rollback handler
         # On error, try to restore original state
         print("\nError occurred. Attempting rollback...")
+        print(f"Details: {exc}")
         run_git_command(["reset", "--hard", "ORIG_HEAD"], check=False)
         return False
 

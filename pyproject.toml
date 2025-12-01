@@ -98,6 +98,7 @@ train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
 analyze-results = "scripts.analysis.compare_experiments:main"  # Generate comparison plots
 archive = "scripts.launcher:main_archive"             # Archive incomplete runs
 clean = "scripts.launcher:main_clean"                 # Clean output directory
+configure-heuristic = "scripts.utilities.configure_heuristic:main"  # Quick heuristic config
 diagnose = "scripts.launcher:main_diagnose"           # System diagnostics
 list-experiments = "scripts.launcher:main_list"       # List experiment history
 stats = "scripts.launcher:main_stats"                 # Show manifest statistics
@@ -133,6 +134,8 @@ exclude = [
     "notebook",
     "logs",
     ".pytest_cache",
+    "data",
+    "data/**",
 ]
 
 [tool.ruff.lint]

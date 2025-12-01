@@ -4,8 +4,17 @@ Hierarchical RL controller for two-level heuristic selection.
 ENHANCEMENT #7: High-level selects category, low-level selects specific heuristic.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from stable_baselines3 import PPO
+else:  # pragma: no cover - runtime import happens lazily
+    PPO = Any
 
 
 class HighLevelPolicy:
@@ -30,7 +39,7 @@ class HighLevelPolicy:
             model_path: Path to trained model
         """
         self.model_path = model_path
-        self.model: PPO | None = None  # type: ignore[name-defined]
+        self.model: PPO | None = None
         self.categories = [
             "construction",
             "perturbation",
@@ -96,7 +105,7 @@ class LowLevelPolicy:
         """
         self.category = category
         self.model_path = model_path
-        self.model: PPO | None = None  # type: ignore[name-defined]
+        self.model: PPO | None = None
 
         # Heuristic mappings per category
         self.heuristics = {

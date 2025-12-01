@@ -45,5 +45,5 @@ if __name__ == "__main__":
     print(f"  rl_enabled={test_cfg.rl_enabled}")
     print(f"  rl_mode={test_cfg.rl_mode}")
     print(f"  lns={test_cfg.lns_enabled}")
-    print(f"  LNS enabled: {config.lns.enabled}")
-    print(f"  Memetic mode: {config.enhancements.memetic_mode}")
+    print(f"  LNS enabled: {test_cfg.lns_enabled}")
+    print(f"  Memetic mode: {test_cfg.repair_memetic_mode}")

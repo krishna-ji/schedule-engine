@@ -64,8 +64,7 @@ if __name__ == "__main__":
 
     for file_path in files_to_process:
         p = root / file_path
-        if p.exists():
-            if replace_quanta_assignments(p, dry_run):
-                modified += 1
+        if p.exists() and replace_quanta_assignments(p, dry_run):
+            modified += 1
 
     print(f"\nModified {modified} files")

@@ -18,9 +18,9 @@ import torch
 
 def print_section(title: str):
     """Print formatted section header."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"{title}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 def check_cuda_availability():
@@ -186,13 +186,13 @@ def estimate_vram_usage():
     print("Estimated VRAM requirements for RL training:")
     print("")
     print(f"{'Component':<30} {'VRAM':<15} {'Notes'}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"{'PPO Policy Network (MLP)':<30} {'~50 MB':<15} {'Small network'}")
     print(f"{'PPO Value Network (MLP)':<30} {'~50 MB':<15} {'Small network'}")
     print(f"{'Experience Buffer':<30} {'~200 MB':<15} {'Default batch size'}")
     print(f"{'Batch Processing':<30} {'~100 MB':<15} {'Temporary tensors'}")
     print(f"{'Overhead & Fragmentation':<30} {'~100 MB':<15} {'Safety margin'}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"{'Total (typical)':<30} {'~500 MB':<15} {' Well within 8GB'}")
     print(f"{'Total (maximum)':<30} {'~1 GB':<15} {' Still plenty of room'}")
     print("")
@@ -250,9 +250,9 @@ def print_recommendations():
 
 
 def main():
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Schedule-Engine GPU Diagnostics")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Run all checks
     cuda_ok = check_cuda_availability()
@@ -260,22 +260,22 @@ def main():
     gpu_ok = check_gpu_devices()
 
     if cuda_ok and gpu_ok:
-        ops_ok = test_gpu_operations()
-        config_ok = test_config_device()
+        test_gpu_operations()
+        test_config_device()
         estimate_vram_usage()
 
     print_recommendations()
 
     # Exit code
     if cuda_ok and gpu_ok:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(" GPU DIAGNOSTICS PASSED")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         sys.exit(0)
     else:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(" GPU DIAGNOSTICS FAILED")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         sys.exit(1)
 
 

@@ -104,7 +104,7 @@ def benchmark_decoding(individual, context, num_runs: int = 100) -> tuple[float,
 
     for _ in range(num_runs):
         start = time.perf_counter()
-        sessions = decode_individual(
+        decode_individual(
             individual,
             context.courses,
             context.instructors,
@@ -133,9 +133,9 @@ def benchmark_constraint(
     for _ in range(num_runs):
         start = time.perf_counter()
         if needs_courses:
-            penalty = constraint_func(sessions, courses)
+            constraint_func(sessions, courses)
         else:
-            penalty = constraint_func(sessions)
+            constraint_func(sessions)
         elapsed = time.perf_counter() - start
         times.append(elapsed * 1000)
 
@@ -177,7 +177,7 @@ def benchmark_full_evaluation(
     # Benchmark full evaluation
     for _ in range(num_runs):
         start = time.perf_counter()
-        fitness = evaluate(
+        evaluate(
             individual,
             context.courses,
             context.instructors,
@@ -206,9 +206,9 @@ def run_benchmark(
         BenchmarkResult with all timing data
     """
     if verbose:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Benchmarking: {data_dir.name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     # Load context
     if verbose:
@@ -327,13 +327,13 @@ def compare_datasets(
         results.append(result)
 
     # Print comparison table
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("COMPARISON SUMMARY")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(
         f"{'Dataset':<15} {'Sessions':<10} {'Decode':<10} {'Hard':<10} {'Soft':<10} {'Total':<10}"
     )
-    print(f"{'-'*80}")
+    print(f"{'-' * 80}")
 
     for result in results:
         print(
@@ -414,9 +414,9 @@ def main():
 
         print(f"\nResults saved to: {args.output}")
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("Benchmark complete!")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
 
 if __name__ == "__main__":
