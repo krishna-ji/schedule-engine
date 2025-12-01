@@ -498,12 +498,26 @@ def _find_compatible_room(
 
     from src.utils.room_compatibility import is_room_type_compatible
 
+    # Calculate total enrollment for capacity check
+    total_enrollment = sum(
+        context.groups[gid].size
+        for gid in current_gene.group_ids
+        if gid in context.groups
+    )
+
+    # Collect compatible candidates and sort by preference
+    candidates = []
     for room in context.rooms.values():
         # Check room type compatibility using centralized logic
         room_type = getattr(room, "room_features", "lecture").lower().strip()
         if not is_room_type_compatible(required_type, room_type):
             continue
 
+        # Check capacity (hard requirement)
+        if room.capacity < total_enrollment:
+            continue
+
+        # Check time conflicts
         conflict = False
         for q in duration_range:
             if room.room_id in occupied["rooms"].get(q, set()):
@@ -513,7 +527,14 @@ def _find_compatible_room(
         if conflict:
             continue
 
-        return room.room_id
+        # Calculate fit quality (prefer rooms close to enrollment size)
+        capacity_ratio = total_enrollment / room.capacity if room.capacity > 0 else 0
+        candidates.append((room.room_id, capacity_ratio))
+
+    # Return best fit (highest capacity utilization)
+    if candidates:
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        return candidates[0][0]
 
     return None
 
