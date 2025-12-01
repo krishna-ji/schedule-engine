@@ -279,14 +279,14 @@ def repair_room_conflicts(
 
 @repair_operator(
     name="repair_instructor_conflicts",
-    description="Resolve instructor double-bookings by shifting sessions",
+    description="Resolve instructor double-bookings by shifting sessions or swapping instructors",
     priority=4,
     modifies_length=False,
 )
 def repair_instructor_conflicts(
     individual: list[SessionGene], context: SchedulingContext
 ) -> int:
-    """Resolve instructor conflicts by finding conflict-free slots."""
+    """Resolve instructor conflicts by time shift or instructor swap."""
     fixes = 0
     occupied = _build_occupied_quanta_map(individual)
 
@@ -299,10 +299,23 @@ def repair_instructor_conflicts(
         if not has_conflict:
             continue
 
+        # Phase 1: Try time shift (preserve instructor)
         new_start = _find_conflict_free_slot(individual, gene, context.available_quanta)
 
         if new_start is not None:
             gene.start_quanta = new_start
+            fixes += 1
+            occupied = _build_occupied_quanta_map(individual)
+            continue
+
+        # Phase 2: Try instructor swap (preserve time)
+        course_key = (gene.course_id, gene.course_type)
+        new_instructor = _find_available_instructor(
+            individual, gene, context, course_key
+        )
+
+        if new_instructor is not None:
+            gene.instructor_id = new_instructor
             fixes += 1
             occupied = _build_occupied_quanta_map(individual)
 
