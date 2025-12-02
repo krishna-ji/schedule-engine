@@ -1,185 +1,159 @@
-# Schedule Engine - Copilot Agent Guide
+# Schedule Engine - AI Coding Agent Guide
 
-##  Project Overview
+## Project Overview
 
-**Type**: Constraint-satisfaction problem (CSP) solver for educational timetabling via multi-objective evolutionary algorithms  
+**Type**: CSP solver for educational timetabling via multi-objective evolutionary algorithms  
 **Domain**: University course scheduling (NP-hard combinatorial optimization)  
-**Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)  
-**Metaheuristic**: NSGA-II (Non-dominated Sorting Genetic Algorithm II) with PPO/DQN reinforcement learning hyper-heuristic layer  
-**Dependencies**: DEAP 1.4.1 (NSGA-II toolbox), PyTorch 2.4.1 + CUDA 12.1 (RL training/inference only), Stable-Baselines3 2.3.2 (PPO/DQN agents), Pydantic 2.10.3 (config validation), Rich 13.9.4 (TUI)  
-**Package Manager**: UV (modern, fast Python package installer)  
-**Architecture**: Modular constraint-based optimization with 10 progressive runtime modes  
-**Performance**: CPU multiprocessing for GA (32 parallel workers), GPU reserved for RL neural networks
+**Language**: Python 3.12 (strict mypy typing enforced)  
+**Metaheuristic**: NSGA-II + RL hyper-heuristic (PPO/DQN agents)  
+**Stack**: DEAP 1.4.1, PyTorch 2.4.1+CUDA, Stable-Baselines3 2.3.2, Pydantic 2.10.3, Rich 13.9.4  
+**Package Manager**: UV  
+**Config System**: Python dataclasses (`configs/*.py`) with DRY inheritance (base → profiles → experiments)  
+**Architecture**: 6 progressive experimental modes (A-F: baseline → RL-guided)  
+**Performance**: CPU multiprocessing (32 workers), pymoo-accelerated metrics (139x speedup)
 
-## ️ Build & Test Commands
+## Quick Start
 
-### Quick Setup
 ```bash
-# Install dependencies (UV package manager)
+# Install dependencies
 uv sync --frozen
 
-# Verify setup
-uv run diagnose
+# Progressive experiments (A→F: increasing complexity)
+uv run baseline --test       # A: Pure NSGA-II (~2-5 min)
+uv run memetic --test        # B: + Memetic search (~3-7 min)
+uv run roundrobin --test     # C: + Round-robin (~5-10 min)
+uv run adaptive --test       # D: + Adaptive (~7-15 min)
+uv run rl --test             # E: + RL-guided (~10-20 min)
+uv run heuristic-testing --test  # F: Individual heuristic testing
+
+# RL training
+uv run train-rl --test       # Smoke test (10K steps, ~5 min)
+uv run train-rl --prod       # Full training (100K steps, ~1-2 hrs)
+
+# Utilities
+uv run diagnose              # System/GPU diagnostics
+uv run clean                 # Clean outputs
+uv run list-experiments      # Show history
+uv run stats                 # Manifest statistics
 ```
 
-### Unified CLI Launcher (Recommended)
+## Code Quality
+
 ```bash
-# Progressive Mode Experiments (A→E: Increasing Complexity)
-uv run baseline --test      # Mode A: Pure NSGA-II (~2-5 min)
-uv run memetic --test       # Mode B: + Memetic local search (~3-7 min)
-uv run roundrobin --test    # Mode C: + Round-robin heuristics (~5-10 min)
-uv run adaptive --test      # Mode D: + Adaptive selection (~7-15 min)
-uv run rl --test            # Mode E: + RL-guided (requires trained model, ~10-20 min)
-
-# RL Training
-uv run train-rl --test      # Smoke test (10K steps, ~5-10 min)
-uv run train-rl --prod      # Production (100K steps, ~1-2 hours)
-
-# Helper Commands
-uv run diagnose             # Check GPU/system status
-uv run clean                # Clean output directory
-uv run list-experiments     # Show experiment history
+black src/ test/             # Format
+ruff check src/ test/        # Lint
+mypy src/                    # Type check (strict mode)
+pytest test/unit/            # Test suite
 ```
 
-### Testing
-```bash
-# Run all unit tests
-pytest test/unit/
+## Development Status
 
-# Run specific test file
-pytest test/unit/test_config_loader.py
-
-# Run with coverage
-pytest --cov=src --cov-report=html test/unit/
-```
-
-### Code Quality
-```bash
-# Format code (Black)
-black src/ test/
-
-# Lint (Ruff)
-ruff check src/ test/
-
-# Type checking (MyPy)
-mypy src/
-```
-
-### Helper Commands
-```bash
-# Diagnose GPU/system status
-uv run diagnose
-
-# Clean old outputs
-uv run clean
-
-# List experiment history
-uv run list-experiments
-
-# Legacy commands (still supported)
-uv run verify-config
-uv run check-data
-```
-
-## Phase Roadmap & Status
-
-- **Phase 1.5 – Heuristic Toolbox**:  Complete (19 operators + registry, documented in `docs/06-development/implementation-notes/PHASE_1.5_SUMMARY.md`).
-- **Phase 2.1 – Gymnasium Environment**:  Complete (env, reward, action mapper). See `docs/06-development/implementation-notes/PHASE_2.1_SUMMARY.md`.
-- **Phase 2.2-2.4 – RL Training/Deployment/Integration**:  Code complete (`docs/06-development/implementation-notes/PHASE_2_RL_COMPLETE.md`). Pending execution tasks: curriculum training runs, checkpoint selection, promotion, RL-enabled GA benchmarking, and documentation updates.
-- **Phase 3 – Advanced RL / Evaluation**:  Planned (multi-agent, transfer learning, evaluation suite) per `Todo.md` and `docs/10-ai-suggestions/rlphase2.2-2.4_guide_manual.md`.
-- **GPU Acceleration**:  Removed from GA loop (CPU multiprocessing only). GPU reserved for RL training/inference where it excels (neural networks).
+- **Phase 1.5**: ✅ Heuristic toolbox (19 operators + registry)
+- **Phase 2.1**: ✅ Gymnasium environment (state/reward/actions)
+- **Phase 2.2-2.4**: ✅ RL training pipeline (PPO/DQN agents)
+- **Phase 3**: ✅ Advanced RL (8 enhancements: multi-agent, hierarchical, memetic)
+- **Type Safety**: ✅ Strict mypy (100% typed pure Python packages)
+- **GPU**: ❌ Removed from GA (CPU multiprocessing only); reserved for RL neural networks
+- **Metrics**: ✅ pymoo acceleration (139x speedup: 50s → 0.36s/gen)
 
 ## Tech Stack
 
-- **Language**: Python 3.12 (pinned via `requires-python = "==3.12.*"`)
-- **Type Safety**: mypy 1.13.0 strict mode (100% coverage for all pure Python packages)
-- **Core Libraries**:
-  - DEAP 1.4.1 (genetic algorithms)
-  - PyTorch 2.4.1 + CUDA 12.1 (RL training/inference only - NOT used for GA fitness evaluation)
-  - Stable-Baselines3 2.3.2 (RL agents)
-  - Pydantic 2.10.3 (validation)
-  - Rich 13.9.4 (terminal UI)
-  - NumPy 1.26.4 (scientific computing)
-  - Gymnasium 0.29.1 (RL environment)
-  - pymoo 0.6.1.3 (optimized multi-objective metrics)
-- **Config**: YAML-based with base.yaml + environment overrides + runtime modes
-- **Package Manager**: UV (uv.lock, pyproject.toml)
-- **Performance**: CPU multiprocessing (32 cores), parallel operators, concurrent validation, pymoo-accelerated metrics
+- **Python 3.12**: Strict mypy typing (`requires-python = "==3.12.*"`)
+- **GA Core**: DEAP 1.4.1, NumPy 1.26.4, pymoo 0.6.1.3 (metrics)
+- **RL Stack**: PyTorch 2.4.1+CUDA12.1, Stable-Baselines3 2.3.2, Gymnasium 0.29.1
+- **Config**: Pydantic 2.10.3 (validation), Python dataclasses (DRY inheritance)
+- **UI**: Rich 13.9.4 (terminal), matplotlib/seaborn (plots)
+- **Performance**: CPU multiprocessing (32 cores), parallel operators, pymoo acceleration
 
 ## Repository Structure
 
 ```
 schedule-engine/
-├── main.py              # CLI entry point with env-specific entry functions
-├── src/config/          # Pydantic models & loader
-├── configs/             # base.yaml + test/prod.yaml
+├── main.py              # GA entry point (calls experiments)
+├── configs/             # Python dataclass configs
+│   ├── base.py          # BaseConfig (shared defaults)
+│   ├── profiles.py      # TestConfig, ProdConfig (scaling)
+│   ├── experiments/     # Experiment configs (A-F modes)
+│   └── archive/         # Old YAML configs (deprecated)
 ├── src/
-│   ├── core/            # GA scheduler & types
-│   ├── ga/              # GA operators, population, repair
-│   ├── constraints/     # Hard & soft constraints
+│   ├── config/          # Pydantic models + global accessor
+│   ├── core/            # GAScheduler, DEAP toolbox
+│   ├── ga/              # Operators, population, repair
+│   ├── constraints/     # Hard/soft constraint functions
 │   ├── encoder/         # JSON → entities + time system
 │   ├── decoder/         # Individual → CourseSession
-│   ├── entities/        # Domain models
-│   ├── exporter/        # PDF/JSON/plots generation
-│   ├── validation/      # Input & feasibility checks
-│   ├── workflows/       # Orchestration logic
-│   └── utils/           # Helpers & logging
-├── data/                # Input JSON files
-├── test/                # Test files (ALL tests go here)
-└── docs/                # Documentation
+│   ├── entities/        # Domain models (Course, Instructor, etc.)
+│   ├── exporter/        # PDF/JSON/plots
+│   ├── validation/      # Input + feasibility checks
+│   ├── workflows/       # Orchestration (standard_run, experiment_manager)
+│   ├── heuristics/      # Repair operators (19 registered)
+│   ├── rl/              # RL environment, agents, training
+│   └── utils/           # Console, logging, helpers
+├── scripts/             # CLI launcher + utilities
+├── data/                # Input JSON (Courses, Instructors, Rooms, Groups)
+├── test/                # pytest unit tests
+└── docs/                # Documentation (INDEX.md for navigation)
 ```
 
 ## Configuration System
 
-**Modular structure with runtime modes:**
-- `configs/base.yaml` - All common settings (shared)
-- `configs/test.yaml` - Smoke test overrides (30 gens, 10 pop)
-- `configs/prod.yaml` - Best quality overrides (2000 gens, 200 pop)
-- `configs/baseline/a-pure-nsga.yaml` - Mode A: Pure NSGA-II (all killswitches OFF)
-- `configs/nsga/b-nsga-memetic.yaml` - Mode B: NSGA-II + memetic local search
-- `configs/hybrid/c-roundrobin.yaml` - Mode C: NSGA-II + round-robin heuristics
-- `configs/hybrid/d-adaptive.yaml` - Mode D: NSGA-II + adaptive heuristic selection
-- `configs/rl/e-rl-guided.yaml` - Mode E: RL-guided control (full deployment)
+**Modular Python dataclass hierarchy** (DRY principle):
+- `configs/base.py` → `BaseConfig` - All shared defaults (GA params, constraints, killswitches)
+- `configs/profiles.py` → `TestConfig`/`ProdConfig` - Scaling overrides (ngen, pop_size)
+- `configs/experiments/*.py` → Experiment-specific configs (A-F modes with killswitch states)
 
-Environment configs inherit from base.yaml via deep merge in `src/config/loader.py`.
-Runtime mode configs support automatic killswitch validation.
+**Inheritance chain**: `BaseConfig → TestConfig/ProdConfig → ExperimentConfig`
 
-**Access config:** `from src.config import get_config; config = get_config()`
+**Config access**:
+```python
+from src.config import get_config
+config = get_config()  # Returns Pydantic Config model
+```
+
+**Experiment registration** (in `main.py`):
+```python
+from configs import experiment_a, experiment_b  # Dataclass instances
+EXPERIMENTS = {
+    "a": ("Experiment A: Pure NSGA-II", experiment_a, experiment_a_baseline),
+    "b": ("Experiment B: Memetic", experiment_b, experiment_b_memetic),
+}
+```
 
 ## Running the Engine
 
 ### Unified CLI (Recommended)
 ```bash
-# Progressive Mode Experiments (A→E: Increasing Complexity)
-uv run baseline --test      # Mode A: Pure NSGA-II (~2-5 min)
-uv run memetic --test       # Mode B: + Memetic local search (~3-7 min)
-uv run roundrobin --test    # Mode C: + Round-robin heuristics (~5-10 min)
-uv run adaptive --test      # Mode D: + Adaptive selection (~7-15 min)
-uv run rl --test            # Mode E: + RL-guided (requires trained model, ~10-20 min)
+# Progressive Mode Experiments (A→F: Increasing Complexity)
+uv run baseline --test      # A: Pure NSGA-II (~2-5 min)
+uv run memetic --test       # B: + Memetic search (~3-7 min)
+uv run roundrobin --test    # C: + Round-robin (~5-10 min)
+uv run adaptive --test      # D: + Adaptive (~7-15 min)
+uv run rl --test            # E: + RL-guided (~10-20 min)
+uv run heuristic-testing --test  # F: Heuristic tests
 
 # RL Training
-uv run train-rl --test      # RL agent training smoke test (~5-10 min)
-uv run train-rl --prod      # RL agent training production (~1-2 hours)
+uv run train-rl --test      # Smoke (10K steps, ~5-10 min)
+uv run train-rl --prod      # Full (100K steps, ~1-2 hrs)
 
 # Helper Commands
-uv run diagnose             # Check GPU/system/config
-uv run clean                # Remove old outputs
-uv run list-experiments     # Show experiment history
-uv run stats                # Show manifest statistics
+uv run diagnose             # System/GPU diagnostics
+uv run clean                # Clean outputs
+uv run list-experiments     # Experiment history
+uv run stats                # Manifest statistics
 uv run archive              # Archive incomplete runs
 
-# Production runs with custom names
+# Production runs (custom names)
 uv run baseline --prod --name "thesis-baseline-r01"
 uv run memetic --prod --name "thesis-memetic-r01"
 ```
 
 ### Profile Hierarchy (DRY Principle)
 ```
-base.yaml (common settings)
+base.py (BaseConfig: shared defaults)
   ↓
-test.yaml (30 gens, 10 pop) - smoke test
+profiles.py (TestConfig: 30 gens, 10 pop | ProdConfig: 2000 gens, 400 pop)
   ↓
-prod.yaml (2000 gens, 500 pop) - full production
+experiments/*.py (Experiment-specific killswitches + overrides)
 ```
 
 ## CLI Convention (November 2025)
@@ -188,12 +162,13 @@ prod.yaml (2000 gens, 500 pop) - full production
 
 **Command Structure**:
 - **Main Launcher**: `nsga` (unified NSGA-II launcher)
-- **Progressive Modes (A→E)**: Systematic ablation study
+- **Progressive Modes (A→F)**: Systematic ablation study
   - Mode A: `baseline` - Pure NSGA-II
   - Mode B: `memetic` - + Memetic local search
   - Mode C: `roundrobin` - + Round-robin heuristics
   - Mode D: `adaptive` - + Adaptive selection
   - Mode E: `rl` - + RL-guided (full deployment)
+  - Mode F: `heuristic-testing` - Individual heuristic tests
 - **RL Training**: `train-rl`
 - **Helper Commands (a-z)**: Utilities (`diagnose`, `clean`, `list-experiments`, `stats`, `archive`)
 - **Profiles**: `--test` (smoke), `--prod` (full)
@@ -214,17 +189,18 @@ uv run baseline --prod --name "thesis-baseline-r01"  # 1-3 hours
 uv run memetic --prod --name "thesis-memetic-r01"    # 2-4 hours
 ```
 
-**DRY Principle**: Configs inherit hierarchically (base → test → prod).
+**DRY Principle**: Configs inherit hierarchically (base → test/prod → experiments).
 
 ## Architecture
 
 - **Entry Point**: `scripts/launcher.py` (unified CLI) → `main.py` (GA) or `src/rl/training/train_script.py` (RL)
-- **Runtime Modes**: 5 progressive modes (A→E: increasing complexity) via alphabetic commands
-  - Mode A: `baseline` - Pure NSGA-II (configs/baseline/a-pure-nsga.yaml)
-  - Mode B: `memetic` - + Memetic local search (configs/nsga/b-nsga-memetic.yaml)
-  - Mode C: `roundrobin` - + Round-robin heuristics (configs/hybrid/c-roundrobin.yaml)
-  - Mode D: `adaptive` - + Adaptive selection (configs/hybrid/d-adaptive.yaml)
-  - Mode E: `rl` - + RL-guided control (configs/rl/e-rl-guided.yaml)
+- **Runtime Modes**: 6 progressive modes (A→F: increasing complexity) via alphabetic commands
+  - Mode A: `baseline` - Pure NSGA-II (configs/experiments/baseline.py)
+  - Mode B: `memetic` - + Memetic local search (configs/experiments/memetic.py)
+  - Mode C: `roundrobin` - + Round-robin heuristics (configs/experiments/roundrobin.py)
+  - Mode D: `adaptive` - + Adaptive selection (configs/experiments/adaptive.py)
+  - Mode E: `rl` - + RL-guided control (configs/experiments/rl_guided.py)
+  - Mode F: `heuristic-testing` - Individual heuristic tests (configs/experiments/heuristic_testing.py)
 - **Experiment Management**: `src/workflows/experiment_manager.py` tracks runs in `manifest.json` with `ExperimentManager` class
 - **Workflow**: `src/workflows/standard_run.py` orchestrates: load → validate → feasibility → GA → decode → report
 - **GA Core**: `src/core/ga_scheduler.py` - GAScheduler class with DEAP toolbox, population init, evolution
@@ -237,31 +213,31 @@ uv run memetic --prod --name "thesis-memetic-r01"    # 2-4 hours
 
 ## Active Workstream (November 2025)
 
-1. **Phase 3 Implementation**:  Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
-2. **GPU Acceleration**:  Removed from GA loop (CPU multiprocessing only)
+1. **Phase 3 Implementation**: ✅ Complete (8 advanced RL/GA enhancements, see `docs/06-development/implementation-notes/PHASE_3_ADVANCED_RL.md`)
+2. **GPU Acceleration**: ❌ Removed from GA loop (CPU multiprocessing only)
    - GPU not beneficial for timetabling constraints (complex Python logic, small problem size)
    - CPU multiprocessing provides better parallelization (32 cores)
    - GPU reserved for RL neural network training/inference (where it excels)
    - **Removed files**: GPU evaluator integration from `ga_scheduler.py`
-3. **Metrics Optimization**:  Complete (pymoo integration)
+3. **Metrics Optimization**: ✅ Complete (pymoo integration)
    - Hypervolume: 139x faster using WFG algorithm (Cython backend)
    - IGD/GD: Vectorized implementations
    - Configurable frequency: `metrics.advanced_metrics_frequency`
    - **Impact**: 27.8 hours → 12 minutes for 2000 generations
-4. **Type Safety**:  Complete (comprehensive strict mypy typing)
+4. **Type Safety**: ✅ Complete (comprehensive strict mypy typing)
    - **All pure Python packages**: 100% typed (diversity/, lns/, heuristics/, workflows/, utils/, config/, entities/, encoder/, decoder/, constraints/, metrics/, exporter/, validation/)
    - **147 errors fixed**: Systematic fixes across workflows (53), heuristics (49), lns (28), diversity (17)
    - **56+ files**: Already passing strict mypy from previous work
    - **33 type: ignore**: Only legitimate library limitations (yaml, numpy, DEAP, RL frameworks)
    - **Achievement**: All custom-written pure Python code fully typed with mypy 1.13.0 strict mode
-5. **Thesis Experiments**:  Ready (5 progressive experiments)
+5. **Thesis Experiments**: ✅ Ready (5 progressive experiments)
    - Mode A: Pure NSGA-II baseline (`uv run baseline`)
    - Mode B: + Memetic local search (`uv run memetic`)
    - Mode C: + Round-robin heuristics (`uv run roundrobin`)
    - Mode D: + Adaptive selection (`uv run adaptive`)
    - Mode E: + RL-guided control (`uv run rl`)
    - **Guide**: `docs/45-resource-unused-problem/THESIS_EXPERIMENTS_GUIDE.md`
-6. **Documentation Reorganization**:  Complete (10-category structure, see `docs/INDEX.md`)
+6. **Documentation Reorganization**: ✅ Complete (10-category structure, see `docs/INDEX.md`)
 7. **Next Steps (Execution):**
    - Run all 5 thesis experiments (6-10 hours total)
    - Analyze results and generate comparison plots
@@ -299,10 +275,24 @@ Always log notable runs in `output/` and reference them inside documentation or 
 
 ##  Coding Standards & Best Practices
 
+### ⚠️ CRITICAL: Strict Type Safety Requirement
+**ALL code generated MUST be strictly typed from the start:**
+- ✅ Every function parameter must have a type annotation
+- ✅ Every function must have a return type annotation (including `-> None`)
+- ✅ All class attributes must be typed
+- ✅ All instance variables must be typed
+- ✅ Complex structures (list, dict) must specify element types: `list[str]`, `dict[str, int]`
+- ✅ Use PEP 604 union syntax: `str | None` instead of `Optional[str]`
+- ✅ Add `from __future__ import annotations` at the top of every file
+- ⛔ NEVER generate untyped code - even for quick fixes or small changes
+- ⛔ Code without proper types will fail mypy --strict and will be rejected
+
+**This is a non-negotiable requirement.** All code must pass `mypy --strict` before commit.
+
 ### Python Style Guidelines
 - **PEP 8 Compliant**: Line length 88 (Black default)
 - **Import Order**: Standard lib → third-party → local (sorted alphabetically)
-- **Type Hints**: Required for function signatures, use `from __future__ import annotations`
+- **Type Hints**: **MANDATORY** for all function signatures, use `from __future__ import annotations`
 - **Error Handling**: Raise informative exceptions with context
 - **Logging**:
   - Use `from src.utils.console_service import get_console` for user-facing output (Rich)
@@ -313,12 +303,19 @@ Always log notable runs in `output/` and reference them inside documentation or 
   - Always use `from src.config import get_config; config = get_config()`
   - Never import deprecated `config.ga_params`
 
-### Code Organization
+### Code Organization & Type Annotations Template
+**Every new file must follow this template with strict typing:**
 ```python
+"""Module docstring describing the file's purpose.
+
+This module should have a comprehensive docstring.
+"""
+
+from __future__ import annotations  # MANDATORY - enables forward references
+
 # Standard lib imports
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional
 
 # Third-party imports
 import numpy as np
@@ -329,6 +326,67 @@ from rich.console import Console
 from src.config import get_config
 from src.entities.course import Course
 from src.ga.sessiongene import SessionGene
+
+# Logger
+logger = logging.getLogger(__name__)
+
+
+def example_function(
+    param1: str,
+    param2: int,
+    param3: list[Course],
+    param4: dict[str, int] | None = None,
+) -> tuple[bool, str]:
+    """Example of properly typed function.
+
+    Args:
+        param1: Description of param1
+        param2: Description of param2
+        param3: List of Course objects
+        param4: Optional dictionary mapping strings to integers
+
+    Returns:
+        Tuple of (success status, message)
+    """
+    # Implementation
+    return True, "Success"
+
+
+class ExampleClass:
+    """Example of properly typed class."""
+
+    # Class attributes with types
+    class_attr: str = "default"
+
+    def __init__(
+        self,
+        name: str,
+        count: int,
+        items: list[str] | None = None,
+    ) -> None:
+        """Initialize with typed parameters.
+
+        Args:
+            name: Name of the instance
+            count: Count value
+            items: Optional list of items
+        """
+        # Instance variables with types
+        self.name: str = name
+        self.count: int = count
+        self.items: list[str] = items if items is not None else []
+
+    def process(self, data: dict[str, int]) -> bool:
+        """Process data and return success status.
+
+        Args:
+            data: Dictionary to process
+
+        Returns:
+            True if successful, False otherwise
+        """
+        # Implementation
+        return True
 ```
 
 ### Naming Conventions
@@ -353,7 +411,6 @@ except SpecificException as e:
 - Run `ruff check src/ test/` - Lint for issues
 - Run `mypy src/` - Type check (strict mode, must pass)
 - Run `pytest test/unit/` - Ensure tests pass
-- Verify config syntax if changed: `uv run verify-config`
 
 ### Type Checking Guidelines
 - **Strict mode required**: All new code must pass `mypy --strict`
@@ -403,14 +460,13 @@ Significant implementations, phase completions:
 
 ### 4a. Experimental Features → Modular Configs + Killswitches
 When adding major new features requiring experimentation:
-- **Create modular config folder**: `configs/{category}/{mode-name}.yaml`
-- **Add RuntimeMode enum entry**: Update `src/config/runtime_mode.py`
-- **Implement killswitches**: Master switch in `base.yaml` (e.g., `rl.enabled`, `repair.enabled`)
-- **Document mode in user guide**: Add to `docs/02-user-guides/runtime-modes.md`
-- **Add UV shortcut**: Register in `pyproject.toml` `[project.scripts]`
-- **Use ExperimentManager**: Track runs via `src/workflows/experiment_manager.py`
-- **Killswitch validation**: Automatic via `RuntimeMode.validate_config()`
-- **Example**: See RL integration (configs/rl/5-rl-guided.yaml, rl.enabled killswitch)
+- **Create modular config**: `configs/experiments/{feature}.py` with dataclass
+- **Implement killswitches**: Master switch in `BaseConfig` (e.g., `rl_enabled`, `repair_enabled`)
+- **Inherit from profiles**: Use `TestConfig`/`ProdConfig` for scaling
+- **Register experiment**: Add to `main.py` EXPERIMENTS dict
+- **Add CLI shortcut**: Register in `pyproject.toml` `[project.scripts]`
+- **Experiment tracking**: Uses `ExperimentManager` via `src/workflows/experiment_manager.py`
+- **Example**: See RL integration (configs/experiments/rl_guided.py, rl_enabled killswitch)
 
 ### 5. Thesis Content → `docs/07-thesis-report/`
 Academic documentation, publication-ready content:

@@ -6,7 +6,7 @@ Dataclass-based configuration for round-robin heuristic selection.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from configs.base import BaseConfig
 from configs.profiles import ProdConfig, TestConfig
@@ -24,6 +24,11 @@ class RoundRobinBaseConfig(BaseConfig):
     repair_enabled: bool = True
     repair_memetic_mode: bool = True
     repair_apply_after_mutation: bool = True
+    repair_heuristics_overrides: dict[str, dict[str, int | bool]] = field(
+        default_factory=lambda: {
+            "repair_room_overlap_reassign": {"enabled": True, "priority": 3}
+        }
+    )
 
     # Heuristics (round-robin = fixed rotation, NOT adaptive)
     heuristics_master_enabled: bool = True
@@ -61,6 +66,8 @@ KILLSWITCHES = {
     "repair.enabled": True,
     "repair.memetic_mode": True,
     "repair.apply_after_mutation": True,
+    "repair.heuristics.repair_room_overlap_reassign.enabled": True,
+    "repair.heuristics.repair_room_overlap_reassign.priority": 3,
     "heuristics.master_enabled": True,
     "heuristics.adaptive_priority.enabled": False,  # Fixed rotation, not adaptive
     "heuristics.construction.largest_degree_first.enabled": True,

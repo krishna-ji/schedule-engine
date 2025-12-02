@@ -37,16 +37,16 @@ The unified CLI launcher system provides a clean, consistent interface for runni
 
 **Two-tier hierarchy** (DRY principle):
 ```
-base.yaml (shared config)
+BaseConfig (shared defaults)
   ↓
---test (smoke test: 30 gens, 10K steps, ~2-10 min)
---prod (production: 2000 gens, 100K steps, ~1-5 hours)
+--test (TestConfig: 30 gens, 10 pop, ~2-10 min)
+--prod (ProdConfig: 2000 gens, 400 pop, ~1-5 hours)
 ```
 
 **Implementation**:
 - Profiles passed as CLI flags: `--test`, `--prod`
-- Config files inherit from lower tiers
-- Launcher maps profile → environment name → config file
+- Configs inherit via Python dataclass system
+- Launcher maps profile → experiment config instantiation
 
 ## File Structure
 
@@ -59,26 +59,28 @@ def create_parser() -> argparse.ArgumentParser:
     """Create argument parser with profile support."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--profile', choices=['test', 'prod'])
+    parser.add_argument('--test', action='store_const', const='test')
+    parser.add_argument('--prod', action='store_const', const='prod')
     return parser
 
-def main_nsga():
-    """NSGA-II launcher."""
+def main_baseline():
+    """Mode A: Pure NSGA-II."""
     args = parse_args()
-    profile = args.profile or 'test'
-    # Route to main.py with environment override
+    profile = _resolve_profile(args.profile)
+    # Route to main.py with experiment_a
 
 def main_train_rl():
     """RL training launcher."""
     args = parse_args()
-    profile = args.profile or 'test'
-    # Route to train_script.py with config override
+    profile = _resolve_profile(args.profile)
+    # Route to train_script.py
 ```
 
 **Key Responsibilities**:
 1. Parse CLI arguments (profile, custom flags)
-2. Map profile → config file path
-3. Route to appropriate main script (main.py or train_script.py)
-4. Forward additional arguments
+2. Resolve profile (test/prod)
+3. Instantiate appropriate experiment config
+4. Route to main.py or train_script.py
 5. Provide consistent help text
 
 ### pyproject.toml [project.scripts]
@@ -152,85 +154,92 @@ uv run memetic --prod --name "thesis-memetic-r01"
 
 ### Custom Arguments
 ```bash
-# Override config
-uv run nsga --prod --config path/to/custom.yaml
+# Override experiment name
+uv run baseline --prod --name "custom-run-01"
 
 # Combine flags
-uv run nsga --test --mode full --name "quick-test"
+uv run memetic --test --name "quick-test"
 ```
 
-### Profile Mapping
+### Profile Resolution
 ```python
-PROFILE_MAP = {
-    'test': {
-        'env': 'test',
-        'config': 'configs/test.yaml',
-        'desc': 'Smoke test (30 gens, ~2 min)'
-    },
-    'prod': {
-        'env': 'prod',
-        'config': 'configs/prod.yaml',
-        'desc': 'Production (2000 gens, ~3-5 hours)'
-    }
-}
+from configs.profiles import Profile
+
+def _resolve_profile(value: str | None) -> Profile:
+    """Validate profile value and fallback to default."""
+    try:
+        return Profile.from_string(value or "test")
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        sys.exit(1)
 ```
 
 ## Adding New Commands
 
-### Step 1: Add Function to launcher.py
+### Step 1: Add Experiment Config
 ```python
-def main_new_command():
-    """New command description."""
-    parser = create_parser()
-    parser.add_argument('--custom-flag', help='Custom flag')
-    args = parser.parse_args()
+# configs/experiments/new_mode.py
+@dataclass
+class NewModeBaseConfig:
+    some_enabled: bool = True
 
-    profile = args.profile or 'test'
-    # Implementation here
+class NewModeTestConfig(NewModeBaseConfig, TestConfig):
+    pass
+
+class NewModeProdConfig(NewModeBaseConfig, ProdConfig):
+    pass
 ```
 
-### Step 2: Register in pyproject.toml
+### Step 2: Register in main.py
+```python
+from configs import experiment_new
+
+EXPERIMENTS = {
+    "new": ("New Mode", experiment_new, experiment_new_module),
+}
+```
+
+### Step 3: Add Launcher Function
+```python
+# scripts/launcher.py
+def main_new_mode():
+    """New mode description."""
+    parser = create_parser()
+    args = parser.parse_args()
+    profile = _resolve_profile(args.profile)
+    # Route to main with mode="new"
+```
+
+### Step 4: Register in pyproject.toml
 ```toml
 [project.scripts]
-new-command = "scripts.launcher:main_new_command"
+new-mode = "scripts.launcher:main_new_mode"
 ```
 
-### Step 3: Update CLI_REFERENCE.md
-Add section with:
-- Command syntax
-- Profile support
-- Examples
-- Expected output
-
-### Step 4: Test
+### Step 5: Test
 ```bash
 uv sync  # Reload scripts
-uv run new-command --help
-uv run new-command --test
+uv run new-mode --test
 ```
 
 ## Error Handling
 
 ### Profile Validation
 ```python
-if profile not in PROFILE_MAP:
-    console.print(f"[red]Unknown profile: {profile}[/red]")
+from configs.profiles import Profile
+
+try:
+    profile = Profile.from_string(value)
+except ValueError:
+    console.print(f"[red]Unknown profile: {value}[/red]")
     console.print("Available: test, prod")
     sys.exit(1)
 ```
 
-### Config File Existence
+### Graceful Defaults
 ```python
-config_path = Path(PROFILE_MAP[profile]['config'])
-if not config_path.exists():
-    console.print(f"[red]Config not found: {config_path}[/red]")
-    sys.exit(1)
-```
-
-### Graceful Fallback
-```python
-profile = args.profile or 'test'  # Default to test
-console.print(f"[yellow]Using profile: {profile}[/yellow]")
+profile = _resolve_profile(args.profile)  # Defaults to test
+console.print(f"[yellow]Profile: {profile.value}[/yellow]")
 ```
 
 ## Testing Guidelines

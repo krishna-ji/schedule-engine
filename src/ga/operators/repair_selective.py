@@ -31,6 +31,7 @@ from src.core.types import SchedulingContext
 # Import original repair functions to reuse helper logic
 from src.ga.operators.repair import (
     _find_available_slot,
+    _find_compatible_room,
     _find_instructor_available_slot,
 )
 from src.ga.operators.violation_detector import detect_violated_genes
@@ -171,6 +172,7 @@ def _get_selective_repair_function(repair_name: str) -> SelectiveRepairFunc | No
     selective_repairs = {
         "repair_instructor_availability": repair_instructor_availability_selective,
         "repair_group_overlaps": repair_group_overlaps_selective,
+        "repair_room_overlap_reassign": repair_room_overlap_reassign_selective,
         "repair_room_conflicts": repair_room_conflicts_selective,
         "repair_instructor_conflicts": repair_instructor_conflicts_selective,
         "repair_instructor_qualifications": repair_instructor_qualifications_selective,
@@ -321,6 +323,39 @@ def repair_group_overlaps_selective(
                 for q in range(g.start_quanta, g.end_quanta):
                     for group_id in g.group_ids:
                         group_schedule[group_id][q].append(i)
+
+    return fixes
+
+
+def repair_room_overlap_reassign_selective(
+    individual: list[SessionGene],
+    violated_indices: set[int],
+    context: SchedulingContext,
+) -> int:
+    """Selective room overlap repair that prefers swapping rooms over shifting times."""
+
+    fixes = 0
+
+    for idx in violated_indices:
+        if idx >= len(individual):
+            continue
+
+        gene = individual[idx]
+        course_key = (gene.course_id, gene.course_type)
+        course = context.courses.get(course_key)
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+            if course
+            else "lecture"
+        )
+
+        replacement = _find_compatible_room(individual, gene, context, required_type)
+
+        if replacement is None or replacement == gene.room_id:
+            continue
+
+        gene.room_id = replacement
+        fixes += 1
 
     return fixes
 

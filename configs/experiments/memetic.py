@@ -13,7 +13,7 @@ Killswitches:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from configs.profiles import ProdConfig, TestConfig
 
@@ -29,6 +29,11 @@ class MemeticBaseConfig:
     repair_apply_after_crossover: bool = False
     repair_elite_percentage: float = 0.20
     repair_max_iterations: int = 100
+    repair_heuristics_overrides: dict[str, dict[str, int | bool]] = field(
+        default_factory=lambda: {
+            "repair_room_overlap_reassign": {"enabled": True, "priority": 3}
+        }
+    )
 
     # === MUTATION: Enable constraint-guided ===
     use_constraint_guided_mutation: bool = True
@@ -78,6 +83,8 @@ EXPERIMENT_DESCRIPTION = "NSGA-II with memetic local search on elite solutions"
 KILLSWITCHES = {
     "repair.enabled": True,
     "repair.memetic_mode": True,
+    "repair.heuristics.repair_room_overlap_reassign.enabled": True,
+    "repair.heuristics.repair_room_overlap_reassign.priority": 3,
     "heuristics.master_enabled": False,
     "lns.enabled": False,
     "rl.enabled": False,

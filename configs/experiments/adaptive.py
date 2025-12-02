@@ -6,7 +6,7 @@ Dataclass-based configuration for adaptive performance-based heuristic selection
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from configs.base import BaseConfig
 from configs.profiles import ProdConfig, TestConfig
@@ -24,6 +24,11 @@ class AdaptiveBaseConfig(BaseConfig):
     repair_enabled: bool = True
     repair_memetic_mode: bool = True
     repair_apply_after_mutation: bool = True
+    repair_heuristics_overrides: dict[str, dict[str, int | bool]] = field(
+        default_factory=lambda: {
+            "repair_room_overlap_reassign": {"enabled": True, "priority": 3}
+        }
+    )
 
     # GA enhancements
     ga_use_adaptive_probabilities: bool = True
@@ -65,6 +70,8 @@ KILLSWITCHES = {
     "repair.enabled": True,
     "repair.memetic_mode": True,
     "repair.apply_after_mutation": True,
+    "repair.heuristics.repair_room_overlap_reassign.enabled": True,
+    "repair.heuristics.repair_room_overlap_reassign.priority": 3,
     "ga.use_adaptive_probabilities": True,
     "heuristics.master_enabled": True,
     "heuristics.adaptive_priority.enabled": True,  # KEY: Adaptive selection

@@ -12,6 +12,16 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, ClassVar
 
+DEFAULT_REPAIR_HEURISTICS: dict[str, dict[str, int | bool]] = {
+    "repair_instructor_availability": {"enabled": True, "priority": 1},
+    "repair_group_overlaps": {"enabled": True, "priority": 2},
+    "repair_room_overlap_reassign": {"enabled": True, "priority": 3},
+    "repair_room_conflicts": {"enabled": True, "priority": 4},
+    "repair_instructor_conflicts": {"enabled": True, "priority": 5},
+    "repair_instructor_qualifications": {"enabled": True, "priority": 6},
+    "repair_room_type_mismatches": {"enabled": True, "priority": 7},
+}
+
 
 @dataclass
 class BaseConfig:
@@ -93,6 +103,7 @@ class BaseConfig:
     repair_apply_after_crossover: bool = False
     repair_memetic_mode: bool = False
     repair_elite_percentage: float = 0.20
+    repair_heuristics_overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     # ==========================================
     # HEURISTICS CONFIGURATION
@@ -266,6 +277,7 @@ class BaseConfig:
                 "apply_after_crossover": self.repair_apply_after_crossover,
                 "memetic_mode": self.repair_memetic_mode,
                 "elite_percentage": self.repair_elite_percentage,
+                "heuristics": self._build_repair_heuristics_config(),
             },
             "heuristics": {
                 "master_enabled": self.heuristics_master_enabled,
@@ -356,6 +368,19 @@ class BaseConfig:
                 toggles[heuristic] = value
 
         return toggles
+
+    def _build_repair_heuristics_config(self) -> dict[str, dict[str, Any]]:
+        """Merge default repair heuristics with experiment overrides."""
+
+        heuristics = {
+            name: values.copy() for name, values in DEFAULT_REPAIR_HEURISTICS.items()
+        }
+
+        for name, override in self.repair_heuristics_overrides.items():
+            entry = heuristics.setdefault(name, {})
+            entry.update(override)
+
+        return heuristics
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BaseConfig:
