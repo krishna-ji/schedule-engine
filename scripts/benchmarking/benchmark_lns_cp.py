@@ -80,7 +80,7 @@ def run_baseline_benchmark(output_dir: Path) -> dict[str, Any]:
         print("\n" + "=" * 80)
         print("BASELINE RESULTS")
 
-        print(f"Runtime: {elapsed/60:.2f} minutes")
+        print(f"Runtime: {elapsed / 60:.2f} minutes")
         print(f"Final Hard Violations: {results['hard_violations']:.0f}")
         print(f"Final Soft Penalties: {results['soft_penalties']:.2f}")
         print(f"Feasible: {results['feasible']}")
@@ -173,7 +173,7 @@ def run_lns_cp_benchmark(output_dir: Path) -> dict[str, Any]:
         print("\n" + "=" * 80)
         print("LNS-CP RESULTS")
 
-        print(f"Runtime: {elapsed/60:.2f} minutes")
+        print(f"Runtime: {elapsed / 60:.2f} minutes")
         print(f"Final Hard Violations: {results['hard_violations']:.0f}")
         print(f"Final Soft Penalties: {results['soft_penalties']:.2f}")
         print(f"Feasible: {results['feasible']}")

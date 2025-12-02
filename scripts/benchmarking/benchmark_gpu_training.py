@@ -84,9 +84,9 @@ def benchmark_device(
         Dictionary with timing results
     """
     if verbose:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Benchmarking {device.upper()} Training ({timesteps:,} timesteps)")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     # Load context if not provided
     if context is None:
@@ -137,11 +137,11 @@ def benchmark_device(
     }
 
     if verbose:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Results for {device.upper()}:")
-        print(f"  Total time: {elapsed:.2f}s ({elapsed/60:.2f} min)")
+        print(f"  Total time: {elapsed:.2f}s ({elapsed / 60:.2f} min)")
         print(f"  Speed: {steps_per_second:.1f} steps/sec")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     return results
 
@@ -154,11 +154,11 @@ def print_comparison(cpu_results: dict, gpu_results: dict):
         1 - gpu_results["elapsed_seconds"] / cpu_results["elapsed_seconds"]
     ) * 100
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("PERFORMANCE COMPARISON")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"{'Device':<15} {'Time (s)':<12} {'Time (min)':<12} {'Steps/sec':<12}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(
         f"{'CPU':<15} {cpu_results['elapsed_seconds']:<12.2f} "
         f"{cpu_results['elapsed_minutes']:<12.2f} "
@@ -169,15 +169,15 @@ def print_comparison(cpu_results: dict, gpu_results: dict):
         f"{gpu_results['elapsed_minutes']:<12.2f} "
         f"{gpu_results['steps_per_second']:<12.1f}"
     )
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"{'Speedup':<15} {speedup:.2f}×")
-    print(f"{'Time Saved':<15} {time_saved:.2f}s ({time_saved/60:.2f} min)")
+    print(f"{'Time Saved':<15} {time_saved:.2f}s ({time_saved / 60:.2f} min)")
     print(f"{'Percent Faster':<15} {percent_faster:.1f}%")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Extrapolate to full training
     print("\nEXTRAPOLATION TO FULL TRAINING:")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
 
     training_scenarios = [
         ("Quick test", 50000),
@@ -195,7 +195,7 @@ def print_comparison(cpu_results: dict, gpu_results: dict):
             f"(saves {saved:6.1f} min)"
         )
 
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 def main():
@@ -224,9 +224,9 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("GPU vs CPU Training Benchmark")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Timesteps: {args.timesteps:,}")
     print(f"Data directory: {args.data_dir}")
 
@@ -261,9 +261,9 @@ def main():
     if "cpu" in results and "gpu" in results:
         print_comparison(results["cpu"], results["gpu"])
     elif not gpu_available:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("️  GPU benchmark skipped - CUDA not available")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print("\nTo enable GPU:")
         print("1. Install NVIDIA drivers")
         print("2. Install PyTorch with CUDA:")
@@ -291,9 +291,9 @@ def main():
 
         print(f"\n✓ Results saved to: {args.output}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Benchmark Complete!")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 if __name__ == "__main__":

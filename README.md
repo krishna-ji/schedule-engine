@@ -40,8 +40,32 @@ uv run analyze-results    # Generate comparison analysis
 | `uv run full --test/prod` | **B3: Full GA** | Complete GA with local search |
 | `uv run roundrobin --test/prod` | **C1: Round-Robin** | Fixed heuristic rotation |
 | `uv run rl --test/prod` | **C2: RL-Guided** | Reinforcement learning selection |
+| `uv run heuristic-testing --test/prod` | **F: Heuristic Testing** | Test individual heuristics (auto-named output) |
 
 **Profiles:** `--test` (30 gens, ~2 min) • `--prod` (2000 gens, ~3-5 hours)
+
+### **Individual Heuristic Testing**
+
+Test individual heuristics in isolation with automatic output folder naming:
+
+```bash
+# List all 25 available heuristics
+uv run configure-heuristic --list
+
+# Enable a specific heuristic
+uv run configure-heuristic largest-degree-first
+
+# Run test (output auto-named: test-largest-degree-first)
+uv run heuristic-testing --test
+
+# Production run
+uv run configure-heuristic kempe-chain --prod
+uv run heuristic-testing --prod
+```
+
+**Output**: `output/f-heuristic-testing/evaluation_{timestamp}_test-{heuristic-name}/`
+
+See `docs/02-user-guides/single-heuristic-testing.md` for full guide.
 
 ### **Experiment Output Structure**
 

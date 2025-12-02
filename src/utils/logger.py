@@ -223,7 +223,7 @@ class GALogger:
 
             # Time statistics
             f.write(
-                f"Total Runtime:          {total_time:.2f}s ({total_time/60:.2f} minutes)\n"
+                f"Total Runtime:          {total_time:.2f}s ({total_time / 60:.2f} minutes)\n"
             )
 
             if self.generation_logs:

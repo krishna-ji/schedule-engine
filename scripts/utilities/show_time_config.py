@@ -138,7 +138,7 @@ def main():
 
             console.print(
                 f"  {day:12} [cyan]{hours[0]}-{hours[1]}[/cyan]  "
-                f"-> Quanta [green]{offset:3d}-{offset+count-1:3d}[/green] ([yellow]{count:2d}[/yellow] total)"
+                f"-> Quanta [green]{offset:3d}-{offset + count - 1:3d}[/green] ([yellow]{count:2d}[/yellow] total)"
             )
         else:
             console.print(f"  {day:12} [dim]CLOSED[/dim]")

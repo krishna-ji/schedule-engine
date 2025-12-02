@@ -56,8 +56,7 @@ class HypervolumeReward(BaseRewardCalculator):
 
         if not PYMOO_AVAILABLE:
             raise ImportError(
-                "pymoo required for hypervolume reward. "
-                "Install with: pip install pymoo"
+                "pymoo required for hypervolume reward. Install with: pip install pymoo"
             )
 
         # Reference point (worst acceptable fitness)

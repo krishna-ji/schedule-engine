@@ -9,6 +9,7 @@ from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.individual import create_individual
 from src.ga.sessiongene import SessionGene
 from src.utils.console_service import get_console
+from src.utils.parallel_worker import get_worker_context, init_worker
 from src.utils.system_info import get_cpu_count
 
 
@@ -45,8 +46,6 @@ def get_subsession_durations(quanta_per_week: int, course_type: str) -> list[int
             blocks.append(1)
             return blocks
 
-
-from src.utils.parallel_worker import get_worker_context, init_worker
 
 console = get_console()
 
@@ -237,7 +236,7 @@ def _create_single_individual_wrapper(args):
         return create_individual(genes)
     else:
         if not silent:
-            print(f"Warning: Individual {individual_idx+1} has no genes!")
+            print(f"Warning: Individual {individual_idx + 1} has no genes!")
         return None
 
 
@@ -357,7 +356,7 @@ def generate_course_group_aware_population(
                 population.append(create_individual(genes))
             else:
                 if not silent:
-                    print(f"Warning: Individual {individual_idx+1} has no genes!")
+                    print(f"Warning: Individual {individual_idx + 1} has no genes!")
 
     else:
         # PARALLEL: Generate individuals concurrently
@@ -396,7 +395,7 @@ def generate_course_group_aware_population(
     if not silent:
         if population:
             print(
-                f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population)/len(population):.1f} genes each"
+                f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population) / len(population):.1f} genes each"
             )
         else:
             print("Warning: Failed to generate any individuals!")

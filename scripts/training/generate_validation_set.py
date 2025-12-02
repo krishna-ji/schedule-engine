@@ -19,9 +19,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.encoder import SchedulingContext, load_scheduling_data
-from src.rl.training.curriculum import create_default_curriculum
-from src.utils.logging_config import get_logger
+from src.encoder import SchedulingContext, load_scheduling_data  # noqa: E402
+from src.rl.training.curriculum import create_default_curriculum  # noqa: E402
+from src.utils.logging_config import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -108,11 +108,11 @@ def generate_validation_problems(
 
         # Create problem configuration
         problem = {
-            "problem_id": f"val_{num_courses}c_p{i+1:03d}",
+            "problem_id": f"val_{num_courses}c_p{i + 1:03d}",
             "num_courses": num_courses,
             "course_ids": [c.id for c in sampled_courses],
             "seed": seed + i,
-            "description": f"Validation problem {i+1}/{num_problems} with {num_courses} courses",
+            "description": f"Validation problem {i + 1}/{num_problems} with {num_courses} courses",
         }
 
         problems.append(problem)

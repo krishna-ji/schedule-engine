@@ -20,16 +20,8 @@ EXPERIMENT_DESCRIPTION = "Test individual heuristics in isolation"
 
 
 @dataclass
-class HeuristicTestingTestConfig(TestConfig):
-    """
-    Mode F: Heuristic Testing (test profile).
-
-    Test individual heuristics with test scaling (30 gens, 10 pop).
-    Typical runtime: 2-5 minutes per heuristic.
-    """
-
-    name: str = "heuristic-testing-test"
-    experiment_id: str = "F"
+class HeuristicTestingBaseConfig:
+    """Shared knobs for Mode F heuristic testing profiles."""
 
     # === KILLSWITCHES: Enable heuristics subsystem ===
     repair_enabled: bool = False  # Keep repair disabled by default
@@ -85,9 +77,45 @@ class HeuristicTestingTestConfig(TestConfig):
         "Heuristic testing mode - enable individual heuristics for isolated evaluation"
     )
 
+    def get_enabled_heuristic_name(self) -> str | None:
+        """
+        Extract the name of the single enabled heuristic.
+
+        Returns:
+            Heuristic name (e.g., 'largest-degree-first') or None if multiple/none enabled.
+        """
+        heuristic_fields = [
+            name
+            for name in dir(self)
+            if name.startswith("heuristic_") and isinstance(getattr(self, name), bool)
+        ]
+
+        enabled = [name for name in heuristic_fields if getattr(self, name)]
+
+        if len(enabled) == 1:
+            # Convert heuristic_largest_degree_first -> largest-degree-first
+            return enabled[0].replace("heuristic_", "").replace("_", "-")
+        return None
+
 
 @dataclass
-class HeuristicTestingProdConfig(ProdConfig):
+class HeuristicTestingTestConfig(HeuristicTestingBaseConfig, TestConfig):
+    """
+    Mode F: Heuristic Testing (test profile).
+
+    Test individual heuristics with test scaling (30 gens, 10 pop).
+    Typical runtime: 2-5 minutes per heuristic.
+    """
+
+    name: str = "heuristic-testing-test"
+    experiment_id: str = "F"
+
+    # Enable one heuristic by default for smoke tests
+    heuristic_largest_degree_first: bool = True
+
+
+@dataclass
+class HeuristicTestingProdConfig(HeuristicTestingBaseConfig, ProdConfig):
     """
     Mode F: Heuristic Testing (production profile).
 
@@ -97,57 +125,6 @@ class HeuristicTestingProdConfig(ProdConfig):
 
     name: str = "heuristic-testing-prod"
     experiment_id: str = "F"
-
-    # === KILLSWITCHES: Enable heuristics subsystem ===
-    repair_enabled: bool = False
-    heuristics_master_enabled: bool = True
-    heuristics_adaptive_priority_enabled: bool = False
-    lns_enabled: bool = False
-    rl_enabled: bool = False
-    enhancements_master_enabled: bool = False
-
-    # === POPULATION STRATEGY ===
-    population_strategy: str = "hybrid"
-
-    # === INDIVIDUAL HEURISTIC TOGGLES ===
-    # Construction Heuristics (3 total)
-    heuristic_largest_degree_first: bool = False
-    heuristic_most_constrained_first: bool = False
-    heuristic_earliest_deadline_first: bool = False
-
-    # Perturbation Heuristics (5 total)
-    heuristic_random_swap: bool = False
-    heuristic_temporal_shift: bool = False
-    heuristic_room_shuffle: bool = False
-    heuristic_instructor_reassign: bool = False
-    heuristic_multi_perturbation: bool = False
-
-    # Improvement Heuristics (3 total)
-    heuristic_kempe_chain: bool = False
-    heuristic_ejection_chain: bool = False
-    heuristic_variable_depth_search: bool = False
-
-    # Diversity Heuristics (4 total)
-    heuristic_distance_preserving_crossover: bool = False
-    heuristic_crowding_mutation: bool = False
-    heuristic_niching_selection: bool = False
-    heuristic_adaptive_diversity_maintenance: bool = False
-
-    # Meta Heuristics (4 total)
-    heuristic_variable_neighborhood_descent: bool = False
-    heuristic_iterated_local_search: bool = False
-    heuristic_adaptive_large_neighborhood: bool = False
-    heuristic_guided_local_search: bool = False
-
-    # Repair Heuristics (6 total)
-    heuristic_exhaustive_repair: bool = False
-    heuristic_greedy_repair: bool = False
-    heuristic_igls_repair: bool = False
-    heuristic_lns_repair: bool = False
-    heuristic_memetic_repair: bool = False
-    heuristic_selective_repair: bool = False
-
-    # === NOTES ===
     notes: str = "Heuristic testing mode (production) - enable individual heuristics for isolated evaluation"
 
 

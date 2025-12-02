@@ -20,16 +20,8 @@ from configs.profiles import ProdConfig, TestConfig
 
 
 @dataclass
-class BaselineTestConfig(TestConfig):
-    """
-    Mode A: Pure NSGA-II (test profile).
-
-    Experiment A baseline with test scaling (30 gens, 10 pop).
-    Typical runtime: 2-5 minutes.
-    """
-
-    name: str = "baseline-test"
-    experiment_id: str = "A"
+class BaselineBaseConfig:
+    """Shared configuration for Mode A baseline profiles."""
 
     # === KILLSWITCHES: Disable ALL enhancements ===
     repair_enabled: bool = False
@@ -50,35 +42,19 @@ class BaselineTestConfig(TestConfig):
 
 
 @dataclass
-class BaselineProdConfig(ProdConfig):
-    """
-    Mode A: Pure NSGA-II (production profile).
+class BaselineTestConfig(BaselineBaseConfig, TestConfig):
+    """Mode A baseline (test profile)."""
 
-    Experiment A baseline with production scaling (2000 gens, 200 pop).
-    Typical runtime: 1-3 hours.
+    name: str = "baseline-test"
+    experiment_id: str = "A"
 
-    Can override prod defaults for custom thesis runs:
-    >>> config = BaselineProdConfig(ngen=2500, pop_size=250)
-    """
+
+@dataclass
+class BaselineProdConfig(BaselineBaseConfig, ProdConfig):
+    """Mode A baseline (production profile)."""
 
     name: str = "baseline-prod"
     experiment_id: str = "A"
-
-    # === KILLSWITCHES: Disable ALL enhancements ===
-    repair_enabled: bool = False
-    heuristics_master_enabled: bool = False
-    heuristics_adaptive_priority_enabled: bool = False
-    lns_enabled: bool = False
-    rl_enabled: bool = False
-    enhancements_master_enabled: bool = False
-
-    # === MUTATION: Pure random (no constraint guidance) ===
-    use_constraint_guided_mutation: bool = False
-
-    # === POPULATION STRATEGY: Random only ===
-    population_strategy: str = "random"
-
-    # === NOTES ===
     notes: str = "Pure NSGA-II baseline for thesis (production)"
 
 
