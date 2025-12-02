@@ -4,6 +4,7 @@ Random agent baseline for RL evaluation.
 Simple baseline that selects actions uniformly at random.
 """
 
+from collections.abc import Callable
 from typing import Any
 
 import gymnasium as gym
@@ -53,9 +54,9 @@ class RandomAgent:
     def learn(
         self,
         total_timesteps: int,
-        callback: Any = None,
+        callback: Callable[..., Any] | None = None,
         log_interval: int = 100,
-        **kwargs,
+        **kwargs: Any,
     ) -> "RandomAgent":
         """
         Dummy learn method (does nothing - random agent doesn't learn).
@@ -82,7 +83,7 @@ class RandomAgent:
         pass
 
     @staticmethod
-    def load(path: str, env: gym.Env, **kwargs) -> "RandomAgent":
+    def load(path: str, env: gym.Env, **kwargs: Any) -> "RandomAgent":
         """
         Dummy load method (creates new random agent).
 

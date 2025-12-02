@@ -1471,7 +1471,7 @@ class GAScheduler:
         )
 
         # Build hard constraint labels (3 per row) using deterministic order
-        hard_items = []
+        hard_items: list[str] = []
         for name in self.hard_constraint_names:
             clean_name = name.replace("_", " ")
             code = self.hard_constraint_codes.get(name, f"hc{len(hard_items) + 1}")
@@ -1495,7 +1495,7 @@ class GAScheduler:
             )
 
         # Build soft constraint labels (3 per row)
-        soft_items = []
+        soft_items: list[str] = []
         for name in self.soft_constraint_names:
             clean_name = name.replace("_", " ")
             code = self.soft_constraint_codes.get(name, f"sc{len(soft_items) + 1}")

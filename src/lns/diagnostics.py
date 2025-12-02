@@ -160,7 +160,7 @@ class SubproblemDiagnostics:
 
         return True, ""
 
-    def log_subproblem_summary(self):
+    def log_subproblem_summary(self) -> None:
         """Log detailed summary of subproblem for diagnostics."""
         domain_info = self.compute_domain_sizes()
 

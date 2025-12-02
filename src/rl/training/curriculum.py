@@ -318,7 +318,7 @@ class CurriculumManager:
 
         return training_context
 
-    def save_progress(self, save_path: str):
+    def save_progress(self, save_path: str) -> None:
         """Save curriculum progress to file."""
         current_stage = self.get_current_stage()
         progress = {

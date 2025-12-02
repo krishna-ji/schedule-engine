@@ -8,8 +8,10 @@ Fails fast with clear error messages to prevent cryptic runtime failures.
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, cast
 
 from src.core.types import SchedulingContext
+from src.entities.course import Course
 from src.exceptions import DataValidationError
 from src.utils.console_service import get_console
 
@@ -66,6 +68,24 @@ class InputValidator:
         self.context = context
         self.errors: list[ValidationError] = []
         self.warnings: list[ValidationError] = []
+
+    def _find_courses_for_identifier(
+        self, course_identifier: str
+    ) -> list[tuple[Any, Course]]:
+        """Return all course entries matching provided identifier."""
+        courses = cast(dict[Any, Course], self.context.courses)
+        matches: list[tuple[Any, Course]] = []
+        for key, course in courses.items():
+            if key == course_identifier:
+                matches.append((key, course))
+                continue
+            if isinstance(key, tuple) and key and key[0] == course_identifier:
+                matches.append((key, course))
+                continue
+            course_code_attr = getattr(course, "course_code", None)
+            if course_code_attr == course_identifier:
+                matches.append((key, course))
+        return matches
 
     def validate(self, parallel: bool = True) -> list[ValidationError]:
         """
@@ -185,7 +205,7 @@ class InputValidator:
                     )
                 )
 
-    def _validate_groups(self):
+    def _validate_groups(self) -> None:
         """Validate group data."""
         if not self.context.groups:
             self.errors.append(
@@ -212,7 +232,7 @@ class InputValidator:
                     )
                 )
 
-    def _validate_instructors(self):
+    def _validate_instructors(self) -> None:
         """Validate instructor data."""
         if not self.context.instructors:
             self.errors.append(
@@ -257,7 +277,7 @@ class InputValidator:
                     )
                 )
 
-    def _validate_rooms(self):
+    def _validate_rooms(self) -> None:
         """Validate room data."""
         if not self.context.rooms:
             self.errors.append(
@@ -274,7 +294,7 @@ class InputValidator:
                     )
                 )
 
-    def _validate_relationships(self):
+    def _validate_relationships(self) -> None:
         """Validate relationships between entities."""
         # Check course-instructor relationships
         for course_id, course in self.context.courses.items():
@@ -304,16 +324,7 @@ class InputValidator:
         # For pure practical courses, the ID becomes "CODE-PR"
         for group_id, group in self.context.groups.items():
             for course_code in group.enrolled_courses:
-                # Try to find course by course_code attribute
-                matching_courses = [
-                    c
-                    for c in self.context.courses.values()
-                    if hasattr(c, "course_code") and c.course_code == course_code
-                ]
-
-                # Also check if course_code matches course_id directly
-                if course_code in self.context.courses:
-                    matching_courses.append(self.context.courses[course_code])
+                matching_courses = self._find_courses_for_identifier(course_code)
 
                 if not matching_courses:
                     # This is a WARNING, not an ERROR - courses with L=T=P=0 don't need scheduling
@@ -348,21 +359,7 @@ class InputValidator:
         courses_without_instructors = []
 
         for course_code in enrolled_courses:
-            # Find matching courses in context.courses
-            matching_courses = [
-                (course_id, course)
-                for course_id, course in self.context.courses.items()
-                if hasattr(course, "course_code") and course.course_code == course_code
-            ]
-
-            # Also check if course_code matches course_id directly
-            if course_code in self.context.courses:
-                # Try to get the course directly
-                course_obj = self.context.courses.get(course_code)  # type: ignore[arg-type, call-overload]
-                if course_obj:
-                    matching_courses.append(
-                        (course_code, course_obj)  # type: ignore[arg-type]
-                    )
+            matching_courses = self._find_courses_for_identifier(course_code)
 
             # Check each matching course for qualified instructors
             for course_id, course in matching_courses:
@@ -370,7 +367,9 @@ class InputValidator:
                 if not qualified_instructors or len(qualified_instructors) == 0:
                     # Convert course_id to string (it might be a tuple like ('CE707', 'practical'))
                     course_id_str = (
-                        str(course_id) if isinstance(course_id, tuple) else course_id
+                        str(course_id)
+                        if isinstance(course_id, tuple)
+                        else str(course_id)
                     )
                     courses_without_instructors.append(
                         (
@@ -519,19 +518,17 @@ class InputValidator:
             problematic_courses = []
 
             for course_id in group.enrolled_courses:
-                # Find course in context
-                for c in self.context.courses.values():
-                    if (
-                        hasattr(c, "course_code") and c.course_code == course_id
-                    ) or c.course_id == course_id:
-                        break
+                course_match = self._find_courses_for_identifier(course_id)
+                matched_course: Course | None = (
+                    course_match[0][1] if course_match else None
+                )
 
-                if course and course.required_room_features:
+                if matched_course and matched_course.required_room_features:
                     # Handle both list and string formats
                     features_list = (
-                        course.required_room_features
-                        if isinstance(course.required_room_features, list)
-                        else [course.required_room_features]
+                        matched_course.required_room_features
+                        if isinstance(matched_course.required_room_features, list)
+                        else [matched_course.required_room_features]
                     )
                     group_required_features.update(features_list)
 
@@ -547,10 +544,10 @@ class InputValidator:
 
                         # Check if any required feature matches any room feature
                         feature_match = any(
-                            req_feature in room_features_list
-                            or any(
-                                room.is_suitable_for_course_type(req_feature)
-                                for req_feature in features_list
+                            (req_feature in room_features_list)
+                            or (
+                                hasattr(room, "is_suitable_for_course_type")
+                                and room.is_suitable_for_course_type(req_feature)
                             )
                             for req_feature in features_list
                         )
@@ -561,9 +558,12 @@ class InputValidator:
                             has_suitable_room = True
                             break
 
-                    if not has_suitable_room:
+                    if not has_suitable_room and matched_course is not None:
                         problematic_courses.append(
-                            (course.course_id, str(course.required_room_features))
+                            (
+                                matched_course.course_id,
+                                str(matched_course.required_room_features),
+                            )
                         )
 
             # Report group-specific issues

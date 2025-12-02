@@ -19,8 +19,8 @@ import sys
 import time
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import torch
 
@@ -43,25 +43,26 @@ def load_context(data_dir: str = "data") -> SchedulingContext:
     """Load scheduling context from data directory."""
     print(f"Loading data from {data_dir}...")
 
-    courses = load_courses(data_dir)
-    groups = load_groups(data_dir)
-    instructors = load_instructors(data_dir)
-    rooms = load_rooms(data_dir)
+    data_path = Path(data_dir)
+    qts = QuantumTimeSystem()
+
+    courses = load_courses(str(data_path / "Course.json"))
+    groups = load_groups(str(data_path / "Groups.json"), qts)
+    instructors = load_instructors(str(data_path / "Instructors.json"), qts)
+    rooms = load_rooms(str(data_path / "Rooms.json"), qts)
 
     link_courses_and_groups(courses, groups)
     link_courses_and_instructors(courses, instructors)
-
-    qts = QuantumTimeSystem()
 
     context = SchedulingContext(
         courses=courses,
         groups=groups,
         instructors=instructors,
         rooms=rooms,
-        time_system=qts,
+        available_quanta=list(qts.get_all_operating_quanta()),
     )
 
-    print(f"  ✓ Loaded {len(courses)} courses, {len(instructors)} instructors")
+    print(f"  Loaded {len(courses)} courses, {len(instructors)} instructors")
     return context
 
 

@@ -38,19 +38,19 @@ console = get_console()
 class LNSRepairStats:
     """Statistics for LNS repair operations."""
 
-    def __init__(self):
-        self.total_attempts = 0
-        self.successful_repairs = 0
-        self.failed_repairs = 0
-        self.total_conflicts_detected = 0
-        self.total_conflicts_repaired = 0
-        self.avg_subproblem_size = 0.0
-        self.total_repair_time = 0.0
+    def __init__(self) -> None:
+        self.total_attempts: int = 0
+        self.successful_repairs: int = 0
+        self.failed_repairs: int = 0
+        self.total_conflicts_detected: int = 0
+        self.total_conflicts_repaired: int = 0
+        self.avg_subproblem_size: float = 0.0
+        self.total_repair_time: float = 0.0
         # Strategy-specific stats
-        self.igls_attempts = 0
-        self.igls_success = 0
+        self.igls_attempts: int = 0
+        self.igls_success: int = 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         success_rate = (
             self.successful_repairs / self.total_attempts * 100
             if self.total_attempts > 0
@@ -73,7 +73,7 @@ class LNSRepairStats:
 
 
 # Global statistics tracker
-_lns_stats = LNSRepairStats()
+_lns_stats: LNSRepairStats = LNSRepairStats()
 
 
 def get_lns_stats() -> LNSRepairStats:
@@ -81,7 +81,7 @@ def get_lns_stats() -> LNSRepairStats:
     return _lns_stats
 
 
-def reset_lns_stats():
+def reset_lns_stats() -> None:
     """Reset LNS repair statistics."""
     global _lns_stats
     _lns_stats = LNSRepairStats()

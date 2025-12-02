@@ -48,6 +48,7 @@ Usage:
 from collections import defaultdict
 
 from src.core.types import SchedulingContext
+from src.entities.instructor import Instructor
 from src.ga.operators.repair_wrappers import repair_operator
 from src.ga.sessiongene import SessionGene
 
@@ -112,7 +113,7 @@ def _find_instructor_available_slot(
     individual: list[SessionGene],
     current_gene: SessionGene,
     duration: int,
-    instructor,
+    instructor: Instructor,
     available_quanta: list[int],
 ) -> int | None:
     """
@@ -513,7 +514,7 @@ def _find_compatible_room(
 
     # Calculate total enrollment for capacity check
     total_enrollment = sum(
-        context.groups[gid].size
+        context.groups[gid].student_count
         for gid in current_gene.group_ids
         if gid in context.groups
     )

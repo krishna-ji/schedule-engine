@@ -32,8 +32,14 @@ from collections import defaultdict
 
 from src.core.types import SchedulingContext
 from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.entities.course import Course
+from src.entities.instructor import Instructor
+from src.entities.room import Room
 from src.ga.sessiongene import SessionGene
 from src.heuristics.registry import construction_heuristic
+
+type AssignedTimes = dict[str, set[int]]
+type AssignedRooms = dict[str, set[int]]
 
 # ================
 # LARGEST DEGREE FIRST (Schedule most conflicting courses first)
@@ -529,10 +535,10 @@ def _calculate_urgency_scores(context: SchedulingContext) -> dict[tuple, float]:
 
 def _count_valid_time_slots(
     context: SchedulingContext,
-    course,
+    course: Course,
     time_system: QuantumTimeSystem,
-    assigned_times: dict,
-    assigned_rooms: dict,
+    assigned_times: AssignedTimes,
+    assigned_rooms: AssignedRooms,
     required_duration: int | None = None,  # NEW: subsession duration
 ) -> int:
     """
@@ -571,10 +577,10 @@ def _count_valid_time_slots(
 
 def _find_earliest_valid_time(
     context: SchedulingContext,
-    course,
+    course: Course,
     time_system: QuantumTimeSystem,
-    assigned_times: dict,
-    assigned_rooms: dict,
+    assigned_times: AssignedTimes,
+    assigned_rooms: AssignedRooms,
     required_duration: int | None = None,  # NEW: subsession duration
 ) -> int | None:
     """
@@ -612,9 +618,9 @@ def _find_earliest_valid_time(
 
 def _find_suitable_room(
     context: SchedulingContext,
-    course,
+    course: Course,
     time_quantum: int,
-    assigned_rooms: dict,
+    assigned_rooms: AssignedRooms,
 ) -> str:
     """Find suitable room for course session."""
     time_range = range(time_quantum, time_quantum + course.quanta_per_week)
@@ -623,7 +629,8 @@ def _find_suitable_room(
     suitable_rooms = [
         room_id
         for room_id, room in context.rooms.items()
-        if room.is_suitable_for_course_type(course.required_room_features)
+        if isinstance(room, Room)
+        and room.is_suitable_for_course_type(course.required_room_features)
     ]
 
     # Find available room
@@ -637,9 +644,9 @@ def _find_suitable_room(
 
 def _select_qualified_instructor(
     context: SchedulingContext,
-    course,
+    course: Course,
     time_quantum: int,
-    assigned_times: dict,
+    assigned_times: AssignedTimes,
 ) -> str:
     """Select qualified instructor for course session."""
     time_range = range(time_quantum, time_quantum + course.quanta_per_week)
@@ -652,7 +659,7 @@ def _select_qualified_instructor(
     time_system = QuantumTimeSystem()
 
     for instructor_id in course.qualified_instructor_ids:
-        instructor = context.instructors.get(instructor_id)
+        instructor: Instructor | None = context.instructors.get(instructor_id)
         if not instructor:
             continue
 

@@ -14,14 +14,14 @@ from src.config import get_config
 
 
 def create_dqn_agent(
-    env: gym.Env,
+    env: gym.Env | VecEnv,
     learning_rate: float | None = None,
     buffer_size: int | None = None,
     batch_size: int | None = None,
     gamma: float | None = None,
     tensorboard_log: str | None = None,
     verbose: int = 1,
-    **kwargs,
+    **kwargs: Any,
 ) -> DQN:
     """
     Create and configure DQN agent.
@@ -78,7 +78,7 @@ def create_dqn_agent(
 
 def load_dqn_agent(
     model_path: str,
-    env: gym.Env | None = None,
+    env: gym.Env | VecEnv | None = None,
     device: str = "cpu",
 ) -> DQN:
     """

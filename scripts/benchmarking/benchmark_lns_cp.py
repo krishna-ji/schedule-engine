@@ -15,13 +15,14 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from configs.experiments.baseline import BaselineTestConfig
-from src.workflows.standard_run import run_scheduling_workflow
+from src.config.models import Config as PydanticConfig
+from src.workflows.standard_run import run_standard_workflow
 
 
 def run_baseline_benchmark(output_dir: Path) -> dict[str, Any]:
@@ -38,7 +39,7 @@ def run_baseline_benchmark(output_dir: Path) -> dict[str, Any]:
     print("BASELINE GA BENCHMARK (without LNS-CP)")
 
     # Load test config with LNS disabled
-    config = BaselineTestConfig(lns_enabled=False).to_pydantic()
+    config = cast(PydanticConfig, BaselineTestConfig(lns_enabled=False).to_pydantic())
 
     print(f"\nConfiguration: {config.name} (LNS disabled)")
     print(f"Generations: {config.ga.ngen}")
@@ -49,9 +50,18 @@ def run_baseline_benchmark(output_dir: Path) -> dict[str, Any]:
     start_time = time.time()
 
     try:
-        best_individual, final_schedule, eval_dir = run_scheduling_workflow(
-            config_override=config
+        workflow_output = run_standard_workflow(
+            pop_size=config.ga.pop_size,
+            generations=config.ga.ngen,
+            crossover_prob=config.ga.cxpb,
+            mutation_prob=config.ga.mutpb,
+            data_dir=getattr(config.io, "data_dir", "data"),
+            output_dir=str(output_dir / "baseline_run"),
+            config=config,
         )
+
+        best_individual = workflow_output["best_individual"]
+        eval_dir = workflow_output["output_path"]
 
         elapsed = time.time() - start_time
 
@@ -110,7 +120,7 @@ def run_lns_cp_benchmark(output_dir: Path) -> dict[str, Any]:
     print("LNS-CP HYBRID BENCHMARK (with LNS-CP)")
 
     # Load test config with LNS enabled
-    config = BaselineTestConfig(lns_enabled=True).to_pydantic()
+    config = cast(PydanticConfig, BaselineTestConfig(lns_enabled=True).to_pydantic())
 
     print(f"\nConfiguration: {config.name} (LNS enabled)")
     print(f"Generations: {config.ga.ngen}")
@@ -123,9 +133,18 @@ def run_lns_cp_benchmark(output_dir: Path) -> dict[str, Any]:
     start_time = time.time()
 
     try:
-        best_individual, final_schedule, eval_dir = run_scheduling_workflow(
-            config_override=config
+        workflow_output = run_standard_workflow(
+            pop_size=config.ga.pop_size,
+            generations=config.ga.ngen,
+            crossover_prob=config.ga.cxpb,
+            mutation_prob=config.ga.mutpb,
+            data_dir=getattr(config.io, "data_dir", "data"),
+            output_dir=str(output_dir / "lns_cp_run"),
+            config=config,
         )
+
+        best_individual = workflow_output["best_individual"]
+        eval_dir = workflow_output["output_path"]
 
         elapsed = time.time() - start_time
 
@@ -214,7 +233,7 @@ def compare_results(baseline_path: Path, lns_cp_path: Path, output_dir: Path):
     with open(lns_cp_path) as f:
         lns_cp = json.load(f)
 
-    # Calculate improvements
+    improvements: dict[str, Any] = {}
     comparison = {
         "timestamp": datetime.now().isoformat(),
         "baseline": {
@@ -230,8 +249,11 @@ def compare_results(baseline_path: Path, lns_cp_path: Path, output_dir: Path):
             "feasible": lns_cp.get("feasible", False),
             "lns_stats": lns_cp.get("lns_stats", {}),
         },
-        "improvements": {},
+        "improvements": improvements,
     }
+
+    baseline_summary = cast(dict[str, Any], comparison["baseline"])
+    lns_summary = cast(dict[str, Any], comparison["lns_cp"])
 
     # Calculate improvements
     if (
@@ -244,7 +266,7 @@ def compare_results(baseline_path: Path, lns_cp_path: Path, output_dir: Path):
             if baseline["hard_violations"] > 0
             else 0.0
         )
-        comparison["improvements"]["hard_violations"] = {
+        improvements["hard_violations"] = {
             "absolute": hc_improvement,
             "percentage": hc_improvement_pct,
         }
@@ -259,7 +281,7 @@ def compare_results(baseline_path: Path, lns_cp_path: Path, output_dir: Path):
             if baseline["soft_penalties"] > 0
             else 0.0
         )
-        comparison["improvements"]["soft_penalties"] = {
+        improvements["soft_penalties"] = {
             "absolute": soft_improvement,
             "percentage": soft_improvement_pct,
         }
@@ -267,7 +289,7 @@ def compare_results(baseline_path: Path, lns_cp_path: Path, output_dir: Path):
     runtime_overhead = lns_cp.get("elapsed_minutes", 0) - baseline.get(
         "elapsed_minutes", 0
     )
-    comparison["improvements"]["runtime_overhead_minutes"] = runtime_overhead
+    improvements["runtime_overhead_minutes"] = runtime_overhead
 
     # Save comparison
     comparison_path = output_dir / "comparison.json"
@@ -276,33 +298,33 @@ def compare_results(baseline_path: Path, lns_cp_path: Path, output_dir: Path):
 
     # Print report
     print("\nBaseline GA:")
-    print(f"  Hard Violations: {comparison['baseline']['hard_violations']:.0f}")
-    print(f"  Soft Penalties: {comparison['baseline']['soft_penalties']:.2f}")
-    print(f"  Runtime: {comparison['baseline']['runtime_minutes']:.2f} minutes")
-    print(f"  Feasible: {comparison['baseline']['feasible']}")
+    print(f"  Hard Violations: {baseline_summary['hard_violations']:.0f}")
+    print(f"  Soft Penalties: {baseline_summary['soft_penalties']:.2f}")
+    print(f"  Runtime: {baseline_summary['runtime_minutes']:.2f} minutes")
+    print(f"  Feasible: {baseline_summary['feasible']}")
 
     print("\nLNS-CP Hybrid:")
-    print(f"  Hard Violations: {comparison['lns_cp']['hard_violations']:.0f}")
-    print(f"  Soft Penalties: {comparison['lns_cp']['soft_penalties']:.2f}")
-    print(f"  Runtime: {comparison['lns_cp']['runtime_minutes']:.2f} minutes")
-    print(f"  Feasible: {comparison['lns_cp']['feasible']}")
+    print(f"  Hard Violations: {lns_summary['hard_violations']:.0f}")
+    print(f"  Soft Penalties: {lns_summary['soft_penalties']:.2f}")
+    print(f"  Runtime: {lns_summary['runtime_minutes']:.2f} minutes")
+    print(f"  Feasible: {lns_summary['feasible']}")
 
-    if "hard_violations" in comparison["improvements"]:
-        hc_imp = comparison["improvements"]["hard_violations"]
+    if "hard_violations" in improvements:
+        hc_imp = improvements["hard_violations"]
         print("\nHard Constraint Improvement:")
         print(f"  Absolute: {hc_imp['absolute']:.0f} violations")
         print(f"  Percentage: {hc_imp['percentage']:.1f}%")
 
-    if "soft_penalties" in comparison["improvements"]:
-        soft_imp = comparison["improvements"]["soft_penalties"]
+    if "soft_penalties" in improvements:
+        soft_imp = improvements["soft_penalties"]
         print("\nSoft Constraint Improvement:")
         print(f"  Absolute: {soft_imp['absolute']:.2f}")
         print(f"  Percentage: {soft_imp['percentage']:.1f}%")
 
     print(f"\nRuntime Overhead: {runtime_overhead:.2f} minutes")
 
-    if "lns_stats" in comparison["lns_cp"]:
-        stats = comparison["lns_cp"]["lns_stats"]
+    if "lns_stats" in lns_summary:
+        stats = cast(dict[str, Any], lns_summary["lns_stats"])
         print("\nLNS-CP Statistics:")
         print(f"  Total Attempts: {stats.get('total_attempts', 0)}")
         print(f"  Success Rate: {stats.get('success_rate', 0):.1f}%")

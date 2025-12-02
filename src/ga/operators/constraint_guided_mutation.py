@@ -17,14 +17,15 @@ Expected Impact: 20-30% faster convergence to zero violations.
 
 import random
 
-from src.core.types import SchedulingContext
+from src.core.types import Individual, SchedulingContext
 from src.decoder.individual_decoder import decode_individual
 from src.entities.decoded_session import CourseSession
+from src.ga.sessiongene import SessionGene
 
 
 def constraint_guided_mutation(
-    individual, context: SchedulingContext
-) -> tuple[list, dict]:
+    individual: Individual, context: SchedulingContext
+) -> tuple[Individual, dict[str, int]]:
     """
     Mutate genes corresponding to sessions with violations.
 
@@ -174,7 +175,7 @@ def _has_instructor_conflict(
     return False
 
 
-def _mutate_session(gene, context: SchedulingContext):
+def _mutate_session(gene: SessionGene, context: SchedulingContext) -> None:
     """
     Mutate a single SessionGene.
 

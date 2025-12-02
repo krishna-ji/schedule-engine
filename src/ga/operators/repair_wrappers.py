@@ -29,6 +29,8 @@ Usage:
 from collections.abc import Callable
 from dataclasses import dataclass
 
+RepairFunc = Callable[..., int]
+
 
 @dataclass
 class RepairOperatorMetadata:
@@ -70,7 +72,7 @@ def repair_operator(
     priority: int,
     modifies_length: bool = False,
     enabled_by_default: bool = True,
-):
+) -> Callable[[RepairFunc], RepairFunc]:
     """
     Decorator to register a repair operator function.
 
@@ -107,7 +109,7 @@ def repair_operator(
         - Must modify individual in-place (no return of modified individual)
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: RepairFunc) -> RepairFunc:
         metadata = RepairOperatorMetadata(
             name=name,
             function=func,

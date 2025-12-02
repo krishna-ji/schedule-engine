@@ -14,17 +14,21 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import gymnasium as gym
+from numpy.typing import NDArray
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
+from stable_baselines3.common.vec_env import VecEnv
 
 from src.config import get_config
 from src.rl.agents import create_dqn_agent, create_ppo_agent
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+ObservationType = NDArray[Any]
 
 
 class RolloutProgressCallback(BaseCallback):
@@ -64,7 +68,7 @@ class RolloutProgressCallback(BaseCallback):
             eta_seconds = remaining_steps / speed if speed > 0 else 0
 
             # Format time values as hh:mm:ss
-            def format_time(seconds):
+            def format_time(seconds: float) -> str:
                 hours = int(seconds // 3600)
                 minutes = int((seconds % 3600) // 60)
                 secs = int(seconds % 60)
@@ -114,7 +118,7 @@ class RLTrainer:
 
     def __init__(
         self,
-        env: gym.Env,
+        env: gym.Env | VecEnv,
         agent_type: str = "ppo",
         save_dir: str | None = None,
         tensorboard_log: str | None = None,
@@ -123,7 +127,7 @@ class RLTrainer:
         use_subproc: bool = False,
         device: str = "cpu",
         debug_logging: bool = False,
-        **agent_kwargs,
+        **agent_kwargs: Any,
     ):
         """
         Initialize trainer.
@@ -176,7 +180,7 @@ class RLTrainer:
         logger.info(f"Save directory: {self.save_dir}")
         logger.info(f"TensorBoard logs: {self.tensorboard_log}")
 
-    def create_agent(self, **override_kwargs) -> BaseAlgorithm:
+    def create_agent(self, **override_kwargs: Any) -> BaseAlgorithm:
         """
         Create RL agent with configured parameters.
 
@@ -444,6 +448,20 @@ class RLTrainer:
         logger.info("Model loaded successfully")
         return self.agent
 
+    def _get_eval_env(self) -> gym.Env:
+        """Return a gym.Env for evaluation, unwrapping VecEnv if needed."""
+        if isinstance(self.env, VecEnv):
+            envs = getattr(self.env, "envs", None)
+            if envs:
+                base_env = envs[0]
+                underlying = getattr(base_env, "env", base_env)
+                if isinstance(underlying, gym.Env):
+                    return underlying
+            raise RuntimeError("VecEnv does not expose a gym-compatible environment")
+        if isinstance(self.env, gym.Env):
+            return self.env
+        raise RuntimeError("Trainer environment must be gym-compatible for evaluation")
+
     def evaluate(
         self,
         n_eval_episodes: int = 10,
@@ -467,15 +485,19 @@ class RLTrainer:
         episode_rewards = []
         episode_lengths: list[int | float] = []
 
+        eval_env = self._get_eval_env()
+
         for episode in range(n_eval_episodes):
-            obs, _ = self.env.reset()
+            obs_raw, _ = eval_env.reset()
+            obs: ObservationType = cast(ObservationType, obs_raw)
             done = False
             episode_reward: float = 0.0
             episode_length = 0  # Will be cast to float for calculations
 
             while not done:
                 action, _ = self.agent.predict(obs, deterministic=deterministic)
-                obs, reward, terminated, truncated, _ = self.env.step(action)
+                obs_raw, reward, terminated, truncated, _ = eval_env.step(action)
+                obs = cast(ObservationType, obs_raw)
                 done = terminated or truncated
 
                 episode_reward += float(reward)
@@ -618,7 +640,7 @@ class RLTrainer:
 def create_trainer(
     env: gym.Env,
     agent_type: str = "ppo",
-    **kwargs,
+    **kwargs: Any,
 ) -> RLTrainer:
     """
     Convenience function to create trainer.

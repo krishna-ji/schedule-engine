@@ -1,6 +1,7 @@
 import random
 
-from src.core.types import SchedulingContext
+from src.core.types import Individual, SchedulingContext
+from src.entities.course import Course
 from src.ga.sessiongene import SessionGene
 
 
@@ -83,7 +84,9 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     )
 
 
-def mutate_time_quanta(gene: SessionGene, course, context) -> list[int]:
+def mutate_time_quanta(
+    gene: SessionGene, course: Course | None, context: SchedulingContext
+) -> list[int]:
     """
     Intelligently mutate time quanta while PRESERVING quanta count.
 
@@ -176,7 +179,12 @@ def find_suitable_rooms_for_course(
     return suitable_room_ids if suitable_room_ids else list(context.rooms.keys())
 
 
-def mutate_individual(individual, context, mut_prob=0.2, guided=True):
+def mutate_individual(
+    individual: Individual,
+    context: SchedulingContext,
+    mut_prob: float = 0.2,
+    guided: bool = True,
+) -> tuple[Individual]:
     """
     Applies mutation to an individual with optional constraint guidance.
 

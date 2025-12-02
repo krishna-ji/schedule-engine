@@ -18,8 +18,10 @@ Usage:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 # Add project root to path
 project_root = Path(__file__).resolve().parents[2]
@@ -29,10 +31,81 @@ REGISTRY_PATH = project_root / "models" / "rl_agents" / "registry.json"
 
 from src.config import get_config
 from src.rl.deployment.registry import ModelRegistry
-from src.rl.training.checkpoints import CheckpointManager
-from src.utils.logging_config import setup_logger
+from src.rl.training.checkpoints import CheckpointManager, CheckpointMetadata
+from src.utils.logging_config import get_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
+
+
+def _resolve_manifest_path() -> Path:
+    """Best-effort resolution of the checkpoint manifest path."""
+    try:
+        config = get_config()
+        return Path(config.rl.training.save_dir).resolve() / "manifest.json"
+    except Exception:
+        # Fallback to default models directory if config is unavailable
+        return project_root / "models" / "rl_agents" / "manifest.json"
+
+
+def _load_model_metadata(model_path: Path) -> dict[str, Any] | None:
+    """Load adjacent JSON metadata for a saved RL model, if present."""
+    metadata_path = model_path.with_suffix(".json")
+    if not metadata_path.exists():
+        return None
+
+    try:
+        with open(metadata_path) as handle:
+            data = json.load(handle)
+    except json.JSONDecodeError as exc:
+        logger.warning(f"Failed to parse model metadata {metadata_path}: {exc}")
+        return None
+
+    if isinstance(data, dict):
+        return cast(dict[str, Any], data)
+
+    logger.warning(
+        "Model metadata %s is not a JSON object (found %s)",
+        metadata_path,
+        type(data).__name__,
+    )
+    return None
+
+
+def _infer_agent_type(
+    *,
+    checkpoint: CheckpointMetadata | None = None,
+    metadata: dict[str, Any] | None = None,
+    override: str | None = None,
+) -> str:
+    """Infer agent type from override, metadata, or config defaults."""
+    if override:
+        return override.lower()
+
+    if checkpoint and checkpoint.training_metrics:
+        metric_agent = checkpoint.training_metrics.get("agent_type")
+        if isinstance(metric_agent, str) and metric_agent.strip():
+            return metric_agent.strip().lower()
+
+    if metadata:
+        metadata_agent = metadata.get("agent_type")
+        if isinstance(metadata_agent, str) and metadata_agent.strip():
+            return metadata_agent.strip().lower()
+
+    if checkpoint:
+        stem = Path(checkpoint.model_path).stem.lower()
+        for candidate in ("ppo", "dqn"):
+            if candidate in stem:
+                return candidate
+
+    try:
+        config = get_config()
+        config_agent = getattr(config.rl.agent, "type", None)
+        if isinstance(config_agent, str) and config_agent.strip():
+            return config_agent.strip().lower()
+    except Exception:
+        pass
+
+    return "ppo"
 
 
 def promote_from_checkpoint(
@@ -48,18 +121,15 @@ def promote_from_checkpoint(
         promoted_by: User identifier
         notes: Optional deployment notes
     """
-    config = get_config()
-
-    # Load checkpoint from manifest
-    manifest_path = config.rl.training.checkpoint_settings.manifest_path
-    manager = CheckpointManager(manifest_path)
+    manifest_path = _resolve_manifest_path()
+    manager = CheckpointManager(str(manifest_path))
 
     checkpoint = manager.get_checkpoint(checkpoint_id)
     if not checkpoint:
         logger.error(f"Checkpoint not found: {checkpoint_id}")
         print(f" Checkpoint not found: {checkpoint_id}")
         print("\nAvailable checkpoints:")
-        for ckpt in manager.list_checkpoints():
+        for ckpt in manager.checkpoints:
             print(f"  - {ckpt.checkpoint_id} ({ckpt.stage}, {ckpt.status})")
         sys.exit(1)
 
@@ -70,17 +140,20 @@ def promote_from_checkpoint(
         print(f" Checkpoint file not found: {checkpoint.model_path}")
         sys.exit(1)
 
+    metadata = _load_model_metadata(checkpoint_path)
+    agent_type = _infer_agent_type(checkpoint=checkpoint, metadata=metadata)
+
     # Validate checkpoint is a valid model
     try:
         from stable_baselines3 import DQN, PPO
 
-        if checkpoint.agent_type.lower() == "ppo":
+        if agent_type == "ppo":
             _ = PPO.load(checkpoint.model_path)
-        elif checkpoint.agent_type.lower() == "dqn":
+        elif agent_type == "dqn":
             _ = DQN.load(checkpoint.model_path)
         else:
-            logger.error(f"Unknown agent type: {checkpoint.agent_type}")
-            print(f" Unknown agent type: {checkpoint.agent_type}")
+            logger.error(f"Unknown agent type: {agent_type}")
+            print(f" Unknown agent type: {agent_type}")
             sys.exit(1)
     except Exception as e:
         logger.error(f"Invalid checkpoint file: {e}")
@@ -93,7 +166,7 @@ def promote_from_checkpoint(
             f"Checkpoint {checkpoint_id} has status '{checkpoint.status}' (not validated)"
         )
         confirm = input(
-            f"️  Checkpoint status is '{checkpoint.status}'. Continue? (y/N): "
+            f"[?] Checkpoint status is '{checkpoint.status}'. Continue? (y/N): "
         )
         if confirm.lower() != "y":
             print("Promotion cancelled")
@@ -101,9 +174,18 @@ def promote_from_checkpoint(
 
     print(f" Promoting checkpoint: {checkpoint_id}")
     print(f"   Model: {checkpoint.model_path}")
-    print(f"   Agent: {checkpoint.agent_type}")
+    print(f"   Agent: {agent_type}")
     print(f"   Stage: {checkpoint.stage}")
-    print(f"   Mean Reward: {checkpoint.validation_metrics.get('mean_reward', 'N/A')}")
+    mean_reward = (
+        checkpoint.validation_metrics.get("mean_reward")
+        if checkpoint.validation_metrics
+        else None
+    )
+    if isinstance(mean_reward, float | int):
+        mean_reward_display = f"{mean_reward:.4f}"
+    else:
+        mean_reward_display = "N/A"
+    print(f"   Mean Reward: {mean_reward_display}")
     print()
 
     # Initialize registry
@@ -111,10 +193,11 @@ def promote_from_checkpoint(
 
     # Promote model
     try:
+        validation_metrics = checkpoint.validation_metrics or {}
         registration = registry.promote_model(
             model_path=checkpoint.model_path,
-            agent_type=checkpoint.agent_type,
-            validation_metrics=checkpoint.validation_metrics,
+            agent_type=agent_type,
+            validation_metrics=validation_metrics,
             promoted_by=promoted_by,
             notes=notes or f"Promoted from checkpoint {checkpoint_id}",
             checkpoint_id=checkpoint_id,
@@ -135,9 +218,9 @@ def promote_from_checkpoint(
 
 
 def promote_from_file(
-    model_path: str,
+    model_path: str | Path,
     agent_type: str,
-    validation_metrics: dict,
+    validation_metrics: dict[str, float] | None,
     promoted_by: str = "user",
     notes: str = "",
 ) -> None:
@@ -151,14 +234,16 @@ def promote_from_file(
         promoted_by: User identifier
         notes: Optional deployment notes
     """
-    model_path = Path(model_path)
+    model_path_path = Path(model_path)
 
-    if not model_path.exists():
-        logger.error(f"Model file not found: {model_path}")
-        print(f" Model file not found: {model_path}")
+    if not model_path_path.exists():
+        logger.error(f"Model file not found: {model_path_path}")
+        print(f" Model file not found: {model_path_path}")
         sys.exit(1)
 
-    print(f" Promoting model file: {model_path}")
+    agent_type = agent_type.lower()
+
+    print(f" Promoting model file: {model_path_path}")
     print(f"   Agent: {agent_type}")
     print()
 
@@ -167,10 +252,12 @@ def promote_from_file(
 
     # Promote model
     try:
+        metrics = validation_metrics or {"mean_reward": 0.0}
+
         registration = registry.promote_model(
-            model_path=model_path,
+            model_path=model_path_path,
             agent_type=agent_type,
-            validation_metrics=validation_metrics,
+            validation_metrics=metrics,
             promoted_by=promoted_by,
             notes=notes,
         )
@@ -204,7 +291,7 @@ def rollback_deployment() -> None:
     print(f"   Deployed: {current.deployed_at}")
     print()
 
-    confirm = input("️  Rollback to previous deployment? (y/N): ")
+    confirm = input("[?] Rollback to previous deployment? (y/N): ")
     if confirm.lower() != "y":
         print("Rollback cancelled")
         sys.exit(0)
@@ -339,10 +426,7 @@ Examples:
             parser.error("--agent-type is required with --model-path")
 
         # Use default metrics if not provided
-        validation_metrics = {
-            "mean_reward": 0.0,
-            "note": "Promoted manually without validation metrics",
-        }
+        validation_metrics = {"mean_reward": 0.0}
 
         promote_from_file(
             model_path=args.model_path,

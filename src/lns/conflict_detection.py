@@ -6,6 +6,8 @@ and provides detailed violation information for targeted repair.
 """
 
 from collections import defaultdict
+from collections.abc import Callable
+from typing import Any
 
 from src.constraints.registry import (
     constraint_needs_courses,
@@ -36,7 +38,7 @@ class ViolationInfo:
         constraint_name: str,
         violation_count: int,
         affected_sessions: set[int],
-        conflict_details: dict | None = None,
+        conflict_details: dict[str, Any] | None = None,
     ):
         self.constraint_name = constraint_name
         self.violation_count = violation_count
@@ -115,10 +117,10 @@ def find_hard_conflict_sessions(
 
 def _evaluate_constraint_with_tracking(
     constraint_name: str,
-    constraint_func,
+    constraint_func: Callable[..., int],
     sessions: list[CourseSession],
     courses: dict[tuple, Course] | None = None,
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """
     Evaluates a constraint and tracks which sessions are involved.
 
@@ -169,7 +171,7 @@ def _evaluate_constraint_with_tracking(
 
 def _track_student_group_conflicts(
     sessions: list[CourseSession],
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track student group exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
@@ -197,7 +199,7 @@ def _track_student_group_conflicts(
 
 def _track_instructor_conflicts(
     sessions: list[CourseSession],
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track instructor exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
@@ -218,7 +220,7 @@ def _track_instructor_conflicts(
 
 def _track_room_conflicts(
     sessions: list[CourseSession],
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track room exclusivity violations."""
     conflict_count = 0
     conflicted_indices = set()
@@ -238,8 +240,9 @@ def _track_room_conflicts(
 
 
 def _track_qualification_violations(
-    sessions: list[CourseSession], courses: dict[tuple, Course]
-) -> tuple[set[int], int, dict]:
+    sessions: list[CourseSession],
+    courses: dict[tuple, Course],
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track instructor qualification violations."""
     violations = 0
     conflicted_indices = set()
@@ -262,7 +265,7 @@ def _track_qualification_violations(
 
 def _track_room_capacity_violations(
     sessions: list[CourseSession],
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track room capacity violations."""
     violations = 0
     conflicted_indices = set()
@@ -281,7 +284,7 @@ def _track_room_capacity_violations(
 
 def _track_room_feature_violations(
     sessions: list[CourseSession],
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track room feature violations."""
     violations = 0
     conflicted_indices = set()
@@ -301,7 +304,7 @@ def _track_room_feature_violations(
 
 def _track_instructor_availability_violations(
     sessions: list[CourseSession],
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track instructor availability violations."""
     violations = 0
     conflicted_indices = set()
@@ -319,7 +322,7 @@ def _track_instructor_availability_violations(
 
 def _track_group_availability_violations(
     sessions: list[CourseSession],
-) -> tuple[set[int], int, dict]:
+) -> tuple[set[int], int, dict[str, Any]]:
     """Track group availability violations."""
     violations = 0
     conflicted_indices = set()

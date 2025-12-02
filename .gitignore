@@ -30,6 +30,7 @@ uv.lock
 
 # Ruff cache
 .ruff_cache/
+.mypy_cache/
 
 # report/
 

@@ -6,7 +6,7 @@ from src.ga.sessiongene import SessionGene
 
 def crossover_course_group_aware(
     ind1: list[SessionGene], ind2: list[SessionGene], cx_prob: float = 0.5
-):
+) -> tuple[list[SessionGene], list[SessionGene]]:
     """
     Position-Independent Crossover that preserves (course, group) structure.
 

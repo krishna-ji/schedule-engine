@@ -24,6 +24,7 @@ Usage:
 """
 
 from collections import defaultdict
+from collections.abc import Callable
 
 from src.core.types import SchedulingContext
 
@@ -34,6 +35,8 @@ from src.ga.operators.repair import (
 )
 from src.ga.operators.violation_detector import detect_violated_genes
 from src.ga.sessiongene import SessionGene
+
+SelectiveRepairFunc = Callable[[list[SessionGene], set[int], SchedulingContext], int]
 
 # ================
 # SELECTIVE REPAIR WRAPPER - Main Entry Point
@@ -158,7 +161,7 @@ def repair_individual_selective(
     return stats
 
 
-def _get_selective_repair_function(repair_name: str):
+def _get_selective_repair_function(repair_name: str) -> SelectiveRepairFunc | None:
     """
     Map repair function name to its selective version.
 

@@ -248,7 +248,7 @@ class AgentCoordinator:
         >>> action = coordinator.select_action(state, context)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize agent coordinator."""
         self.agents: dict[str, BaseAlgorithm] = {}
         self.agent_specializations: dict[

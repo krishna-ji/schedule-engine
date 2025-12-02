@@ -33,6 +33,8 @@ Usage:
 import random
 
 from src.core.types import SchedulingContext
+from src.entities.course import Course
+from src.entities.room import Room
 from src.ga.sessiongene import SessionGene
 
 
@@ -269,7 +271,7 @@ def _generate_time_neighbors(
 
 def _generate_room_neighbors(
     gene: SessionGene,
-    course,
+    course: Course,
     context: SchedulingContext,
 ) -> list[SessionGene]:
     """Generate neighbors by changing room."""
@@ -301,7 +303,7 @@ def _generate_room_neighbors(
 
 
 def _is_room_suitable(
-    course, room, context: SchedulingContext, group_ids: list[str]
+    course: Course, room: Room, context: SchedulingContext, group_ids: list[str]
 ) -> bool:
     """Check if room is suitable for course and groups."""
     # Get max group size from all groups

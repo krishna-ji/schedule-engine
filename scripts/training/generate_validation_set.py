@@ -14,12 +14,22 @@ import json
 import random
 import sys
 from pathlib import Path
+from typing import Any
 
 # Add project root to path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
-from src.encoder import SchedulingContext, load_scheduling_data  # noqa: E402
+from src.core.types import SchedulingContext  # noqa: E402
+from src.encoder import (  # noqa: E402
+    QuantumTimeSystem,
+    link_courses_and_groups,
+    link_courses_and_instructors,
+    load_courses,
+    load_groups,
+    load_instructors,
+    load_rooms,
+)
 from src.rl.training.curriculum import create_default_curriculum  # noqa: E402
 from src.utils.logging_config import get_logger  # noqa: E402
 
@@ -72,12 +82,45 @@ def parse_args():
     return parser.parse_args()
 
 
+def load_scheduling_context(data_dir: str | Path) -> SchedulingContext:
+    """Load scheduling context from JSON data directory."""
+    base_dir = Path(data_dir).resolve()
+
+    if not base_dir.exists():
+        raise FileNotFoundError(f"Data directory not found: {base_dir}")
+
+    qts = QuantumTimeSystem()
+
+    courses = load_courses(str(base_dir / "Course.json"))
+    groups = load_groups(str(base_dir / "Groups.json"), qts)
+    instructors = load_instructors(str(base_dir / "Instructors.json"), qts)
+    rooms = load_rooms(str(base_dir / "Rooms.json"), qts)
+
+    link_courses_and_groups(courses, groups)
+    link_courses_and_instructors(courses, instructors)
+
+    # Keep only courses that have enrollment data; fallback to all courses otherwise
+    enrolled_courses = {
+        key: course for key, course in courses.items() if course.enrolled_group_ids
+    }
+    if not enrolled_courses:
+        enrolled_courses = courses
+
+    return SchedulingContext(
+        courses=enrolled_courses,
+        groups=groups,
+        instructors=instructors,
+        rooms=rooms,
+        available_quanta=list(qts.get_all_operating_quanta()),
+    )
+
+
 def generate_validation_problems(
     context: SchedulingContext,
     num_courses: int,
     num_problems: int,
     seed: int,
-) -> list:
+) -> list[dict[str, Any]]:
     """
     Generate validation problems of specified difficulty.
 
@@ -91,7 +134,7 @@ def generate_validation_problems(
         List of problem configurations
     """
     random.seed(seed)
-    all_courses = context.courses
+    all_courses = list(context.courses.values())
 
     if len(all_courses) < num_courses:
         logger.warning(
@@ -110,7 +153,8 @@ def generate_validation_problems(
         problem = {
             "problem_id": f"val_{num_courses}c_p{i + 1:03d}",
             "num_courses": num_courses,
-            "course_ids": [c.id for c in sampled_courses],
+            "course_ids": [c.course_id for c in sampled_courses],
+            "course_types": [c.course_type for c in sampled_courses],
             "seed": seed + i,
             "description": (
                 f"Validation problem {i + 1}/{num_problems} with {num_courses} courses"
@@ -136,7 +180,7 @@ def main():
     try:
         # Load data
         logger.info("\nLoading scheduling data...")
-        context = load_scheduling_data(args.data_dir)
+        context = load_scheduling_context(args.data_dir)
 
         logger.info(f"Loaded {len(context.courses)} courses")
         logger.info(f"Loaded {len(context.instructors)} instructors")
@@ -193,7 +237,7 @@ def main():
             with open(output_file, "w") as f:
                 json.dump(validation_data, f, indent=2)
 
-            logger.info(f"âœ“ Saved {len(problems)} problems to {output_file}")
+            logger.info(f"[ok] Saved {len(problems)} problems to {output_file}")
 
             all_results[stage_name] = {
                 "num_problems": len(problems),
@@ -223,7 +267,7 @@ def main():
         for stage_name, result in all_results.items():
             logger.info(f"  {stage_name}: {result['num_problems']} problems")
 
-        logger.info("\nâœ“ Validation set generation complete!")
+        logger.info("\nValidation set generation complete!")
 
     except Exception as e:
         logger.error(f"Failed to generate validation set: {e}", exc_info=True)

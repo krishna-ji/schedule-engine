@@ -14,7 +14,7 @@ from src.config import get_config
 
 
 def create_ppo_agent(
-    env: gym.Env,
+    env: gym.Env | VecEnv,
     learning_rate: float | None = None,
     n_steps: int | None = None,
     batch_size: int | None = None,
@@ -22,7 +22,7 @@ def create_ppo_agent(
     gamma: float | None = None,
     tensorboard_log: str | None = None,
     verbose: int = 1,
-    **kwargs,
+    **kwargs: Any,
 ) -> PPO:
     """
     Create and configure PPO agent.
@@ -101,7 +101,7 @@ def create_ppo_agent(
 
 def load_ppo_agent(
     model_path: str,
-    env: gym.Env | None = None,
+    env: gym.Env | VecEnv | None = None,
     device: str = "cpu",
 ) -> PPO:
     """

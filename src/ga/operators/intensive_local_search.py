@@ -42,13 +42,30 @@ Usage:
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from src.core.types import SchedulingContext
+from src.core.types import Individual, SchedulingContext
 from src.ga.operators.local_search import optimize_gene_exhaustive, optimize_gene_greedy
 from src.ga.sessiongene import SessionGene
 from src.utils.system_info import get_cpu_count
 
+type ExhaustiveArgs = tuple[
+    SessionGene,
+    list[SessionGene],
+    int,
+    SchedulingContext,
+    int,
+]
+type GreedyArgs = tuple[
+    SessionGene,
+    list[SessionGene],
+    int,
+    SchedulingContext,
+    int,
+]
+type GeneOptimizationResult = tuple[int, SessionGene, int]
+type MetricsDict = dict[str, float | int | bool]
 
-def _optimize_gene_wrapper_exhaustive(args):
+
+def _optimize_gene_wrapper_exhaustive(args: ExhaustiveArgs) -> GeneOptimizationResult:
     """
     Wrapper for parallel gene optimization (exhaustive).
 
@@ -69,7 +86,7 @@ def _optimize_gene_wrapper_exhaustive(args):
     return (gene_index, improved_gene, improvement)
 
 
-def _optimize_gene_wrapper_greedy(args):
+def _optimize_gene_wrapper_greedy(args: GreedyArgs) -> GeneOptimizationResult:
     """
     Wrapper for parallel gene optimization (greedy).
 
@@ -91,13 +108,13 @@ def _optimize_gene_wrapper_greedy(args):
 
 
 def apply_exhaustive_search(
-    population: list[list[SessionGene]],
+    population: list[Individual],
     context: SchedulingContext,
     population_coverage: float = 0.3,
     max_neighborhood_size: int = 100,
     timeout_seconds: int = 180,
     parallel: bool = True,  # NEW: Enable/disable parallelization
-) -> tuple[list[list[SessionGene]], dict]:
+) -> tuple[list[Individual], MetricsDict]:
     """
     Apply exhaustive local search to population.
 
@@ -127,7 +144,7 @@ def apply_exhaustive_search(
     """
     start_time = time.time()
 
-    metrics = {
+    metrics: MetricsDict = {
         "individuals_processed": 0,
         "genes_improved": 0,
         "total_improvement": 0,
@@ -256,13 +273,13 @@ def apply_exhaustive_search(
 
 
 def apply_greedy_search(
-    population: list[list[SessionGene]],
+    population: list[Individual],
     context: SchedulingContext,
     population_coverage: float = 0.5,
     max_iterations: int = 10,
     timeout_seconds: int = 60,
     parallel: bool = True,  # NEW: Enable/disable parallelization
-) -> tuple[list[list[SessionGene]], dict]:
+) -> tuple[list[Individual], MetricsDict]:
     """
     Apply greedy local search to population.
 
@@ -293,7 +310,7 @@ def apply_greedy_search(
     """
     start_time = time.time()
 
-    metrics = {
+    metrics: MetricsDict = {
         "individuals_processed": 0,
         "genes_improved": 0,
         "total_improvement": 0,

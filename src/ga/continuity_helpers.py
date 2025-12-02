@@ -24,14 +24,14 @@ class SessionDuration:
     session_index: int  # 0-based within course type
     num_quanta: int  # Required contiguous quanta
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.course_id}[{self.course_type[0].upper()}{self.session_index}]:{self.num_quanta}q"
 
 
 class ContinuityHelper:
     """Helper class for enforcing session continuity in population initialization."""
 
-    def __init__(self, context: SchedulingContext):
+    def __init__(self, context: SchedulingContext) -> None:
         self.context = context
         self.qts = QuantumTimeSystem()
         self.config = get_config()

@@ -27,7 +27,7 @@ class BehavioralDescriptors:
     enabling discovery of diverse high-quality solutions.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize behavioral descriptor extractor."""
         self.feature_names = [
             "monday_density",
