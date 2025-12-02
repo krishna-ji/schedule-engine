@@ -9,9 +9,13 @@ Exposes:
 
 from __future__ import annotations
 
-from src.core.types import Individual
+from typing import TYPE_CHECKING
+
 from src.ga.creator_registry import get_creator
 from src.ga.sessiongene import SessionGene
+
+if TYPE_CHECKING:
+    from src.core.types import Individual
 
 __all__ = ["get_creator", "create_individual", "SessionGene"]
 

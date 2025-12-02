@@ -53,7 +53,10 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     # Use first group for room suitability check
     primary_group = gene.group_ids[0] if gene.group_ids else None
     suitable_rooms = find_suitable_rooms_for_course(
-        gene.course_id, primary_group if primary_group else "", context
+        gene.course_id,
+        gene.course_type,
+        primary_group if primary_group else "",
+        context,
     )
     if gene.room_id in suitable_rooms and random.random() < 0.5:
         new_room = gene.room_id  # Keep current room if suitable
@@ -139,13 +142,13 @@ def mutate_time_quanta(
 
 
 def find_suitable_rooms_for_course(
-    course_id: str, group_id: str, context: SchedulingContext
+    course_id: str, course_type: str, group_id: str, context: SchedulingContext
 ) -> list[str]:
     """
     Find rooms suitable for a specific course and group combination.
     Takes into account group size, course requirements, and room features.
     """
-    course = context.courses.get((course_id,))
+    course = context.courses.get((course_id, course_type))
     group = context.groups.get(group_id)
 
     if not course:

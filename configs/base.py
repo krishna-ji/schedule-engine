@@ -79,12 +79,12 @@ class BaseConfig:
     num_workers: int | None = None  # None = CPU count
 
     # ==========================================
-    # POPULATION STRATEGY (DEFAULT: RANDOM - enable smart/hybrid per experiment)
+    # POPULATION STRATEGY (DEFAULT: 100% RANDOM)
     # ==========================================
     population_strategy: str = "random"  # random, smart, hybrid
-    greedy_percentage: float = 0.25
-    smart_percentage: float = 0.50
-    random_percentage: float = 0.25
+    greedy_percentage: float = 0.00  # Greedy initialization disabled
+    smart_percentage: float = 0.00  # Smart initialization disabled
+    random_percentage: float = 1.00  # 100% random initialization
 
     # ==========================================
     # KILLSWITCHES (DEFAULT: ALL DISABLED - enable per experiment)
