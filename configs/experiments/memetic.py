@@ -19,16 +19,8 @@ from configs.profiles import ProdConfig, TestConfig
 
 
 @dataclass
-class MemeticTestConfig(TestConfig):
-    """
-    Mode B: NSGA-II + Memetic local search (test profile).
-
-    Experiment B with test scaling (30 gens, 10 pop).
-    Typical runtime: 3-7 minutes.
-    """
-
-    name: str = "memetic-test"
-    experiment_id: str = "B"
+class MemeticBaseConfig:
+    """Shared configuration for Mode B memetic profiles."""
 
     # === REPAIR: Enable memetic mode ===
     repair_enabled: bool = True
@@ -59,42 +51,19 @@ class MemeticTestConfig(TestConfig):
 
 
 @dataclass
-class MemeticProdConfig(ProdConfig):
-    """
-    Mode B: NSGA-II + Memetic local search (production profile).
+class MemeticTestConfig(MemeticBaseConfig, TestConfig):
+    """Mode B memetic (test profile)."""
 
-    Experiment B with production scaling (2000 gens, 200 pop).
-    Typical runtime: 2-4 hours.
-    """
+    name: str = "memetic-test"
+    experiment_id: str = "B"
+
+
+@dataclass
+class MemeticProdConfig(MemeticBaseConfig, ProdConfig):
+    """Mode B memetic (production profile)."""
 
     name: str = "memetic-prod"
     experiment_id: str = "B"
-
-    # === REPAIR: Enable memetic mode ===
-    repair_enabled: bool = True
-    repair_memetic_mode: bool = True
-    repair_apply_after_mutation: bool = True
-    repair_apply_after_crossover: bool = False
-    repair_elite_percentage: float = 0.20
-    repair_max_iterations: int = 100
-
-    # === MUTATION: Enable constraint-guided ===
-    use_constraint_guided_mutation: bool = True
-
-    # === KILLSWITCHES: Disable other enhancements ===
-    heuristics_master_enabled: bool = False
-    heuristics_adaptive_priority_enabled: bool = False
-    lns_enabled: bool = False
-    rl_enabled: bool = False
-    enhancements_master_enabled: bool = False
-
-    # === POPULATION STRATEGY: Hybrid initialization ===
-    population_strategy: str = "hybrid"
-    greedy_percentage: float = 0.25
-    smart_percentage: float = 0.50
-    random_percentage: float = 0.25
-
-    # === NOTES ===
     notes: str = "NSGA-II + memetic local search for thesis (production)"
 
 

@@ -19,9 +19,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.encoder import SchedulingContext, load_scheduling_data
-from src.rl.training.curriculum import create_default_curriculum
-from src.utils.logging_config import get_logger
+from src.encoder import SchedulingContext, load_scheduling_data  # noqa: E402
+from src.rl.training.curriculum import create_default_curriculum  # noqa: E402
+from src.utils.logging_config import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -108,11 +108,13 @@ def generate_validation_problems(
 
         # Create problem configuration
         problem = {
-            "problem_id": f"val_{num_courses}c_p{i+1:03d}",
+            "problem_id": f"val_{num_courses}c_p{i + 1:03d}",
             "num_courses": num_courses,
             "course_ids": [c.id for c in sampled_courses],
             "seed": seed + i,
-            "description": f"Validation problem {i+1}/{num_problems} with {num_courses} courses",
+            "description": (
+                f"Validation problem {i + 1}/{num_problems} with {num_courses} courses"
+            ),
         }
 
         problems.append(problem)
@@ -191,7 +193,7 @@ def main():
             with open(output_file, "w") as f:
                 json.dump(validation_data, f, indent=2)
 
-            logger.info(f"✓ Saved {len(problems)} problems to {output_file}")
+            logger.info(f"âœ“ Saved {len(problems)} problems to {output_file}")
 
             all_results[stage_name] = {
                 "num_problems": len(problems),
@@ -221,7 +223,7 @@ def main():
         for stage_name, result in all_results.items():
             logger.info(f"  {stage_name}: {result['num_problems']} problems")
 
-        logger.info("\n✓ Validation set generation complete!")
+        logger.info("\nâœ“ Validation set generation complete!")
 
     except Exception as e:
         logger.error(f"Failed to generate validation set: {e}", exc_info=True)

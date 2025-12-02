@@ -402,10 +402,10 @@ def apply_lns_to_population(
                         repaired_individual = future.result()
                         new_population[index] = repaired_individual
                         logger.info(
-                            f"LNS-IGLS: Completed repair {index+1}/{num_to_repair}"
+                            f"LNS-IGLS: Completed repair {index + 1}/{num_to_repair}"
                         )
                     except Exception as e:
-                        logger.error(f"LNS-IGLS: Repair {index+1} failed: {e}")
+                        logger.error(f"LNS-IGLS: Repair {index + 1} failed: {e}")
                         # Keep original individual if repair fails
 
         except Exception as e:
@@ -415,7 +415,7 @@ def apply_lns_to_population(
             # Fallback to sequential
             for i in range(num_to_repair):
                 logger.info(
-                    f"LNS-IGLS: Repairing individual {i+1}/{num_to_repair} (sequential fallback)"
+                    f"LNS-IGLS: Repairing individual {i + 1}/{num_to_repair} (sequential fallback)"
                 )
                 new_population[i] = lns_igls_repair(
                     individual=population[i],
@@ -429,7 +429,7 @@ def apply_lns_to_population(
     else:
         # Single individual - no need to parallelize
         for i in range(num_to_repair):
-            logger.info(f"LNS-IGLS: Repairing individual {i+1}/{num_to_repair}")
+            logger.info(f"LNS-IGLS: Repairing individual {i + 1}/{num_to_repair}")
             new_population[i] = lns_igls_repair(
                 individual=population[i],
                 courses=courses,

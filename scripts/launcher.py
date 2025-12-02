@@ -20,9 +20,9 @@ from rich.console import Console
 project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root))
 
-console = Console()
+from configs.profiles import Profile  # noqa: E402
 
-from configs.profiles import Profile
+console = Console()
 
 PROFILE_DESCRIPTIONS: dict[Profile, str] = {
     Profile.TEST: "Smoke test (~30 gens, 10 pop, 2-5 min)",
@@ -285,98 +285,28 @@ def main_rl():
 
 def main_heuristic_testing():
     """Run Mode F experiment (individual heuristic testing)."""
-    from pathlib import Path
-
     parser = create_parser()
     args = parser.parse_args()
 
     profile = _resolve_profile(args.profile)
 
-    # Auto-copy template if name matches pattern
-    if args.name and args.name.startswith("test-"):
-        # Map test name to template file
-        template_map = {
-            "test-largest-degree-first": "test_largest_degree_first.py",
-            "test-most-constrained-first": "test_most_constrained_first.py",
-            "test-earliest-deadline-first": "test_earliest_deadline_first.py",
-            "test-random-swap": "test_random_swap.py",
-            "test-temporal-shift": "test_temporal_shift.py",
-            "test-room-shuffle": "test_room_shuffle.py",
-            "test-instructor-reassign": "test_instructor_reassign.py",
-            "test-multi-perturbation": "test_multi_perturbation.py",
-            "test-kempe-chain": "test_kempe_chain.py",
-            "test-ejection-chain": "test_ejection_chain.py",
-            "test-variable-depth-search": "test_variable_depth_search.py",
-            "test-distance-preserving-crossover": (
-                "test_distance_preserving_crossover.py"
-            ),
-            "test-crowding-mutation": "test_crowding_mutation.py",
-            "test-niching-selection": "test_niching_selection.py",
-            "test-adaptive-diversity-maintenance": (
-                "test_adaptive_diversity_maintenance.py"
-            ),
-            "test-variable-neighborhood-descent": (
-                "test_variable_neighborhood_descent.py"
-            ),
-            "test-iterated-local-search": "test_iterated_local_search.py",
-            "test-adaptive-large-neighborhood": "test_adaptive_large_neighborhood.py",
-            "test-guided-local-search": "test_guided_local_search.py",
-            "test-exhaustive-repair": "test_exhaustive_repair.py",
-            "test-greedy-repair": "test_greedy_repair.py",
-            "test-igls-repair": "test_igls_repair.py",
-            "test-lns-repair": "test_lns_repair.py",
-            "test-memetic-repair": "test_memetic_repair.py",
-            "test-selective-repair": "test_selective_repair.py",
-        }
+    # Load config to detect enabled heuristic
+    from configs.experiment_f_heuristic_testing import get_config
+    from configs.profiles import Profile as ConfigProfile
 
-        template_file = template_map.get(args.name)
-        if template_file:
-            template_path = (
-                Path("configs/experiments/single_heuristic_tests") / template_file
-            )
-            target_path = Path("configs/experiments/heuristic_testing.py")
+    config_profile = (
+        ConfigProfile.TEST if profile.value == "test" else ConfigProfile.PROD
+    )
+    test_config = get_config(config_profile)
 
-            if template_path.exists():
-                # Read template content
-                with open(template_path) as f:
-                    template_content = f.read()
+    # Extract enabled heuristic name (if exactly one is enabled)
+    heuristic_name = test_config.get_enabled_heuristic_name()
 
-                # Read current config to preserve structure
-                with open(target_path) as f:
-                    current_content = f.read()
-
-                # Extract the SingleHeuristicTestConfig class from template
-                import re
-
-                match = re.search(
-                    r"@dataclass\nclass SingleHeuristicTestConfig\(TestConfig\):.*?(?=\n\n|\Z)",
-                    template_content,
-                    re.DOTALL,
-                )
-
-                if match:
-                    new_config_class = match.group(0)
-
-                    # Replace HeuristicTestingTestConfig in target file
-                    updated_content = re.sub(
-                        r"@dataclass\nclass HeuristicTestingTestConfig\(TestConfig\):.*?(?=\n\n@dataclass|\n\n# LEGACY|\Z)",
-                        new_config_class.replace(
-                            "SingleHeuristicTestConfig", "HeuristicTestingTestConfig"
-                        ),
-                        current_content,
-                        flags=re.DOTALL,
-                    )
-
-                    # Write updated config
-                    with open(target_path, "w") as f:
-                        f.write(updated_content)
-
-                    console.print(
-                        f"[green]✓ Auto-configured heuristic: {args.name}[/green]"
-                    )
-                    console.print(
-                        f"[dim]  (copied from {template_file} to heuristic_testing.py)[/dim]"
-                    )
+    # Auto-generate name with heuristic suffix if not provided
+    final_name = args.name
+    if heuristic_name and not final_name:
+        final_name = f"test-{heuristic_name}"
+        console.print(f"[dim]Auto-detected heuristic: {heuristic_name}[/dim]")
 
     from main import main
 
@@ -387,12 +317,14 @@ def main_heuristic_testing():
         "--profile",
         profile.value,
     ]
-    if args.name:
-        sys.argv.extend(["--name", args.name])
+    if final_name:
+        sys.argv.extend(["--name", final_name])
 
     console.print(
         f"[green]Mode F: Individual Heuristic Testing ({_profile_banner(profile)})[/green]"
     )
+    if heuristic_name:
+        console.print(f"[dim]  Testing: {heuristic_name}[/dim]")
 
     sys.exit(main() or 0)
 

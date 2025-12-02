@@ -295,7 +295,7 @@ class QuantumTimeSystem:
         """
         if not 0 <= quantum < self.total_quanta:
             raise ValueError(
-                f"Quantum {quantum} is out of range (0 to {self.total_quanta-1})"
+                f"Quantum {quantum} is out of range (0 to {self.total_quanta - 1})"
             )
 
         # Find which day this quantum belongs to

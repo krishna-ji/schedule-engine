@@ -294,7 +294,7 @@ class RLTrainer:
             logger.info("")
             logger.info("EXPECTED BEHAVIOR:")
             logger.info(
-                f"   1. Environments reset (you should see [ENV 0-{self.n_envs-1}] Reset logs)"
+                f"   1. Environments reset (you should see [ENV 0-{self.n_envs - 1}] Reset logs)"
             )
             logger.info(
                 f"   2. Collect {n_steps} steps from each env (watch for step logs)"
@@ -336,7 +336,9 @@ class RLTrainer:
             self.total_timesteps_trained += total_timesteps
             elapsed = time.time() - self.training_start_time
 
-            logger.info(f"Training completed in {elapsed:.1f}s ({elapsed/60:.1f} min)")
+            logger.info(
+                f"Training completed in {elapsed:.1f}s ({elapsed / 60:.1f} min)"
+            )
             logger.info(f"Total timesteps trained: {self.total_timesteps_trained:,}")
 
             # Record training history
@@ -484,7 +486,7 @@ class RLTrainer:
 
             if self.verbose > 0:
                 logger.debug(
-                    f"Episode {episode+1}: reward={episode_reward:.2f}, length={episode_length}"
+                    f"Episode {episode + 1}: reward={episode_reward:.2f}, length={episode_length}"
                 )
 
         # Compute statistics

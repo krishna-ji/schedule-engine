@@ -202,7 +202,7 @@ def plot_hypervolume_with_confidence(
 
     # Plot individual runs (light lines)
     for i, run in enumerate(runs_hypervolumes):
-        label = run_labels[i] if run_labels and i < len(run_labels) else f"Run {i+1}"
+        label = run_labels[i] if run_labels and i < len(run_labels) else f"Run {i + 1}"
         ax.plot(
             range(len(run)),
             run,

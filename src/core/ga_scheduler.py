@@ -373,10 +373,10 @@ class GAScheduler:
 
         # Deterministic short codes (hc1, hc2, ...) for console output/legend
         self.hard_constraint_codes = {
-            name: f"hc{i+1}" for i, name in enumerate(self.hard_constraint_names)
+            name: f"hc{i + 1}" for i, name in enumerate(self.hard_constraint_names)
         }
         self.soft_constraint_codes = {
-            name: f"sc{i+1}" for i, name in enumerate(self.soft_constraint_names)
+            name: f"sc{i + 1}" for i, name in enumerate(self.soft_constraint_names)
         }
 
         self.toolbox: base.Toolbox = base.Toolbox()
@@ -554,7 +554,7 @@ class GAScheduler:
                 f"GA integration[/yellow]"
             )
             console.print(
-                "[dim]   Use mode 'inference' or 'hybrid' for " "production runs[/dim]"
+                "[dim]   Use mode 'inference' or 'hybrid' for production runs[/dim]"
             )
             return False
 
@@ -1217,7 +1217,7 @@ class GAScheduler:
         eval_time = time.time() - eval_start
         console.print(
             f"   [green][!ok][/green] Evaluated {len(self.population)} individuals in [cyan]{eval_time:.1f}s[/cyan] "
-            f"([dim]{eval_time/len(self.population):.2f}s per individual[/dim])"
+            f"([dim]{eval_time / len(self.population):.2f}s per individual[/dim])"
         )
 
         # Show initial best fitness
@@ -1474,7 +1474,7 @@ class GAScheduler:
         hard_items = []
         for name in self.hard_constraint_names:
             clean_name = name.replace("_", " ")
-            code = self.hard_constraint_codes.get(name, f"hc{len(hard_items)+1}")
+            code = self.hard_constraint_codes.get(name, f"hc{len(hard_items) + 1}")
             hard_items.append(f"{code}={clean_name}")
 
         for name in hard_details:
@@ -1498,7 +1498,7 @@ class GAScheduler:
         soft_items = []
         for name in self.soft_constraint_names:
             clean_name = name.replace("_", " ")
-            code = self.soft_constraint_codes.get(name, f"sc{len(soft_items)+1}")
+            code = self.soft_constraint_codes.get(name, f"sc{len(soft_items) + 1}")
             soft_items.append(f"{code}={clean_name}")
 
         for name in soft_details:
@@ -1577,7 +1577,7 @@ class GAScheduler:
                 if gen_times:
                     avg_gen_time = sum(gen_times) / len(gen_times)
                     if avg_gen_time < 1.0:
-                        speed_display = f"{avg_gen_time*1000:.0f}ms/gen"
+                        speed_display = f"{avg_gen_time * 1000:.0f}ms/gen"
                     else:
                         speed_display = f"{avg_gen_time:.1f}s/gen"
                 else:
@@ -1668,10 +1668,10 @@ class GAScheduler:
                         "[bold red]WARNING: Fitness mismatch detected![/bold red]"
                     )
                     console.print(
-                        f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc-computed_hc):.2f})"
+                        f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc - computed_hc):.2f})"
                     )
                     console.print(
-                        f"  Fitness SC={fitness_sc:.2f} vs Computed SC={computed_sc:.2f} (diff={abs(fitness_sc-computed_sc):.2f})"
+                        f"  Fitness SC={fitness_sc:.2f} vs Computed SC={computed_sc:.2f} (diff={abs(fitness_sc - computed_sc):.2f})"
                     )
                     console.print(f"  Hard details: {hard_details}")
                     console.print(f"  Soft details: {soft_details}")
@@ -1762,7 +1762,7 @@ class GAScheduler:
                 gen_width = len(str(self.config.generations))
                 console.print()  # Line break before generation output
                 console.print(
-                    f"[dim][!ok] gen {gen+1:>{gen_width}}/{self.config.generations} : "
+                    f"[dim][!ok] gen {gen + 1:>{gen_width}}/{self.config.generations} : "
                     f"hc={best.fitness.values[0]:.0f}, sc={best.fitness.values[1]:.2f}, "
                     f"t={format_time(gen_time)} ({timing_str}),  {hc_list} {sc_list}[/dim]"
                 )
@@ -2242,7 +2242,7 @@ class GAScheduler:
             console.print(
                 f"[dim]   Gen {gen}: {len(invalid)}/{len(offspring)} "
                 f"individuals invalidated (expected ~{expected_invalid}, "
-                f"{len(invalid)/len(offspring)*100:.1f}%)[/dim]"
+                f"{len(invalid) / len(offspring) * 100:.1f}%)[/dim]"
             )
 
         # WARNING: Detect invalidation failure
@@ -2735,7 +2735,7 @@ class GAScheduler:
     ):
         """Print detailed constraint breakdown."""
         console.print(
-            f"\n[cyan]GEN {gen+1}[/cyan] Hard=[yellow]{best.fitness.values[0]:.0f}[/yellow], "
+            f"\n[cyan]GEN {gen + 1}[/cyan] Hard=[yellow]{best.fitness.values[0]:.0f}[/yellow], "
             f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
         )
 
@@ -2859,7 +2859,7 @@ class GAScheduler:
         )
         console.print(
             f"   [dim]Replacing worst {restart_count}/{len(self.population)} individuals "
-            f"({restart_cfg.restart_percentage*100:.0f}%)[/dim]"
+            f"({restart_cfg.restart_percentage * 100:.0f}%)[/dim]"
         )
 
         # Sort by fitness (best first for NSGA-II multi-objective)

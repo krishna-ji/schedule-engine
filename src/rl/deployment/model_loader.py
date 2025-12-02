@@ -295,7 +295,7 @@ class ModelLoader:
             elapsed_ms = (time.time() - start) * 1000
 
             times.append(elapsed_ms)
-            logger.debug(f"Run {i+1}/{runs}: {elapsed_ms:.2f}ms")
+            logger.debug(f"Run {i + 1}/{runs}: {elapsed_ms:.2f}ms")
 
         results = {
             "mean_ms": float(np.mean(times)),

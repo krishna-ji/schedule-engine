@@ -384,7 +384,7 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
         # Annotate each point with its index
         for i, (h, s) in enumerate(zip(pareto_hard, pareto_soft, strict=False)):
             ax.annotate(
-                f"{i+1}",
+                f"{i + 1}",
                 (h, s),
                 xytext=(6, 6),
                 textcoords="offset points",

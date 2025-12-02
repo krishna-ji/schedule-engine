@@ -1,0 +1,150 @@
+# Single Heuristic Testing - Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                   SINGLE HEURISTIC TESTING WORKFLOW                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ 1. CONFIGURATION PHASE                                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│   Option A: Use Helper Script (Recommended)                         │
+│   ┌──────────────────────────────────────────────────────────┐     │
+│   │ $ uv run configure-heuristic largest-degree-first        │     │
+│   │                                                           │     │
+│   │ → Scans configs/experiments/heuristic_testing.py         │     │
+│   │ → Disables all heuristics                                │     │
+│   │ → Enables heuristic_largest_degree_first = True          │     │
+│   └──────────────────────────────────────────────────────────┘     │
+│                                                                       │
+│   Option B: Manual Edit                                             │
+│   ┌──────────────────────────────────────────────────────────┐     │
+│   │ Edit: configs/experiments/heuristic_testing.py           │     │
+│   │                                                           │     │
+│   │ heuristic_largest_degree_first: bool = True   ← Enable   │     │
+│   │ heuristic_most_constrained_first: bool = False           │     │
+│   │ ... (all others False)                                   │     │
+│   └──────────────────────────────────────────────────────────┘     │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+                              ↓
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ 2. EXECUTION PHASE                                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│   ┌──────────────────────────────────────────────────────────┐     │
+│   │ $ uv run heuristic-testing --test                        │     │
+│   └──────────────────────────────────────────────────────────┘     │
+│                                                                       │
+│             ↓                                                         │
+│                                                                       │
+│   ┌──────────────────────────────────────────────────────────┐     │
+│   │ scripts/launcher.py                                      │     │
+│   │                                                           │     │
+│   │ 1. Loads config (HeuristicTestingTestConfig)             │     │
+│   │ 2. Calls get_enabled_heuristic_name()                    │     │
+│   │    → Scans heuristic_* fields                            │     │
+│   │    → Finds enabled ones                                  │     │
+│   │    → Returns "largest-degree-first" if one enabled       │     │
+│   │ 3. Auto-generates name: "test-largest-degree-first"      │     │
+│   │ 4. Passes to experiment manager                          │     │
+│   └──────────────────────────────────────────────────────────┘     │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+                              ↓
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ 3. OUTPUT GENERATION                                                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│   ┌──────────────────────────────────────────────────────────┐     │
+│   │ output/                                                   │     │
+│   │   f-heuristic-testing/                                    │     │
+│   │     evaluation_20241201_143022_test-largest-degree-first/ │     │
+│   │       ├── schedule.json                                   │     │
+│   │       ├── report.pdf                                      │     │
+│   │       ├── pareto_front.png                                │     │
+│   │       ├── constraint_violations.png                       │     │
+│   │       └── diversity_metrics.png                           │     │
+│   └──────────────────────────────────────────────────────────┘     │
+│                                                                       │
+│   Folder name automatically includes:                               │
+│   • Timestamp (20241201_143022)                                     │
+│   • Auto-detected heuristic name (test-largest-degree-first)        │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ KEY FEATURES                                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│ ✓ Single Config File                                                │
+│   No need to maintain 25+ separate files                            │
+│                                                                       │
+│ ✓ Automatic Naming                                                  │
+│   Output folders self-document which heuristic was tested           │
+│                                                                       │
+│ ✓ Type-Safe Detection                                               │
+│   get_enabled_heuristic_name() returns str | None                   │
+│                                                                       │
+│ ✓ Helper Script                                                     │
+│   Quick configuration without manual editing                        │
+│                                                                       │
+│ ✓ Profile Support                                                   │
+│   Works with both --test and --prod profiles                        │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ DETECTION LOGIC (get_enabled_heuristic_name)                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│   1. Scan all fields starting with "heuristic_"                     │
+│   2. Filter to boolean fields only                                  │
+│   3. Check which are set to True                                    │
+│                                                                       │
+│   IF exactly 1 enabled:                                             │
+│     → Convert field name to kebab-case                              │
+│     → Return heuristic name                                         │
+│       Example: heuristic_largest_degree_first → largest-degree-first│
+│                                                                       │
+│   IF 0 or multiple enabled:                                         │
+│     → Return None                                                    │
+│     → Use manual name (--name flag) or default                      │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ AVAILABLE HEURISTICS (25 total)                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│ Construction (3):                                                    │
+│   • largest-degree-first                                            │
+│   • most-constrained-first                                          │
+│   • earliest-deadline-first                                         │
+│                                                                       │
+│ Perturbation (5):                                                    │
+│   • random-swap, temporal-shift, room-shuffle                       │
+│   • instructor-reassign, multi-perturbation                         │
+│                                                                       │
+│ Improvement (3):                                                     │
+│   • kempe-chain, ejection-chain, variable-depth-search              │
+│                                                                       │
+│ Diversity (4):                                                       │
+│   • distance-preserving-crossover, crowding-mutation                │
+│   • niching-selection, adaptive-diversity-maintenance               │
+│                                                                       │
+│ Meta (4):                                                            │
+│   • variable-neighborhood-descent, iterated-local-search            │
+│   • adaptive-large-neighborhood, guided-local-search                │
+│                                                                       │
+│ Repair (6):                                                          │
+│   • exhaustive-repair, greedy-repair, igls-repair                   │
+│   • lns-repair, memetic-repair, selective-repair                    │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
