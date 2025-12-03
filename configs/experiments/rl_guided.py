@@ -49,6 +49,9 @@ class RlGuidedBaseConfig(BaseConfig):
     rl_mode: str = "rl_primary"
     rl_hybrid_rl_probability: float = 0.8
 
+    # Soft constraints + repairs
+    enforce_break_placement: bool = True  # Enable break constraint + RL-guided repair
+
     # Enhancements
     enhancements_master_enabled: bool = True
     enhancements_memetic_mode: bool = True

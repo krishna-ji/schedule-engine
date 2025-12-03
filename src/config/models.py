@@ -328,23 +328,23 @@ class HardConstraintsConfig(BaseModel):
     """Hard constraints configuration"""
 
     student_group_exclusivity: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=3.0
+        enabled=True, weight=1.0
     )
     instructor_exclusivity: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=3.0
+        enabled=True, weight=1.0
     )
     instructor_qualifications: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=3.0
+        enabled=True, weight=1.0
     )
     instructor_time_availability: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=3.0
+        enabled=True, weight=1.0
     )
-    room_suitability: ConstraintConfig = ConstraintConfig(enabled=True, weight=2.5)
-    room_exclusivity: ConstraintConfig = ConstraintConfig(enabled=True, weight=3.0)
+    room_suitability: ConstraintConfig = ConstraintConfig(enabled=True, weight=1.0)
+    room_exclusivity: ConstraintConfig = ConstraintConfig(enabled=True, weight=1.0)
     room_time_availability: ConstraintConfig = ConstraintConfig(
-        enabled=True, weight=2.5
+        enabled=True, weight=1.0
     )
-    course_completeness: ConstraintConfig = ConstraintConfig(enabled=True, weight=2.0)
+    course_completeness: ConstraintConfig = ConstraintConfig(enabled=True, weight=1.0)
 
 
 class SoftConstraintConfigWithPenalty(BaseModel):
@@ -369,7 +369,7 @@ class SoftConstraintsConfig(BaseModel):
 
     student_schedule_compactness: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
-            enabled=True, weight=1.5, gap_penalty_per_quantum=2
+            enabled=True, weight=1.0, gap_penalty_per_quantum=2
         )
     )
     instructor_schedule_compactness: SoftConstraintConfigWithPenalty = Field(
@@ -379,12 +379,17 @@ class SoftConstraintsConfig(BaseModel):
     )
     student_lunch_break: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
-            enabled=True, weight=1.2, distance_penalty_per_quantum=2
+            enabled=True, weight=1.0, distance_penalty_per_quantum=2
         )
     )
     session_continuity: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
-            enabled=True, weight=2.0
+            enabled=True, weight=1.0
+        )
+    )
+    paired_cohort_practical_alignment: SoftConstraintConfigWithPenalty = Field(
+        default_factory=lambda: SoftConstraintConfigWithPenalty(
+            enabled=True, weight=1.0
         )
     )
     soft_weight_factor: float = Field(default=0.01, ge=0.0, le=1.0)
@@ -448,12 +453,36 @@ class TimeConfig(BaseModel):
         description="Optional per-day overrides (use null to close a day)",
     )
     earliest_preferred_time: str = Field(default=DEFAULT_EARLIEST_TIME)
+    cohort_pairs: list[tuple[str, str]] = Field(
+        default_factory=list,
+        description="Paired cohorts for parallel practical scheduling (e.g., [('bei1a', 'bei1b')])",
+    )
     latest_preferred_time: str = Field(default=DEFAULT_LATEST_TIME)
     midday_break_start: str
     midday_break_end: str
     max_session_coalescence: int = Field(ge=1, le=6)
     preferred_block_size_min: int = Field(ge=1, le=6)
     preferred_block_size_max: int = Field(ge=1, le=6)
+
+    # Break placement enforcement (soft constraint)
+    enforce_break_placement: bool = Field(
+        default=True, description="Enable break placement soft constraint"
+    )
+    break_window_start: str = Field(
+        default="12:00", description="Start of daily break window (HH:MM)"
+    )
+    break_window_end: str = Field(
+        default="14:00", description="End of daily break window (HH:MM)"
+    )
+    break_min_quanta: int = Field(
+        default=1,
+        ge=0,
+        le=5,
+        description="Minimum free quanta required in break window",
+    )
+    break_violation_penalty: int = Field(
+        default=8, ge=0, le=100, description="Penalty per missing break quantum"
+    )
 
     # Theory course block penalties
     theory_isolated_penalty: int = Field(

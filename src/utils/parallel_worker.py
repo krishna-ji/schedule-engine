@@ -86,6 +86,14 @@ def init_worker(
         link_courses_and_groups(courses, groups)
         link_courses_and_instructors(courses, instructors)
 
+        # Get cohort_pairs from config if available
+        cohort_pairs_list: list[tuple[str, str]] | None = None
+        if config_dict is not None:
+            try:
+                cohort_pairs_list = config_dict.get("time", {}).get("cohort_pairs")
+            except (AttributeError, KeyError):
+                cohort_pairs_list = None
+
         # Create context object (optional, but useful if code expects it)
         # We don't have config here, but that's usually fine for workers
         context = SchedulingContext(
@@ -95,6 +103,7 @@ def init_worker(
             rooms=rooms,
             available_quanta=list(qts.get_all_operating_quanta()),
             config=None,
+            cohort_pairs=cohort_pairs_list,
         )
 
     except Exception as e:

@@ -31,6 +31,9 @@ class BaselineBaseConfig:
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
+    # === SOFT CONSTRAINTS: Disable break placement ===
+    enforce_break_placement: bool = False  # Not used in baseline
+
     # === MUTATION: Pure random (no constraint guidance) ===
     use_constraint_guided_mutation: bool = False
 

@@ -36,6 +36,9 @@ class RoundRobinBaseConfig(BaseConfig):
     heuristics_construction_largest_degree_first_enabled: bool = True
     heuristics_perturbation_random_swap_enabled: bool = True
 
+    # Soft constraints + repairs
+    enforce_break_placement: bool = True  # Enable break constraint + repair
+
     # Enhancements
     enhancements_master_enabled: bool = True
 

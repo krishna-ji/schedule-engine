@@ -39,6 +39,9 @@ class AdaptiveBaseConfig(BaseConfig):
     heuristics_adaptive_priority_evaluation_window: int = 10
     heuristics_adaptive_priority_reorder_interval: int = 10
 
+    # Soft constraints + repairs
+    enforce_break_placement: bool = True  # Enable break constraint + repair
+
     # Enhancements
     enhancements_master_enabled: bool = True
     enhancements_hypermutation_enabled: bool = True

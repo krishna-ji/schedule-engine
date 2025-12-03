@@ -62,6 +62,9 @@ class MemeticBaseConfig:
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
+    # === SOFT CONSTRAINTS: Enable break placement (no repair yet) ===
+    enforce_break_placement: bool = True
+
     # === POPULATION STRATEGY: Random only (no greedy/smart) ===
     population_strategy: str = "random"
     greedy_percentage: float = 0.00

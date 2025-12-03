@@ -58,6 +58,7 @@ Usage:
 """
 
 from collections import defaultdict
+from collections.abc import Iterable
 
 from src.core.types import SchedulingContext
 from src.entities.instructor import Instructor
@@ -452,6 +453,182 @@ def repair_room_type_mismatches(
         if replacement_room is not None:
             gene.room_id = replacement_room
             fixes += 1
+
+    return fixes
+
+
+@repair_operator(
+    name="repair_paired_cohort_practicals",
+    description=(
+        "Improve alignment of practical sessions for paired cohorts by shifting "
+        "sessions to parallel time slots when feasible."
+    ),
+    priority=8,
+    modifies_length=False,
+)
+def repair_paired_cohort_practicals(
+    individual: list[SessionGene], context: SchedulingContext
+) -> int:
+    """Align practical sessions for paired cohorts where possible.
+
+    This operator targets practical courses shared by configured cohort
+    pairs (e.g., bei1a/bei1b). For each such pair and course, it attempts
+    to move one cohort's practical sessions so that both cohorts attend the
+    course in parallel time windows, while preserving all hard constraints
+    (group, room, and instructor exclusivity plus availability).
+    """
+
+    cohort_pairs: Iterable[tuple[str, str]] = context.cohort_pairs or []
+    if not cohort_pairs:
+        return 0
+
+    fixes = 0
+
+    # Index practical sessions per (course_id, group_id)
+    practical_map: dict[tuple[str, str], list[SessionGene]] = defaultdict(list)
+
+    for gene in individual:
+        if gene.course_type.lower() != "practical":
+            continue
+
+        for group_id in gene.group_ids:
+            key = (gene.course_id, group_id)
+            practical_map[key].append(gene)
+
+    if not practical_map:
+        return 0
+
+    # Helper to collect occupied quanta for one cohort and course
+    def _collect_quanta(
+        course_id: str,
+        group_id: str,
+    ) -> set[int]:
+        key = (course_id, group_id)
+        result: set[int] = set()
+        for g in practical_map.get(key, []):
+            result.update(range(g.start_quanta, g.end_quanta))
+        return result
+
+    # Local conflict checks against hard constraints
+    def _is_move_feasible(
+        target_gene: SessionGene,
+        group_id: str,
+        new_start: int,
+        duration: int,
+    ) -> bool:
+        new_end = new_start + duration
+        instructor = context.instructors.get(target_gene.instructor_id)
+
+        for gene in individual:
+            if gene is target_gene:
+                continue
+
+            # Precompute intersection interval once per gene for performance
+            if gene.end_quanta <= new_start or gene.start_quanta >= new_end:
+                continue
+
+            for _q in range(
+                max(new_start, gene.start_quanta), min(new_end, gene.end_quanta)
+            ):
+                # Group exclusivity
+                if group_id in gene.group_ids:
+                    return False
+
+                # Room exclusivity
+                if (
+                    target_gene.room_id is not None
+                    and gene.room_id == target_gene.room_id
+                ):
+                    return False
+
+                # Instructor exclusivity
+                if gene.instructor_id == target_gene.instructor_id:
+                    return False
+
+        # Instructor time availability
+        if instructor is not None and not instructor.is_full_time:
+            for q in range(new_start, new_end):
+                if q not in instructor.available_quanta:
+                    return False
+
+        return True
+
+    # Main loop over cohort pairs and shared practical courses
+    for left_id, right_id in cohort_pairs:
+        # Discover shared practical courses between the pair
+        course_ids: set[str] = set()
+        for course_id, group_id in practical_map:
+            if group_id in (left_id, right_id):
+                course_ids.add(course_id)
+
+        for course_id in course_ids:
+            left_key = (course_id, left_id)
+            right_key = (course_id, right_id)
+
+            if left_key not in practical_map or right_key not in practical_map:
+                continue
+
+            left_quanta = _collect_quanta(course_id, left_id)
+            right_quanta = _collect_quanta(course_id, right_id)
+
+            if not left_quanta and not right_quanta:
+                continue
+
+            current_diff = left_quanta.symmetric_difference(right_quanta)
+            if not current_diff:
+                continue
+
+            # Use left cohort's pattern as anchor and move right cohort's sessions
+            anchor_quanta = left_quanta
+
+            for gene in practical_map[right_key]:
+                duration = gene.num_quanta
+
+                # Generate candidate starts sorted by overlap with anchor pattern
+                candidates: list[tuple[int, int]] = []
+                for start_q in context.available_quanta:
+                    end_q = start_q + duration
+                    if end_q > max(context.available_quanta) + 1:
+                        continue
+
+                    overlap = 0
+                    for q in range(start_q, end_q):
+                        if q in anchor_quanta:
+                            overlap += 1
+
+                    if overlap > 0:
+                        candidates.append((start_q, overlap))
+
+                if not candidates:
+                    continue
+
+                candidates.sort(key=lambda item: item[1], reverse=True)
+
+                moved = False
+                for candidate_start, _overlap in candidates:
+                    if not _is_move_feasible(gene, right_id, candidate_start, duration):
+                        continue
+
+                    # Compute new right-quanta pattern and see if misalignment improves
+                    new_right_quanta = set(right_quanta)
+                    for q in range(gene.start_quanta, gene.end_quanta):
+                        if q in new_right_quanta:
+                            new_right_quanta.remove(q)
+                    for q in range(candidate_start, candidate_start + duration):
+                        new_right_quanta.add(q)
+
+                    new_diff = left_quanta.symmetric_difference(new_right_quanta)
+                    if len(new_diff) < len(current_diff):
+                        gene.start_quanta = candidate_start
+                        right_quanta = new_right_quanta
+                        current_diff = new_diff
+                        fixes += 1
+                        moved = True
+                        break
+
+                if moved:
+                    # Limit work per pair-course to keep runtime under control
+                    break
 
     return fixes
 

@@ -12,11 +12,13 @@ Repair Categories:
 4. LNS Repair - Large Neighborhood Search with subproblem solving
 5. Exhaustive Repair - Intensive steepest descent local search
 6. Memetic Repair - Elite IGLS for hybrid GA modes
+7. Break Placement Repair - Ensures proper break windows for groups
 
 All repair operators are now registered as heuristics in the repair category,
 providing unified management and RL integration.
 """
 
+from src.heuristics.repair.break_repair import repair_break_placement
 from src.heuristics.repair.exhaustive_repair import exhaustive_repair
 from src.heuristics.repair.greedy_repair import greedy_repair
 from src.heuristics.repair.igls_repair import igls_repair
@@ -31,4 +33,5 @@ __all__ = [
     "lns_repair",
     "exhaustive_repair",
     "memetic_repair",
+    "repair_break_placement",
 ]

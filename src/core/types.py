@@ -46,6 +46,7 @@ class SchedulingContext:
     rooms: dict[str, Room]
     available_quanta: list[int]
     config: Any | None = None
+    cohort_pairs: list[tuple[str, str]] | None = None
 
     def validate(self) -> list[str]:
         """

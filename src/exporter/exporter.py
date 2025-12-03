@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import textwrap
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -257,15 +258,35 @@ def _save_json_schedule_as_pdf(
                 linewidth=1.2,
             )
             ax.add_patch(rect)
+
+            # Split label into course and instructor for multi-line display
+            if ", " in label:
+                course_part, instructor_part = label.split(", ", 1)
+
+                # Wrap course name if too long (max ~20 chars per line)
+                wrapped_course = textwrap.fill(
+                    course_part, width=20, break_long_words=False
+                )
+
+                # Combine wrapped course with instructor on separate line
+                display_text = f"{wrapped_course}\n{instructor_part}"
+                # Use smaller font for better fit with multiple lines
+                font_size = 6
+            else:
+                # Wrap single label text if needed
+                display_text = textwrap.fill(label, width=20, break_long_words=False)
+                font_size = 7
+
             ax.text(
                 x + 0.5,
                 y + height / 2,
-                label,
+                display_text,
                 ha="center",
                 va="center",
-                fontsize=8,
-                color="black",  # Black text for both theory and practical
+                fontsize=font_size,
+                color="black",
                 wrap=True,
+                multialignment="center",
             )
 
         plt.tight_layout()

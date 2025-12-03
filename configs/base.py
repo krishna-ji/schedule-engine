@@ -20,6 +20,8 @@ DEFAULT_REPAIR_HEURISTICS: dict[str, dict[str, int | bool]] = {
     "repair_instructor_conflicts": {"enabled": True, "priority": 5},
     "repair_instructor_qualifications": {"enabled": True, "priority": 6},
     "repair_room_type_mismatches": {"enabled": True, "priority": 7},
+    "repair_paired_cohort_practicals": {"enabled": True, "priority": 8},
+    "repair_break_placement": {"enabled": True, "priority": 9},
 }
 
 
@@ -47,6 +49,18 @@ class BaseConfig:
     max_sessions_per_day: int = 6
     preferred_block_size_min: int = 2
     preferred_block_size_max: int = 3
+
+    # Break placement enforcement (soft constraint)
+    enforce_break_placement: bool = True
+    break_window_start: str = "12:00"  # Daily break window start
+    break_window_end: str = "14:00"  # Daily break window end (2pm)
+    break_min_quanta: int = 1  # Minimum free quanta in window
+    break_violation_penalty: int = 8  # Penalty per missing break quantum
+
+    # Cohort pairing for parallel practicals
+    cohort_pairs: list[tuple[str, str]] = field(
+        default_factory=lambda: [("bei1a", "bei1b"), ("bct1a", "bct1b")]
+    )
 
     # Soft constraint penalties
     theory_isolated_penalty: int = 5
@@ -155,7 +169,7 @@ class BaseConfig:
     # CONSTRAINT WEIGHTS (Fitness function)
     # ==========================================
     hard_weight: float = -1.0
-    soft_weight: float = -0.01
+    soft_weight: float = -1.0
 
     # ==========================================
     # METRICS & REPORTING

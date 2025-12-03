@@ -554,7 +554,7 @@ def run_standard_workflow(
 
 def load_input_data(
     data_dir: str,
-    config: object | None = None,
+    config: Config | None = None,
 ) -> tuple[QuantumTimeSystem, SchedulingContext]:
     """
     Load and link all input entities.
@@ -645,6 +645,9 @@ def load_input_data(
     print(f"[!info] Data loading completed in {elapsed:.2f}s (parallel)")
 
     # Create context with filtered courses
+    # Type assertion: config must be provided at this point
+    assert config is not None, "Config must be provided to load_input_data"
+
     context = SchedulingContext(
         courses=courses,
         groups=groups,
@@ -652,6 +655,7 @@ def load_input_data(
         rooms=rooms,
         available_quanta=list(qts.get_all_operating_quanta()),
         config=config,
+        cohort_pairs=config.time.cohort_pairs,
     )
 
     return qts, context
