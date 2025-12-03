@@ -7,16 +7,25 @@ Applied after mutation/crossover to project invalid solutions onto feasible regi
 KEY UPDATE: Now uses SessionGene's contiguous representation (start_quanta + num_quanta)
 instead of the old array-based quanta representation.
 
-Repair Strategies:
-1. Instructor Availability: Shift sessions to respect instructor schedules
-2. Group Overlaps: Resolve time conflicts for same group
-3. Room Overlap Reassignment: Switch overlapping sessions into idle rooms
-4. Room Conflicts: Shift sessions when no alternate room is available
-5. Instructor Conflicts: Resolve instructor double-bookings
-6. Instructor Qualification: Reassign unqualified instructors
-7. Room Type Mismatch: Match course requirements (lab vs classroom)
+Constraint-to-Repair Mapping (6 of 8 hard constraints have repairs):
+┌──────┬─────────────────────────────────┬────────────────────────────────────┬──────────┐
+│ Code │ Constraint                      │ Repair Operator                    │ Priority │
+├──────┼─────────────────────────────────┼────────────────────────────────────┼──────────┤
+│ HC1  │ student_group_exclusivity       │ repair_group_overlaps              │    2     │
+│ HC2  │ instructor_exclusivity          │ repair_instructor_conflicts        │    5     │
+│ HC3  │ instructor_qualifications       │ repair_instructor_qualifications   │    6     │
+│ HC4  │ room_suitability                │ repair_room_type_mismatches        │    7     │
+│ HC5  │ instructor_time_availability    │ repair_instructor_availability     │    1     │
+│ HC6  │ room_time_availability          │ ❌ NO REPAIR (always available)    │    -     │
+│ HC7  │ course_completeness             │ ❌ NO REPAIR (structural integrity)│    -     │
+│ HC8  │ room_exclusivity                │ repair_room_conflicts +            │   4,3    │
+│      │                                 │ repair_room_overlap_reassign       │          │
+└──────┴─────────────────────────────────┴────────────────────────────────────┴──────────┘
 
-NOTE: repair_incomplete_or_extra_sessions REMOVED - not needed because:
+Soft Constraint Repairs (1 of 4):
+  SC4 (session_continuity): repair_session_clustering_selective (priority 8)
+
+NOTE: HC7 repair removed - not needed because:
 - Population initialization creates correct gene counts per (course, group)
 - Crossover only swaps attributes, never adds/removes genes
 - Mutation only changes attributes, never adds/removes genes
@@ -29,7 +38,7 @@ Availability Model:
 
 Architecture:
 - Decorator-based registry: Auto-register repair operators (like constraints)
-- Priority-ordered: Lower priority number executes first
+- Priority-ordered: Lower priority number executes first (1-7 for hard, 8 for soft)
 - In-place modification: Invalidate fitness after repair
 - Unified interface: repair_individual_unified() with selective optimization
 
@@ -43,6 +52,9 @@ Usage:
     # Recommended: Use selective mode
     stats = repair_individual_unified(individual, context, selective=True)
     print(f"Fixed {stats['total_fixes']} violations")
+
+    # Mode B (Memetic): Applied to elite 20% with max_iterations=100
+    # Mode C-E: Applied with adaptive triggers (stagnation, periodic)
 """
 
 from collections import defaultdict

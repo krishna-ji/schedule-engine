@@ -7,8 +7,14 @@ individual.
 
 Performance Impact:
 - Reduces gene scans from 100% to ~5-15% of population
-- Expected 3-4* speedup in repair operations
+- Expected 3-4× speedup in repair operations
 - Backward compatible with full-scan mode
+
+Constraint Coverage (8 selective repair variants):
+  Hard Constraints (7): HC1, HC2, HC3, HC4, HC5, HC8 (2 operators)
+  Soft Constraints (1): SC4 (session_continuity)
+
+  Missing: HC6 (room always available), HC7 (structural integrity)
 
 Architecture:
 - Each selective_repair_X function accepts violated_indices parameter
@@ -16,11 +22,19 @@ Architecture:
 - Uses original repair logic but with targeted scope
 - Falls back to full repair if violated_indices is None
 
+Detection Strategies:
+- fast: Quick overlap checks (group/instructor/room conflicts)
+- full: Comprehensive validation against all constraints
+- hybrid: Fast detection + full verification on suspected violations
+
 Usage:
     from src.ga.operators.repair_selective import repair_individual_selective
 
     stats = repair_individual_selective(individual, context, max_iterations=2)
     # Automatically detects and repairs only violated genes
+
+    # In Mode B (Memetic): Applied to elite 20% with deep search
+    # In Mode C-E: Applied post-mutation/crossover with quick fixes
 """
 
 from collections import defaultdict

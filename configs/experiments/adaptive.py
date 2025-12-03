@@ -18,7 +18,7 @@ class AdaptiveBaseConfig(BaseConfig):
 
     # Genetic operators
     use_constraint_guided_mutation: bool = True
-    population_strategy: str = "hybrid"
+    population_strategy: str = "random"
 
     # Repair system
     repair_enabled: bool = True
@@ -66,7 +66,7 @@ EXPERIMENT_DESCRIPTION = "NSGA-II + adaptive performance-based heuristic selecti
 # Killswitches (explicit documentation)
 KILLSWITCHES = {
     "use_constraint_guided_mutation": True,
-    "population_strategy": "hybrid",
+    "population_strategy": "random",
     "repair.enabled": True,
     "repair.memetic_mode": True,
     "repair.apply_after_mutation": True,

@@ -3,6 +3,23 @@ Experiment B: NSGA-II + Memetic Local Search
 
 Mode B: NSGA-II with memetic local search on elite solutions.
 
+Repair System:
+- Uses ALL 7 base repair operators (HC1-HC5, HC8×2, HC4)
+- Memetic mode: Deep repair on top 20% elite individuals
+- Post-mutation repair: Quick 2-iteration fixes
+- Selective mode: 3-4× faster (targets violated genes only)
+- Max iterations: 100 for elite, 2 for post-mutation
+
+Constraint Coverage:
+  ✅ HC1 (student_group_exclusivity) → repair_group_overlaps
+  ✅ HC2 (instructor_exclusivity) → repair_instructor_conflicts
+  ✅ HC3 (instructor_qualifications) → repair_instructor_qualifications
+  ✅ HC4 (room_suitability) → repair_room_type_mismatches
+  ✅ HC5 (instructor_time_availability) → repair_instructor_availability
+  ❌ HC6 (room_time_availability) - Not needed (rooms always available)
+  ❌ HC7 (course_completeness) - Not needed (structural integrity)
+  ✅ HC8 (room_exclusivity) → repair_room_conflicts + repair_room_overlap_reassign
+
 Killswitches:
 - repair.enabled = True (memetic mode)
 - heuristics.master_enabled = False
@@ -45,11 +62,11 @@ class MemeticBaseConfig:
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
-    # === POPULATION STRATEGY: Hybrid initialization ===
-    population_strategy: str = "hybrid"
-    greedy_percentage: float = 0.25
-    smart_percentage: float = 0.50
-    random_percentage: float = 0.25
+    # === POPULATION STRATEGY: Random only (no greedy/smart) ===
+    population_strategy: str = "random"
+    greedy_percentage: float = 0.00
+    smart_percentage: float = 0.00
+    random_percentage: float = 1.00
 
     # === NOTES ===
     notes: str = "NSGA-II + memetic local search on elite solutions"

@@ -280,7 +280,16 @@ class LNSConfig(BaseModel):
 
 
 class RepairConfig(BaseModel):
-    """Repair heuristics configuration (legacy + new IGLS)"""
+    """Repair heuristics configuration.
+
+    Components:
+    - Base repair operators: 7 hard constraint repairs (HC1-HC5, HC8×2, HC4)
+    - IGLS system: Exhaustive search + stagnation-triggered greedy repair
+    - Selective repair: 3-4× faster violation-targeted mode
+    - Memetic mode: Deep repair on elite individuals (Mode B)
+
+    Constraint Coverage: 6 of 8 hard constraints, 1 of 4 soft constraints
+    """
 
     enabled: bool = True
     max_iterations: int = Field(default=3, ge=1, le=500)

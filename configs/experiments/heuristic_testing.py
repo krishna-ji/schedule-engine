@@ -31,8 +31,8 @@ class HeuristicTestingBaseConfig:
     rl_enabled: bool = False
     enhancements_master_enabled: bool = False
 
-    # === POPULATION STRATEGY ===
-    population_strategy: str = "hybrid"
+    # === POPULATION STRATEGY: Random only (no greedy/smart) ===
+    population_strategy: str = "random"
 
     # === INDIVIDUAL HEURISTIC TOGGLES ===
     # Construction Heuristics (3 total)
