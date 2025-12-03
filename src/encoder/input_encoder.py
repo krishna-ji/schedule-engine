@@ -23,6 +23,7 @@ __all__ = [
     "load_rooms",
     "link_courses_and_groups",
     "link_courses_and_instructors",
+    "derive_cohort_pairs_from_groups",
 ]
 
 
@@ -323,6 +324,80 @@ def load_groups(path: str, qts: QuantumTimeSystem) -> dict[str, Group]:
             )
 
     return groups
+
+
+def derive_cohort_pairs_from_groups(path: str) -> list[tuple[str, str]]:
+    """Auto-derive cohort pairings from the group hierarchy JSON.
+
+    The helper scans every parent entry in ``Groups.json`` and pairs the listed
+    subgroups so SC5 can reason about practical alignment without manual config
+    tweaks. The first subgroup acts as the anchor and every remaining subgroup
+    in that parent is paired against it (A with B, A with C, ...). This keeps the
+    pair count compact even if a cohort splits into 3+ lab sections.
+
+    Args:
+        path: Absolute path to ``Groups.json``.
+
+    Returns:
+        Deterministic list of subgroup ID tuples ready for ``SchedulingContext``.
+    """
+
+    with open(path) as file_handle:
+        raw_data = json.load(file_handle)
+
+    derived_pairs: list[tuple[str, str]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for item in raw_data:
+        subgroups = item.get("subgroups")
+        if not subgroups or len(subgroups) < 2:
+            continue
+
+        subgroup_ids = _extract_subgroup_ids(subgroups)
+        if len(subgroup_ids) < 2:
+            continue
+
+        anchor_id = subgroup_ids[0]
+        for peer_id in subgroup_ids[1:]:
+            candidate = (anchor_id, peer_id)
+            canonical_parts: list[str] = sorted((anchor_id.lower(), peer_id.lower()))
+            canonical_key = (canonical_parts[0], canonical_parts[1])
+            if canonical_key in seen_pairs:
+                continue
+            seen_pairs.add(canonical_key)
+            derived_pairs.append(candidate)
+
+    return derived_pairs
+
+
+def _extract_subgroup_ids(subgroups: list[Any]) -> list[str]:
+    """Normalize subgroup entries to clean string identifiers."""
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+
+    for raw_entry in subgroups:
+        subgroup_id: str | None
+        if isinstance(raw_entry, dict):
+            subgroup_id = raw_entry.get("id")
+        else:
+            subgroup_id = str(raw_entry)
+
+        if subgroup_id is None:
+            continue
+
+        clean_id = subgroup_id.strip()
+        if not clean_id:
+            continue
+
+        canonical = clean_id.lower()
+        if canonical in seen:
+            continue
+
+        seen.add(canonical)
+        normalized.append(clean_id)
+
+    return normalized
 
 
 def load_rooms(path: str, qts: QuantumTimeSystem) -> dict[str, Room]:

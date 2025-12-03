@@ -58,9 +58,7 @@ class BaseConfig:
     break_violation_penalty: int = 8  # Penalty per missing break quantum
 
     # Cohort pairing for parallel practicals
-    cohort_pairs: list[tuple[str, str]] = field(
-        default_factory=lambda: [("bei1a", "bei1b"), ("bct1a", "bct1b")]
-    )
+    cohort_pairs: list[tuple[str, str]] = field(default_factory=list)
 
     # Soft constraint penalties
     theory_isolated_penalty: int = 5
@@ -99,6 +97,11 @@ class BaseConfig:
     greedy_percentage: float = 0.00  # Greedy initialization disabled
     smart_percentage: float = 0.00  # Smart initialization disabled
     random_percentage: float = 1.00  # 100% random initialization
+
+    # ==========================================
+    # DEBUG FLAGS
+    # ==========================================
+    debug_sc5: bool = False  # Enable detailed SC5 constraint tracking
 
     # ==========================================
     # KILLSWITCHES (DEFAULT: ALL DISABLED - enable per experiment)
@@ -256,8 +259,14 @@ class BaseConfig:
                 "opening_time": self.opening_time,
                 "closing_time": self.closing_time,
                 "closed_days": self.closed_days,
+                "cohort_pairs": self.cohort_pairs,
                 "midday_break_start": self.midday_break_start,
                 "midday_break_end": self.midday_break_end,
+                "enforce_break_placement": self.enforce_break_placement,
+                "break_window_start": self.break_window_start,
+                "break_window_end": self.break_window_end,
+                "break_min_quanta": self.break_min_quanta,
+                "break_violation_penalty": self.break_violation_penalty,
                 "max_session_coalescence": self.max_session_coalescence,
                 "max_sessions_per_day": self.max_sessions_per_day,
                 "preferred_block_size_min": self.preferred_block_size_min,

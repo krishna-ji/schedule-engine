@@ -363,6 +363,9 @@ def paired_cohort_practical_alignment(
         getattr(cfg, "time", cfg), "cohort_pairs", []
     )
 
+    # DEBUG MODE: Set to True to print detailed tracking
+    debug_sc5 = getattr(cfg, "debug_sc5", False)
+
     penalty = 0
 
     # Index quanta per (course_id, course_type, group_id)
@@ -379,6 +382,14 @@ def paired_cohort_practical_alignment(
             key = (course_id, course_type, group_id)
             course_group_quanta[key].update(session.session_quanta)
 
+    if debug_sc5:
+        print(f"\n[SC5 DEBUG] Cohort pairs: {list(cohort_pairs)}")
+        print(
+            f"[SC5 DEBUG] Total practical course-group keys: {len(course_group_quanta)}"
+        )
+        for key, quanta in sorted(course_group_quanta.items()):
+            print(f"[SC5 DEBUG]   {key}: {sorted(quanta)}")
+
     # For each cohort pair, measure misalignment on shared practical courses
     for left_id, right_id in cohort_pairs:
         # Find practical courses present for at least one side
@@ -390,26 +401,68 @@ def paired_cohort_practical_alignment(
             if group_id in (left_id, right_id):
                 practical_courses.add((course_id, course_type))
 
+        if debug_sc5:
+            print(f"\n[SC5 DEBUG] Pair: {left_id} <-> {right_id}")
+            print(f"[SC5 DEBUG]   Practical courses found: {sorted(practical_courses)}")
+
         for course_id, course_type in practical_courses:
             # Check that both sides actually attend this course
             key_left = (course_id, course_type, left_id)
             key_right = (course_id, course_type, right_id)
 
-            if (
-                key_left not in course_group_quanta
-                or key_right not in course_group_quanta
-            ):
+            left_present = key_left in course_group_quanta
+            right_present = key_right in course_group_quanta
+
+            if debug_sc5:
+                print(f"\n[SC5 DEBUG]   Course: {course_id} ({course_type})")
+                print(f"[SC5 DEBUG]     {left_id} present: {left_present}")
+                print(f"[SC5 DEBUG]     {right_id} present: {right_present}")
+
+            if not left_present and not right_present:
+                if debug_sc5:
+                    print(
+                        "[SC5 DEBUG]     → SKIP: Neither cohort has this course scheduled"
+                    )
                 continue
 
-            quanta_left = course_group_quanta[key_left]
-            quanta_right = course_group_quanta[key_right]
+            raw_quanta_left = course_group_quanta.get(key_left)
+            raw_quanta_right = course_group_quanta.get(key_right)
+            quanta_left = raw_quanta_left if raw_quanta_left is not None else set()
+            quanta_right = raw_quanta_right if raw_quanta_right is not None else set()
 
             if not quanta_left and not quanta_right:
+                if debug_sc5:
+                    print(
+                        "[SC5 DEBUG]     → SKIP: Both cohorts resolved to empty quanta sets"
+                    )
                 continue
 
             # Symmetric difference size: quanta where exactly one cohort has the course
             diff = quanta_left.symmetric_difference(quanta_right)
-            penalty += len(diff)
+            course_penalty = len(diff)
+
+            if debug_sc5:
+                if not left_present or not right_present:
+                    missing = right_id if not right_present else left_id
+                    present = left_id if left_present else right_id
+                    print(
+                        f"[SC5 DEBUG]     → PENALIZE: {missing} missing while {present} has sessions"
+                    )
+                only_left = quanta_left - quanta_right
+                only_right = quanta_right - quanta_left
+                both = quanta_left & quanta_right
+                print(f"[SC5 DEBUG]     {left_id} quanta: {sorted(quanta_left)}")
+                print(f"[SC5 DEBUG]     {right_id} quanta: {sorted(quanta_right)}")
+                print(f"[SC5 DEBUG]     Only {left_id}: {sorted(only_left)}")
+                print(f"[SC5 DEBUG]     Only {right_id}: {sorted(only_right)}")
+                print(f"[SC5 DEBUG]     Both: {sorted(both)}")
+                print(f"[SC5 DEBUG]     Symmetric diff: {sorted(diff)}")
+                print(f"[SC5 DEBUG]     → Penalty: {course_penalty}")
+
+            penalty += course_penalty
+
+    if debug_sc5:
+        print(f"\n[SC5 DEBUG] TOTAL PENALTY: {penalty}\n")
 
     return penalty
 

@@ -7,6 +7,7 @@ Extracted from main.py for better testability and reusability.
 
 import os
 import random
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
@@ -23,6 +24,7 @@ from src.core.ga_scheduler import GAConfig, GAScheduler
 from src.core.types import SchedulingContext
 from src.decoder.individual_decoder import decode_individual
 from src.encoder.input_encoder import (
+    derive_cohort_pairs_from_groups,
     link_courses_and_groups,
     link_courses_and_instructors,
     load_courses,
@@ -586,11 +588,11 @@ def load_input_data(
     import os
 
     max_workers = get_cpu_count()  # Auto-detect all cores
+    groups_path = os.path.join(data_dir, "Groups.json")
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all loading tasks
-        future_groups = executor.submit(
-            load_groups, os.path.join(data_dir, "Groups.json"), qts
-        )
+        future_groups = executor.submit(load_groups, groups_path, qts)
         future_courses = executor.submit(
             load_courses, os.path.join(data_dir, "Course.json")
         )
@@ -644,6 +646,21 @@ def load_input_data(
     elapsed = time.time() - start_time
     print(f"[!info] Data loading completed in {elapsed:.2f}s (parallel)")
 
+    # Step 5: Auto-derive cohort pairs from group hierarchy and merge overrides
+    derived_pairs = derive_cohort_pairs_from_groups(groups_path)
+    if config is None:
+        raise ValueError("Config must be provided to derive cohort pairs")
+
+    configured_pairs = list(getattr(config.time, "cohort_pairs", []))
+    cohort_pairs = _merge_cohort_pairs(derived_pairs, configured_pairs)
+    config.time.cohort_pairs = cohort_pairs
+
+    manual_override_count = max(0, len(cohort_pairs) - len(derived_pairs))
+    print(
+        "[!info] Cohort pairs → derived: "
+        f"{len(derived_pairs)} | manual overrides: {manual_override_count}"
+    )
+
     # Create context with filtered courses
     # Type assertion: config must be provided at this point
     assert config is not None, "Config must be provided to load_input_data"
@@ -655,7 +672,43 @@ def load_input_data(
         rooms=rooms,
         available_quanta=list(qts.get_all_operating_quanta()),
         config=config,
-        cohort_pairs=config.time.cohort_pairs,
+        cohort_pairs=cohort_pairs,
     )
 
     return qts, context
+
+
+def _merge_cohort_pairs(
+    derived_pairs: Iterable[tuple[str, str]],
+    configured_pairs: Iterable[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    """Merge auto-derived cohort pairs with manually configured overrides."""
+
+    merged: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def _normalize(pair: tuple[str, str]) -> tuple[str, str] | None:
+        left, right = pair
+        left_clean = left.strip()
+        right_clean = right.strip()
+        if not left_clean or not right_clean:
+            return None
+        return left_clean, right_clean
+
+    for source in (derived_pairs, configured_pairs):
+        for pair in source:
+            normalized = _normalize(pair)
+            if normalized is None:
+                continue
+
+            canonical_parts: list[str] = sorted(
+                (normalized[0].lower(), normalized[1].lower())
+            )
+            canonical = (canonical_parts[0], canonical_parts[1])
+            if canonical in seen:
+                continue
+
+            seen.add(canonical)
+            merged.append(normalized)
+
+    return merged

@@ -42,6 +42,7 @@ def init_worker(
         from src.config.models import Config
         from src.core.types import SchedulingContext
         from src.encoder.input_encoder import (
+            derive_cohort_pairs_from_groups,
             link_courses_and_groups,
             link_courses_and_instructors,
             load_courses,
@@ -64,7 +65,9 @@ def init_worker(
 
         # Load data from JSON files
         qts = QuantumTimeSystem()
-        groups = load_groups(os.path.join(data_dir, "Groups.json"), qts)
+        groups_path = os.path.join(data_dir, "Groups.json")
+        groups = load_groups(groups_path, qts)
+        derived_pairs = derive_cohort_pairs_from_groups(groups_path)
 
         # Get enrolled course codes
         enrolled_course_codes = set()
@@ -86,13 +89,30 @@ def init_worker(
         link_courses_and_groups(courses, groups)
         link_courses_and_instructors(courses, instructors)
 
-        # Get cohort_pairs from config if available
+        # Get cohort_pairs from config if available, otherwise fall back to derived pairs
         cohort_pairs_list: list[tuple[str, str]] | None = None
         if config_dict is not None:
             try:
                 cohort_pairs_list = config_dict.get("time", {}).get("cohort_pairs")
             except (AttributeError, KeyError):
                 cohort_pairs_list = None
+
+        if cohort_pairs_list:
+            normalized_pairs: list[tuple[str, str]] = []
+            for raw_pair in cohort_pairs_list:
+                try:
+                    left, right = raw_pair
+                except (TypeError, ValueError):
+                    continue
+                left_clean = str(left).strip()
+                right_clean = str(right).strip()
+                if not left_clean or not right_clean:
+                    continue
+                normalized_pairs.append((left_clean, right_clean))
+
+            cohort_pairs_list = normalized_pairs if normalized_pairs else derived_pairs
+        else:
+            cohort_pairs_list = derived_pairs
 
         # Create context object (optional, but useful if code expects it)
         # We don't have config here, but that's usually fine for workers
