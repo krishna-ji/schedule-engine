@@ -5,8 +5,8 @@ Iterative Greedy Local Search repair operator integrated as a heuristic.
 Fixes 6 of 8 hard constraint violations using unified repair system.
 
 Constraint Coverage:
-  ✅ HC1, HC2, HC3, HC4, HC5, HC8 (via 7 base repair operators)
-  ❌ HC6 (room always available), HC7 (structural integrity)
+   HC1, HC2, HC3, HC4, HC5, HC8 (via 7 base repair operators)
+   HC6 (room always available), HC7 (structural integrity)
 
 Application: Stagnation-triggered repair in Modes C-E (adaptive strategy)
 """

@@ -327,7 +327,7 @@ def print_bugs_summary(bugs: list[dict[str, Any]]) -> None:
         console.print("\n[bold green]✓ No obvious bugs detected[/bold green]")
         return
 
-    console.print(f"\n[bold red]⚠ Potential Issues Found: {len(bugs)}[/bold red]")
+    console.print(f"\n[bold red] Potential Issues Found: {len(bugs)}[/bold red]")
 
     for idx, bug in enumerate(bugs, 1):
         console.print(f"\n[yellow]Issue {idx}:[/yellow] {bug['type']}")

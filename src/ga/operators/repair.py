@@ -16,8 +16,8 @@ Constraint-to-Repair Mapping (6 of 8 hard constraints have repairs):
 │ HC3  │ instructor_qualifications       │ repair_instructor_qualifications   │    6     │
 │ HC4  │ room_suitability                │ repair_room_type_mismatches        │    7     │
 │ HC5  │ instructor_time_availability    │ repair_instructor_availability     │    1     │
-│ HC6  │ room_time_availability          │ ❌ NO REPAIR (always available)    │    -     │
-│ HC7  │ course_completeness             │ ❌ NO REPAIR (structural integrity)│    -     │
+│ HC6  │ room_time_availability          │  NO REPAIR (always available)    │    -     │
+│ HC7  │ course_completeness             │  NO REPAIR (structural integrity)│    -     │
 │ HC8  │ room_exclusivity                │ repair_room_conflicts +            │   4,3    │
 │      │                                 │ repair_room_overlap_reassign       │          │
 └──────┴─────────────────────────────────┴────────────────────────────────────┴──────────┘

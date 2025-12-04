@@ -11,14 +11,14 @@ Repair System:
 - Max iterations: 100 for elite, 2 for post-mutation
 
 Constraint Coverage:
-  ✅ HC1 (student_group_exclusivity) → repair_group_overlaps
-  ✅ HC2 (instructor_exclusivity) → repair_instructor_conflicts
-  ✅ HC3 (instructor_qualifications) → repair_instructor_qualifications
-  ✅ HC4 (room_suitability) → repair_room_type_mismatches
-  ✅ HC5 (instructor_time_availability) → repair_instructor_availability
-  ❌ HC6 (room_time_availability) - Not needed (rooms always available)
-  ❌ HC7 (course_completeness) - Not needed (structural integrity)
-  ✅ HC8 (room_exclusivity) → repair_room_conflicts + repair_room_overlap_reassign
+   HC1 (student_group_exclusivity) → repair_group_overlaps
+   HC2 (instructor_exclusivity) → repair_instructor_conflicts
+   HC3 (instructor_qualifications) → repair_instructor_qualifications
+   HC4 (room_suitability) → repair_room_type_mismatches
+   HC5 (instructor_time_availability) → repair_instructor_availability
+   HC6 (room_time_availability) - Not needed (rooms always available)
+   HC7 (course_completeness) - Not needed (structural integrity)
+   HC8 (room_exclusivity) → repair_room_conflicts + repair_room_overlap_reassign
 
 Killswitches:
 - repair.enabled = True (memetic mode)
