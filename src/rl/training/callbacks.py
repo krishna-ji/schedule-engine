@@ -345,7 +345,7 @@ class ManifestCallback(BaseCallback):
                 return json.load(f)  # type: ignore[no-any-return]
         return []
 
-    def _save_manifest(self):
+    def _save_manifest(self) -> None:
         """Save manifest to file."""
         with open(self.manifest_path, "w") as f:
             json.dump(self.manifest, f, indent=2)
@@ -394,7 +394,7 @@ def create_training_callbacks(
     stage_name: str | None = None,
     seed: int | None = None,
     verbose: int = 1,
-) -> list:
+) -> list[BaseCallback]:
     """
     Create standard set of training callbacks.
 

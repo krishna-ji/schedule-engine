@@ -6,7 +6,7 @@ Dataclass-based configuration for adaptive performance-based heuristic selection
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from configs.base import BaseConfig
 from configs.profiles import ProdConfig, TestConfig
@@ -16,9 +16,19 @@ from configs.profiles import ProdConfig, TestConfig
 class AdaptiveBaseConfig(BaseConfig):
     """Adaptive heuristic selection base settings."""
 
+    # Genetic operators
+    use_constraint_guided_mutation: bool = True
+    population_strategy: str = "random"
+
     # Repair system
     repair_enabled: bool = True
     repair_memetic_mode: bool = True
+    repair_apply_after_mutation: bool = True
+    repair_heuristics_overrides: dict[str, dict[str, int | bool]] = field(
+        default_factory=lambda: {
+            "repair_room_overlap_reassign": {"enabled": True, "priority": 3}
+        }
+    )
 
     # GA enhancements
     ga_use_adaptive_probabilities: bool = True
@@ -28,6 +38,9 @@ class AdaptiveBaseConfig(BaseConfig):
     heuristics_adaptive_priority_enabled: bool = True  # KEY: Adaptive selection
     heuristics_adaptive_priority_evaluation_window: int = 10
     heuristics_adaptive_priority_reorder_interval: int = 10
+
+    # Soft constraints + repairs
+    enforce_break_placement: bool = True  # Enable break constraint + repair
 
     # Enhancements
     enhancements_master_enabled: bool = True
@@ -39,12 +52,12 @@ class AdaptiveBaseConfig(BaseConfig):
 
 
 @dataclass
-class AdaptiveTestConfig(TestConfig, AdaptiveBaseConfig):
+class AdaptiveTestConfig(AdaptiveBaseConfig, TestConfig):
     """Adaptive heuristics - test profile (30 gens, 10 pop)."""
 
 
 @dataclass
-class AdaptiveProdConfig(ProdConfig, AdaptiveBaseConfig):
+class AdaptiveProdConfig(AdaptiveBaseConfig, ProdConfig):
     """Adaptive heuristics - production profile (2000 gens, 200 pop)."""
 
 
@@ -55,8 +68,13 @@ EXPERIMENT_DESCRIPTION = "NSGA-II + adaptive performance-based heuristic selecti
 
 # Killswitches (explicit documentation)
 KILLSWITCHES = {
+    "use_constraint_guided_mutation": True,
+    "population_strategy": "random",
     "repair.enabled": True,
     "repair.memetic_mode": True,
+    "repair.apply_after_mutation": True,
+    "repair.heuristics.repair_room_overlap_reassign.enabled": True,
+    "repair.heuristics.repair_room_overlap_reassign.priority": 3,
     "ga.use_adaptive_probabilities": True,
     "heuristics.master_enabled": True,
     "heuristics.adaptive_priority.enabled": True,  # KEY: Adaptive selection

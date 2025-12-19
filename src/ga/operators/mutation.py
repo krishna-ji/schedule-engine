@@ -1,6 +1,7 @@
 import random
 
-from src.core.types import SchedulingContext
+from src.core.types import Individual, SchedulingContext
+from src.entities.course import Course
 from src.ga.sessiongene import SessionGene
 
 
@@ -52,7 +53,10 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     # Use first group for room suitability check
     primary_group = gene.group_ids[0] if gene.group_ids else None
     suitable_rooms = find_suitable_rooms_for_course(
-        gene.course_id, primary_group if primary_group else "", context
+        gene.course_id,
+        gene.course_type,
+        primary_group if primary_group else "",
+        context,
     )
     if gene.room_id in suitable_rooms and random.random() < 0.5:
         new_room = gene.room_id  # Keep current room if suitable
@@ -83,7 +87,9 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     )
 
 
-def mutate_time_quanta(gene: SessionGene, course, context) -> list[int]:
+def mutate_time_quanta(
+    gene: SessionGene, course: Course | None, context: SchedulingContext
+) -> list[int]:
     """
     Intelligently mutate time quanta while PRESERVING quanta count.
 
@@ -136,21 +142,20 @@ def mutate_time_quanta(gene: SessionGene, course, context) -> list[int]:
 
 
 def find_suitable_rooms_for_course(
-    course_id: str, group_id: str, context: SchedulingContext
+    course_id: str, course_type: str, group_id: str, context: SchedulingContext
 ) -> list[str]:
     """
     Find rooms suitable for a specific course and group combination.
     Takes into account group size, course requirements, and room features.
     """
-    course = context.courses.get((course_id,))
+    course = context.courses.get((course_id, course_type))
     group = context.groups.get(group_id)
 
     if not course:
         return list(context.rooms.keys())
 
-    # Get course requirements
-    required_features = getattr(course, "required_room_features", [])
-    room_type_needed = getattr(course, "room_type", "")
+    # Get course requirements (always a string like "lecture" or "practical")
+    required_room_features = getattr(course, "required_room_features", "lecture")
 
     # Get group size for capacity matching
     group_size = getattr(group, "student_count", 30) if group else 30
@@ -158,55 +163,31 @@ def find_suitable_rooms_for_course(
     suitable_room_ids = []
 
     for room_id, room in context.rooms.items():
-        room_features = getattr(room, "room_features", [])
+        # room.room_features is a string like "lecture" or "practical"
+        room_features = getattr(room, "room_features", "lecture")
         room_capacity = getattr(room, "capacity", 50)
-        room_type = getattr(room, "type", "Classroom")
 
         # Check capacity requirement first
         if room_capacity < group_size:
             continue
 
-        # Check feature requirements
-        if required_features:
-            # Normalize to list
-            req_list = (
-                required_features
-                if isinstance(required_features, list)
-                else [required_features]
-            )
-            room_list = (
-                room_features if isinstance(room_features, list) else [room_features]
-            )
+        # Check room type compatibility using centralized logic
+        from src.utils.room_compatibility import is_room_type_compatible
 
-            # Check if ALL required features match ANY room feature (substring matching)
-            # This handles cases where course needs "computer" and room has "computer graphics"
-            all_matched = True
-            for req in req_list:
-                req_lower = req.lower().strip()
-                if not req_lower:  # Skip empty requirements
-                    continue
-                # Check if this requirement matches any room feature
-                matched = any(req_lower in room_feat.lower() for room_feat in room_list)
-                if not matched:
-                    all_matched = False
-                    break
-
-            if (
-                all_matched and req_list
-            ):  # Only add if there were requirements and all matched
-                suitable_room_ids.append(room_id)
-        elif room_type_needed:
-            # Check room type requirement
-            if room_type_needed.lower() in room_type.lower():
-                suitable_room_ids.append(room_id)
-        else:
-            # No specific requirements, any room with adequate capacity
+        if is_room_type_compatible(
+            required_room_features.lower().strip(), room_features.lower().strip()
+        ):
             suitable_room_ids.append(room_id)
 
     return suitable_room_ids if suitable_room_ids else list(context.rooms.keys())
 
 
-def mutate_individual(individual, context, mut_prob=0.2, guided=True):
+def mutate_individual(
+    individual: Individual,
+    context: SchedulingContext,
+    mut_prob: float = 0.2,
+    guided: bool = True,
+) -> tuple[Individual]:
     """
     Applies mutation to an individual with optional constraint guidance.
 
@@ -222,8 +203,13 @@ def mutate_individual(individual, context, mut_prob=0.2, guided=True):
     Returns:
         Tuple containing modified individual (DEAP compatibility)
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     if guided:
         # PHASE 2: Constraint-guided mutation (smarter, targets violations)
+        logger.debug(" Using constraint-guided mutation (targets violations)")
         from src.ga.operators.constraint_guided_mutation import (
             constraint_guided_mutation,
         )
@@ -232,6 +218,7 @@ def mutate_individual(individual, context, mut_prob=0.2, guided=True):
         return (modified_individual,)
     else:
         # Traditional random mutation (original behavior)
+        logger.debug(" Using random mutation (pure NSGA-II)")
         for i in range(len(individual)):
             if random.random() < mut_prob:
                 individual[i] = mutate_gene(individual[i], context)

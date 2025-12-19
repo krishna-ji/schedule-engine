@@ -267,7 +267,7 @@ class ViolationHeatmap:
                 course_id, course_type, group_ids = key
                 groups_str = ", ".join(group_ids[:2])  # Show first 2 groups
                 if len(group_ids) > 2:
-                    groups_str += f" +{len(group_ids)-2}"
+                    groups_str += f" +{len(group_ids) - 2}"
 
                 table.add_row(
                     str(rank),

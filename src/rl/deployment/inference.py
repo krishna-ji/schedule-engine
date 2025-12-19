@@ -145,8 +145,8 @@ class RLInference:
                 states, deterministic=deterministic
             )
 
-            # Convert to list
-            actions: list[int]
+            # Convert to list with optional typing for consistency
+            actions: list[int | None]
             if isinstance(actions_result, np.ndarray):
                 actions = [int(a) for a in actions_result]
             else:
@@ -168,7 +168,7 @@ class RLInference:
                 f"({avg_per_sample:.2f}ms/sample)"
             )
 
-            return actions  # type: ignore[return-value]
+            return actions
 
         except Exception as e:
             elapsed_ms = (time.time() - start_time) * 1000
@@ -228,7 +228,7 @@ class RLInference:
 
         return stats
 
-    def reset_statistics(self):
+    def reset_statistics(self) -> None:
         """Reset performance statistics."""
         self.prediction_times.clear()
         self.prediction_count = 0
@@ -293,7 +293,7 @@ class RLInference:
         return results
 
 
-def create_inference_engine(model: BaseAlgorithm, **kwargs) -> RLInference:
+def create_inference_engine(model: BaseAlgorithm, **kwargs: Any) -> RLInference:
     """
     Convenience function to create inference engine.
 

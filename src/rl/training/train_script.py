@@ -5,16 +5,23 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
 import numpy as np
+from gymnasium import Env as GymEnv
 
 # Add project root to path
 project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
+EnvFactory = Callable[[], GymEnv]
+
+from stable_baselines3.common.vec_env import VecEnv
+
+from src.core.types import SchedulingContext
 from src.rl.gym_env import ScheduleEnv
 from src.rl.training import RLTrainer
 from src.rl.training.config_loader import (
@@ -27,6 +34,14 @@ from src.utils.system_info import get_cpu_count
 from src.workflows.standard_run import load_input_data
 
 logger = StructuredLogger.get_logger(__name__)
+
+
+class _FitnessVector(Protocol):
+    values: tuple[float, float]
+
+
+class _FitnessAssignable(Protocol):
+    fitness: _FitnessVector
 
 
 def parse_args() -> argparse.Namespace:
@@ -201,7 +216,7 @@ def parse_args() -> argparse.Namespace:
 def apply_profile_defaults(args: argparse.Namespace, profile: dict[str, Any]) -> None:
     """Fill argparse values using profile defaults when not provided."""
 
-    def pick(field: str, default: Any | None = None):
+    def pick(field: str, default: Any | None = None) -> Any | None:
         value = getattr(args, field, None)
         if value is not None:
             return value
@@ -298,7 +313,11 @@ def apply_profile_defaults(args: argparse.Namespace, profile: dict[str, Any]) ->
     )
 
 
-def create_environment(args, context, env_rank: int = 0):
+def create_environment(
+    args: argparse.Namespace,
+    context: SchedulingContext,
+    env_rank: int = 0,
+) -> ScheduleEnv:
     """Create RL environment for training."""
 
     logger.info(f"[ENV {env_rank}] Creating environment (this takes 30-60s per env)...")
@@ -336,7 +355,7 @@ def create_environment(args, context, env_rank: int = 0):
             groups=context.groups,
             rooms=context.rooms,
         )
-        individual.fitness.values = fitness
+        cast(_FitnessAssignable, individual).fitness.values = fitness
 
     logger.info(
         f"[ENV {env_rank}] [OK] Population initialized with {len(initial_population)} individuals"
@@ -366,7 +385,12 @@ def create_environment(args, context, env_rank: int = 0):
     return env
 
 
-def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True):
+def make_parallel_envs(
+    args: argparse.Namespace,
+    context: SchedulingContext,
+    n_envs: int = 8,
+    use_subproc: bool = True,
+) -> VecEnv:
     """Create parallel environments for faster training.
 
     Args:
@@ -415,7 +439,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
     env_profile = os.environ.get("ENVIRONMENT")
     schedule_config = os.environ.get("SCHEDULE_CONFIG")
 
-    def make_env(rank: int):
+    def make_env(rank: int) -> EnvFactory:
         """Create a single environment with unique seed.
 
         CRITICAL: Each worker gets its own copy of context to avoid:
@@ -424,7 +448,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
         - Memory corruption in multiprocessing
         """
 
-        def _init():
+        def _init() -> GymEnv:
             # IMPORTANT: Create deep copy of context for this worker
             # This prevents shared state issues in SubprocVecEnv
             import copy
@@ -445,7 +469,7 @@ def make_parallel_envs(args, context, n_envs: int = 8, use_subproc: bool = True)
         return _init
 
     # Create environment factories
-    env_fns = [make_env(i) for i in range(n_envs)]
+    env_fns: list[EnvFactory] = [make_env(i) for i in range(n_envs)]
     logger.info(
         f"Environment factories created. Now spawning {n_envs} worker processes..."
     )
@@ -574,6 +598,7 @@ def main() -> None:
         logger.info("=" * 60)
 
         # Create parallel or single environment based on config
+        env: VecEnv | ScheduleEnv
         if args.n_envs > 1:
             env = make_parallel_envs(
                 args, context, n_envs=args.n_envs, use_subproc=args.use_subproc
@@ -611,7 +636,7 @@ def main() -> None:
         import subprocess
 
         # Check if TensorBoard is already running
-        def is_port_in_use(port):
+        def is_port_in_use(port: int) -> bool:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 return s.connect_ex(("localhost", port)) == 0
 

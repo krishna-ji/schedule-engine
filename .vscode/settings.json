@@ -2,7 +2,6 @@
     // ==================
     // EDITOR SETTINGS
     // ==================
-    "editor.fontFamily": "Source Code Pro",
     "editor.formatOnSave": true,
     // Global fallback (overridden by specific languages below)
     "editor.defaultFormatter": "ms-python.black-formatter",
@@ -48,7 +47,7 @@
         "./src"
     ],
     // Disabled Pylance type checking to let Mypy be the authority
-    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.typeCheckingMode": "",
     // Black formatter settings
     "black-formatter.args": [
         "--line-length=88",

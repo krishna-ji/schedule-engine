@@ -11,6 +11,7 @@ Supports 3 modes:
 
 import random
 from enum import Enum
+from typing import Any
 
 import numpy as np
 
@@ -79,7 +80,7 @@ class HybridController:
         self.round_robin_idx = 0
 
         # Recent rewards for RECENT_BEST strategy
-        self.recent_rewards: dict = {}  # {action_id: [recent rewards]}
+        self.recent_rewards: dict[int, list[float]] = {}
         self.recent_window = 10
 
         logger.info(
@@ -227,7 +228,7 @@ class HybridController:
             # Default to random
             return random.choice(valid_actions)
 
-    def update_reward(self, action: int, reward: float):
+    def update_reward(self, action: int, reward: float) -> None:
         """
         Update recent reward for action (used by RECENT_BEST strategy).
 
@@ -244,7 +245,7 @@ class HybridController:
         if len(self.recent_rewards[action]) > self.recent_window:
             self.recent_rewards[action].pop(0)
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> dict[str, float | int | str]:
         """Get usage statistics."""
         rl_pct = 100 * self.rl_calls / self.total_calls if self.total_calls > 0 else 0
         fallback_pct = (
@@ -261,7 +262,7 @@ class HybridController:
             "fallback_strategy": self.fallback_strategy.value,
         }
 
-    def reset_statistics(self):
+    def reset_statistics(self) -> None:
         """Reset usage statistics."""
         self.rl_calls = 0
         self.fallback_calls = 0
@@ -269,13 +270,13 @@ class HybridController:
         self.round_robin_idx = 0
         logger.debug("Reset hybrid controller statistics")
 
-    def set_mode(self, mode: HybridMode):
+    def set_mode(self, mode: HybridMode) -> None:
         """Change operating mode."""
         old_mode = self.mode
         self.mode = mode
         logger.info(f"Changed mode: {old_mode.value} -> {mode.value}")
 
-    def set_fallback_strategy(self, strategy: FallbackStrategy):
+    def set_fallback_strategy(self, strategy: FallbackStrategy) -> None:
         """Change fallback strategy."""
         old_strategy = self.fallback_strategy
         self.fallback_strategy = strategy
@@ -288,7 +289,7 @@ def create_hybrid_controller(
     rl_inference: RLInference,
     mode: str = "rl_primary",
     fallback_strategy: str = "random",
-    **kwargs,
+    **kwargs: Any,
 ) -> HybridController:
     """
     Convenience function to create hybrid controller.

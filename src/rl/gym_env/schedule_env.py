@@ -585,7 +585,7 @@ class ScheduleEnv(gym.Env):
 
         return self.profiler.get_statistics()
 
-    def print_profiling_summary(self):
+    def print_profiling_summary(self) -> None:
         """Print profiling summary table at end of episode."""
         if not self.debug_logging:
             return

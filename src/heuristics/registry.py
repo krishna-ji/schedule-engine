@@ -26,9 +26,15 @@ Usage:
         return individual
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
+
+HeuristicFunc = Callable[..., Any]
+DecoratorFunc = Callable[[HeuristicFunc], HeuristicFunc]
 
 
 class HeuristicCategory(str, Enum):
@@ -126,7 +132,7 @@ def _validate_registration(
 # ================
 
 
-def _heuristic_decorator(category: HeuristicCategory):
+def _heuristic_decorator(category: HeuristicCategory) -> Callable[..., DecoratorFunc]:
     """Factory function to create category-specific decorators."""
 
     def decorator(
@@ -136,7 +142,7 @@ def _heuristic_decorator(category: HeuristicCategory):
         enabled_by_default: bool = True,
         requires_population: bool = False,
         modifies_individual: bool = False,
-    ):
+    ) -> DecoratorFunc:
         """
         Decorator to register a heuristic operator.
 
@@ -149,7 +155,7 @@ def _heuristic_decorator(category: HeuristicCategory):
             modifies_individual: Whether heuristic modifies individuals in-place
         """
 
-        def inner_decorator(func: Callable) -> Callable:
+        def inner_decorator(func: HeuristicFunc) -> HeuristicFunc:
             _validate_registration(name, category, priority)
             metadata = HeuristicMetadata(
                 name=name,

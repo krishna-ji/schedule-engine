@@ -49,8 +49,8 @@ class ModelLoader:
         self.cache_models = cache_models
         self.device = self._normalize_device(device)
 
-        # Model cache: {model_path: (model, load_time, metadata)}
-        self._cache: dict[str, tuple] = {}
+        # Model cache: {model_path: (model, load_time_ms, metadata)}
+        self._cache: dict[str, tuple[BaseAlgorithm, float, dict[str, Any]]] = {}
 
         # Loading statistics
         self.load_count = 0
@@ -171,7 +171,7 @@ class ModelLoader:
 
         return str(path.resolve())
 
-    def preload_models(self, model_paths: list, agent_type: str = "ppo"):
+    def preload_models(self, model_paths: list[str], agent_type: str = "ppo") -> None:
         """
         Preload multiple models into cache.
 
@@ -189,13 +189,13 @@ class ModelLoader:
 
         logger.info(f"Preloaded {len(self._cache)} models")
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear model cache."""
         num_cached = len(self._cache)
         self._cache.clear()
         logger.info(f"Cleared model cache ({num_cached} models)")
 
-    def get_cached_models(self) -> list:
+    def get_cached_models(self) -> list[str]:
         """Get list of cached model paths."""
         return list(self._cache.keys())
 
@@ -295,7 +295,7 @@ class ModelLoader:
             elapsed_ms = (time.time() - start) * 1000
 
             times.append(elapsed_ms)
-            logger.debug(f"Run {i+1}/{runs}: {elapsed_ms:.2f}ms")
+            logger.debug(f"Run {i + 1}/{runs}: {elapsed_ms:.2f}ms")
 
         results = {
             "mean_ms": float(np.mean(times)),
@@ -321,7 +321,7 @@ class ModelLoader:
         return results
 
 
-def create_model_loader(**kwargs) -> ModelLoader:
+def create_model_loader(**kwargs: Any) -> ModelLoader:
     """
     Convenience function to create model loader.
 

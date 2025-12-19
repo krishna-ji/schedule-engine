@@ -5,6 +5,7 @@ achieving 10-50x speedup over CPU-based sequential evaluation.
 """
 
 import logging
+from collections.abc import Mapping, Sequence
 
 import torch
 
@@ -16,6 +17,47 @@ from src.ga.sessiongene import SessionGene
 
 logger = logging.getLogger(__name__)
 
+type CourseCollection = Mapping[tuple[str, str], Course] | Sequence[Course]
+type InstructorCollection = Mapping[str, Instructor] | Sequence[Instructor]
+type GroupCollection = Mapping[str, Group] | Sequence[Group]
+type RoomCollection = Mapping[str, Room] | Sequence[Room]
+
+
+def _ensure_course_mapping(
+    courses: CourseCollection,
+) -> dict[tuple[str, str], Course]:
+    """Convert course collections to a dict keyed by (course_id, course_type)."""
+
+    if isinstance(courses, Mapping):
+        return dict(courses)
+    return {(course.course_id, course.course_type): course for course in courses}
+
+
+def _ensure_instructor_mapping(
+    instructors: InstructorCollection,
+) -> dict[str, Instructor]:
+    """Normalize instructors into a dictionary keyed by instructor_id."""
+
+    if isinstance(instructors, Mapping):
+        return dict(instructors)
+    return {inst.instructor_id: inst for inst in instructors}
+
+
+def _ensure_group_mapping(groups: GroupCollection) -> dict[str, Group]:
+    """Normalize groups into a dictionary keyed by group_id."""
+
+    if isinstance(groups, Mapping):
+        return dict(groups)
+    return {group.group_id: group for group in groups}
+
+
+def _ensure_room_mapping(rooms: RoomCollection) -> dict[str, Room]:
+    """Normalize rooms into a dictionary keyed by room_id."""
+
+    if isinstance(rooms, Mapping):
+        return dict(rooms)
+    return {room.room_id: room for room in rooms}
+
 
 class GPUConstraintEvaluator:
     """Evaluate constraints on GPU for 10-50x speedup.
@@ -24,7 +66,7 @@ class GPUConstraintEvaluator:
     Particularly effective for large populations (500+) where CPU becomes bottleneck.
     """
 
-    def __init__(self, device="cuda", auto_tune_batch_size=True):
+    def __init__(self, device: str = "cuda", auto_tune_batch_size: bool = True) -> None:
         """Initialize GPU evaluator.
 
         Args:
@@ -36,7 +78,7 @@ class GPUConstraintEvaluator:
 
         self.device = torch.device(device)
         self.enabled = self.device.type == "cuda"
-        self.optimal_batch_size = None
+        self.optimal_batch_size: int | None = None
 
         if self.enabled:
             gpu_name = torch.cuda.get_device_name(0)
@@ -219,11 +261,11 @@ class GPUConstraintEvaluator:
 
     def evaluate_batch(
         self,
-        population: list,
-        courses: dict[tuple, Course],
-        instructors: dict[str, Instructor],
-        groups: dict[str, Group],
-        rooms: dict[str, Room],
+        population: list[list[SessionGene]],
+        courses: CourseCollection,
+        instructors: InstructorCollection,
+        groups: GroupCollection,
+        rooms: RoomCollection,
     ) -> list[tuple[float, float]]:
         """Evaluate fitness for entire population using GPU-accelerated constraints.
 
@@ -240,13 +282,19 @@ class GPUConstraintEvaluator:
         Returns:
             List of fitness tuples (hard_penalty, soft_penalty) with negative values
         """
+        course_dict = _ensure_course_mapping(courses)
+        instructor_dict = _ensure_instructor_mapping(instructors)
+        group_dict = _ensure_group_mapping(groups)
+        room_dict = _ensure_room_mapping(rooms)
+
         if not self.enabled or len(population) < 50:
             # Fallback to CPU for small batches or no GPU
             from src.ga.evaluator.fitness import evaluate
 
             # CPU evaluate() expects dicts
             return [
-                evaluate(ind, courses, instructors, groups, rooms) for ind in population
+                evaluate(ind, course_dict, instructor_dict, group_dict, room_dict)
+                for ind in population
             ]
 
         try:
@@ -257,7 +305,7 @@ class GPUConstraintEvaluator:
             for i in range(0, len(population), batch_size):
                 batch = population[i : i + batch_size]
                 batch_fitness = self._evaluate_batch_full_constraints(
-                    batch, courses, instructors, groups, rooms
+                    batch, course_dict, instructor_dict, group_dict, room_dict
                 )
                 results.extend(batch_fitness)
 
@@ -285,11 +333,17 @@ class GPUConstraintEvaluator:
             from src.ga.evaluator.fitness import evaluate
 
             return [
-                evaluate(ind, courses, instructors, groups, rooms) for ind in population
+                evaluate(ind, course_dict, instructor_dict, group_dict, room_dict)
+                for ind in population
             ]
 
     def _evaluate_batch_full_constraints(
-        self, batch: list, courses, instructors, groups, rooms
+        self,
+        batch: list[list[SessionGene]],
+        courses: dict[tuple[str, str], Course],
+        instructors: dict[str, Instructor],
+        groups: dict[str, Group],
+        rooms: dict[str, Room],
     ) -> list[tuple[float, float]]:
         """GPU-accelerated full constraint evaluation with all hard/soft constraints.
 
@@ -311,32 +365,9 @@ class GPUConstraintEvaluator:
         batch_size = len(batch)
         max_genes = max(len(ind) for ind in batch)
 
-        # CRITICAL FIX: Handle both dict (from SchedulingContext) and list inputs
-        # SchedulingContext.courses is Dict[tuple, Course], but GPU evaluator expects lists
-        if isinstance(courses, dict):
-            course_list = list(courses.values())
-        else:
-            course_list = courses
-
-        if isinstance(instructors, dict):
-            instructor_list = list(instructors.values())
-        else:
-            instructor_list = instructors
-
-        if isinstance(groups, dict):
-            list(groups.values())
-        else:
-            pass
-
-        if isinstance(rooms, dict):
-            room_list = list(rooms.values())
-        else:
-            room_list = rooms
-
-        # Build entity lookup tables (fast hash-based access)
-        course_map = {(c.course_id, c.course_type): c for c in course_list}
-        instructor_map = {inst.instructor_id: inst for inst in instructor_list}
-        room_map = {room.room_id: room for room in room_list}
+        course_map = courses
+        instructor_map = instructors
+        room_map = rooms
 
         # Convert batch to GPU tensors with rich feature encoding
         # Shape: [batch_size, max_genes, 15 features]
@@ -367,12 +398,12 @@ class GPUConstraintEvaluator:
 
     def _encode_batch_full(
         self,
-        batch: list,
+        batch: list[list[SessionGene]],
         max_genes: int,
-        course_map: dict,
-        instructor_map: dict,
-        room_map: dict,
-    ) -> tuple[torch.Tensor, list]:
+        course_map: dict[tuple[str, str], Course],
+        instructor_map: dict[str, Instructor],
+        room_map: dict[str, Room],
+    ) -> tuple[torch.Tensor, list[list[set[str]]]]:
         """Encode batch with full constraint-relevant features.
 
         Returns:
@@ -399,7 +430,7 @@ class GPUConstraintEvaluator:
         tensor = torch.zeros((len(batch), max_genes, 15), dtype=torch.long)
 
         # Store group IDs separately for accurate conflict detection
-        group_data = []  # List of lists: [batch][gene] -> set of group_ids
+        group_data: list[list[set[str]]] = []  # [batch][gene] -> set of group_ids
 
         # Feature encoding maps
         feature_map = {
@@ -542,11 +573,11 @@ class GPUConstraintEvaluator:
     def _compute_all_constraints_gpu(
         self,
         batch_tensor: torch.Tensor,
-        course_map: dict,
-        instructor_map: dict,
-        room_map: dict,
-        batch: list,
-        group_data: list,
+        course_map: dict[tuple[str, str], Course],
+        instructor_map: dict[str, Instructor],
+        room_map: dict[str, Room],
+        batch: list[list[SessionGene]],
+        group_data: list[list[set[str]]],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute all 8 hard + 4 soft constraints using TRUE GPU vectorization.
 
@@ -635,8 +666,8 @@ class GPUConstraintEvaluator:
         for b in range(batch_size):
             overlap_indices = torch.where(overlap_mask[b])
             for idx in range(len(overlap_indices[0])):
-                i = overlap_indices[0][idx].item()
-                j = overlap_indices[1][idx].item()
+                i = int(overlap_indices[0][idx].item())
+                j = int(overlap_indices[1][idx].item())
 
                 groups_i = group_data[b][i]
                 groups_j = group_data[b][j]
@@ -743,11 +774,11 @@ class GPUConstraintEvaluator:
 
 
 # Singleton instance
-_gpu_evaluator = None
+_gpu_evaluator: GPUConstraintEvaluator | None = None
 
 
 def get_gpu_evaluator(
-    device="auto", auto_tune_batch_size=True
+    device: str = "auto", auto_tune_batch_size: bool = True
 ) -> GPUConstraintEvaluator:
     """Get or create GPU evaluator singleton."""
     global _gpu_evaluator

@@ -373,10 +373,10 @@ class GAScheduler:
 
         # Deterministic short codes (hc1, hc2, ...) for console output/legend
         self.hard_constraint_codes = {
-            name: f"hc{i+1}" for i, name in enumerate(self.hard_constraint_names)
+            name: f"hc{i + 1}" for i, name in enumerate(self.hard_constraint_names)
         }
         self.soft_constraint_codes = {
-            name: f"sc{i+1}" for i, name in enumerate(self.soft_constraint_names)
+            name: f"sc{i + 1}" for i, name in enumerate(self.soft_constraint_names)
         }
 
         self.toolbox: base.Toolbox = base.Toolbox()
@@ -397,6 +397,9 @@ class GAScheduler:
         # ENHANCEMENT: Population restart tracking
         self.last_restart_gen = -1000  # Track last restart generation
         self.prolonged_stagnation_counter = 0  # Separate counter for restart
+
+        # Banner tracking (prevent duplicate printing)
+        self._banner_printed = False
 
         # ENHANCEMENT: Violation heatmap for targeted repair
         self.violation_heatmap = None
@@ -551,7 +554,7 @@ class GAScheduler:
                 f"GA integration[/yellow]"
             )
             console.print(
-                "[dim]   Use mode 'inference' or 'hybrid' for " "production runs[/dim]"
+                "[dim]   Use mode 'inference' or 'hybrid' for production runs[/dim]"
             )
             return False
 
@@ -693,13 +696,17 @@ class GAScheduler:
             deterministic=True,  # Use deterministic policy for production
         )
 
+        # DEBUG: Log RL decision
+        action_info = self.rl_action_mapper.get_action_info(action_id)
+        if action_info:
+            logger.debug(f" RL selected: {action_info.name} (action_id={action_id})")
+
         # Record heuristic application for state tracking
         self.rl_state_encoder.record_heuristic_application(action_id)
 
         # Apply selected heuristic to population
         try:
             # Get action info to determine heuristic type
-            action_info = self.rl_action_mapper.get_action_info(action_id)
 
             # Apply heuristic in parallel to top N individuals for 10-16x speedup
             # (improvement heuristics benefit from parallel application)
@@ -883,6 +890,11 @@ class GAScheduler:
                 f"Heuristic '{heuristic_name}' not found in enabled heuristics"
             )
             return
+
+        # DEBUG: Log heuristic application
+        logger.debug(
+            f" Applying heuristic: {heuristic_name} ({heuristic_meta.category.value})"
+        )
 
         # Skip construction heuristics (they generate NEW individuals, not modify existing)
         if heuristic_meta.category.value == "construction":
@@ -1205,7 +1217,7 @@ class GAScheduler:
         eval_time = time.time() - eval_start
         console.print(
             f"   [green][!ok][/green] Evaluated {len(self.population)} individuals in [cyan]{eval_time:.1f}s[/cyan] "
-            f"([dim]{eval_time/len(self.population):.2f}s per individual[/dim])"
+            f"([dim]{eval_time / len(self.population):.2f}s per individual[/dim])"
         )
 
         # Show initial best fitness
@@ -1300,6 +1312,87 @@ class GAScheduler:
         except Exception as e:
             logger.warning(f"Error during RL cleanup: {e}")
 
+    def _print_startup_banner(self):
+        """Print configuration banner before evolution starts."""
+        # Prevent duplicate printing
+        if self._banner_printed:
+            return
+        self._banner_printed = True
+
+        from rich.panel import Panel
+        from rich.table import Table
+
+        config = get_config()
+
+        # Build feature table - ONLY show enabled features
+        feature_table = Table(show_header=False, box=None, padding=(0, 2))
+        feature_table.add_column("Feature", style="bold green")
+        feature_table.add_column("Value", justify="right", style="cyan")
+
+        enabled_features = []
+
+        # === GENETIC OPERATORS ===
+        if config.ga.use_constraint_guided_mutation:
+            enabled_features.append(("Constraint-guided mutation", "ON"))
+
+        if config.ga.population_strategy != "random":
+            enabled_features.append(
+                ("Population strategy", config.ga.population_strategy)
+            )
+
+        # === REPAIR SYSTEM ===
+        if config.repair.enabled:
+            enabled_features.append(("Repair system", "ON"))
+            if config.repair.memetic_mode:
+                enabled_features.append(("  > Memetic mode", "ON"))
+            if config.repair.apply_after_mutation:
+                enabled_features.append(("  > Apply after mutation", "ON"))
+
+        # === HEURISTICS ===
+        if config.heuristics.master_enabled:
+            enabled_features.append(("Heuristics", "ON"))
+            if config.heuristics.adaptive_priority.enabled:
+                enabled_features.append(("  > Adaptive priority", "ON"))
+
+        # === LARGE NEIGHBORHOOD SEARCH ===
+        if config.lns.enabled:
+            enabled_features.append(("Large Neighborhood Search", "ON"))
+
+        # === RL SYSTEM ===
+        if config.rl.enabled:
+            enabled_features.append(("RL hyper-heuristic", "ON"))
+            enabled_features.append(("  > Mode", config.rl.mode))
+
+        # === ENHANCEMENTS ===
+        if config.enhancements.master_enabled:
+            enabled_features.append(("Enhancements", "ON"))
+            if config.enhancements.hypermutation.enabled:
+                enabled_features.append(("  > Hypermutation", "ON"))
+            if config.enhancements.population_restart.enabled:
+                enabled_features.append(("  > Population restart", "ON"))
+
+        # Add rows to table
+        if enabled_features:
+            for feature, value in enabled_features:
+                feature_table.add_row(feature, value)
+        else:
+            # Pure baseline - no enhancements
+            feature_table.add_row(
+                "[dim]Pure NSGA-II baseline[/dim]", "[dim](no enhancements)[/dim]"
+            )
+
+        # Print banner
+        console.print()
+        console.print(
+            Panel(
+                feature_table,
+                title="[bold white]Active Features[/bold white]",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
+        console.print()
+
     def evolve(self):
         """Run genetic algorithm evolution loop."""
         try:
@@ -1312,6 +1405,11 @@ class GAScheduler:
         """Internal evolution loop implementation."""
         gen_times = []
         profiler = get_profiler()
+
+        # ========================================
+        # STARTUP CONFIGURATION BANNER
+        # ========================================
+        self._print_startup_banner()
 
         # Create elapsed/remaining time bar (shows above progress bar)
         time_bar = Progress(
@@ -1373,10 +1471,10 @@ class GAScheduler:
         )
 
         # Build hard constraint labels (3 per row) using deterministic order
-        hard_items = []
+        hard_items: list[str] = []
         for name in self.hard_constraint_names:
             clean_name = name.replace("_", " ")
-            code = self.hard_constraint_codes.get(name, f"hc{len(hard_items)+1}")
+            code = self.hard_constraint_codes.get(name, f"hc{len(hard_items) + 1}")
             hard_items.append(f"{code}={clean_name}")
 
         for name in hard_details:
@@ -1397,10 +1495,10 @@ class GAScheduler:
             )
 
         # Build soft constraint labels (3 per row)
-        soft_items = []
+        soft_items: list[str] = []
         for name in self.soft_constraint_names:
             clean_name = name.replace("_", " ")
-            code = self.soft_constraint_codes.get(name, f"sc{len(soft_items)+1}")
+            code = self.soft_constraint_codes.get(name, f"sc{len(soft_items) + 1}")
             soft_items.append(f"{code}={clean_name}")
 
         for name in soft_details:
@@ -1479,7 +1577,7 @@ class GAScheduler:
                 if gen_times:
                     avg_gen_time = sum(gen_times) / len(gen_times)
                     if avg_gen_time < 1.0:
-                        speed_display = f"{avg_gen_time*1000:.0f}ms/gen"
+                        speed_display = f"{avg_gen_time * 1000:.0f}ms/gen"
                     else:
                         speed_display = f"{avg_gen_time:.1f}s/gen"
                 else:
@@ -1570,10 +1668,10 @@ class GAScheduler:
                         "[bold red]WARNING: Fitness mismatch detected![/bold red]"
                     )
                     console.print(
-                        f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc-computed_hc):.2f})"
+                        f"  Fitness HC={fitness_hc:.2f} vs Computed HC={computed_hc:.2f} (diff={abs(fitness_hc - computed_hc):.2f})"
                     )
                     console.print(
-                        f"  Fitness SC={fitness_sc:.2f} vs Computed SC={computed_sc:.2f} (diff={abs(fitness_sc-computed_sc):.2f})"
+                        f"  Fitness SC={fitness_sc:.2f} vs Computed SC={computed_sc:.2f} (diff={abs(fitness_sc - computed_sc):.2f})"
                     )
                     console.print(f"  Hard details: {hard_details}")
                     console.print(f"  Soft details: {soft_details}")
@@ -1664,7 +1762,7 @@ class GAScheduler:
                 gen_width = len(str(self.config.generations))
                 console.print()  # Line break before generation output
                 console.print(
-                    f"[dim][!ok] gen {gen+1:>{gen_width}}/{self.config.generations} : "
+                    f"[dim][!ok] gen {gen + 1:>{gen_width}}/{self.config.generations} : "
                     f"hc={best.fitness.values[0]:.0f}, sc={best.fitness.values[1]:.2f}, "
                     f"t={format_time(gen_time)} ({timing_str}),  {hc_list} {sc_list}[/dim]"
                 )
@@ -2144,7 +2242,7 @@ class GAScheduler:
             console.print(
                 f"[dim]   Gen {gen}: {len(invalid)}/{len(offspring)} "
                 f"individuals invalidated (expected ~{expected_invalid}, "
-                f"{len(invalid)/len(offspring)*100:.1f}%)[/dim]"
+                f"{len(invalid) / len(offspring) * 100:.1f}%)[/dim]"
             )
 
         # WARNING: Detect invalidation failure
@@ -2637,7 +2735,7 @@ class GAScheduler:
     ):
         """Print detailed constraint breakdown."""
         console.print(
-            f"\n[cyan]GEN {gen+1}[/cyan] Hard=[yellow]{best.fitness.values[0]:.0f}[/yellow], "
+            f"\n[cyan]GEN {gen + 1}[/cyan] Hard=[yellow]{best.fitness.values[0]:.0f}[/yellow], "
             f"Soft=[blue]{best.fitness.values[1]:.2f}[/blue]"
         )
 
@@ -2761,7 +2859,7 @@ class GAScheduler:
         )
         console.print(
             f"   [dim]Replacing worst {restart_count}/{len(self.population)} individuals "
-            f"({restart_cfg.restart_percentage*100:.0f}%)[/dim]"
+            f"({restart_cfg.restart_percentage * 100:.0f}%)[/dim]"
         )
 
         # Sort by fitness (best first for NSGA-II multi-objective)

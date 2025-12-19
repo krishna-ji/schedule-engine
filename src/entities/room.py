@@ -38,17 +38,6 @@ class Room:
 
     def is_suitable_for_course_type(self, required_room_features: str) -> bool:
         """Check if room type matches the required room type for a course."""
-        # Exact match
-        if self.room_features == required_room_features:
-            return True
-        # Allow flexibility for certain room types
-        flexibility_map = {
-            "lecture": ["auditorium", "seminar"],
-            "seminar": ["lecture"],
-            "lab": ["computer_lab", "science_lab"],
-            "computer_lab": ["lab"],
-            "science_lab": ["lab"],
-        }
-        if required_room_features in flexibility_map:
-            return self.room_features in flexibility_map[required_room_features]
-        return False
+        from src.utils.room_compatibility import is_room_type_compatible
+
+        return is_room_type_compatible(required_room_features, self.room_features)

@@ -32,6 +32,7 @@ References:
 - Pugh et al. (2016): Quality Diversity
 """
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -368,7 +369,7 @@ class BehavioralArchive:
         """Get number of entries in archive."""
         return len(self.entries)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[ArchiveEntry]:
         """Iterate over archive entries."""
         return iter(self.entries)
 

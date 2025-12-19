@@ -1,8 +1,8 @@
 """
 Experiment E: RL-Guided Hyper-Heuristic
 
-Full NSGA-II stack with RL controlling heuristic selection.
-Tests effectiveness of reinforcement learning guidance.
+Deploy trained RL agents to control heuristic selection within NSGA-II.
+Full-featured configuration with RL killswitch enabled.
 """
 
 from configs.experiments.rl_guided import (
@@ -25,16 +25,18 @@ EXPERIMENT_DESCRIPTION = _EXPERIMENT_DESCRIPTION
 KILLSWITCHES = _KILLSWITCHES
 
 
-# Quick usage
 def get_config(profile: Profile = Profile.TEST, **overrides):
-    """Get config for Experiment E."""
-    # Filter out None values
-    overrides = {k: v for k, v in overrides.items() if v is not None}
+    """Get config for Experiment E (RL-guided)."""
+    # Filter out None overrides to avoid clobbering defaults
+    filtered_overrides = {k: v for k, v in overrides.items() if v is not None}
 
     if profile == Profile.TEST:
-        config = RlGuidedTestConfig(**overrides)
+        config = RlGuidedTestConfig(**filtered_overrides)
+    elif profile == Profile.PROD:
+        config = RlGuidedProdConfig(**filtered_overrides)
     else:
-        config = RlGuidedProdConfig(**overrides)
+        raise ValueError(f"Unknown profile: {profile}")
+
     return config.to_pydantic()
 
 
@@ -42,8 +44,5 @@ if __name__ == "__main__":
     test_cfg = experiment_e_test
     print(f"✓ {EXPERIMENT_NAME}")
     print(f"  ngen={test_cfg.ngen}, pop={test_cfg.pop_size}")
-    print(f"  rl_enabled={test_cfg.rl_enabled}")
-    print(f"  rl_mode={test_cfg.rl_mode}")
-    print(f"  lns={test_cfg.lns_enabled}")
-    print(f"  LNS enabled: {config.lns.enabled}")
-    print(f"  Memetic mode: {config.enhancements.memetic_mode}")
+    print(f"  rl_enabled={test_cfg.rl_enabled}, mode={test_cfg.rl_mode}")
+    print(f"  heuristics_master={test_cfg.heuristics_master_enabled}")

@@ -12,9 +12,9 @@ from pathlib import Path
 def check_duplicate_enrollments(groups_file="data/Groups.json"):
     """Check for duplicate course enrollments in groups."""
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("[!report] DATA QUALITY DIAGNOSTIC REPORT")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     print(f"Checking file: {groups_file}\n")
 
     try:
@@ -77,14 +77,14 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
             )
 
     # Print results
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print("SUMMARY STATISTICS")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"Total groups analyzed:        {stats['total_groups']}")
     print(f"Groups with duplicates:       {stats['groups_with_duplicates']}")
     print(f"Groups without courses:       {stats['groups_without_courses']}")
     print(f"Total duplicate instances:    {stats['total_duplicate_instances']}")
-    print(f"{'-'*60}\n")
+    print(f"{'-' * 60}\n")
 
     if issues:
         print(f"[err!] FOUND {len(issues)} GROUPS WITH DUPLICATE ENROLLMENTS:\n")
@@ -104,25 +104,25 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
                 print(f"       • {course} → appears {count} times")
             print()
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("️  ACTION REQUIRED")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print("These duplicates will cause group overlap violations!")
         print("Each duplicate creates additional scheduling conflicts.")
         print(f"\nPlease review and fix {groups_file}:")
         print("  1. Check if duplicates are intentional (e.g., theory + lab)")
         print("  2. If unintentional, remove duplicate entries")
         print("  3. If intentional, ensure they're separate course sections")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     else:
         print("[!yes] NO DUPLICATE ENROLLMENTS FOUND!")
         print("   All groups have unique course assignments.\n")
 
     # Additional checks
-    print(f"\n{'-'*60}")
+    print(f"\n{'-' * 60}")
     print("ADDITIONAL CHECKS")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
 
     # Check for groups with many courses
     large_groups = []
@@ -138,7 +138,7 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
             print(f"   • {gid}: {count} courses")
         print("   (Large course loads may be difficult to schedule)")
 
-    print(f"\n{'='*60}\n")
+    print(f"\n{'=' * 60}\n")
 
     return issues
 
@@ -146,9 +146,9 @@ def check_duplicate_enrollments(groups_file="data/Groups.json"):
 def check_data_consistency(base_dir="data"):
     """Additional consistency checks across data files."""
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("[!search] CROSS-FILE CONSISTENCY CHECKS")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     files = {
         "courses": Path(base_dir) / "Course.json",
@@ -188,7 +188,7 @@ def check_data_consistency(base_dir="data"):
     else:
         print("[!yes] All group courses found in Course.json")
 
-    print(f"\n{'='*60}\n")
+    print(f"\n{'=' * 60}\n")
 
 
 if __name__ == "__main__":

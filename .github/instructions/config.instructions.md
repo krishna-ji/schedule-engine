@@ -1,317 +1,306 @@
 ---
-applyTo: "configs/**/*.yaml"
+applyTo: "configs/**/*.py"
 ---
 
 # Configuration File Guidelines for Schedule Engine
 
-## YAML Schema & Serialization
+## Python Dataclass System
 
-### Structural Requirements
-- **Indentation**: 2-space nesting (YAML spec-compliant, no tab characters)
-- **Line length**: 100 chars max (prevents horizontal scroll in diffs)
-- **Comments**: Use `#` for semantic annotations (explain *why*, not *what*)
-- **Schema**: Nested mappings validated against Pydantic `BaseModel` subclasses in `src/config/models.py`
-- **Type safety**: All leaf values strongly typed (int, float, bool, str, null) - no ambiguous YAML types
+### Architecture
+- **Base**: `configs/base.py` → `BaseConfig` (all shared defaults)
+- **Profiles**: `configs/profiles.py` → `TestConfig`/`ProdConfig` (scaling overrides)
+- **Experiments**: `configs/experiments/*.py` → Experiment-specific configs
+- **Inheritance**: `BaseConfig → TestConfig/ProdConfig → ExperimentConfig`
 
 ### File Types
 
-1. **Environment Configs** (`configs/test.yaml`, `configs/prod.yaml`)
-   - Inherit from `base.yaml`
-   - Only override what differs
-   - Keep minimal (environment-specific settings only)
+1. **Base Config** (`configs/base.py`)
+   - All shared defaults (GA params, constraints, killswitches)
+   - Single source of truth for common settings
+   - Comprehensive inline documentation via docstrings
 
-2. **Runtime Mode Configs** (`configs/{category}/{mode}.yaml`)
-   - Organized by category: `baseline/`, `nsga/`, `hybrid/`, `rl/`
-   - Named with letter prefix (a-e) for progressive modes
-   - Document purpose in header comment
-   - Include killswitch states explicitly
-   - Examples: `baseline/a-pure-nsga.yaml`, `hybrid/c-roundrobin.yaml`, `rl/e-rl-guided.yaml`
+2. **Profile Configs** (`configs/profiles.py`)
+   - `TestConfig`: Smoke tests (30 gens, 10 pop, ~2-5 min)
+   - `ProdConfig`: Production (2000 gens, 400 pop, ~1-3 hrs)
+   - Only override scaling params (ngen, pop_size, workers)
 
-3. **Base Config** (`configs/base.yaml`)
-   - All common settings
-   - Shared across all environments
-   - Comprehensive documentation
+3. **Experiment Configs** (`configs/experiments/{name}.py`)
+   - Individual experiment definitions (A-F modes)
+   - Killswitch states explicitly set
+   - Multiple inheritance: `ExperimentBaseConfig + TestConfig/ProdConfig`
+   - Example: `baseline.py`, `memetic.py`, `rl_guided.py`
 
 ## Configuration Principles
 
 ### 1. Killswitch Pattern
-Every major feature has a master killswitch:
+Every major feature has master killswitch in `BaseConfig`:
 
-```yaml
-# CORRECT : Explicit killswitch
-repair:
-  enabled: true  # Master killswitch
-  stagnation_repair:
-    enabled: true
-    patience: 8
+```python
+# CORRECT: Explicit killswitch
+@dataclass
+class BaseConfig:
+    repair_enabled: bool = False  # Master killswitch
+    repair_patience: int = 8
+    repair_coverage: float = 0.4
 
-# WRONG : Missing master switch
-repair:
-  stagnation_repair:
-    enabled: true  # Can't work if parent is disabled!
+# Enable in experiment
+@dataclass
+class MemeticBaseConfig:
+    repair_enabled: bool = True  # Override to enable
 ```
 
-### 2. Null for Auto-Detection
-Use `null` for runtime auto-detection:
+### 2. None for Auto-Detection
+Use `None` for runtime auto-detection:
 
-```yaml
-# CORRECT : Let system detect CPU count
-parallel:
-  num_workers: null  # Auto-detect all available cores
+```python
+# CORRECT: Let system detect CPU count
+num_workers: int | None = None  # Auto-detect cores
 
-# WRONG : Hardcoded value (not portable)
-parallel:
-  num_workers: 16  # Fails on systems with fewer cores
+# WRONG: Hardcoded (not portable)
+num_workers: int = 16  # Fails on systems with fewer cores
 ```
 
-### 3. Environment Inheritance
-Environment files only override differences:
+### 3. DRY Inheritance
+```python
+# base.py - shared defaults
+@dataclass
+class BaseConfig:
+    ngen: int = 100
+    pop_size: int = 50
+    repair_enabled: bool = False
 
-```yaml
-# base.yaml
-ga:
-  ngen: 2000
-  pop_size: 200
-  cxpb: 0.75
+# profiles.py - scaling only
+@dataclass
+class ProdConfig(BaseConfig):
+    ngen: int = 2000
+    pop_size: int = 400
 
-# test.yaml (only overrides)
-ga:
-  ngen: 30        # Override for quick testing
-  pop_size: 10    # Override
-  # cxpb inherited from base.yaml
+# experiments/memetic.py - killswitch overrides
+@dataclass
+class MemeticBaseConfig:
+    repair_enabled: bool = True  # Enable repair
+    memetic_mode: bool = True
+
+class MemeticProdConfig(MemeticBaseConfig, ProdConfig):
+    pass  # Inherits both killswitches + production scaling
 ```
 
-### 4. Descriptive Comments
-```yaml
-# CORRECT : Explain purpose and values
-repair:
-  enabled: true
-  stagnation_repair:
-    patience: 8  # Generations without improvement before repair
-    population_coverage: 0.4  # Repair top 40% of population
+### 4. Type Safety
+All configs are strictly typed:
 
-# WRONG : Missing context
-repair:
-  enabled: true
-  stagnation_repair:
-    patience: 8
-    population_coverage: 0.4
+```python
+from __future__ import annotations
+from dataclasses import dataclass
+
+@dataclass
+class BaseConfig:
+    ngen: int = 100              # Total generations
+    pop_size: int = 50           # Population size
+    cxpb: float = 0.70           # Crossover probability
+    mutpb: float = 0.20          # Mutation probability
+    elite_preservation: bool = True
+    elite_size: float = 0.05     # Top 5% preserved
+
+    # Type checker enforces correctness
+    # mypy catches: ngen: str = "100"  # ERROR!
 ```
 
-## Common Configuration Sections
+## Common Configuration Patterns
 
 ### GA Parameters
-```yaml
-ga:
-  ngen: 2000                     # Total generations
-  pop_size: 200                  # Population size
-  cxpb: 0.75                     # Crossover probability
-  mutpb: 0.25                    # Mutation probability
-  elite_preservation: true       # Keep best solutions
-  elite_size: 0.1               # Top 10% preserved
-  use_adaptive_probabilities: false  # Fixed vs adaptive
-  population_strategy: hybrid    # random, smart, or hybrid
+```python
+@dataclass
+class BaseConfig:
+    ngen: int = 100
+    pop_size: int = 50
+    cxpb: float = 0.70
+    mutpb: float = 0.20
+    elite_preservation: bool = True
+    elite_size: float = 0.05
+    population_strategy: str = "random"  # random, smart, hybrid
 ```
 
 ### Performance & Metrics
-```yaml
-# Performance profiling
-performance:
-  enable_profiling: true         # Show phase-level timing breakdown
-  show_per_generation: true      # Display after each generation
-  show_summary_table: true       # Display summary at end
+```python
+@dataclass
+class BaseConfig:
+    # Parallel processing
+    use_multiprocessing: bool = True
+    num_workers: int | None = None  # None = auto-detect
 
-# Metrics optimization (pymoo-accelerated)
-metrics:
-  advanced_metrics_frequency: 10 # Calculate expensive metrics every 10 gens
-  always_calculate_basic: true   # Always track hard/soft/diversity
-  # Note: pymoo provides 139x speedup (50s → 0.36s per generation)
+    # Metrics (pymoo-accelerated: 139x speedup)
+    advanced_metrics_frequency: int = 10  # Every 10 gens
 ```
 
 ### Repair System
-```yaml
-repair:
-  enabled: true                  # Master killswitch
-  memetic_mode: false            # Elite local search
-
-  stagnation_repair:
-    enabled: true
-    patience: 8                  # Gens without improvement
-    population_coverage: 0.4     # Repair top 40%
-    max_iterations: 15
-    timeout_seconds: 120
-    cooldown: 5                  # Gens before re-trigger
-
-  selective_repair:
-    enabled: true
-    apply_probability: 0.4       # 40% chance per generation
-    apply_after_mutation: true
-    apply_after_crossover: true
+```python
+@dataclass
+class BaseConfig:
+    repair_enabled: bool = False  # Master killswitch
+    repair_patience: int = 8
+    repair_coverage: float = 0.4
+    repair_max_iterations: int = 15
+    repair_timeout: int = 120
 ```
 
 ### Heuristics (19 operators)
-```yaml
-heuristics:
-  construction:
-    largest_degree_first:
-      enabled: true
-      priority: 1                # Lower = higher priority
-    most_constrained_first:
-      enabled: true
-      priority: 2
+```python
+@dataclass
+class BaseConfig:
+    heuristics_master_enabled: bool = False  # Master killswitch
+    heuristic_selection_mode: str = "fixed"  # fixed, adaptive, rl
 
-  perturbation:
-    random_swap:
-      enabled: true
-      priority: 1
-      swap_type: time            # Options: time, room, both
-      num_swaps: 1
-
-  improvement:
-    kempe_chain:
-      enabled: true
-      priority: 1
-      max_iterations: 5
+    # Heuristic registry defined separately
+    # See: src/heuristics/registry.py
 ```
 
 ### RL Integration
-```yaml
-rl:
-  enabled: false                 # Master RL killswitch
-  mode: disabled                 # disabled, guided, specialists, etc.
-  model_path: models/rl_agents/best_model.zip
-
-  state_encoder:
-    constraint_specific: true    # Detailed constraint state
-    history_window: 10           # Gens to track
-
-  reward:
-    fitness_weight: 1.0
-    diversity_weight: 0.3
-    violation_penalty: -10.0
+```python
+@dataclass
+class BaseConfig:
+    rl_enabled: bool = False      # Master killswitch
+    rl_model_path: str = "models/rl_agents/best_model.zip"
+    rl_history_window: int = 10
 ```
 
-## Validation Rules
+## Validation & Testing
 
-### Required Before Commit
-1. **Syntax check**: `python -c "import yaml; yaml.safe_load(open('config.yaml'))"`
-2. **Schema validation**: `uv run verify-config`
-3. **Test run**: `uv run exp1 --env test --config path/to/config.yaml`
-
-### Common Errors to Avoid
-
- **Tabs instead of spaces**
-```yaml
-repair:
-	enabled: true  # ERROR: tab character
-```
-
- **Use 2 spaces**
-```yaml
-repair:
-  enabled: true
-```
-
- **Inconsistent indentation**
-```yaml
-ga:
-  ngen: 2000
-    pop_size: 200  # ERROR: wrong indentation
-```
-
- **Consistent 2-space indent**
-```yaml
-ga:
-  ngen: 2000
-  pop_size: 200
-```
-
- **Missing quotes for special strings**
-```yaml
-time:
-  earliest_preferred_time: 08:00  # ERROR: treated as number
-```
-
- **Quote time strings**
-```yaml
-time:
-  earliest_preferred_time: "08:00"
-```
-
-## Configuration Testing
-
-When creating new config:
+### Type Checking
 ```bash
-# 1. Validate syntax
-uv run verify-config --config configs/new-config.yaml
+# All configs type-checked with strict mypy
+mypy configs/
+```
 
-# 2. Quick test (30 gens)
-uv run exp1 --env test --config configs/new-config.yaml
+### Test Configuration
+```bash
+# Test with smoke profile
+uv run baseline --test
 
-# 3. Verify experiment manifest
-cat output/experiment_manifest.json
+# Production run
+uv run baseline --prod --name "my-experiment"
+```
+
+## Common Patterns to Avoid
+
+❌ **Hardcoded system-specific values**
+```python
+num_workers: int = 16  # Fails on systems with fewer cores
+```
+
+✅ **Use auto-detection**
+```python
+num_workers: int | None = None  # Auto-detect
+```
+
+❌ **Missing type annotations**
+```python
+ngen = 100  # Type unclear
+```
+
+✅ **Explicit types**
+```python
+ngen: int = 100  # Clear and type-checked
+```
+
+## Configuration Access
+
+```python
+# In application code
+from src.config import get_config
+
+config = get_config()  # Returns Pydantic Config model
+ngen = config.ngen
+repair_enabled = config.repair_enabled
+```
+
+## Experiment Registration
+
+In `main.py`:
+```python
+from configs import experiment_a, experiment_b
+
+EXPERIMENTS = {
+    "a": ("Experiment A: Baseline", experiment_a, experiment_a_baseline),
+    "b": ("Experiment B: Memetic", experiment_b, experiment_b_memetic),
+}
+```
+
+In `pyproject.toml`:
+```toml
+[project.scripts]
+baseline = "scripts.launcher:main_baseline"  # Mode A
+memetic = "scripts.launcher:main_memetic"    # Mode B
 ```
 
 ## Documentation Requirements
 
-Each runtime mode config must have:
-1. **Header comment** explaining purpose
+Each experiment config must have:
+1. **Module docstring** explaining purpose
 2. **Killswitch states** explicitly set
-3. **Parameter explanations** for non-obvious values
-4. **Reference to docs** if complex (e.g., `See docs/02-user-guides/runtime-modes.md`)
+3. **Metadata constants** (EXPERIMENT_ID, EXPERIMENT_NAME, etc.)
 
-Example:
-```yaml
-# ================
-# RUNTIME MODE 3: NSGA-II + Repairs + Heuristics (No Local Search)
-# ================
-# Tests impact of 19 heuristics WITHOUT local search (LNS).
-# This isolates the contribution of heuristics alone.
-#
-# Expected results:
-# - Hard violations: 8-15 (good but not optimal)
-# - Improvement vs baseline: 70-80%
-#
-# See: docs/02-user-guides/runtime-modes.md#mode-3
+Example (`configs/experiments/baseline.py`):
+```python
+"""
+Experiment A: Pure NSGA-II Baseline
 
-ga:
-  ngen: 2000
-  pop_size: 200
-  # ... rest of config
+Minimal NSGA-II with all enhancements disabled.
+Serves as baseline for comparing other experiments.
+
+Expected results:
+- Hard violations: 15-25
+- Runtime: ~2-5 min (test), ~1-3 hrs (prod)
+"""
+
+EXPERIMENT_ID = "a"
+EXPERIMENT_NAME = "Experiment A: Pure NSGA-II"
+KILLSWITCHES = {
+    "repair_enabled": False,
+    "heuristics_master_enabled": False,
+    "rl_enabled": False,
+}
 ```
 
 ## When to Create New Config
 
- **Do create** new config for:
-- New experimental mode
+✅ **Do create** for:
+- New experimental mode (baseline, memetic, etc.)
 - Thesis experiment configuration
-- Special hardware setup (GPU, large runners)
+- Major feature testing
 
- **Don't create** new config for:
-- One-off parameter tweaks (use CLI override instead)
-- Personal preferences (use environment configs)
-- Temporary debugging (modify test.yaml)
+❌ **Don't create** for:
+- One-off parameter tweaks (use profile overrides)
+- Personal preferences (modify existing)
+- Temporary debugging (use test profile)
 
-## Config Hierarchy
+## Configuration Hierarchy
 
 Priority order (highest to lowest):
-1. CLI arguments (`--ngen 100`)
-2. Custom config file (`--config path/to/config.yaml`)
-3. Environment config (`test.yaml`, `prod.yaml`)
-4. Base config (`base.yaml`)
+1. Runtime overrides (from launcher)
+2. Experiment config (`ExperimentProdConfig`)
+3. Profile config (`ProdConfig`/`TestConfig`)
+4. Base config (`BaseConfig`)
 
-Example:
-```bash
-# Uses: CLI > custom > env > base
-uv run exp1 --env prod --config my-config.yaml --ngen 500
-# ngen=500 (CLI), other settings from my-config.yaml, then prod.yaml, then base.yaml
+Example inheritance:
+```python
+# BaseConfig: ngen=100, repair_enabled=False
+# ProdConfig: ngen=2000 (override)
+# MemeticProdConfig: repair_enabled=True (override)
+# Result: ngen=2000, repair_enabled=True
 ```
 
-## Never Do
+## Best Practices
 
--  Use tabs instead of spaces
--  Hardcode system-specific values (use `null` for auto-detection)
--  Duplicate common settings in env files (put in base.yaml)
--  Add features without killswitches (`enabled: bool` field required)
--  Skip validation before committing (run `uv run verify-config`)
--  Commit configs without header comments explaining purpose
+✅ **DO:**
+- Use type annotations on all fields
+- Set killswitches explicitly in experiments
+- Document purpose in module docstring
+- Test with `--test` profile first
+- Run type checker: `mypy configs/`
+
+❌ **DON'T:**
+- Hardcode system-specific values (use `None`)
+- Duplicate BaseConfig defaults
+- Skip type annotations
+- Add features without killswitches
+- Commit without testing

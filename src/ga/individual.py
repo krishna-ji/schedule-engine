@@ -1,5 +1,6 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
+from src.core.types import Individual
 from src.ga.creator_registry import get_creator
 from src.ga.sessiongene import SessionGene
 
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     pass
 
 
-def create_individual(gene_list: list[SessionGene]):
+def create_individual(gene_list: list[SessionGene]) -> Individual:
     """
     Wraps a list of SessionGene Objects into a DEAP Individual.
 
@@ -20,4 +21,4 @@ def create_individual(gene_list: list[SessionGene]):
     Returns:
         creator.Individual: A new individual initialized with the provided genes.
     """
-    return creator.Individual(gene_list)
+    return cast(Individual, creator.Individual(gene_list))

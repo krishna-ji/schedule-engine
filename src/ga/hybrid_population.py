@@ -22,7 +22,10 @@ import os
 import random
 from concurrent.futures import ProcessPoolExecutor
 
-from src.core.types import SchedulingContext
+from src.core.types import Individual, SchedulingContext
+from src.entities.course import Course
+from src.entities.instructor import Instructor
+from src.entities.room import Room
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.individual import create_individual
@@ -30,8 +33,11 @@ from src.ga.population import generate_course_group_aware_population
 from src.ga.sessiongene import SessionGene
 from src.utils.system_info import get_cpu_count
 
+type CourseGroupPair = tuple[tuple[str, str], list[str], str, int]
+type ResourceUsage = dict[tuple[str, int], bool]
 
-def generate_hybrid_population(n: int, context: SchedulingContext) -> list:
+
+def generate_hybrid_population(n: int, context: SchedulingContext) -> list[Individual]:
     """
     Generate population with hybrid initialization strategy.
 
@@ -139,7 +145,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> list:
 
 
 def _greedy_construction(
-    context: SchedulingContext, pair_tuples: list[tuple]
+    context: SchedulingContext, pair_tuples: list[CourseGroupPair]
 ) -> list[SessionGene]:
     """
     Greedy constructive heuristic for creating feasible schedule.
@@ -223,7 +229,7 @@ def _greedy_construction(
 
 
 def _calculate_constraint_difficulty(
-    pair_tuple: tuple, context: SchedulingContext
+    pair_tuple: CourseGroupPair, context: SchedulingContext
 ) -> float:
     """
     Estimate scheduling difficulty for a course-group pair.
@@ -270,9 +276,9 @@ def _find_feasible_assignment(
     group_ids: list[str],
     num_quanta: int,
     context: SchedulingContext,
-    group_schedule: dict,
-    room_usage: dict,
-    instructor_usage: dict,
+    group_schedule: ResourceUsage,
+    room_usage: ResourceUsage,
+    instructor_usage: ResourceUsage,
 ) -> SessionGene | None:
     """
     Find first feasible assignment for a course-group pair.
@@ -350,7 +356,10 @@ def _find_feasible_assignment(
 
 
 def _find_available_room(
-    quanta: list[int], rooms: dict, room_usage: dict, course_type: str
+    quanta: list[int],
+    rooms: dict[str, Room],
+    room_usage: ResourceUsage,
+    course_type: str,
 ) -> str | None:
     """Find first room available during quanta and matching course type."""
     for room_id, room in rooms.items():
@@ -370,7 +379,10 @@ def _find_available_room(
 
 
 def _find_available_instructor(
-    quanta: list[int], course, instructors: dict, instructor_usage: dict
+    quanta: list[int],
+    course: Course,
+    instructors: dict[str, Instructor],
+    instructor_usage: ResourceUsage,
 ) -> str | None:
     """Find first qualified instructor available during quanta."""
     qualified_ids = getattr(course, "qualified_instructor_ids", [])
@@ -396,7 +408,7 @@ def _find_available_instructor(
 
 
 def _random_construction(
-    context: SchedulingContext, pair_tuples: list[tuple]
+    context: SchedulingContext, pair_tuples: list[CourseGroupPair]
 ) -> list[SessionGene]:
     """
     Generate completely random individual for diversity.
@@ -462,7 +474,9 @@ def _random_gene(
     )
 
 
-def _greedy_construction_wrapper(args):
+def _greedy_construction_wrapper(
+    args: tuple[SchedulingContext, list[CourseGroupPair]],
+) -> Individual | None:
     """Wrapper for parallel greedy construction."""
     context, pair_tuples = args
     individual = _greedy_construction(context, pair_tuples)
@@ -471,7 +485,9 @@ def _greedy_construction_wrapper(args):
     return None
 
 
-def _random_construction_wrapper(args):
+def _random_construction_wrapper(
+    args: tuple[SchedulingContext, list[CourseGroupPair]],
+) -> Individual | None:
     """Wrapper for parallel random construction."""
     context, pair_tuples = args
     individual = _random_construction(context, pair_tuples)

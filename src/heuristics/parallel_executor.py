@@ -4,16 +4,29 @@ Enables simultaneous application of heuristics to multiple individuals,
 achieving 10-16x speedup by fully utilizing all CPU cores.
 """
 
+from __future__ import annotations
+
 import logging
 import random
 from collections.abc import Callable
 from concurrent.futures import as_completed
-from typing import Any
+from typing import Any, Protocol, TypeGuard, cast
 
+from src.core.types import Individual
 from src.utils.parallel_worker import get_worker_context, init_worker
 from src.utils.system_info import get_cpu_count
 
 logger = logging.getLogger(__name__)
+
+HeuristicFunc = Callable[[Individual, Any], Any]
+
+
+class _FitnessCarrier(Protocol):
+    fitness: Any
+
+
+def _has_fitness(obj: object) -> TypeGuard[_FitnessCarrier]:
+    return hasattr(obj, "fitness")
 
 
 class ParallelHeuristicExecutor:
@@ -43,11 +56,11 @@ class ParallelHeuristicExecutor:
 
     def apply_parallel(
         self,
-        heuristic_func: Callable,
-        individuals: list,
+        heuristic_func: HeuristicFunc,
+        individuals: list[Individual],
         context: Any,
         chunk_size: int | None = None,
-    ) -> list:
+    ) -> list[Individual]:
         """Apply heuristic to population in parallel.
 
         Args:
@@ -147,10 +160,17 @@ class ParallelHeuristicExecutor:
         except Exception as e:
             logger.error(f"Parallel execution failed: {e}, falling back to sequential")
             # Fallback to sequential
-            return [heuristic_func(ind, context) for ind in individuals]
+            return [
+                self._execute_heuristic(heuristic_func, ind, context)
+                for ind in individuals
+            ]
 
     @staticmethod
-    def _apply_to_chunk(heuristic_func: Callable, chunk: list, context: Any) -> list:
+    def _apply_to_chunk(
+        heuristic_func: HeuristicFunc,
+        chunk: list[Individual],
+        context: Any | None,
+    ) -> list[Individual]:
         """Apply heuristic to a chunk of individuals.
 
         This runs in a separate process/thread.
@@ -180,8 +200,11 @@ class ParallelHeuristicExecutor:
         return results
 
     def apply_batch(
-        self, heuristic_funcs: list[Callable], individual: Any, context: Any
-    ) -> Any:
+        self,
+        heuristic_funcs: list[HeuristicFunc],
+        individual: Individual,
+        context: Any,
+    ) -> Individual:
         """Apply multiple heuristics to single individual in parallel.
 
         Useful when you want to try several heuristics and pick the best result.
@@ -213,35 +236,40 @@ class ParallelHeuristicExecutor:
                 ]
 
                 # Collect results
-                results = []
+                results: list[Individual] = []
                 for future in as_completed(futures):
                     try:
-                        results.append(future.result())
+                        results.append(
+                            self._prepare_result(future.result(), individual)
+                        )
                     except Exception as e:
                         logger.debug(f"Heuristic failed: {e}")
                         results.append(individual)
 
-                # Return best result (assumes individuals have fitness attribute)
-                if hasattr(individual, "fitness"):
-                    best = min(
-                        results,
-                        key=lambda ind: (
-                            ind.fitness.values
-                            if hasattr(ind.fitness, "values")
-                            else (float("inf"),)
-                        ),
-                    )
-                    return best
-                else:
-                    return results[0] if results else individual
+                if _has_fitness(individual):
+                    fitness_results = [res for res in results if _has_fitness(res)]
+                    if fitness_results:
+                        best = min(
+                            fitness_results,
+                            key=lambda ind: (
+                                ind.fitness.values
+                                if hasattr(ind.fitness, "values")
+                                else (float("inf"),)
+                            ),
+                        )
+                        return cast(Individual, best)
+                return results[0] if results else individual
 
         except Exception as e:
             logger.error(f"Batch heuristic application failed: {e}")
             return individual
 
     def _execute_heuristic(
-        self, heuristic_func: Callable, individual: Any, context: Any
-    ):
+        self,
+        heuristic_func: HeuristicFunc,
+        individual: Individual,
+        context: Any,
+    ) -> Individual:
         """Execute heuristic safely and return modified individual."""
         try:
             result = heuristic_func(individual, context)
@@ -251,7 +279,7 @@ class ParallelHeuristicExecutor:
             return individual
 
     @staticmethod
-    def _prepare_result(result: Any, original: Any):
+    def _prepare_result(result: Any, original: Individual) -> Individual:
         """Normalize heuristic outputs to return mutated individuals."""
         if isinstance(result, list):
             return result
@@ -263,7 +291,7 @@ class ParallelHeuristicExecutor:
 
 
 # Singleton instance
-_parallel_executor = None
+_parallel_executor: ParallelHeuristicExecutor | None = None
 
 
 def get_parallel_executor(max_workers: int | None = None) -> ParallelHeuristicExecutor:

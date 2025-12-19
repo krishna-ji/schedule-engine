@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any, cast
 
 from src.core.types import SchedulingContext
+from src.entities.course import Course
 from src.ga.sessiongene import SessionGene
 
 
-def get_course_for_gene(context: SchedulingContext, gene: SessionGene):
+def get_course_for_gene(context: SchedulingContext, gene: SessionGene) -> Course:
     """Return the Course entity associated with a gene, regardless of key format."""
 
     course_id = gene.course_id
     course_type = getattr(gene, "course_type", None)
-
-    courses = context.courses
+    courses = cast(dict[Any, Course], context.courses)
 
     # Try tuple key first (course_id, course_type)
     if course_type is not None:
@@ -23,8 +24,9 @@ def get_course_for_gene(context: SchedulingContext, gene: SessionGene):
             return courses[key]
 
     # Direct string key (legacy contexts)
-    if course_id in courses:  # type: ignore[comparison-overlap]
-        return courses[course_id]  # type: ignore[index]
+    course = courses.get(course_id)
+    if course is not None:
+        return course
 
     # Fall back to first matching course_id regardless of type
     for key, course in courses.items():
@@ -47,7 +49,7 @@ def get_available_quanta(context: SchedulingContext) -> list[int]:
     return sorted(quanta)
 
 
-def get_room_feature(room) -> str:
+def get_room_feature(room: Any) -> str:
     """Normalize room type/feature attribute used by heuristics."""
 
     if hasattr(room, "room_type"):
@@ -57,7 +59,7 @@ def get_room_feature(room) -> str:
     return "lecture"
 
 
-def get_course_room_requirement(course) -> str:
+def get_course_room_requirement(course: Any) -> str:
     """Return the normalized room requirement string for a course."""
 
     if hasattr(course, "required_room_features"):
@@ -66,7 +68,8 @@ def get_course_room_requirement(course) -> str:
 
 
 def estimate_session_student_count(
-    gene: SessionGene, context: SchedulingContext
+    gene: SessionGene,
+    context: SchedulingContext,
 ) -> int:
     """Estimate student count for a gene based on its assigned groups."""
 
@@ -79,7 +82,7 @@ def estimate_session_student_count(
 
 
 def is_instructor_available(
-    instructor,
+    instructor: Any | None,
     time_range: Iterable[int],
 ) -> bool:
     """Check instructor availability across the specified time quanta."""

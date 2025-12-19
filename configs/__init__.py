@@ -15,6 +15,7 @@ from . import (
     experiment_c_roundrobin,
     experiment_d_adaptive,
     experiment_e_rl_guided,
+    experiment_f_heuristic_testing,
 )
 
 # Dataclass config instances (for backward compatibility)
@@ -23,6 +24,7 @@ from .experiment_b_memetic import experiment_b_test as experiment_b
 from .experiment_c_roundrobin import experiment_c_test as experiment_c
 from .experiment_d_adaptive import experiment_d_test as experiment_d
 from .experiment_e_rl_guided import experiment_e_test as experiment_e
+from .experiment_f_heuristic_testing import experiment_f_test as experiment_f
 
 __all__ = [
     # Modules
@@ -31,10 +33,12 @@ __all__ = [
     "experiment_c_roundrobin",
     "experiment_d_adaptive",
     "experiment_e_rl_guided",
+    "experiment_f_heuristic_testing",
     # Instances (default to test configs)
     "experiment_a",
     "experiment_b",
     "experiment_c",
     "experiment_d",
     "experiment_e",
+    "experiment_f",
 ]

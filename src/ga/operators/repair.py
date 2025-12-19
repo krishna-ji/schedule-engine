@@ -7,16 +7,25 @@ Applied after mutation/crossover to project invalid solutions onto feasible regi
 KEY UPDATE: Now uses SessionGene's contiguous representation (start_quanta + num_quanta)
 instead of the old array-based quanta representation.
 
-Repair Strategies:
-1. Instructor Availability: Shift sessions to respect instructor schedules
-2. Group Overlaps: Resolve time conflicts for same group
-3. Room Conflicts: Fix double-bookings by shifting times or changing rooms
-4. Instructor Conflicts: Resolve instructor double-bookings
-5. Instructor Qualification: Reassign unqualified instructors
-6. Room Type Mismatch: Match course requirements (lab vs classroom)
-7. Session Clustering: Group isolated sessions into blocks (soft penalty reducer)
+Constraint-to-Repair Mapping (6 of 8 hard constraints have repairs):
+┌──────┬─────────────────────────────────┬────────────────────────────────────┬──────────┐
+│ Code │ Constraint                      │ Repair Operator                    │ Priority │
+├──────┼─────────────────────────────────┼────────────────────────────────────┼──────────┤
+│ HC1  │ student_group_exclusivity       │ repair_group_overlaps              │    2     │
+│ HC2  │ instructor_exclusivity          │ repair_instructor_conflicts        │    5     │
+│ HC3  │ instructor_qualifications       │ repair_instructor_qualifications   │    6     │
+│ HC4  │ room_suitability                │ repair_room_type_mismatches        │    7     │
+│ HC5  │ instructor_time_availability    │ repair_instructor_availability     │    1     │
+│ HC6  │ room_time_availability          │  NO REPAIR (always available)    │    -     │
+│ HC7  │ course_completeness             │  NO REPAIR (structural integrity)│    -     │
+│ HC8  │ room_exclusivity                │ repair_room_conflicts +            │   4,3    │
+│      │                                 │ repair_room_overlap_reassign       │          │
+└──────┴─────────────────────────────────┴────────────────────────────────────┴──────────┘
 
-NOTE: repair_incomplete_or_extra_sessions REMOVED - not needed because:
+Soft Constraint Repairs (1 of 4):
+  SC4 (session_continuity): repair_session_clustering_selective (priority 8)
+
+NOTE: HC7 repair removed - not needed because:
 - Population initialization creates correct gene counts per (course, group)
 - Crossover only swaps attributes, never adds/removes genes
 - Mutation only changes attributes, never adds/removes genes
@@ -29,7 +38,7 @@ Availability Model:
 
 Architecture:
 - Decorator-based registry: Auto-register repair operators (like constraints)
-- Priority-ordered: Lower priority number executes first
+- Priority-ordered: Lower priority number executes first (1-7 for hard, 8 for soft)
 - In-place modification: Invalidate fitness after repair
 - Unified interface: repair_individual_unified() with selective optimization
 
@@ -43,11 +52,16 @@ Usage:
     # Recommended: Use selective mode
     stats = repair_individual_unified(individual, context, selective=True)
     print(f"Fixed {stats['total_fixes']} violations")
+
+    # Mode B (Memetic): Applied to elite 20% with max_iterations=100
+    # Mode C-E: Applied with adaptive triggers (stagnation, periodic)
 """
 
 from collections import defaultdict
+from collections.abc import Iterable
 
 from src.core.types import SchedulingContext
+from src.entities.instructor import Instructor
 from src.ga.operators.repair_wrappers import repair_operator
 from src.ga.sessiongene import SessionGene
 
@@ -112,7 +126,7 @@ def _find_instructor_available_slot(
     individual: list[SessionGene],
     current_gene: SessionGene,
     duration: int,
-    instructor,
+    instructor: Instructor,
     available_quanta: list[int],
 ) -> int | None:
     """
@@ -221,14 +235,56 @@ def repair_group_overlaps(
 
 
 # ================
-# 3. ROOM CONFLICT REPAIR (Priority 3)
+# 3. ROOM OVERLAP REASSIGNMENT (Priority 3)
+# ================
+
+
+@repair_operator(
+    name="repair_room_overlap_reassign",
+    description="Resolve room overlaps by moving sessions into idle rooms before shifting times",
+    priority=3,
+    modifies_length=False,
+)
+def repair_room_overlap_reassign(
+    individual: list[SessionGene], context: SchedulingContext
+) -> int:
+    """Prefer room swaps over time shifts when plenty of rooms exist."""
+
+    fixes = 0
+    occupied = _build_occupied_quanta_map(individual)
+
+    for gene in individual:
+        if not _has_room_conflict(gene, occupied):
+            continue
+
+        course_key = (gene.course_id, gene.course_type)
+        course = context.courses.get(course_key)
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+            if course
+            else "lecture"
+        )
+
+        candidate_room = _find_compatible_room(individual, gene, context, required_type)
+        if candidate_room is None or candidate_room == gene.room_id:
+            continue
+
+        gene.room_id = candidate_room
+        fixes += 1
+        occupied = _build_occupied_quanta_map(individual)
+
+    return fixes
+
+
+# ================
+# 4. ROOM CONFLICT REPAIR (Priority 4)
 # ================
 
 
 @repair_operator(
     name="repair_room_conflicts",
-    description="Fix room double-bookings by shifting sessions or reassigning rooms",
-    priority=3,
+    description="Fallback room conflict repair that shifts sessions when no alternate room exists",
+    priority=4,
     modifies_length=False,
 )
 def repair_room_conflicts(
@@ -239,15 +295,10 @@ def repair_room_conflicts(
     occupied = _build_occupied_quanta_map(individual)
 
     for gene in individual:
-        has_conflict = any(
-            len(occupied["rooms"].get(q, set())) > 1
-            for q in range(gene.start_quanta, gene.end_quanta)
-        )
-
-        if not has_conflict:
+        if not _has_room_conflict(gene, occupied):
             continue
 
-        # Try shifting first to keep same room assignment
+        # Try shifting first to keep same room assignment (room swap ran earlier)
         new_start = _find_conflict_free_slot(individual, gene, context.available_quanta)
 
         if new_start is not None:
@@ -258,8 +309,12 @@ def repair_room_conflicts(
 
         course_key = (gene.course_id, gene.course_type)
         course = context.courses.get(course_key)
-        needs_lab = course.course_type == "practical" if course else False
-        new_room = _find_compatible_room(individual, gene, context, needs_lab)
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+            if course
+            else "lecture"
+        )
+        new_room = _find_compatible_room(individual, gene, context, required_type)
         if new_room is not None:
             gene.room_id = new_room
             fixes += 1
@@ -269,20 +324,20 @@ def repair_room_conflicts(
 
 
 # ================
-# 4. INSTRUCTOR CONFLICT REPAIR (Priority 4)
+# 5. INSTRUCTOR CONFLICT REPAIR (Priority 5)
 # ================
 
 
 @repair_operator(
     name="repair_instructor_conflicts",
-    description="Resolve instructor double-bookings by shifting sessions",
-    priority=4,
+    description="Resolve instructor double-bookings by shifting sessions or swapping instructors",
+    priority=5,
     modifies_length=False,
 )
 def repair_instructor_conflicts(
     individual: list[SessionGene], context: SchedulingContext
 ) -> int:
-    """Resolve instructor conflicts by finding conflict-free slots."""
+    """Resolve instructor conflicts by time shift or instructor swap."""
     fixes = 0
     occupied = _build_occupied_quanta_map(individual)
 
@@ -295,10 +350,23 @@ def repair_instructor_conflicts(
         if not has_conflict:
             continue
 
+        # Phase 1: Try time shift (preserve instructor)
         new_start = _find_conflict_free_slot(individual, gene, context.available_quanta)
 
         if new_start is not None:
             gene.start_quanta = new_start
+            fixes += 1
+            occupied = _build_occupied_quanta_map(individual)
+            continue
+
+        # Phase 2: Try instructor swap (preserve time)
+        course_key = (gene.course_id, gene.course_type)
+        new_instructor = _find_available_instructor(
+            individual, gene, context, course_key
+        )
+
+        if new_instructor is not None:
+            gene.instructor_id = new_instructor
             fixes += 1
             occupied = _build_occupied_quanta_map(individual)
 
@@ -306,14 +374,14 @@ def repair_instructor_conflicts(
 
 
 # ================
-# 5. INSTRUCTOR QUALIFICATION REPAIR (Priority 5)
+# 6. INSTRUCTOR QUALIFICATION REPAIR (Priority 6)
 # ================
 
 
 @repair_operator(
     name="repair_instructor_qualifications",
     description="Reassign sessions to qualified instructors",
-    priority=5,
+    priority=6,
     modifies_length=False,
 )
 def repair_instructor_qualifications(
@@ -342,14 +410,14 @@ def repair_instructor_qualifications(
 
 
 # ================
-# 6. ROOM TYPE MISMATCH REPAIR (Priority 6)
+# 7. ROOM TYPE MISMATCH REPAIR (Priority 7)
 # ================
 
 
 @repair_operator(
     name="repair_room_type_mismatches",
     description="Match course requirements with compatible room types",
-    priority=6,
+    priority=7,
     modifies_length=False,
 )
 def repair_room_type_mismatches(
@@ -366,16 +434,201 @@ def repair_room_type_mismatches(
         if not course or not room:
             continue
 
-        needs_lab = course.course_type == "practical"
-        is_lab = getattr(room, "room_features", None) == "lab"
+        # Get required and actual room types
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+        )
+        room_type = getattr(room, "room_features", "lecture").lower().strip()
 
-        if needs_lab == is_lab:
-            continue
+        # Check if already compatible using flexible matching
+        from src.utils.room_compatibility import is_room_type_compatible
 
-        replacement_room = _find_compatible_room(individual, gene, context, needs_lab)
+        if is_room_type_compatible(required_type, room_type):
+            continue  # Already matches
+
+        # Find compatible room (pass required_type directly)
+        replacement_room = _find_compatible_room(
+            individual, gene, context, required_type
+        )
         if replacement_room is not None:
             gene.room_id = replacement_room
             fixes += 1
+
+    return fixes
+
+
+@repair_operator(
+    name="repair_paired_cohort_practicals",
+    description=(
+        "Improve alignment of practical sessions for paired cohorts by shifting "
+        "sessions to parallel time slots when feasible."
+    ),
+    priority=8,
+    modifies_length=False,
+)
+def repair_paired_cohort_practicals(
+    individual: list[SessionGene], context: SchedulingContext
+) -> int:
+    """Align practical sessions for paired cohorts where possible.
+
+    This operator targets practical courses shared by configured cohort
+    pairs (e.g., bei1a/bei1b). For each such pair and course, it attempts
+    to move one cohort's practical sessions so that both cohorts attend the
+    course in parallel time windows, while preserving all hard constraints
+    (group, room, and instructor exclusivity plus availability).
+    """
+
+    cohort_pairs: Iterable[tuple[str, str]] = context.cohort_pairs or []
+    if not cohort_pairs:
+        return 0
+
+    fixes = 0
+
+    # Index practical sessions per (course_id, group_id)
+    practical_map: dict[tuple[str, str], list[SessionGene]] = defaultdict(list)
+
+    for gene in individual:
+        if gene.course_type.lower() != "practical":
+            continue
+
+        for group_id in gene.group_ids:
+            key = (gene.course_id, group_id)
+            practical_map[key].append(gene)
+
+    if not practical_map:
+        return 0
+
+    # Helper to collect occupied quanta for one cohort and course
+    def _collect_quanta(
+        course_id: str,
+        group_id: str,
+    ) -> set[int]:
+        key = (course_id, group_id)
+        result: set[int] = set()
+        for g in practical_map.get(key, []):
+            result.update(range(g.start_quanta, g.end_quanta))
+        return result
+
+    # Local conflict checks against hard constraints
+    def _is_move_feasible(
+        target_gene: SessionGene,
+        group_id: str,
+        new_start: int,
+        duration: int,
+    ) -> bool:
+        new_end = new_start + duration
+        instructor = context.instructors.get(target_gene.instructor_id)
+
+        for gene in individual:
+            if gene is target_gene:
+                continue
+
+            # Precompute intersection interval once per gene for performance
+            if gene.end_quanta <= new_start or gene.start_quanta >= new_end:
+                continue
+
+            for _q in range(
+                max(new_start, gene.start_quanta), min(new_end, gene.end_quanta)
+            ):
+                # Group exclusivity
+                if group_id in gene.group_ids:
+                    return False
+
+                # Room exclusivity
+                if (
+                    target_gene.room_id is not None
+                    and gene.room_id == target_gene.room_id
+                ):
+                    return False
+
+                # Instructor exclusivity
+                if gene.instructor_id == target_gene.instructor_id:
+                    return False
+
+        # Instructor time availability
+        if instructor is not None and not instructor.is_full_time:
+            for q in range(new_start, new_end):
+                if q not in instructor.available_quanta:
+                    return False
+
+        return True
+
+    # Main loop over cohort pairs and shared practical courses
+    for left_id, right_id in cohort_pairs:
+        # Discover shared practical courses between the pair
+        course_ids: set[str] = set()
+        for course_id, group_id in practical_map:
+            if group_id in (left_id, right_id):
+                course_ids.add(course_id)
+
+        for course_id in course_ids:
+            left_key = (course_id, left_id)
+            right_key = (course_id, right_id)
+
+            if left_key not in practical_map or right_key not in practical_map:
+                continue
+
+            left_quanta = _collect_quanta(course_id, left_id)
+            right_quanta = _collect_quanta(course_id, right_id)
+
+            if not left_quanta and not right_quanta:
+                continue
+
+            current_diff = left_quanta.symmetric_difference(right_quanta)
+            if not current_diff:
+                continue
+
+            # Use left cohort's pattern as anchor and move right cohort's sessions
+            anchor_quanta = left_quanta
+
+            for gene in practical_map[right_key]:
+                duration = gene.num_quanta
+
+                # Generate candidate starts sorted by overlap with anchor pattern
+                candidates: list[tuple[int, int]] = []
+                for start_q in context.available_quanta:
+                    end_q = start_q + duration
+                    if end_q > max(context.available_quanta) + 1:
+                        continue
+
+                    overlap = 0
+                    for q in range(start_q, end_q):
+                        if q in anchor_quanta:
+                            overlap += 1
+
+                    if overlap > 0:
+                        candidates.append((start_q, overlap))
+
+                if not candidates:
+                    continue
+
+                candidates.sort(key=lambda item: item[1], reverse=True)
+
+                moved = False
+                for candidate_start, _overlap in candidates:
+                    if not _is_move_feasible(gene, right_id, candidate_start, duration):
+                        continue
+
+                    # Compute new right-quanta pattern and see if misalignment improves
+                    new_right_quanta = set(right_quanta)
+                    for q in range(gene.start_quanta, gene.end_quanta):
+                        if q in new_right_quanta:
+                            new_right_quanta.remove(q)
+                    for q in range(candidate_start, candidate_start + duration):
+                        new_right_quanta.add(q)
+
+                    new_diff = left_quanta.symmetric_difference(new_right_quanta)
+                    if len(new_diff) < len(current_diff):
+                        gene.start_quanta = candidate_start
+                        right_quanta = new_right_quanta
+                        current_diff = new_diff
+                        fixes += 1
+                        moved = True
+                        break
+
+                if moved:
+                    # Limit work per pair-course to keep runtime under control
+                    break
 
     return fixes
 
@@ -467,17 +720,44 @@ def _find_compatible_room(
     individual: list[SessionGene],
     current_gene: SessionGene,
     context: SchedulingContext,
-    needs_lab: bool,
+    required_type: str,
 ) -> str | None:
-    """Find a room matching lab/theory requirement without conflicts."""
+    """Find a room matching required type without conflicts.
+
+    Args:
+        individual: Current schedule
+        current_gene: Gene to find room for
+        context: Scheduling context
+        required_type: Required room type ("lecture", "practical", etc.)
+
+    Returns:
+        Room ID if found, None otherwise
+    """
     occupied = _build_occupied_quanta_map(individual, current_gene)
     duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
 
+    from src.utils.room_compatibility import is_room_type_compatible
+
+    # Calculate total enrollment for capacity check
+    total_enrollment = sum(
+        context.groups[gid].student_count
+        for gid in current_gene.group_ids
+        if gid in context.groups
+    )
+
+    # Collect compatible candidates and sort by preference
+    candidates = []
     for room in context.rooms.values():
-        is_lab = getattr(room, "room_features", None) == "lab"
-        if needs_lab != is_lab:
+        # Check room type compatibility using centralized logic
+        room_type = getattr(room, "room_features", "lecture").lower().strip()
+        if not is_room_type_compatible(required_type, room_type):
             continue
 
+        # Check capacity (hard requirement)
+        if room.capacity < total_enrollment:
+            continue
+
+        # Check time conflicts
         conflict = False
         for q in duration_range:
             if room.room_id in occupied["rooms"].get(q, set()):
@@ -487,7 +767,14 @@ def _find_compatible_room(
         if conflict:
             continue
 
-        return room.room_id
+        # Calculate fit quality (prefer rooms close to enrollment size)
+        capacity_ratio = total_enrollment / room.capacity if room.capacity > 0 else 0
+        candidates.append((room.room_id, capacity_ratio))
+
+    # Return best fit (highest capacity utilization)
+    if candidates:
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        return candidates[0][0]
 
     return None
 
@@ -531,6 +818,17 @@ def _build_occupied_quanta_map(
     return occupied
 
 
+def _has_room_conflict(
+    gene: SessionGene, occupied_map: dict[str, dict[int, set[str]]]
+) -> bool:
+    """Check whether a gene shares any room quanta with another session."""
+
+    for q in range(gene.start_quanta, gene.end_quanta):
+        if len(occupied_map["rooms"].get(q, set())) > 1:
+            return True
+    return False
+
+
 # ================
 # ORCHESTRATION
 # ================
@@ -554,12 +852,17 @@ def repair_individual_unified(
     Returns:
         Dict with repair statistics
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     if selective:
         try:
             from src.config import get_config
             from src.ga.operators.repair_selective import repair_individual_selective
 
             detection_strategy = get_config().repair.detection_strategy
+            logger.debug(f" Applying selective repair (strategy={detection_strategy})")
             selective_stats = repair_individual_selective(
                 individual,
                 context,
@@ -582,7 +885,10 @@ def repair_individual_unified(
     enabled_repairs = get_enabled_repair_operators()
 
     if not enabled_repairs:
+        logger.debug(" Repair system: No operators enabled")
         return stats
+
+    logger.debug(f" Applying full repair ({len(enabled_repairs)} operators enabled)")
 
     # Apply repairs iteratively
     for _iteration in range(max_iterations):

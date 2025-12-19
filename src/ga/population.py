@@ -3,13 +3,23 @@ from __future__ import annotations
 import random
 from concurrent.futures import ProcessPoolExecutor
 
-from src.core.types import SchedulingContext
+from src.core.types import Individual, SchedulingContext
+from src.entities.course import Course
+from src.entities.group import Group
+from src.entities.instructor import Instructor
+from src.entities.room import Room
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.individual import create_individual
 from src.ga.sessiongene import SessionGene
 from src.utils.console_service import get_console
+from src.utils.parallel_worker import get_worker_context, init_worker
 from src.utils.system_info import get_cpu_count
+
+type CourseKey = tuple[str, str]
+type DetailedPair = tuple[CourseKey, list[str], str, int]
+type CourseGroupPair = tuple[CourseKey, list[str]]
+type ScheduleMap = dict[str, set[int]]
 
 
 def get_subsession_durations(quanta_per_week: int, course_type: str) -> list[int]:
@@ -46,8 +56,6 @@ def get_subsession_durations(quanta_per_week: int, course_type: str) -> list[int
             return blocks
 
 
-from src.utils.parallel_worker import get_worker_context, init_worker
-
 console = get_console()
 
 
@@ -55,7 +63,7 @@ def generate_pure_random_population(
     n: int,
     context: SchedulingContext,
     parallel: bool = True,
-) -> list:
+) -> list[Individual]:
     """
     Generate population with PURE RANDOM initialization (no heuristics).
 
@@ -105,7 +113,9 @@ def generate_pure_random_population(
     return population
 
 
-def _create_pure_random_individual_wrapper(args):
+def _create_pure_random_individual_wrapper(
+    args: tuple[int, list[DetailedPair], bool],
+) -> Individual | None:
     """Wrapper for parallel pure random individual creation."""
     individual_idx, course_group_pairs, silent = args
 
@@ -137,7 +147,13 @@ def _create_pure_random_individual_wrapper(args):
     return None
 
 
-def _create_pure_random_gene(course_id, group_ids, num_quanta, course, context):
+def _create_pure_random_gene(
+    course_id: CourseKey,
+    group_ids: list[str],
+    num_quanta: int,
+    course: Course,
+    context: SchedulingContext,
+) -> SessionGene | None:
     """Create gene with completely random assignment (no conflict avoidance)."""
     from src.ga.sessiongene import SessionGene
 
@@ -178,7 +194,9 @@ def _create_pure_random_gene(course_id, group_ids, num_quanta, course, context):
     )
 
 
-def _create_single_individual_wrapper(args):
+def _create_single_individual_wrapper(
+    args: tuple[int, list[CourseGroupPair], bool],
+) -> Individual | None:
     """
     Wrapper function for parallel individual creation.
 
@@ -201,9 +219,9 @@ def _create_single_individual_wrapper(args):
         return None
 
     genes = []
-    used_quanta = set()
-    instructor_schedule = {}
-    group_schedule = {}
+    used_quanta: set[int] = set()
+    instructor_schedule: ScheduleMap = {}
+    group_schedule: ScheduleMap = {}
 
     # Create genes for this individual
     for course_id, group_ids in course_group_pairs:
@@ -237,7 +255,7 @@ def _create_single_individual_wrapper(args):
         return create_individual(genes)
     else:
         if not silent:
-            print(f"Warning: Individual {individual_idx+1} has no genes!")
+            print(f"Warning: Individual {individual_idx + 1} has no genes!")
         return None
 
 
@@ -245,7 +263,7 @@ def generate_course_group_aware_population(
     n: int,
     context: SchedulingContext,
     parallel: bool = True,  # NEW: Enable/disable parallelization
-) -> list:
+) -> list[Individual]:
     """
     Generate population using simple course-group enrollment structure.
 
@@ -357,7 +375,7 @@ def generate_course_group_aware_population(
                 population.append(create_individual(genes))
             else:
                 if not silent:
-                    print(f"Warning: Individual {individual_idx+1} has no genes!")
+                    print(f"Warning: Individual {individual_idx + 1} has no genes!")
 
     else:
         # PARALLEL: Generate individuals concurrently
@@ -396,7 +414,7 @@ def generate_course_group_aware_population(
     if not silent:
         if population:
             print(
-                f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population)/len(population):.1f} genes each"
+                f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population) / len(population):.1f} genes each"
             )
         else:
             print("Warning: Failed to generate any individuals!")
@@ -406,7 +424,7 @@ def generate_course_group_aware_population(
 
 def extract_course_group_relationships(
     context: SchedulingContext,
-) -> list[tuple[str, str]]:
+) -> list[tuple[CourseKey, str]]:
     """
     Extract valid course-group enrollment pairs from the context.
 
@@ -440,7 +458,7 @@ def extract_course_group_relationships(
 
 
 def create_course_component_sessions(
-    course_id: str, group_id: str, course, context: SchedulingContext
+    course_id: str, group_id: str, course: Course, context: SchedulingContext
 ) -> list[SessionGene]:
     """
     Create session genes for a course-group combination.
@@ -488,11 +506,11 @@ def create_course_component_sessions(
 def create_course_component_sessions_with_conflict_avoidance(
     course_id: str,
     group_id: str,
-    course,
+    course: Course,
     context: SchedulingContext,
-    used_quanta: set,
-    instructor_schedule: dict,
-    group_schedule: dict,
+    used_quanta: set[int],
+    instructor_schedule: ScheduleMap,
+    group_schedule: ScheduleMap,
 ) -> list[SessionGene]:
     """
     Create session genes while avoiding time conflicts.
@@ -545,15 +563,15 @@ def create_course_component_sessions_with_conflict_avoidance(
 
 
 def create_session_gene_with_conflict_avoidance(
-    course_id: str,
+    course_id: str | CourseKey,
     group_ids: list[str],
     session_type: str,
     num_quanta: int,
-    course,
+    course: Course,
     context: SchedulingContext,
-    used_quanta: set,
-    instructor_schedule: dict,
-    group_schedule: dict,
+    used_quanta: set[int],
+    instructor_schedule: ScheduleMap,
+    group_schedule: ScheduleMap,
 ) -> SessionGene:
     """
     Create ONE session gene for a (course, groups) combination.
@@ -735,9 +753,9 @@ def create_component_session_with_conflict_avoidance(
     component_type: str,
     hours: int,
     context: SchedulingContext,
-    used_quanta: set,
-    instructor_schedule: dict,
-    group_schedule: dict,
+    used_quanta: set[int],
+    instructor_schedule: ScheduleMap,
+    group_schedule: ScheduleMap,
     require_special_room: bool = False,
 ) -> SessionGene:
     """
@@ -847,8 +865,8 @@ def create_component_session_with_conflict_avoidance(
 
 
 def assign_conflict_free_quanta(
-    quanta_needed: int, available_quanta: list, used_quanta: set
-) -> list:
+    quanta_needed: int, available_quanta: list[int], used_quanta: set[int]
+) -> list[int]:
     """
     Assign time quanta while avoiding conflicts with already used quanta.
 
@@ -900,7 +918,9 @@ def assign_conflict_free_quanta(
     return None  # type: ignore[return-value]
 
 
-def _find_consecutive_block(free_quanta: list, block_size: int) -> list | None:  # type: ignore[type-arg]
+def _find_consecutive_block(
+    free_quanta: list[int], block_size: int
+) -> list[int] | None:
     """
     Find a single consecutive block of specified size.
     Returns None if not found.
@@ -1027,7 +1047,9 @@ def create_component_session(
     return session_gene
 
 
-def find_qualified_instructors(course_id, context: SchedulingContext) -> list:
+def find_qualified_instructors(
+    course_id: str | CourseKey, context: SchedulingContext
+) -> list[Instructor]:
     """
     Find instructors qualified to teach this course.
 
@@ -1047,11 +1069,11 @@ def find_qualified_instructors(course_id, context: SchedulingContext) -> list:
 
 
 def find_suitable_rooms(
-    course,
+    course: Course,
     component_type: str,
     context: SchedulingContext,
     require_special_room: bool = False,
-) -> list:
+) -> list[Room]:
     """
     Find rooms suitable for this course component with intelligent prioritization.
 
@@ -1164,7 +1186,9 @@ def find_suitable_rooms(
     return result
 
 
-def assign_intelligent_quanta(quanta_needed: int, available_quanta: list) -> list:
+def assign_intelligent_quanta(
+    quanta_needed: int, available_quanta: list[int]
+) -> list[int]:
     """
     Assign time quanta with clustering intelligence to minimize fragmentation.
     CLUSTER-AWARE: Uses same logic as assign_conflict_free_quanta.
@@ -1188,11 +1212,11 @@ def assign_intelligent_quanta(quanta_needed: int, available_quanta: list) -> lis
 
 
 def generate_random_gene(
-    possible_courses,
-    possible_instructors,
-    possible_groups,
-    possible_rooms,
-    available_quanta,
+    possible_courses: list[Course],
+    possible_instructors: list[Instructor],
+    possible_groups: list[Group],
+    possible_rooms: list[Room],
+    available_quanta: list[int],
 ) -> SessionGene:
     """Legacy function for backward compatibility."""
     course = random.choice(possible_courses)
@@ -1244,7 +1268,7 @@ def generate_random_gene(
 
 def generate_population(
     n: int, session_count: int | None = None, context: SchedulingContext | None = None
-) -> list:
+) -> list[Individual]:
     """
     Wrapper function for backward compatibility.
     Now uses course-group aware generation instead of random.

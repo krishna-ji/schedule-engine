@@ -14,7 +14,7 @@ _QTS = QuantumTimeSystem()
 @hard_constraint(
     name="student_group_exclusivity",
     description="Ensures each student group can only be in one session at a time",
-    default_weight=3.0,
+    default_weight=1.0,
     needs_courses=False,
 )
 def student_group_exclusivity(sessions: list[CourseSession]) -> int:
@@ -50,7 +50,7 @@ def student_group_exclusivity(sessions: list[CourseSession]) -> int:
 @hard_constraint(
     name="instructor_exclusivity",
     description="Ensures each instructor can only teach one session at a time",
-    default_weight=3.0,
+    default_weight=1.0,
     needs_courses=False,
 )
 def instructor_exclusivity(sessions: list[CourseSession]) -> int:
@@ -77,7 +77,7 @@ def instructor_exclusivity(sessions: list[CourseSession]) -> int:
 @hard_constraint(
     name="instructor_qualifications",
     description="Ensures instructors are qualified to teach their assigned courses",
-    default_weight=3.0,
+    default_weight=1.0,
     needs_courses=True,
 )
 def instructor_qualifications(
@@ -140,7 +140,7 @@ def instructor_qualifications(
 @hard_constraint(
     name="room_suitability",
     description="Ensures rooms are suitable for the type of course being taught",
-    default_weight=2.5,
+    default_weight=1.0,
     needs_courses=False,
 )
 def room_suitability(sessions: list[CourseSession]) -> int:
@@ -174,51 +174,18 @@ def room_suitability(sessions: list[CourseSession]) -> int:
         )
 
         # Check if room type matches (with flexibility)
-        if not _room_type_matches(required_str, room_str):
+        from src.utils.room_compatibility import is_room_type_compatible
+
+        if not is_room_type_compatible(required_str, room_str):
             violations += 1
 
     return violations
 
 
-def _room_type_matches(required: str, room_type: str) -> bool:
-    """
-    Check if room type satisfies requirement with flexible compatibility.
-
-    Args:
-        required: Required room type (e.g., "lecture", "practical")
-        room_type: Actual room type (e.g., "lecture", "practical")
-
-    Returns:
-        True if compatible, False otherwise
-    """
-    # Exact match
-    if required == room_type:
-        return True
-
-    # Lecture/theory courses: Accept lecture, classroom, auditorium
-    if required in ["lecture", "classroom", "theory"] and room_type in [
-        "lecture",
-        "classroom",
-        "auditorium",
-        "seminar",
-        "tutorial",
-    ]:
-        return True
-
-    # Practical/lab courses: Accept practical, lab variants
-    return required in ["practical", "lab", "laboratory"] and room_type in [
-        "practical",
-        "lab",
-        "laboratory",
-        "computer_lab",
-        "science_lab",
-    ]
-
-
 @hard_constraint(
     name="instructor_time_availability",
     description="Ensures instructors are only scheduled during their available time windows",
-    default_weight=3.0,
+    default_weight=1.0,
     needs_courses=False,
 )
 def instructor_time_availability(sessions: list[CourseSession]) -> int:
@@ -257,7 +224,7 @@ def instructor_time_availability(sessions: list[CourseSession]) -> int:
 @hard_constraint(
     name="room_time_availability",
     description="Ensures rooms are only used during their available time windows",
-    default_weight=2.5,
+    default_weight=1.0,
     needs_courses=False,
 )
 def room_time_availability(sessions: list[CourseSession]) -> int:
@@ -292,7 +259,7 @@ def room_time_availability(sessions: list[CourseSession]) -> int:
 @hard_constraint(
     name="course_completeness",
     description="Ensures courses have the correct number of sessions per group",
-    default_weight=2.0,
+    default_weight=1.0,
     needs_courses=True,
 )
 def course_completeness(
@@ -354,7 +321,7 @@ def course_completeness(
 @hard_constraint(
     name="room_exclusivity",
     description="Ensures rooms are not double-booked",
-    default_weight=3.0,
+    default_weight=1.0,
     needs_courses=False,
 )
 def room_exclusivity(sessions: list[CourseSession]) -> int:

@@ -109,7 +109,7 @@ class RankBasedMultiAgent:
         # Initialize 4 rank-specific agents
         self.agents = [
             RankBasedAgent(
-                rank=i + 1, model_path=self.config.get(f"rank_{i+1}_model_path")
+                rank=i + 1, model_path=self.config.get(f"rank_{i + 1}_model_path")
             )
             for i in range(4)
         ]
@@ -188,6 +188,6 @@ class RankBasedMultiAgent:
     def get_statistics(self) -> dict[str, int]:
         """Get usage statistics for all agents."""
         return {
-            f"rank_{i+1}_activations": agent.activation_count
+            f"rank_{i + 1}_activations": agent.activation_count
             for i, agent in enumerate(self.agents)
         }

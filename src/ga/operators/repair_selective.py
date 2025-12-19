@@ -7,8 +7,14 @@ individual.
 
 Performance Impact:
 - Reduces gene scans from 100% to ~5-15% of population
-- Expected 3-4* speedup in repair operations
+- Expected 3-4× speedup in repair operations
 - Backward compatible with full-scan mode
+
+Constraint Coverage (8 selective repair variants):
+  Hard Constraints (7): HC1, HC2, HC3, HC4, HC5, HC8 (2 operators)
+  Soft Constraints (1): SC4 (session_continuity)
+
+  Missing: HC6 (room always available), HC7 (structural integrity)
 
 Architecture:
 - Each selective_repair_X function accepts violated_indices parameter
@@ -16,24 +22,36 @@ Architecture:
 - Uses original repair logic but with targeted scope
 - Falls back to full repair if violated_indices is None
 
+Detection Strategies:
+- fast: Quick overlap checks (group/instructor/room conflicts)
+- full: Comprehensive validation against all constraints
+- hybrid: Fast detection + full verification on suspected violations
+
 Usage:
     from src.ga.operators.repair_selective import repair_individual_selective
 
     stats = repair_individual_selective(individual, context, max_iterations=2)
     # Automatically detects and repairs only violated genes
+
+    # In Mode B (Memetic): Applied to elite 20% with deep search
+    # In Mode C-E: Applied post-mutation/crossover with quick fixes
 """
 
 from collections import defaultdict
+from collections.abc import Callable
 
 from src.core.types import SchedulingContext
 
 # Import original repair functions to reuse helper logic
 from src.ga.operators.repair import (
     _find_available_slot,
+    _find_compatible_room,
     _find_instructor_available_slot,
 )
 from src.ga.operators.violation_detector import detect_violated_genes
 from src.ga.sessiongene import SessionGene
+
+SelectiveRepairFunc = Callable[[list[SessionGene], set[int], SchedulingContext], int]
 
 # ================
 # SELECTIVE REPAIR WRAPPER - Main Entry Point
@@ -158,7 +176,7 @@ def repair_individual_selective(
     return stats
 
 
-def _get_selective_repair_function(repair_name: str):
+def _get_selective_repair_function(repair_name: str) -> SelectiveRepairFunc | None:
     """
     Map repair function name to its selective version.
 
@@ -168,6 +186,7 @@ def _get_selective_repair_function(repair_name: str):
     selective_repairs = {
         "repair_instructor_availability": repair_instructor_availability_selective,
         "repair_group_overlaps": repair_group_overlaps_selective,
+        "repair_room_overlap_reassign": repair_room_overlap_reassign_selective,
         "repair_room_conflicts": repair_room_conflicts_selective,
         "repair_instructor_conflicts": repair_instructor_conflicts_selective,
         "repair_instructor_qualifications": repair_instructor_qualifications_selective,
@@ -318,6 +337,39 @@ def repair_group_overlaps_selective(
                 for q in range(g.start_quanta, g.end_quanta):
                     for group_id in g.group_ids:
                         group_schedule[group_id][q].append(i)
+
+    return fixes
+
+
+def repair_room_overlap_reassign_selective(
+    individual: list[SessionGene],
+    violated_indices: set[int],
+    context: SchedulingContext,
+) -> int:
+    """Selective room overlap repair that prefers swapping rooms over shifting times."""
+
+    fixes = 0
+
+    for idx in violated_indices:
+        if idx >= len(individual):
+            continue
+
+        gene = individual[idx]
+        course_key = (gene.course_id, gene.course_type)
+        course = context.courses.get(course_key)
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+            if course
+            else "lecture"
+        )
+
+        replacement = _find_compatible_room(individual, gene, context, required_type)
+
+        if replacement is None or replacement == gene.room_id:
+            continue
+
+        gene.room_id = replacement
+        fixes += 1
 
     return fixes
 
@@ -517,19 +569,25 @@ def repair_room_type_mismatches_selective(
         if not course or not room:
             continue
 
-        # Check if room type matches (Room uses 'room_features' not 'room_type')
-        needs_lab = course.course_type == "practical"
-        is_lab = room.room_features == "lab"
+        # Get required and actual room types
+        required_type = (
+            getattr(course, "required_room_features", "lecture").lower().strip()
+        )
+        room_type = getattr(room, "room_features", "lecture").lower().strip()
 
-        if needs_lab == is_lab:
+        # Check if already compatible
+        from src.utils.room_compatibility import is_room_type_compatible
+
+        if is_room_type_compatible(required_type, room_type):
             continue  # Already matches
 
         # Find compatible room
         compatible_rooms = [
             r.room_id
             for r in context.rooms.values()
-            if (needs_lab and r.room_features == "lab")
-            or (not needs_lab and r.room_features != "lab")
+            if is_room_type_compatible(
+                required_type, getattr(r, "room_features", "lecture").lower().strip()
+            )
         ]
 
         if compatible_rooms:

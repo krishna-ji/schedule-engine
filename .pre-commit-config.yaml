@@ -21,7 +21,6 @@ repos:
     rev: v1.13.0
     hooks:
       - id: mypy
-        args: [--config-file=pyproject.toml]  # Removed --strict temporarily
         additional_dependencies:
           - pydantic==2.10.3
           - numpy==1.26.4

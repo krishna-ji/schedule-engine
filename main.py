@@ -21,6 +21,8 @@ from configs import (
     experiment_d_adaptive,
     experiment_e,
     experiment_e_rl_guided,
+    experiment_f,
+    experiment_f_heuristic_testing,
 )
 from configs.profiles import Profile
 from src.utils.console_service import get_console
@@ -42,6 +44,11 @@ EXPERIMENTS = {
     ),
     "d": ("Experiment D: Adaptive Selection", experiment_d, experiment_d_adaptive),
     "e": ("Experiment E: RL-Guided", experiment_e, experiment_e_rl_guided),
+    "f": (
+        "Experiment F: Heuristic Testing",
+        experiment_f,
+        experiment_f_heuristic_testing,
+    ),
     "baseline": ("Experiment A: Pure NSGA-II", experiment_a, experiment_a_baseline),
     "memetic": ("Experiment B: Memetic NSGA-II", experiment_b, experiment_b_memetic),
     "roundrobin": (
@@ -55,6 +62,11 @@ EXPERIMENTS = {
         experiment_d_adaptive,
     ),
     "rl": ("Experiment E: RL-Guided", experiment_e, experiment_e_rl_guided),
+    "heuristic-testing": (
+        "Experiment F: Heuristic Testing",
+        experiment_f,
+        experiment_f_heuristic_testing,
+    ),
 }
 
 
@@ -63,7 +75,7 @@ def list_experiments() -> str:
     lines = ["Available Experiments:", ""]
 
     seen = set()
-    for key in ["a", "b", "c", "d", "e"]:
+    for key in ["a", "b", "c", "d", "e", "f"]:
         if key in seen:
             continue
         seen.add(key)
@@ -111,7 +123,7 @@ def main() -> int:
         "-e",
         type=str,
         required=False,
-        help="Experiment ID (a, b, c, d, e) or alias (baseline, memetic, roundrobin, adaptive, rl)",
+        help="Experiment ID (a, b, c, d, e, f) or alias (baseline, memetic, roundrobin, adaptive, rl, heuristic-testing)",
     )
     profile_group = parser.add_mutually_exclusive_group()
     profile_group.add_argument(
@@ -198,6 +210,7 @@ def main() -> int:
     output_dir = manager.create_output_dir(
         runtime_mode=experiment_key,
         experiment_name=exp_name,
+        output_subdir=getattr(config, "output_subdir", None) or None,
     )
     console.print(f"[cyan]Output Directory:[/cyan] {output_dir}")
     console.print()

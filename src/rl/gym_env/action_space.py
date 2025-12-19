@@ -9,6 +9,8 @@ import logging
 import signal
 from collections.abc import Callable
 from dataclasses import dataclass
+from types import FrameType
+from typing import Any
 
 from src.core.types import Individual, SchedulingContext
 from src.heuristics import get_enabled_heuristics
@@ -261,8 +263,10 @@ class ActionMapper:
             return individual, False
 
     def _get_heuristic_kwargs(
-        self, action_info: ActionInfo, provided_params: list | None = None
-    ) -> dict:
+        self,
+        action_info: ActionInfo,
+        provided_params: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Extract heuristic configuration parameters from config.
 
@@ -316,13 +320,17 @@ class ActionMapper:
 
         return kwargs
 
-    def _timeout_handler(self, signum, frame):
+    def _timeout_handler(self, signum: int, frame: FrameType | None) -> None:
         """Signal handler for timeout."""
         raise TimeoutError("Heuristic execution timed out")
 
     def _execute_with_timeout(
-        self, func, *args, action_name: str = "unknown", **kwargs
-    ):
+        self,
+        func: Callable[..., Any],
+        *args: Any,
+        action_name: str = "unknown",
+        **kwargs: Any,
+    ) -> Any | None:
         """
         Execute function with timeout protection.
 
@@ -367,7 +375,7 @@ class ActionMapper:
                 logger.error(f"Action {action_name} failed: {e}")
                 return None
 
-    def _validate_result(self, result) -> bool:
+    def _validate_result(self, result: Any) -> bool:
         """
         Validate heuristic result.
 

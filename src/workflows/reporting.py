@@ -9,11 +9,13 @@ Expected speedup: 5-10x on multi-core systems.
 """
 
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
 from src.core.ga_scheduler import GAMetrics
+from src.core.types import Individual
 from src.encoder.quantum_time_system import QuantumTimeSystem
 from src.entities.course import Course
 from src.entities.decoded_session import CourseSession
@@ -50,12 +52,12 @@ from src.utils.system_info import get_cpu_count
 def generate_reports(
     decoded_schedule: list[CourseSession],
     metrics: GAMetrics,
-    population: list,
+    population: list[Individual],
     qts: QuantumTimeSystem,
     output_dir: str,
     course_map: dict[tuple, Course] | None = None,
     heuristic_tracker: HeuristicTracker | None = None,
-):
+) -> None:
     """
     Generate all output artifacts: plots, JSON, PDFs, violation reports.
 
@@ -157,7 +159,9 @@ def generate_reports(
     start_time = time.time()
 
     # Build list of plotting tasks
-    plot_tasks: list[tuple[str, Any, tuple, dict]] = []
+    plot_tasks: list[
+        tuple[str, Callable[..., Any], tuple[Any, ...], dict[str, Any]]
+    ] = []
 
     # Core evolution plots
     plot_tasks.append(
@@ -358,7 +362,11 @@ def generate_reports(
     print("  [+] All reports generated successfully!")
 
 
-def _safe_plot_wrapper(plot_func, args, kwargs):
+def _safe_plot_wrapper(
+    plot_func: Callable[..., Any],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> bool:
     """
     Wrapper for plotting functions to catch exceptions.
 

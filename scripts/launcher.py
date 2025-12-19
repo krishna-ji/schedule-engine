@@ -20,9 +20,9 @@ from rich.console import Console
 project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root))
 
-console = Console()
+from configs.profiles import Profile  # noqa: E402
 
-from configs.profiles import Profile
+console = Console()
 
 PROFILE_DESCRIPTIONS: dict[Profile, str] = {
     Profile.TEST: "Smoke test (~30 gens, 10 pop, 2-5 min)",
@@ -126,8 +126,8 @@ def main_train_rl():
     if exit_code == 0:
         console.print("[green]RL training finished successfully.[/green]")
         console.print(
-            "[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
-            "and launch the GA via Mode F: 'uv run rl --%s'.[/dim]" % profile.value
+            f"[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
+            f"and launch the GA via Mode F: 'uv run rl --{profile.value}'.[/dim]"
         )
 
     sys.exit(exit_code)
@@ -280,6 +280,52 @@ def main_rl():
     console.print(
         "[dim]  Update rl.agent.model_path in configs/experiment_e_rl_guided.py before running to point at your promoted model.[/dim]"
     )
+    sys.exit(main() or 0)
+
+
+def main_heuristic_testing():
+    """Run Mode F experiment (individual heuristic testing)."""
+    parser = create_parser()
+    args = parser.parse_args()
+
+    profile = _resolve_profile(args.profile)
+
+    # Load config to detect enabled heuristic
+    from configs.experiment_f_heuristic_testing import get_config
+    from configs.profiles import Profile as ConfigProfile
+
+    config_profile = (
+        ConfigProfile.TEST if profile.value == "test" else ConfigProfile.PROD
+    )
+    test_config = get_config(config_profile)
+
+    # Extract enabled heuristic name (if exactly one is enabled)
+    heuristic_name = test_config.get_enabled_heuristic_name()
+
+    # Auto-generate name with heuristic suffix if not provided
+    final_name = args.name
+    if heuristic_name and not final_name:
+        final_name = f"test-{heuristic_name}"
+        console.print(f"[dim]Auto-detected heuristic: {heuristic_name}[/dim]")
+
+    from main import main
+
+    sys.argv = [
+        "main.py",
+        "--experiment",
+        "f",
+        "--profile",
+        profile.value,
+    ]
+    if final_name:
+        sys.argv.extend(["--name", final_name])
+
+    console.print(
+        f"[green]Mode F: Individual Heuristic Testing ({_profile_banner(profile)})[/green]"
+    )
+    if heuristic_name:
+        console.print(f"[dim]  Testing: {heuristic_name}[/dim]")
+
     sys.exit(main() or 0)
 
 
@@ -559,6 +605,143 @@ def main_interactive():
                 ("u4", "list-experiments", "List experiment history"),
             ],
         ),
+        # Isolated Heuristic Testing
+        (
+            "heuristic-testing",
+            [
+                # Construction Heuristics (3)
+                (
+                    "h1",
+                    "heuristic-testing --test --name test-largest-degree-first",
+                    "Construction: largest_degree_first",
+                ),
+                (
+                    "h2",
+                    "heuristic-testing --test --name test-most-constrained-first",
+                    "Construction: most_constrained_first",
+                ),
+                (
+                    "h3",
+                    "heuristic-testing --test --name test-earliest-deadline-first",
+                    "Construction: earliest_deadline_first",
+                ),
+                # Perturbation Heuristics (5)
+                (
+                    "h4",
+                    "heuristic-testing --test --name test-random-swap",
+                    "Perturbation: random_swap",
+                ),
+                (
+                    "h5",
+                    "heuristic-testing --test --name test-temporal-shift",
+                    "Perturbation: temporal_shift",
+                ),
+                (
+                    "h6",
+                    "heuristic-testing --test --name test-room-shuffle",
+                    "Perturbation: room_shuffle",
+                ),
+                (
+                    "h7",
+                    "heuristic-testing --test --name test-instructor-reassign",
+                    "Perturbation: instructor_reassign",
+                ),
+                (
+                    "h8",
+                    "heuristic-testing --test --name test-multi-perturbation",
+                    "Perturbation: multi_perturbation",
+                ),
+                # Improvement Heuristics (3)
+                (
+                    "h9",
+                    "heuristic-testing --test --name test-kempe-chain",
+                    "Improvement: kempe_chain",
+                ),
+                (
+                    "h10",
+                    "heuristic-testing --test --name test-ejection-chain",
+                    "Improvement: ejection_chain",
+                ),
+                (
+                    "h11",
+                    "heuristic-testing --test --name test-variable-depth-search",
+                    "Improvement: variable_depth_search",
+                ),
+                # Diversity Heuristics (4)
+                (
+                    "h12",
+                    "heuristic-testing --test --name test-distance-preserving-crossover",
+                    "Diversity: distance_preserving_crossover",
+                ),
+                (
+                    "h13",
+                    "heuristic-testing --test --name test-crowding-mutation",
+                    "Diversity: crowding_mutation",
+                ),
+                (
+                    "h14",
+                    "heuristic-testing --test --name test-niching-selection",
+                    "Diversity: niching_selection",
+                ),
+                (
+                    "h15",
+                    "heuristic-testing --test --name test-adaptive-diversity-maintenance",
+                    "Diversity: adaptive_diversity_maintenance",
+                ),
+                # Meta Heuristics (4)
+                (
+                    "h16",
+                    "heuristic-testing --test --name test-variable-neighborhood-descent",
+                    "Meta: variable_neighborhood_descent",
+                ),
+                (
+                    "h17",
+                    "heuristic-testing --test --name test-iterated-local-search",
+                    "Meta: iterated_local_search",
+                ),
+                (
+                    "h18",
+                    "heuristic-testing --test --name test-adaptive-large-neighborhood",
+                    "Meta: adaptive_large_neighborhood",
+                ),
+                (
+                    "h19",
+                    "heuristic-testing --test --name test-guided-local-search",
+                    "Meta: guided_local_search",
+                ),
+                # Repair Heuristics (6)
+                (
+                    "h20",
+                    "heuristic-testing --test --name test-exhaustive-repair",
+                    "Repair: exhaustive_repair",
+                ),
+                (
+                    "h21",
+                    "heuristic-testing --test --name test-greedy-repair",
+                    "Repair: greedy_repair",
+                ),
+                (
+                    "h22",
+                    "heuristic-testing --test --name test-igls-repair",
+                    "Repair: igls_repair",
+                ),
+                (
+                    "h23",
+                    "heuristic-testing --test --name test-lns-repair",
+                    "Repair: lns_repair",
+                ),
+                (
+                    "h24",
+                    "heuristic-testing --test --name test-memetic-repair",
+                    "Repair: memetic_repair",
+                ),
+                (
+                    "h25",
+                    "heuristic-testing --test --name test-selective-repair",
+                    "Repair: selective_repair",
+                ),
+            ],
+        ),
     ]
 
     while True:
@@ -600,6 +783,13 @@ def main_interactive():
                 )
             elif category == "utilities":
                 console.print("\n[bold magenta]UTILITIES[/bold magenta]")
+            elif category == "heuristic-testing":
+                console.print(
+                    "\n[bold magenta]ISOLATED HEURISTIC TESTING[/bold magenta]"
+                )
+                console.print(
+                    "[dim]  Test individual heuristics in isolation (edit configs/experiments/heuristic_testing.py first)[/dim]"
+                )
 
             # Commands in category
             for num, cmd, desc in cmds:

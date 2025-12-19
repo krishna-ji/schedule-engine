@@ -9,8 +9,20 @@ Exposes:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from src.ga.creator_registry import get_creator
-from src.ga.individual import create_individual
 from src.ga.sessiongene import SessionGene
 
+if TYPE_CHECKING:
+    from src.core.types import Individual
+
 __all__ = ["get_creator", "create_individual", "SessionGene"]
+
+
+def create_individual(gene_list: list[SessionGene]) -> Individual:
+    """Lazy import wrapper to avoid circular dependency during package init."""
+
+    from src.ga.individual import create_individual as _create_individual
+
+    return _create_individual(gene_list)

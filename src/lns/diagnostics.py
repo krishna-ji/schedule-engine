@@ -160,7 +160,7 @@ class SubproblemDiagnostics:
 
         return True, ""
 
-    def log_subproblem_summary(self):
+    def log_subproblem_summary(self) -> None:
         """Log detailed summary of subproblem for diagnostics."""
         domain_info = self.compute_domain_sizes()
 
@@ -180,16 +180,16 @@ class SubproblemDiagnostics:
         if available_quanta_list:
             logger.info(
                 f"  Available quanta: min={min(available_quanta_list)}, "
-                f"max={max(available_quanta_list)}, avg={sum(available_quanta_list)/len(available_quanta_list):.1f}"
+                f"max={max(available_quanta_list)}, avg={sum(available_quanta_list) / len(available_quanta_list):.1f}"
             )
             logger.info(
                 f"  Required quanta: min={min(required_quanta_list)}, "
-                f"max={max(required_quanta_list)}, avg={sum(required_quanta_list)/len(required_quanta_list):.1f}"
+                f"max={max(required_quanta_list)}, avg={sum(required_quanta_list) / len(required_quanta_list):.1f}"
             )
         if room_options:
             logger.info(
                 f"  Room options: min={min(room_options)}, "
-                f"max={max(room_options)}, avg={sum(room_options)/len(room_options):.1f}"
+                f"max={max(room_options)}, avg={sum(room_options) / len(room_options):.1f}"
             )
 
         # Log sessions with insufficient domains

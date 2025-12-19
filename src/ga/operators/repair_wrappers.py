@@ -10,6 +10,14 @@ This wrapper layer:
 - Supports priority ordering and metadata
 - Allows pluggable repair strategies
 
+Registered Operators (7 base + 1 soft constraint):
+  Priority 1-7: Hard constraint repairs (HC1-HC5, HC8, HC4)
+  Priority 8: Soft constraint repair (SC4 - session_continuity)
+
+Default Configuration (configs/base.py):
+  All 7 hard constraint repairs enabled by default
+  Soft constraint repair enabled in selective mode only
+
 Architecture inspired by src/constraints/registry.py for consistency.
 
 Usage:
@@ -24,10 +32,16 @@ Usage:
     def repair_group_overlaps(individual, context):
         # implementation
         return fixes_count
+
+    # Get enabled repairs from config
+    from src.ga.operators.repair_wrappers import get_enabled_repair_operators
+    enabled = get_enabled_repair_operators()  # Returns priority-sorted dict
 """
 
 from collections.abc import Callable
 from dataclasses import dataclass
+
+RepairFunc = Callable[..., int]
 
 
 @dataclass
@@ -70,7 +84,7 @@ def repair_operator(
     priority: int,
     modifies_length: bool = False,
     enabled_by_default: bool = True,
-):
+) -> Callable[[RepairFunc], RepairFunc]:
     """
     Decorator to register a repair operator function.
 
@@ -107,7 +121,7 @@ def repair_operator(
         - Must modify individual in-place (no return of modified individual)
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: RepairFunc) -> RepairFunc:
         metadata = RepairOperatorMetadata(
             name=name,
             function=func,

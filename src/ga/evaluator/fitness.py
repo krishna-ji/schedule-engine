@@ -55,9 +55,16 @@ def evaluate(
     soft_penalty = 0
     enabled_soft_constraints = get_enabled_soft_constraints()
 
-    for _constraint_name, constraint_info in enabled_soft_constraints.items():
+    for constraint_name, constraint_info in enabled_soft_constraints.items():
         constraint_func = constraint_info["function"]
         weight = constraint_info["weight"]
-        soft_penalty += weight * constraint_func(sessions)
+
+        # Some soft constraints need courses parameter (e.g., paired_cohort_practical_alignment)
+        if constraint_needs_courses(constraint_name):
+            penalty = constraint_func(sessions, courses)
+        else:
+            penalty = constraint_func(sessions)
+
+        soft_penalty += weight * penalty
 
     return (hard_penalty, soft_penalty)

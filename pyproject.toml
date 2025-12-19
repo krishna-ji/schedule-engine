@@ -79,12 +79,14 @@ nsga = "scripts.launcher:main_nsga"
 # Mode C: + Round-robin (heuristics + repair)    [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed)]
 # Mode D: + Adaptive heuristics                  [repairs: YES, memetic: NO,  heuristics: YES (adaptive)]
 # Mode E: + RL-guided (deploys all techniques)   [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
+# Mode F: + Heuristic testing (individual tests) [test individual heuristics in isolation]
 
 baseline = "scripts.launcher:main_baseline"           # Mode A: Pure NSGA-II
 memetic = "scripts.launcher:main_memetic"             # Mode B: + Memetic local search
 roundrobin = "scripts.launcher:main_roundrobin"       # Mode C: + Round-robin heuristics
 adaptive = "scripts.launcher:main_adaptive"           # Mode D: + Adaptive selection
 rl = "scripts.launcher:main_rl"                       # Mode E: + RL-guided
+heuristic-testing = "scripts.launcher:main_heuristic_testing"  # Mode F: Individual heuristic testing
 
 # RL Training
 train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
@@ -100,6 +102,9 @@ diagnose = "scripts.launcher:main_diagnose"           # System diagnostics
 list-experiments = "scripts.launcher:main_list"       # List experiment history
 stats = "scripts.launcher:main_stats"                 # Show manifest statistics
 organize-output = "scripts.utilities.organize_output:main"  # Reorganize output structure
+lint = "scripts.lint:main_check"
+lint-fix = "scripts.lint:main_fix"
+typecheck = "scripts.typecheck:main"
 
 [[tool.uv.index]]
 name = "pytorch-cu121"
@@ -131,6 +136,8 @@ exclude = [
     "notebook",
     "logs",
     ".pytest_cache",
+    "data",
+    "data/**",
 ]
 
 [tool.ruff.lint]
@@ -188,13 +195,16 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
-files = ["src", "scripts", "test"]
+files = ["src"]
 explicit_package_bases = false
 mypy_path = "src"
 exclude = [
     "output/",
     "logs/",
     "notebook/",
+    "configs/",
+    "scripts/",
+    "test/"
 ]
 
 [[tool.mypy.overrides]]

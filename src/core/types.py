@@ -7,18 +7,20 @@ This module contains type-safe data structures used throughout the system.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.entities.course import Course
 from src.entities.group import Group
 from src.entities.instructor import Instructor
 from src.entities.room import Room
-from src.ga.sessiongene import SessionGene
+
+if TYPE_CHECKING:
+    from src.ga.sessiongene import SessionGene
 
 __all__ = ["Individual", "SchedulingContext"]
 
 # Alias used across GA and RL modules; DEAP wraps this list at runtime.
-Individual = list[SessionGene]
+Individual = list["SessionGene"]
 
 
 @dataclass
@@ -38,12 +40,13 @@ class SchedulingContext:
         available_quanta: List of available time quantum indices
     """
 
-    courses: dict[tuple, Course]  # Keys are (course_code, course_type) tuples
+    courses: dict[tuple[str, str], Course]  # Keys are (course_code, course_type) tuples
     groups: dict[str, Group]
     instructors: dict[str, Instructor]
     rooms: dict[str, Room]
     available_quanta: list[int]
     config: Any | None = None
+    cohort_pairs: list[tuple[str, str]] | None = None
 
     def validate(self) -> list[str]:
         """
