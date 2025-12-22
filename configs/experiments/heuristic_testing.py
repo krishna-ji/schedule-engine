@@ -100,32 +100,21 @@ class HeuristicTestingBaseConfig:
 
 @dataclass
 class HeuristicTestingTestConfig(HeuristicTestingBaseConfig, TestConfig):
-    """
-    Mode F: Heuristic Testing (test profile).
+    """Heuristic testing - test profile (30 gens, 10 pop)."""
 
-    Test individual heuristics with test scaling (30 gens, 10 pop).
-    Typical runtime: 2-5 minutes per heuristic.
-    """
-
-    name: str = "heuristic-testing-test"
-    experiment_id: str = "F"
-
-    # Enable one heuristic by default for smoke tests
-    heuristic_largest_degree_first: bool = True
+    pass
 
 
 @dataclass
 class HeuristicTestingProdConfig(HeuristicTestingBaseConfig, ProdConfig):
-    """
-    Mode F: Heuristic Testing (production profile).
+    """Heuristic testing - production profile (2000 gens, 200 pop)."""
 
-    Test individual heuristics with production scaling (2000 gens, 200 pop).
-    Typical runtime: 1-3 hours per heuristic.
-    """
+    pass
 
-    name: str = "heuristic-testing-prod"
-    experiment_id: str = "F"
-    notes: str = "Heuristic testing mode (production) - enable individual heuristics for isolated evaluation"
+
+# Experiment instances
+heuristic_testing_test = HeuristicTestingTestConfig()
+heuristic_testing_prod = HeuristicTestingProdConfig()
 
 
 # LEGACY COMPATIBILITY (Optional)

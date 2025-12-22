@@ -79,17 +79,19 @@ class MemeticBaseConfig:
 class MemeticTestConfig(MemeticBaseConfig, TestConfig):
     """Mode B memetic (test profile)."""
 
-    name: str = "memetic-test"
-    experiment_id: str = "B"
+    pass
 
 
 @dataclass
 class MemeticProdConfig(MemeticBaseConfig, ProdConfig):
     """Mode B memetic (production profile)."""
 
-    name: str = "memetic-prod"
-    experiment_id: str = "B"
-    notes: str = "NSGA-II + memetic local search for thesis (production)"
+    pass
+
+
+# Experiment instances
+memetic_test = MemeticTestConfig()
+memetic_prod = MemeticProdConfig()
 
 
 # ============================================

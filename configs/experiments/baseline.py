@@ -48,17 +48,19 @@ class BaselineBaseConfig:
 class BaselineTestConfig(BaselineBaseConfig, TestConfig):
     """Mode A baseline (test profile)."""
 
-    name: str = "baseline-test"
-    experiment_id: str = "A"
+    pass
 
 
 @dataclass
 class BaselineProdConfig(BaselineBaseConfig, ProdConfig):
     """Mode A baseline (production profile)."""
 
-    name: str = "baseline-prod"
-    experiment_id: str = "A"
-    notes: str = "Pure NSGA-II baseline for thesis (production)"
+    pass
+
+
+# Experiment instances
+baseline_test = BaselineTestConfig()
+baseline_prod = BaselineProdConfig()
 
 
 # ============================================

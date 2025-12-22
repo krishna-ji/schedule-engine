@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from configs.base import BaseConfig
 from configs.profiles import ProdConfig, TestConfig
 
 
 @dataclass
-class RoundRobinBaseConfig(BaseConfig):
+class RoundRobinBaseConfig:
     """Round-robin heuristic selection base settings."""
 
     # Genetic operators
@@ -51,10 +50,19 @@ class RoundRobinBaseConfig(BaseConfig):
 class RoundRobinTestConfig(RoundRobinBaseConfig, TestConfig):
     """Round-robin heuristics - test profile (30 gens, 10 pop)."""
 
+    pass
+
 
 @dataclass
 class RoundRobinProdConfig(RoundRobinBaseConfig, ProdConfig):
     """Round-robin heuristics - production profile (2000 gens, 200 pop)."""
+
+    pass
+
+
+# Experiment instances
+roundrobin_test = RoundRobinTestConfig()
+roundrobin_prod = RoundRobinProdConfig()
 
 
 # Experiment metadata
