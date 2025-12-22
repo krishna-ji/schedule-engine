@@ -295,9 +295,17 @@ def get_enabled_heuristics(
             if category_config is not None and not category_config:
                 continue  # Skip all heuristics in this category
 
-            heuristic_config = category_config.get(name, {}) if category_config else {}
+            # When a category config dict exists, only explicitly named heuristics are considered.
+            # This mirrors the expected behavior in tests where a partial dict acts as an explicit
+            # override list rather than a partial override of defaults.
+            if category_config is not None:
+                if name not in category_config:
+                    continue
+                heuristic_config = category_config.get(name) or {}
+            else:
+                heuristic_config = {}
 
-            # Check if enabled
+            # Check if enabled (fallback to metadata default when not specified)
             is_enabled = heuristic_config.get("enabled", meta.enabled_by_default)
 
             if not is_enabled:

@@ -19,9 +19,15 @@ EXPERIMENT_NAME = "Experiment F: Heuristic Testing"
 EXPERIMENT_DESCRIPTION = "Test individual heuristics in isolation"
 
 
-@dataclass
 class HeuristicTestingBaseConfig:
-    """Shared knobs for Mode F heuristic testing profiles."""
+    """Shared knobs for Mode F heuristic testing profiles.
+
+    Implemented as a plain class (not a dataclass) to avoid dataclass
+    multiple-inheritance type conflicts with `BaseConfig`/`TestConfig`.
+    Attributes are class-level defaults so instances inherit them via
+    normal attribute lookup and the existing `to_pydantic` builder will
+    read them correctly from instances.
+    """
 
     # === KILLSWITCHES: Enable heuristics subsystem ===
     repair_enabled: bool = False  # Keep repair disabled by default
@@ -36,41 +42,41 @@ class HeuristicTestingBaseConfig:
 
     # === INDIVIDUAL HEURISTIC TOGGLES ===
     # Construction Heuristics (3 total)
-    heuristic_largest_degree_first: bool = False
-    heuristic_most_constrained_first: bool = False
-    heuristic_earliest_deadline_first: bool = False
+    heuristic_largest_degree_first: bool | None = None
+    heuristic_most_constrained_first: bool | None = None
+    heuristic_earliest_deadline_first: bool | None = None
 
     # Perturbation Heuristics (5 total)
-    heuristic_random_swap: bool = False
-    heuristic_temporal_shift: bool = False
-    heuristic_room_shuffle: bool = False
-    heuristic_instructor_reassign: bool = False
-    heuristic_multi_perturbation: bool = False
+    heuristic_random_swap: bool | None = None
+    heuristic_temporal_shift: bool | None = None
+    heuristic_room_shuffle: bool | None = None
+    heuristic_instructor_reassign: bool | None = None
+    heuristic_multi_perturbation: bool | None = None
 
     # Improvement Heuristics (3 total)
-    heuristic_kempe_chain: bool = False
-    heuristic_ejection_chain: bool = False
-    heuristic_variable_depth_search: bool = False
+    heuristic_kempe_chain: bool | None = None
+    heuristic_ejection_chain: bool | None = None
+    heuristic_variable_depth_search: bool | None = None
 
     # Diversity Heuristics (4 total)
-    heuristic_distance_preserving_crossover: bool = False
-    heuristic_crowding_mutation: bool = False
-    heuristic_niching_selection: bool = False
-    heuristic_adaptive_diversity_maintenance: bool = False
+    heuristic_distance_preserving_crossover: bool | None = None
+    heuristic_crowding_mutation: bool | None = None
+    heuristic_niching_selection: bool | None = None
+    heuristic_adaptive_diversity_maintenance: bool | None = None
 
     # Meta Heuristics (4 total)
-    heuristic_variable_neighborhood_descent: bool = False
-    heuristic_iterated_local_search: bool = False
-    heuristic_adaptive_large_neighborhood: bool = False
-    heuristic_guided_local_search: bool = False
+    heuristic_variable_neighborhood_descent: bool | None = None
+    heuristic_iterated_local_search: bool | None = None
+    heuristic_adaptive_large_neighborhood: bool | None = None
+    heuristic_guided_local_search: bool | None = None
 
     # Repair Heuristics (6 total)
-    heuristic_exhaustive_repair: bool = False
-    heuristic_greedy_repair: bool = False
-    heuristic_igls_repair: bool = False
-    heuristic_lns_repair: bool = False
-    heuristic_memetic_repair: bool = False
-    heuristic_selective_repair: bool = False
+    heuristic_exhaustive_repair: bool | None = None
+    heuristic_greedy_repair: bool | None = None
+    heuristic_igls_repair: bool | None = None
+    heuristic_lns_repair: bool | None = None
+    heuristic_memetic_repair: bool | None = None
+    heuristic_selective_repair: bool | None = None
 
     # === NOTES ===
     notes: str = (
