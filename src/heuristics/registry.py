@@ -33,6 +33,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+from src.config import (
+    get_config,  # Imported here to allow tests to monkeypatch this symbol
+)
+
 HeuristicFunc = Callable[..., Any]
 DecoratorFunc = Callable[[HeuristicFunc], HeuristicFunc]
 
@@ -257,7 +261,6 @@ def get_enabled_heuristics(
         Dict mapping heuristic names to metadata (enabled only)
         Sorted by priority (lower priority number = executed first)
     """
-    from src.config import get_config
 
     # Get heuristics to check
     if category:

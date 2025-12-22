@@ -38,7 +38,7 @@ class CourseSession:
     group_ids: list[str]
     room_id: str
     session_quanta: list[int]
-    required_room_features: str
+    required_room_features: str | None = None
     course_type: str = "theory"
     instructor: Instructor | None = None
     group: Group | None = None
