@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from configs.base import BaseConfig
 from configs.profiles import ProdConfig, TestConfig
 
 
 @dataclass
-class AdaptiveBaseConfig(BaseConfig):
+class AdaptiveBaseConfig:
     """Adaptive heuristic selection base settings."""
 
     # Genetic operators
@@ -55,10 +54,19 @@ class AdaptiveBaseConfig(BaseConfig):
 class AdaptiveTestConfig(AdaptiveBaseConfig, TestConfig):
     """Adaptive heuristics - test profile (30 gens, 10 pop)."""
 
+    pass
+
 
 @dataclass
 class AdaptiveProdConfig(AdaptiveBaseConfig, ProdConfig):
     """Adaptive heuristics - production profile (2000 gens, 200 pop)."""
+
+    pass
+
+
+# Experiment instances
+adaptive_test = AdaptiveTestConfig()
+adaptive_prod = AdaptiveProdConfig()
 
 
 # Experiment metadata

@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from configs.base import BaseConfig
 from configs.profiles import ProdConfig, TestConfig
 
 
 @dataclass
-class RlGuidedBaseConfig(BaseConfig):
+class RlGuidedBaseConfig:
     """RL-guided heuristic selection base settings."""
 
     # Genetic operators
@@ -61,12 +60,21 @@ class RlGuidedBaseConfig(BaseConfig):
 
 @dataclass
 class RlGuidedTestConfig(RlGuidedBaseConfig, TestConfig):
-    """RL-guided - test profile (30 gens, 10 pop)."""
+    """RL-guided heuristics - test profile (30 gens, 10 pop)."""
+
+    pass
 
 
 @dataclass
 class RlGuidedProdConfig(RlGuidedBaseConfig, ProdConfig):
-    """RL-guided - production profile (2000 gens, 200 pop)."""
+    """RL-guided heuristics - production profile (2000 gens, 200 pop)."""
+
+    pass
+
+
+# Experiment instances
+rl_guided_test = RlGuidedTestConfig()
+rl_guided_prod = RlGuidedProdConfig()
 
 
 # Experiment metadata

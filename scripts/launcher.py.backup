@@ -127,8 +127,8 @@ def main_train_rl():
     if exit_code == 0:
         console.print("[green]RL training finished successfully.[/green]")
         console.print(
-            "[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
-            "and launch the GA via Mode F: 'uv run rl --%s'.[/dim]" % profile.value
+            f"[dim]Promote the desired checkpoint (see scripts/training/promote_model_to_prod.py) "
+            f"and launch the GA via Mode F: 'uv run rl --{profile.value}'.[/dim]"
         )
 
     sys.exit(exit_code)
