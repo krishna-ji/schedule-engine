@@ -25,9 +25,12 @@ def get_config() -> Config:
 
     global _config
     if _config is None:
-        raise RuntimeError(
-            "Config not initialized! Call init_config() first or provide blueprint."
-        )
+        # Lazy initialize a default Config so unit tests and utilities can
+        # use get_config() without explicit bootstrap. This mirrors the
+        # previous behavior where a default config was assumed.
+        from src.config.models import Config as ConfigModel
+
+        _config = ConfigModel()
     return _config
 
 
