@@ -291,18 +291,20 @@ def _check_room_type_mismatches(
     violations = []
 
     for session in sessions:
-        required_features = (
-            set(session.required_room_features)
-            if isinstance(session.required_room_features, list)
-            else {session.required_room_features}
-        )
+        # Normalize required room features to a set[str]
+        if session.required_room_features is None:
+            required_features: set[str] = set()
+        elif isinstance(session.required_room_features, list):
+            required_features = set(session.required_room_features)
+        else:
+            required_features = {session.required_room_features}
         if not session.room:
             continue
-        room_features = (
-            set(session.room.room_features)
-            if isinstance(session.room.room_features, list)
-            else {session.room.room_features}
-        )
+        # Normalize room features to a set[str]
+        if isinstance(session.room.room_features, list):
+            room_features = set(session.room.room_features)
+        else:
+            room_features = {session.room.room_features}
 
         if not required_features.issubset(room_features):
             missing = required_features - room_features

@@ -30,6 +30,7 @@ def get_config(profile: Profile = Profile.TEST, **overrides):
     # Filter out None overrides to avoid clobbering defaults
     filtered_overrides = {k: v for k, v in overrides.items() if v is not None}
 
+    config: RlGuidedTestConfig | RlGuidedProdConfig
     if profile == Profile.TEST:
         config = RlGuidedTestConfig(**filtered_overrides)
     elif profile == Profile.PROD:

@@ -10,7 +10,11 @@ Provides clean inheritance hierarchy:
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
+
+if TYPE_CHECKING:
+    # Import Pydantic Config type for precise return annotation
+    from src.config.models import Config as PydanticConfig
 
 DEFAULT_REPAIR_HEURISTICS: dict[str, dict[str, int | bool]] = {
     "repair_instructor_availability": {"enabled": True, "priority": 1},
@@ -232,7 +236,7 @@ class BaseConfig:
         """Export as dictionary for Pydantic conversion."""
         return asdict(self)
 
-    def to_pydantic(self) -> BaseConfig:
+    def to_pydantic(self) -> PydanticConfig:
         """
         Convert to Pydantic model for validation.
 

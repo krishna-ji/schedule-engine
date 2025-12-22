@@ -31,6 +31,7 @@ def get_config(profile: Profile = Profile.TEST, **overrides):
     # Filter out None values
     overrides = {k: v for k, v in overrides.items() if v is not None}
 
+    config: RoundRobinTestConfig | RoundRobinProdConfig
     if profile == Profile.TEST:
         config = RoundRobinTestConfig(**overrides)
     else:

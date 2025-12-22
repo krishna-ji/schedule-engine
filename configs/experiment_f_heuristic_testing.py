@@ -31,6 +31,7 @@ KILLSWITCHES = _KILLSWITCHES
 # Quick usage
 def get_config(profile: Profile = Profile.TEST, **overrides):
     """Get config for Experiment F."""
+    config: HeuristicTestingTestConfig | HeuristicTestingProdConfig
     if profile == Profile.TEST:
         config = experiment_f_test
     elif profile == Profile.PROD:

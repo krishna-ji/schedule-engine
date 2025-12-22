@@ -26,11 +26,12 @@ def get_config() -> Config:
     global _config
     if _config is None:
         # Lazy initialize a default Config so unit tests and utilities can
-        # use get_config() without explicit bootstrap. This mirrors the
-        # previous behavior where a default config was assumed.
-        from src.config.models import Config as ConfigModel
+        # use get_config() without explicit bootstrap. Build the default
+        # Pydantic Config from the dataclass TestConfig to ensure all
+        # nested fields are populated and validated.
+        from configs.profiles import TestConfig
 
-        _config = ConfigModel()
+        _config = TestConfig().to_pydantic()
     return _config
 
 
