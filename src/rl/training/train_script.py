@@ -17,12 +17,12 @@ from gymnasium import Env as GymEnv
 project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
-EnvFactory = Callable[[], GymEnv]
+EnvFactory = Callable[[], GymEnv[Any, Any]]
 
-from stable_baselines3.common.vec_env import VecEnv
+from stable_baselines3.common.vec_env import VecEnv  # noqa: E402
 
-from src.core.types import SchedulingContext
-from src.rl.gym_env import ScheduleEnv
+from src.core.types import SchedulingContext  # noqa: E402
+from src.rl.gym_env import ScheduleEnv  # noqa: E402
 from src.rl.training import RLTrainer
 from src.rl.training.config_loader import (
     DEFAULT_PROFILE,
@@ -448,7 +448,7 @@ def make_parallel_envs(
         - Memory corruption in multiprocessing
         """
 
-        def _init() -> GymEnv:
+        def _init() -> GymEnv[Any, Any]:
             # IMPORTANT: Create deep copy of context for this worker
             # This prevents shared state issues in SubprocVecEnv
             import copy
@@ -891,9 +891,9 @@ def main() -> None:
         # Register experiment in manifest
         exp_manager.register_run(
             runtime_mode="e5",
-            timestamp=timestamp,
-            output_path=str(output_dir),
-            config_name=args.loaded_profile,
+            config_reference=args.loaded_profile,
+            output_path=output_dir,
+            experiment_name=experiment_name,
             notes=f"RL training: {args.agent_type.upper()}, {args.timesteps:,} steps, model: {model_path.name}",
         )
 
