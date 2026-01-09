@@ -633,8 +633,16 @@ class RLTrainer:
             )
 
             # Extract scalar values (evaluate_policy may return arrays)
-            mean_rew_val = float(mean_reward) if not isinstance(mean_reward, list) else float(mean_reward[0])
-            std_rew_val = float(std_reward) if not isinstance(std_reward, list) else float(std_reward[0])
+            mean_rew_val = (
+                float(mean_reward)
+                if not isinstance(mean_reward, list)
+                else float(mean_reward[0])
+            )
+            std_rew_val = (
+                float(std_reward)
+                if not isinstance(std_reward, list)
+                else float(std_reward[0])
+            )
 
             metrics = {
                 "mean_reward": mean_rew_val,

@@ -595,6 +595,15 @@ def main_interactive():
                 ("f2", "rl --prod", "Experiment E: RL-guided GA (~4-6 hrs, 2000 gens)"),
             ],
         ),
+        # RL Inference with Latest Model
+        (
+            "rl-inference",
+            [
+                ("i1", "rl-inference --test", "Run latest model (smoke test)"),
+                ("i2", "rl-inference --prod", "Run latest model (production)"),
+                ("i3", "rl-inference --list-only", "List available models"),
+            ],
+        ),
         # Utilities
         (
             "utilities",
@@ -781,6 +790,9 @@ def main_interactive():
                 console.print(
                     "[dim]  Deploy trained agents for heuristic control[/dim]"
                 )
+            elif category == "rl-inference":
+                console.print("\n[bold magenta]RL INFERENCE[/bold magenta]")
+                console.print("[dim]  Run RL-guided GA with latest trained model[/dim]")
             elif category == "utilities":
                 console.print("\n[bold magenta]UTILITIES[/bold magenta]")
             elif category == "heuristic-testing":

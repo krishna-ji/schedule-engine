@@ -27,8 +27,14 @@ uv run rl --test             # E: + RL-guided (~10-20 min)
 uv run heuristic-testing --test  # F: Individual heuristic testing
 
 # RL training
+# RL training
 uv run train-rl --test       # Smoke test (10K steps, ~5 min)
 uv run train-rl --prod       # Full training (100K steps, ~1-2 hrs)
+
+# RL inference (auto-detect latest model)
+uv run rl-inference --test   # Run latest model (smoke test)
+uv run rl-inference --prod   # Run latest model (production)
+uv run rl-inference --list-only  # List available models
 
 # Utilities
 uv run diagnose              # System/GPU diagnostics

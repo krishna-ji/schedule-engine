@@ -91,6 +91,9 @@ heuristic-testing = "scripts.launcher:main_heuristic_testing"  # Mode F: Individ
 # RL Training
 train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
 
+# RL Inference
+rl-inference = "scripts.utilities.run_latest_model:main"  # Run latest trained model
+
 # ==================
 # HELPER COMMANDS: Utilities & Analysis
 # ==================
