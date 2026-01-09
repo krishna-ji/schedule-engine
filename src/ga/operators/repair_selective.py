@@ -228,7 +228,7 @@ def repair_instructor_availability_selective(
         gene = individual[idx]
         instructor = context.instructors.get(gene.instructor_id)
 
-        if not instructor:
+        if not instructor or instructor.is_full_time:
             continue
 
         # Check if current quanta violate instructor availability

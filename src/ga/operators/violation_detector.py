@@ -29,6 +29,8 @@ Usage:
     # Repair only: violated_indices instead of entire individual
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 
 from src.core.types import SchedulingContext
@@ -165,7 +167,7 @@ def _detect_full(
                 for idx in gene_indices:
                     violations[idx].append("instructor_conflict")
 
-    # Detect instructor qualifications
+    # Detect instructor qualifications and availability
     for idx, gene in enumerate(individual):
         course_key = (gene.course_id, gene.course_type)
         course = context.courses.get(course_key)
@@ -177,6 +179,12 @@ def _detect_full(
 
         if course_key not in instructor.qualified_courses:
             violations[idx].append("instructor_qualifications")
+
+        if not instructor.is_full_time and any(
+            q not in instructor.available_quanta
+            for q in range(gene.start_quanta, gene.end_quanta)
+        ):
+            violations[idx].append("instructor_availability")
 
     # Detect room type mismatches
     for idx, gene in enumerate(individual):
@@ -197,19 +205,6 @@ def _detect_full(
             and room.room_features == "lab"
         ):
             violations[idx].append("room_suitability")
-
-    # Detect instructor availability violations
-    for idx, gene in enumerate(individual):
-        instructor = context.instructors.get(gene.instructor_id)
-
-        if not instructor:
-            continue
-
-        # Check if any quantum violates instructor availability
-        for q in range(gene.start_quanta, gene.end_quanta):
-            if q not in instructor.available_quanta:
-                violations[idx].append("instructor_availability")
-                break  # One violation is enough
 
     return dict(violations)
 

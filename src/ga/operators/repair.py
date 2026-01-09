@@ -99,6 +99,9 @@ def repair_instructor_availability(
         if not instructor:
             continue
 
+        if instructor.is_full_time:
+            continue
+
         # Check if current quanta violate instructor availability
         needs_repair = False
         for q in range(gene.start_quanta, gene.end_quanta):

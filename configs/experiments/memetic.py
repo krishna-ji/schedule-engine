@@ -86,7 +86,8 @@ class MemeticTestConfig(MemeticBaseConfig, TestConfig):
 class MemeticProdConfig(MemeticBaseConfig, ProdConfig):
     """Mode B memetic (production profile)."""
 
-    pass
+    # Custom population size for requested run
+    pop_size: int = 50
 
 
 # Experiment instances

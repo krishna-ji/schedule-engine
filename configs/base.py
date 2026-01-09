@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     # Import Pydantic Config type for precise return annotation
     from src.config.models import Config as PydanticConfig
 
+from .time_settings import TimeSettingsConfig
+
 DEFAULT_REPAIR_HEURISTICS: dict[str, dict[str, int | bool]] = {
     "repair_instructor_availability": {"enabled": True, "priority": 1},
     "repair_group_overlaps": {"enabled": True, "priority": 2},
@@ -30,45 +32,13 @@ DEFAULT_REPAIR_HEURISTICS: dict[str, dict[str, int | bool]] = {
 
 
 @dataclass
-class BaseConfig:
+class BaseConfig(TimeSettingsConfig):
     """
     Abstract base config with shared defaults.
 
     Override fields in profile classes (TestConfig, ProdConfig) or
     experiment classes (BaselineTestConfig, etc.).
     """
-
-    # ==========================================
-    # TIME & QUANTA (Shared)
-    # ==========================================
-    quantum_minutes: int = 60
-    opening_time: str = "10:00"
-    closing_time: str = "17:00"
-    closed_days: list[str] = field(default_factory=lambda: ["Saturday"])
-
-    # Time constraint parameters (for scheduling logic)
-    midday_break_start: str = "12:00"
-    midday_break_end: str = "13:00"
-    max_session_coalescence: int = 3
-    max_sessions_per_day: int = 6
-    preferred_block_size_min: int = 2
-    preferred_block_size_max: int = 3
-
-    # Break placement enforcement (soft constraint)
-    enforce_break_placement: bool = True
-    break_window_start: str = "12:00"  # Daily break window start
-    break_window_end: str = "14:00"  # Daily break window end (2pm)
-    break_min_quanta: int = 1  # Minimum free quanta in window
-    break_violation_penalty: int = 8  # Penalty per missing break quantum
-
-    # Cohort pairing for parallel practicals
-    cohort_pairs: list[tuple[str, str]] = field(default_factory=list)
-
-    # Soft constraint penalties
-    theory_isolated_penalty: int = 5
-    theory_oversized_penalty_per_quantum: int = 2
-    theory_max_excused_isolated: int = 1
-    practical_fragmentation_penalty: int = 10
 
     # ==========================================
     # GA PARAMETERS (Override in profiles)

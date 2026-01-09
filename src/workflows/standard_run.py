@@ -491,6 +491,33 @@ def run_standard_workflow(
     )
 
     # ═══════════════════════════════════════════════════════════════
+    # RL VISUALIZATION (if RL was used)
+    # ═══════════════════════════════════════════════════════════════
+    if hasattr(scheduler, "rl_enabled") and scheduler.rl_enabled:
+        console.print("[bold cyan]generating rl training visualizations[/bold cyan]")
+        try:
+            from pathlib import Path as PathLib
+
+            from src.rl.training.visualizer import generate_visualizations
+
+            # TensorBoard logs location (in run output directory)
+            tb_logdir = PathLib(output_dir) / "logs" / "tensorboard"
+
+            if tb_logdir.exists():
+                generate_visualizations(
+                    tensorboard_logdir=tb_logdir,
+                    output_dir=PathLib(output_dir),
+                    experiment_name="rl_guided_ga",
+                )
+                console.print("  [dim]rl analysis plots saved to rl_analysis/[/dim]")
+            else:
+                console.print(
+                    "  [dim]no tensorboard logs found, skipping rl plots[/dim]"
+                )
+        except Exception as e:
+            console.print(f"  [yellow]warning:[/yellow] rl visualization failed: {e}")
+
+    # ═══════════════════════════════════════════════════════════════
     # REPORT GENERATION
     # ═══════════════════════════════════════════════════════════════
     console.print("[bold cyan]generating reports[/bold cyan]")
