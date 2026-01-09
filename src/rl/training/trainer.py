@@ -118,7 +118,7 @@ class RLTrainer:
 
     def __init__(
         self,
-        env: gym.Env | VecEnv,
+        env: gym.Env[Any, Any] | VecEnv,
         agent_type: str = "ppo",
         save_dir: str | None = None,
         tensorboard_log: str | None = None,
@@ -224,7 +224,7 @@ class RLTrainer:
             )
 
         logger.info(f"Created {self.agent_type.upper()} agent")
-        return self.agent  # type: ignore[return-value]
+        return self.agent
 
     def _resolve_device(self, device: str) -> str:
         """Resolve training device (CUDA for RL neural networks if available).
@@ -286,11 +286,8 @@ class RLTrainer:
             logger.info(f"  Max generations: {current_stage.max_generations}")
 
             # Calculate timesteps for this stage (episodes × max_steps)
-            # Assumes max_steps is environment parameter
-            # type: ignore comment for config.rl.training access
-            stage_timesteps = (
-                current_stage.num_episodes * 100  # type: ignore[attr-defined]
-            )
+            # Default to 100 steps per episode if max_steps not configured
+            stage_timesteps = current_stage.num_episodes * 100
 
             # Train for this stage
             self.train(
@@ -572,7 +569,7 @@ class RLTrainer:
         logger.info("Model loaded successfully")
         return self.agent
 
-    def _get_eval_env(self) -> gym.Env:
+    def _get_eval_env(self) -> gym.Env[Any, Any]:
         """Return a gym.Env for evaluation, unwrapping VecEnv if needed."""
         if isinstance(self.env, VecEnv):
             # Try to get underlying environment from VecEnv
@@ -594,8 +591,8 @@ class RLTrainer:
             logger.warning(
                 "VecEnv does not expose gym environments. Using VecEnv for evaluation."
             )
-            # Return None to signal we should use VecEnv-based evaluation
-            return None  # type: ignore[return-value]
+            # VecEnv will be used directly - cast to satisfy type checker
+            return cast(gym.Env[Any, Any], self.env)
 
         if isinstance(self.env, gym.Env):
             return self.env
@@ -635,11 +632,15 @@ class RLTrainer:
                 return_episode_rewards=False,
             )
 
+            # Extract scalar values (evaluate_policy may return arrays)
+            mean_rew_val = float(mean_reward) if not isinstance(mean_reward, list) else float(mean_reward[0])
+            std_rew_val = float(std_reward) if not isinstance(std_reward, list) else float(std_reward[0])
+            
             metrics = {
-                "mean_reward": float(mean_reward),
-                "std_reward": float(std_reward),
-                "min_reward": float(mean_reward - std_reward),  # Approximation
-                "max_reward": float(mean_reward + std_reward),  # Approximation
+                "mean_reward": mean_rew_val,
+                "std_reward": std_rew_val,
+                "min_reward": mean_rew_val - std_rew_val,  # Approximation
+                "max_reward": mean_rew_val + std_rew_val,  # Approximation
                 "mean_length": 0.0,  # Not available from evaluate_policy
                 "std_length": 0.0,
             }
@@ -769,7 +770,7 @@ class RLTrainer:
 
 
 def create_trainer(
-    env: gym.Env,
+    env: gym.Env[Any, Any],
     agent_type: str = "ppo",
     **kwargs: Any,
 ) -> RLTrainer:
