@@ -40,6 +40,19 @@ uv run memetic --test     # Mode B: + Memetic local search
 
 **Profiles:** `--test` (30 gens, 10 pop, ~2-5 min) • `--prod` (2000 gens, 400 pop, ~1-3 hours)
 
+## RL Training & Inference
+
+```bash
+# Train RL agents
+uv run train-rl --test      # Smoke test (10K steps, ~5-10 min)
+uv run train-rl --prod      # Full training (100K steps, ~1-2 hrs)
+
+# Run inference with latest trained model
+uv run rl-inference --test  # Auto-detect latest model (smoke)
+uv run rl-inference --prod  # Auto-detect latest model (production)
+uv run rl-inference --list-only  # List all available models
+```
+
 ## Helper Commands
 
 ```bash
