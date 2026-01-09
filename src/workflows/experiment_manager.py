@@ -195,6 +195,7 @@ class ExperimentManager:
             "c": "c-roundrobin",
             "d": "d-adaptive",
             "e": "e-rl-guided",
+            "e5": "e5-rl-training",
             "f": "f-heuristic-testing",
         }
 

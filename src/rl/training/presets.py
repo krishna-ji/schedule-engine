@@ -8,7 +8,7 @@ TRAINING_BASE_DEFAULTS: Final[dict[str, Any]] = {
     "profile": "base",
     "agent_type": "ppo",
     "data_dir": "data",
-    "save_dir": "models/rl_agents",
+    "save_dir": "output/e5-rl-training",
     "tensorboard_log": "logs/tensorboard/train",
     "timesteps": 50_000,
     "max_generations": 120,

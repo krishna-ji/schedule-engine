@@ -102,6 +102,7 @@ diagnose = "scripts.launcher:main_diagnose"           # System diagnostics
 list-experiments = "scripts.launcher:main_list"       # List experiment history
 stats = "scripts.launcher:main_stats"                 # Show manifest statistics
 organize-output = "scripts.utilities.organize_output:main"  # Reorganize output structure
+visualize-rl = "scripts.utilities.visualize_rl_training:main"  # Generate RL training visualizations
 lint = "scripts.lint:main_check"
 lint-fix = "scripts.lint:main_fix"
 typecheck = "scripts.typecheck:main"

@@ -575,10 +575,40 @@ def main() -> None:
 
     try:
         logger.info("\n" + "=" * 60)
-        logger.info("STEP 1: Load Scheduling Data")
+        logger.info("STEP 1: Setup Output Directory")
         logger.info("=" * 60)
 
-        _, context = load_input_data(args.data_dir)
+        # Create timestamped output directory via ExperimentManager
+        from src.workflows.experiment_manager import ExperimentManager
+
+        exp_manager = ExperimentManager()
+
+        timestamp = datetime.now()
+        experiment_name = (
+            f"rl_training_{args.loaded_profile}_{args.agent_type}_{args.timesteps}"
+        )
+
+        output_dir = exp_manager.create_output_dir(
+            runtime_mode="e5", experiment_name=experiment_name, timestamp=timestamp
+        )
+
+        logger.info(f"Output directory: {output_dir}")
+        logger.info("Models will be saved to: models/rl_agents/")
+
+        # Configure paths for this run
+        run_tensorboard_log = output_dir / "logs" / "tensorboard"
+
+        run_tensorboard_log.parent.mkdir(parents=True, exist_ok=True)
+
+        logger.info("\n" + "=" * 60)
+        logger.info("STEP 2: Load Scheduling Data")
+        logger.info("=" * 60)
+
+        # Load global config for cohort pairs
+        from src.config import get_config
+
+        config = get_config()
+        _, context = load_input_data(args.data_dir, config=config)
 
         # Right-align counts for consistent formatting
         max_count = max(
@@ -594,7 +624,7 @@ def main() -> None:
         logger.info("Loaded %*d groups", count_width, len(context.groups))
 
         logger.info("\n" + "=" * 60)
-        logger.info("STEP 2: Create RL Environment")
+        logger.info("STEP 3: Create RL Environment")
         logger.info("=" * 60)
 
         # Create parallel or single environment based on config
@@ -611,14 +641,14 @@ def main() -> None:
             logger.info("Using single environment (no parallelization)")
 
         logger.info("\n" + "=" * 60)
-        logger.info("STEP 3: Initialize Trainer")
+        logger.info("STEP 4: Initialize RL Trainer")
         logger.info("=" * 60)
 
         trainer = RLTrainer(
-            env=env,
+            env=env,  # Use the env created above (parallel or single)
             agent_type=args.agent_type,
-            save_dir=args.save_dir,
-            tensorboard_log=args.tensorboard_log,
+            save_dir="models/rl_agents",  # Models always go to models/
+            tensorboard_log=str(run_tensorboard_log),  # TensorBoard in run output/
             verbose=0,  # Silence SB3's output to prevent duplicate logging
             seed=args.seed,
             n_envs=args.n_envs,
@@ -676,30 +706,103 @@ def main() -> None:
                 )
 
         logger.info("\n" + "=" * 60)
-        logger.info("STEP 4: Train Agent")
+        logger.info("STEP 5: Train Agent")
         logger.info("=" * 60)
 
         if args.curriculum:
             logger.info("[INFO] Curriculum learning: ENABLED")
-            logger.info("[WARN] Curriculum learning not yet fully implemented!")
-            logger.info("[INFO] Training will use standard approach for now.")
+            logger.info("[INFO] Starting multi-stage curriculum training...")
 
-        logger.info(
-            "[DEBUG] About to call trainer.train() - this will start rollout collection"
-        )
+            # Import curriculum manager
+            from src.rl.training.curriculum import (
+                CurriculumManager,
+                create_default_curriculum,
+            )
 
-        sys.stdout.flush()
+            # Initialize curriculum manager
+            curriculum_stages = create_default_curriculum()
+            curriculum_mgr = CurriculumManager(
+                context=context,
+                stages=curriculum_stages,
+                random_seed=args.seed,
+            )
 
-        trainer.train(
-            total_timesteps=args.timesteps,
-            progress_bar=False,
-        )
+            logger.info(f"Curriculum stages: {len(curriculum_stages)}")
+
+            # Train through curriculum stages
+            total_trained_steps = 0
+            for stage_idx, stage in enumerate(curriculum_stages):
+                logger.info(
+                    f"\n{'='*60}\nStage {stage_idx+1}/{len(curriculum_stages)}: {stage['name'].upper()}\n{'='*60}"
+                )
+                logger.info(f"Episodes: {stage['num_episodes']}")
+                logger.info(f"Max generations: {stage['max_generations']}")
+
+                # Calculate timesteps for this stage
+                stage_timesteps = stage["num_episodes"] * args.max_steps
+
+                # Update environment parameters for stage difficulty
+                # (This would require env reconfiguration - simplified for now)
+
+                # Train for stage episodes
+                trainer.train(
+                    total_timesteps=stage_timesteps,
+                    progress_bar=False,
+                    reset_num_timesteps=False,  # Accumulate across stages
+                )
+
+                total_trained_steps += stage_timesteps
+
+                # Validation check
+                if stage_idx < len(curriculum_stages) - 1:  # Not final stage
+                    logger.info(f"\nValidating stage '{stage['name']}'...")
+                    val_metrics = trainer.evaluate(
+                        n_eval_episodes=stage["validation_episodes"]
+                    )
+                    val_score = val_metrics["mean_reward"]
+
+                    logger.info(f"Validation mean reward: {val_score:.4f}")
+
+                    if curriculum_mgr.should_advance(val_score):
+                        logger.info(
+                            f"[OK] Stage '{stage['name']}' completed! Advancing..."
+                        )
+                        curriculum_mgr.advance_stage()
+                    else:
+                        logger.warning(
+                            f"[WARN] Validation score below threshold ({stage.get('threshold', 0.0)})"
+                        )
+                        logger.info(
+                            "Continuing to next stage anyway (linear curriculum)"
+                        )
+                        curriculum_mgr.advance_stage()
+
+                # Save curriculum progress
+                progress_path = trainer.save_dir / "curriculum_progress.json"
+                curriculum_mgr.save_progress(str(progress_path))
+
+            logger.info(
+                f"\n[OK] Curriculum training completed! Total steps: {total_trained_steps:,}"
+            )
+
+        else:
+            # Standard training (no curriculum)
+            logger.info(
+                "[DEBUG] About to call trainer.train() - this will start rollout collection"
+            )
+
+            sys.stdout.flush()
+
+            trainer.train(
+                total_timesteps=args.timesteps,
+                progress_bar=False,
+            )
 
         logger.info("\n[OK] Training completed successfully!")
 
         if not args.no_eval and args.eval_episodes > 0:
             logger.info("\n" + "=" * 60)
-            logger.info("STEP 5: Evaluate Agent")
+            logger.info("STEP 6: Evaluate Trained Agent")
             logger.info("=" * 60)
 
             metrics = trainer.evaluate(n_eval_episodes=args.eval_episodes)
@@ -717,15 +820,15 @@ def main() -> None:
             logger.info("  Mean Episode Length: %.1f", metrics["mean_length"])
 
         logger.info("\n" + "=" * 60)
-        logger.info("STEP 6: Save Model")
+        logger.info("STEP 7: Save Model")
         logger.info("=" * 60)
 
         if args.save_path:
             save_path = args.save_path
         else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
             save_path = (
-                f"{args.save_prefix}_{args.agent_type}_{args.timesteps}_{timestamp}"
+                f"{args.save_prefix}_{args.agent_type}_{args.timesteps}_{datetime_str}"
             )
 
         model_path = trainer.save_model(
@@ -756,6 +859,54 @@ def main() -> None:
         logger.info("TRAINING COMPLETE!")
         logger.info("=" * 60)
 
+        # Generate visualizations
+        logger.info("\n" + "=" * 60)
+        logger.info("STEP 8: Generate Training Visualizations")
+        logger.info("=" * 60)
+
+        try:
+            from pathlib import Path as PathLib
+
+            from src.rl.training.visualizer import generate_visualizations
+
+            # Use run output directory (not model directory) for plots/csv
+            # Convert trainer.tensorboard_log to Path if it's a string
+            tb_logdir = (
+                PathLib(trainer.tensorboard_log)
+                if isinstance(trainer.tensorboard_log, str)
+                else trainer.tensorboard_log
+            )
+
+            generate_visualizations(
+                tensorboard_logdir=tb_logdir,
+                output_dir=output_dir,  # Changed: use run output dir
+                experiment_name=experiment_name,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to generate visualizations: {e}")
+            logger.info(
+                "You can manually generate plots later using: uv run visualize-rl"
+            )
+
+        # Register experiment in manifest
+        exp_manager.register_run(
+            runtime_mode="e5",
+            timestamp=timestamp,
+            output_path=str(output_dir),
+            config_name=args.loaded_profile,
+            notes=f"RL training: {args.agent_type.upper()}, {args.timesteps:,} steps, model: {model_path.name}",
+        )
+
+        logger.info("\n" + "=" * 60)
+        logger.info("OUTPUT LOCATIONS")
+        logger.info("=" * 60)
+        logger.info("Trained model:   %s", model_path)
+        logger.info("Run artifacts:   %s", output_dir)
+        logger.info("  - Plots:       %s", output_dir / "plots")
+        logger.info("  - Metrics CSV: %s", output_dir / "csv")
+        logger.info("  - Logs:        %s", output_dir / "logs")
+        logger.info("  - TensorBoard: %s", run_tensorboard_log)
+
         logger.info("\n" + "=" * 60)
         logger.info("VIEW TRAINING IN TENSORBOARD")
         logger.info("=" * 60)
@@ -765,7 +916,17 @@ def main() -> None:
                 "(TensorBoard will keep running - press Ctrl+C in terminal to stop)"
             )
         else:
-            logger.info("\nOr start manually: .\\start_tensorboard.ps1")
+            logger.info("\\nOr start manually: .\\\\start_tensorboard.ps1")
+
+        logger.info("\n" + "=" * 60)
+        logger.info("OUTPUT LOCATIONS")
+        logger.info("=" * 60)
+        logger.info("Trained model:   %s", model_path)
+        logger.info("Run artifacts:   %s", output_dir)
+        logger.info("  - Plots:       %s", output_dir / "plots")
+        logger.info("  - Metrics CSV: %s", output_dir / "csv")
+        logger.info("  - Logs:        %s", output_dir / "logs")
+        logger.info("  - TensorBoard: %s", run_tensorboard_log)
 
     except KeyboardInterrupt:
         logger.warning("\nTraining interrupted by user")

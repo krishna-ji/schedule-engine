@@ -68,7 +68,9 @@ class StructuredLogger:
     @classmethod
     def setup(
         cls,
-        log_file: Path | Literal["auto"] | None = "auto",
+        log_file: (
+            Path | Literal["auto"] | None
+        ) = None,  # Changed default from "auto" to None
         console_level: str = "DEBUG",
         file_level: str = "DEBUG",
         show_time: bool = True,
@@ -78,7 +80,7 @@ class StructuredLogger:
         Configure global logging settings.
 
         Args:
-            log_file: Custom path, "auto" for timestamped default, or None to disable file logging
+            log_file: Custom path, "auto" for timestamped default in logs/training/, or None to disable file logging (default)
             console_level: Console verbosity (DEBUG, INFO, WARNING, ERROR)
             file_level: File verbosity (typically DEBUG for full detail)
             show_time: Show timestamp in console (default False for cleaner output)
@@ -87,12 +89,14 @@ class StructuredLogger:
         # Derive log file path (auto-create, custom, or disabled)
         resolved_log_file: Path | None
         if isinstance(log_file, str) and log_file == "auto":
+            # DEPRECATED: Only used if explicitly requested
+            # Prefer passing explicit log path from output directory
             log_dir = Path("logs") / "training"
             log_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             resolved_log_file = log_dir / f"training_{timestamp}.log"
         elif log_file is None:
-            resolved_log_file = None
+            resolved_log_file = None  # Console-only logging
         else:
             resolved_log_file = Path(log_file)
             resolved_log_file.parent.mkdir(parents=True, exist_ok=True)

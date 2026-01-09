@@ -53,7 +53,9 @@ pytest test/unit/            # Test suite
 - **Phase 2.2-2.4**: ✅ RL training pipeline (PPO/DQN agents)
 - **Phase 3**: ✅ Advanced RL (8 enhancements: multi-agent, hierarchical, memetic)
 - **Type Safety**: ✅ Strict mypy (100% typed pure Python packages)
-- **GPU**: ❌ Removed from GA (CPU multiprocessing only); reserved for RL neural networks
+- **GPU Acceleration**:
+  - ❌ Removed from GA loop (CPU multiprocessing more efficient for constraint evaluation)
+  - ✅ Enabled for RL neural networks (PPO/DQN policy training with PyTorch CUDA)
 - **Metrics**: ✅ pymoo acceleration (139x speedup: 50s → 0.36s/gen)
 
 ## Tech Stack

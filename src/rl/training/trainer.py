@@ -226,6 +226,130 @@ class RLTrainer:
         logger.info(f"Created {self.agent_type.upper()} agent")
         return self.agent  # type: ignore[return-value]
 
+    def _resolve_device(self, device: str) -> str:
+        """Resolve training device (CUDA for RL neural networks if available).
+
+        RL neural networks can leverage GPU acceleration for policy/value network
+        training. The GA fitness evaluation remains CPU-only.
+        """
+        import torch
+
+        device_lower = device.lower()
+
+        # Explicit device selection
+        if device_lower in ("cpu", "cuda"):
+            if device_lower == "cuda" and not torch.cuda.is_available():
+                logger.warning("CUDA requested but not available, falling back to CPU")
+                return "cpu"
+            return device_lower
+
+        # Auto-detect best device
+        if device_lower == "auto":
+            if torch.cuda.is_available():
+                logger.info(f"Auto-detected CUDA GPU: {torch.cuda.get_device_name(0)}")
+                return "cuda"
+            logger.info("No CUDA GPU detected, using CPU")
+            return "cpu"
+
+        # Invalid device specification
+        logger.warning(f"Unknown device '{device}', defaulting to CPU")
+        return "cpu"
+
+    def train_with_curriculum(
+        self,
+        curriculum_manager: Any,
+        callbacks: list[BaseCallback] | None = None,
+        progress_bar: bool = False,
+    ) -> dict[str, Any]:
+        """Train agent using curriculum learning stages.
+
+        Args:
+            curriculum_manager: CurriculumManager instance
+            callbacks: Optional training callbacks
+            progress_bar: Show progress bar
+
+        Returns:
+            Training statistics including curriculum progress
+        """
+        total_timesteps_trained = 0
+        stage_results = []
+
+        for stage_idx in range(len(curriculum_manager.stages)):
+            current_stage = curriculum_manager.get_current_stage()
+            if current_stage is None:
+                break
+
+            logger.info(
+                f"Starting curriculum stage {stage_idx + 1}/{len(curriculum_manager.stages)}: {current_stage.name}"
+            )
+            logger.info(f"  Episodes: {current_stage.num_episodes}")
+            logger.info(f"  Max generations: {current_stage.max_generations}")
+
+            # Calculate timesteps for this stage (episodes × max_steps)
+            # Assumes max_steps is environment parameter
+            # type: ignore comment for config.rl.training access
+            stage_timesteps = (
+                current_stage.num_episodes * 100  # type: ignore[attr-defined]
+            )
+
+            # Train for this stage
+            self.train(
+                total_timesteps=stage_timesteps,
+                callbacks=callbacks,
+                tb_log_name=f"curriculum_stage_{current_stage.name}",
+                reset_num_timesteps=False,  # Accumulate across stages
+                progress_bar=progress_bar,
+            )
+
+            total_timesteps_trained += stage_timesteps
+
+            # Validation
+            logger.info(f"Validating stage '{current_stage.name}'...")
+            val_metrics = self.evaluate(
+                n_eval_episodes=current_stage.validation_episodes
+            )
+            val_score = val_metrics["mean_reward"]
+
+            logger.info(
+                f"Validation: mean={val_score:.4f}, threshold={current_stage.threshold:.4f}"
+            )
+
+            # Check advancement
+            should_advance = curriculum_manager.should_advance(val_score)
+
+            stage_results.append(
+                {
+                    "stage_name": current_stage.name,
+                    "stage_idx": stage_idx,
+                    "timesteps": stage_timesteps,
+                    "validation_score": val_score,
+                    "advanced": should_advance,
+                }
+            )
+
+            # Advance or continue
+            if should_advance and stage_idx < len(curriculum_manager.stages) - 1:
+                logger.info(f"[OK] Advancing from stage '{current_stage.name}'")
+                curriculum_manager.advance_stage()
+            elif stage_idx < len(curriculum_manager.stages) - 1:
+                logger.warning(
+                    f"Stage '{current_stage.name}' validation below threshold, advancing anyway"
+                )
+                curriculum_manager.advance_stage()
+
+        # Return statistics
+        stats = {
+            "total_timesteps": total_timesteps_trained,
+            "num_stages_completed": len(stage_results),
+            "stage_results": stage_results,
+            "curriculum_stats": curriculum_manager.get_statistics(),
+        }
+
+        logger.info(
+            f"Curriculum training completed: {total_timesteps_trained:,} timesteps"
+        )
+        return stats
+
     def train(
         self,
         total_timesteps: int,
@@ -451,15 +575,31 @@ class RLTrainer:
     def _get_eval_env(self) -> gym.Env:
         """Return a gym.Env for evaluation, unwrapping VecEnv if needed."""
         if isinstance(self.env, VecEnv):
+            # Try to get underlying environment from VecEnv
+            # DummyVecEnv stores envs in .envs attribute
             envs = getattr(self.env, "envs", None)
-            if envs:
+            if envs and len(envs) > 0:
+                # DummyVecEnv wraps environments directly
                 base_env = envs[0]
-                underlying = getattr(base_env, "env", base_env)
-                if isinstance(underlying, gym.Env):
+                # Check if it's already a gym.Env
+                if isinstance(base_env, gym.Env):
+                    return base_env
+                # Try to unwrap if it has an .env attribute
+                underlying = getattr(base_env, "env", None)
+                if underlying and isinstance(underlying, gym.Env):
                     return underlying
-            raise RuntimeError("VecEnv does not expose a gym-compatible environment")
+
+            # SubprocVecEnv doesn't expose environments directly - create a new one
+            # We'll use the agent's evaluate() with the VecEnv directly instead
+            logger.warning(
+                "VecEnv does not expose gym environments. Using VecEnv for evaluation."
+            )
+            # Return None to signal we should use VecEnv-based evaluation
+            return None  # type: ignore[return-value]
+
         if isinstance(self.env, gym.Env):
             return self.env
+
         raise RuntimeError("Trainer environment must be gym-compatible for evaluation")
 
     def evaluate(
@@ -482,6 +622,34 @@ class RLTrainer:
 
         logger.info(f"Evaluating agent over {n_eval_episodes} episodes...")
 
+        # Check if we have a VecEnv
+        if isinstance(self.env, VecEnv):
+            # Use stable-baselines3's evaluate_policy for VecEnv
+            from stable_baselines3.common.evaluation import evaluate_policy
+
+            mean_reward, std_reward = evaluate_policy(
+                self.agent,
+                self.env,
+                n_eval_episodes=n_eval_episodes,
+                deterministic=deterministic,
+                return_episode_rewards=False,
+            )
+
+            metrics = {
+                "mean_reward": float(mean_reward),
+                "std_reward": float(std_reward),
+                "min_reward": float(mean_reward - std_reward),  # Approximation
+                "max_reward": float(mean_reward + std_reward),  # Approximation
+                "mean_length": 0.0,  # Not available from evaluate_policy
+                "std_length": 0.0,
+            }
+
+            logger.info(
+                f"Evaluation results: mean_reward={metrics['mean_reward']:.2f} ± {metrics['std_reward']:.2f}"
+            )
+            return metrics
+
+        # Single environment evaluation
         episode_rewards = []
         episode_lengths: list[int | float] = []
 
@@ -598,43 +766,6 @@ class RLTrainer:
                 return candidate
 
         return min_candidate if rollout_size % min_candidate == 0 else 1
-
-    def _resolve_device(self, requested_device: str) -> str:
-        """
-        Resolve device string with proper GPU detection.
-
-        Args:
-            requested_device: Device string ("cpu", "cuda", "cuda:0", "auto")
-
-        Returns:
-            Resolved device string
-        """
-        import torch
-
-        normalized = (requested_device or "auto").lower()
-
-        if normalized == "auto":
-            # Auto-detect best device
-            if torch.cuda.is_available():
-                device = "cuda"
-                logger.info(
-                    f"Auto-detected CUDA device: {torch.cuda.get_device_name(0)}"
-                )
-            else:
-                device = "cpu"
-                logger.info("No CUDA device available, using CPU")
-        elif normalized.startswith("cuda"):
-            # Validate CUDA device
-            if torch.cuda.is_available():
-                device = normalized
-                logger.info(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
-            else:
-                logger.warning("CUDA requested but not available, falling back to CPU")
-                device = "cpu"
-        else:
-            device = "cpu"
-
-        return device
 
 
 def create_trainer(
