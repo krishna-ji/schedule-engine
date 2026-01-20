@@ -290,15 +290,16 @@ def get_enabled_heuristics(
         for name, meta in heuristics_to_check.items():
             category_config = getattr(heuristics_config, meta.category.value, None)
 
-            # If category_config is explicitly set to empty dict {}, disable all heuristics in that category
-            # This allows blueprints to use {} to mean "disable all" rather than "use defaults"
-            if category_config is not None and not category_config:
-                continue  # Skip all heuristics in this category
+            # Treat missing or empty category configs as "use defaults" to avoid disabling the registry
+            category_config_provided = category_config is not None and bool(
+                category_config
+            )
 
-            # When a category config dict exists, only explicitly named heuristics are considered.
-            # This mirrors the expected behavior in tests where a partial dict acts as an explicit
-            # override list rather than a partial override of defaults.
-            if category_config is not None:
+            # When a category config dict exists with entries, only explicitly named heuristics are considered.
+            # Otherwise (None or empty dict), fall back to registry defaults.
+            if category_config_provided:
+                # Type guard: category_config is not None when category_config_provided is True
+                assert category_config is not None
                 if name not in category_config:
                     continue
                 heuristic_config = category_config.get(name) or {}

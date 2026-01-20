@@ -138,6 +138,16 @@ class StateEncoder:
 
         obs = self._features_to_vector(features)
 
+        # FIX: Validate for NaN/Inf before normalization
+        if np.any(np.isnan(obs)) or np.any(np.isinf(obs)):
+            import logging
+
+            logging.getLogger(__name__).warning(
+                f"Invalid observation detected (NaN/Inf). Clamping to valid range. "
+                f"NaN count: {np.isnan(obs).sum()}, Inf count: {np.isinf(obs).sum()}"
+            )
+            obs = np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=0.0)
+
         if self.normalize:
             obs = self._normalize_observation(obs)
 

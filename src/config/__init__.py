@@ -21,17 +21,26 @@ def init_config(
 
 
 def get_config() -> Config:
-    """Return the cached config (must be initialized first)."""
+    """Return the cached config (must be initialized first).
+
+    For notebook workflows, use init_config() explicitly.
+    For standalone scripts/tests, a default test config is created.
+    """
 
     global _config
     if _config is None:
-        # Lazy initialize a default Config so unit tests and utilities can
-        # use get_config() without explicit bootstrap. Build the default
-        # Pydantic Config from the dataclass TestConfig to ensure all
-        # nested fields are populated and validated.
-        from configs.profiles import TestConfig
+        # Create a default test config for standalone usage
+        from src.config.loader import dict_to_pydantic
 
-        _config = TestConfig().to_pydantic()
+        default_dict = {
+            "experiment_name": "Default Test Config",
+            "environment": "test",
+            "ngen": 30,
+            "pop_size": 10,
+            "cxpb": 0.70,
+            "mutpb": 0.20,
+        }
+        _config = dict_to_pydantic(default_dict)
     return _config
 
 

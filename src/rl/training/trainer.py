@@ -569,8 +569,11 @@ class RLTrainer:
         logger.info("Model loaded successfully")
         return self.agent
 
-    def _get_eval_env(self) -> gym.Env[Any, Any]:
-        """Return a gym.Env for evaluation, unwrapping VecEnv if needed."""
+    def _get_eval_env(self) -> gym.Env[Any, Any] | VecEnv:
+        """Return a gym.Env for evaluation, unwrapping VecEnv if needed.
+
+        Returns VecEnv directly if underlying environments cannot be extracted.
+        """
         if isinstance(self.env, VecEnv):
             # Try to get underlying environment from VecEnv
             # DummyVecEnv stores envs in .envs attribute
@@ -584,15 +587,14 @@ class RLTrainer:
                 # Try to unwrap if it has an .env attribute
                 underlying = getattr(base_env, "env", None)
                 if underlying and isinstance(underlying, gym.Env):
-                    return underlying
+                    return cast(gym.Env[Any, Any], underlying)
 
-            # SubprocVecEnv doesn't expose environments directly - create a new one
-            # We'll use the agent's evaluate() with the VecEnv directly instead
+            # SubprocVecEnv doesn't expose environments directly
+            # Return VecEnv directly (caller will use evaluate_policy instead)
             logger.warning(
                 "VecEnv does not expose gym environments. Using VecEnv for evaluation."
             )
-            # VecEnv will be used directly - cast to satisfy type checker
-            return cast(gym.Env[Any, Any], self.env)
+            return self.env  # type: ignore[return-value]
 
         if isinstance(self.env, gym.Env):
             return self.env
@@ -673,7 +675,8 @@ class RLTrainer:
 
             while not done:
                 action, _ = self.agent.predict(obs, deterministic=deterministic)
-                obs_raw, reward, terminated, truncated, _ = eval_env.step(action)
+                step_result: tuple[Any, Any, Any, Any, Any] = eval_env.step(action)  # type: ignore[assignment]
+                obs_raw, reward, terminated, truncated, info = step_result
                 obs = cast(ObservationType, obs_raw)
                 done = terminated or truncated
 

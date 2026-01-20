@@ -60,52 +60,20 @@ analysis = [
 
 [project.scripts]
 # ==================
-# UNIFIED CLI LAUNCHER
-# Convention: Main commands (0-99+) = numbers, Helpers (a-z) = letters
-# Usage: uv run <command> --<profile>
-# Profiles: --test (smoke), --prod (full)
+# UTILITIES ONLY (Notebooks are the primary workflow)
 # ==================
 
-# Interactive launcher (TUI menu)
-launcher = "scripts.launcher:main_interactive"
+# Interactive help
 run = "scripts.launcher:main_interactive"
-nsga = "scripts.launcher:main_nsga"
 
-# ==================
-# PROGRESSIVE MODE EXPERIMENTS (A→E: Increasing Complexity)
-# ==================
-# Mode A: Pure NSGA-II                           [repairs: NO,  memetic: NO,  heuristics: NO]
-# Mode B: + Memetic local search                 [repairs: YES, memetic: YES, heuristics: NO]
-# Mode C: + Round-robin (heuristics + repair)    [repairs: YES (round-robin), memetic: NO, heuristics: YES (fixed)]
-# Mode D: + Adaptive heuristics                  [repairs: YES, memetic: NO,  heuristics: YES (adaptive)]
-# Mode E: + RL-guided (deploys all techniques)   [repairs: YES, memetic: YES, heuristics: YES (RL-controlled)]
-# Mode F: + Heuristic testing (individual tests) [test individual heuristics in isolation]
+# Utility commands
+archive = "scripts.launcher:main_archive"
+clean = "scripts.launcher:main_clean"
+diagnose = "scripts.launcher:main_diagnose"
+list-experiments = "scripts.launcher:main_list"
+stats = "scripts.launcher:main_stats"
 
-baseline = "scripts.launcher:main_baseline"           # Mode A: Pure NSGA-II
-memetic = "scripts.launcher:main_memetic"             # Mode B: + Memetic local search
-roundrobin = "scripts.launcher:main_roundrobin"       # Mode C: + Round-robin heuristics
-adaptive = "scripts.launcher:main_adaptive"           # Mode D: + Adaptive selection
-rl = "scripts.launcher:main_rl"                       # Mode E: + RL-guided
-heuristic-testing = "scripts.launcher:main_heuristic_testing"  # Mode F: Individual heuristic testing
-
-# RL Training
-train-rl = "scripts.launcher:main_train_rl"           # RL Agent Training
-
-# RL Inference
-rl-inference = "scripts.utilities.run_latest_model:main"  # Run latest trained model
-
-# ==================
-# HELPER COMMANDS: Utilities & Analysis
-# ==================
-
-analyze-results = "scripts.analysis.compare_experiments:main"  # Generate comparison plots
-archive = "scripts.launcher:main_archive"             # Archive incomplete runs
-clean = "scripts.launcher:main_clean"                 # Clean output directory
-diagnose = "scripts.launcher:main_diagnose"           # System diagnostics
-list-experiments = "scripts.launcher:main_list"       # List experiment history
-stats = "scripts.launcher:main_stats"                 # Show manifest statistics
-organize-output = "scripts.utilities.organize_output:main"  # Reorganize output structure
-visualize-rl = "scripts.utilities.visualize_rl_training:main"  # Generate RL training visualizations
+# Code quality
 lint = "scripts.lint:main_check"
 lint-fix = "scripts.lint:main_fix"
 typecheck = "scripts.typecheck:main"

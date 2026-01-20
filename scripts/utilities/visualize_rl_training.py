@@ -211,7 +211,7 @@ def plot_reward_distribution(data: dict, output_dir: Path) -> None:
     print("[3/6] Plotting reward distribution...")
 
     if "rollout/ep_rew_mean" not in data:
-        print("  ⚠ Skipped (no reward data)")
+        print("   Skipped (no reward data)")
         return
 
     values = data["rollout/ep_rew_mean"]["values"]
@@ -481,18 +481,18 @@ def main() -> None:
 
     try:
         # Load data
-        print("\n📊 Loading TensorBoard data...")
+        print("\n Loading TensorBoard data...")
         data = load_tensorboard_data(tensorboard_dir)
 
         if not data:
-            print("\n❌ No training data found!")
+            print("\n No training data found!")
             print(f"Expected TensorBoard logs in: {tensorboard_dir}")
             return
 
-        print(f"\n✅ Loaded {len(data)} metric(s)")
+        print(f"\n Loaded {len(data)} metric(s)")
 
         # Generate all visualizations
-        print("\n📈 Generating publication-quality figures...")
+        print("\n Generating publication-quality figures...")
         plot_training_curves(data, output_dir)
         plot_learning_metrics(data, output_dir)
         plot_reward_distribution(data, output_dir)
@@ -501,20 +501,20 @@ def main() -> None:
         generate_readme(output_dir, data)
 
         print("\n" + "=" * 60)
-        print("✅ VISUALIZATION COMPLETE!")
+        print(" VISUALIZATION COMPLETE!")
         print("=" * 60)
         print(f"\nOutput directory: {output_dir}")
         print("\nGenerated files:")
-        print("  📄 01_training_curves.pdf")
-        print("  📄 02_learning_metrics.pdf")
-        print("  📄 03_reward_distribution.pdf")
-        print("  📄 04_training_summary_dashboard.pdf")
-        print("  📊 csv/ (raw data exports)")
-        print("  📖 README.md (figure descriptions)")
-        print("\n💡 All figures are publication-ready (300 DPI, vector graphics)")
+        print("   01_training_curves.pdf")
+        print("   02_learning_metrics.pdf")
+        print("   03_reward_distribution.pdf")
+        print("   04_training_summary_dashboard.pdf")
+        print("   csv/ (raw data exports)")
+        print("   README.md (figure descriptions)")
+        print("\n All figures are publication-ready (300 DPI, vector graphics)")
 
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n Error: {e}")
         import traceback
 
         traceback.print_exc()

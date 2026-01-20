@@ -750,17 +750,23 @@ class RLEnvironmentConfig(BaseModel):
 class RLRewardConfig(BaseModel):
     """RL reward function configuration"""
 
-    fitness_weight: float = Field(default=1.0, ge=0.0)
-    diversity_weight: float = Field(default=0.1, ge=0.0)
+    fitness_weight: float = Field(
+        default=10.0, ge=0.0
+    )  # Increased from 1.0 for stronger learning signal
+    diversity_weight: float = Field(
+        default=1.0, ge=0.0
+    )  # Increased from 0.1 to make diversity matter
     time_weight: float = Field(default=0.01, ge=0.0)
-    normalize: bool = True
+    normalize: bool = False  # Disabled to avoid clipping learning signal
 
 
 class RLPPOConfig(BaseModel):
     """PPO agent hyperparameters"""
 
     learning_rate: float = Field(default=0.0003, gt=0.0)
-    n_steps: int = Field(default=2048, ge=1)
+    n_steps: int = Field(
+        default=512, ge=1
+    )  # Reduced from 2048 for more frequent logging (4x improvement)
     batch_size: int = Field(default=64, ge=1)
     n_epochs: int = Field(default=10, ge=1)
     gamma: float = Field(default=0.99, ge=0.0, le=1.0)

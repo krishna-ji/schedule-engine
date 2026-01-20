@@ -123,25 +123,17 @@ def main() -> int:
         f"[cyan]Profile:[/cyan] {args.profile} ({'smoke test' if args.profile == 'test' else 'production'})"
     )
 
-    # Import and run main with experiment E
-    from main import main as run_main
-
-    # Build command-line arguments
-    sys.argv = [
-        "main.py",
-        "--experiment",
-        "e",
-        "--profile",
-        args.profile,
-    ]
-
-    if args.name:
-        sys.argv.extend(["--name", args.name])
-
     console.print("\n[yellow]Starting RL-guided GA run...[/yellow]\n")
 
+    # Use the launcher's RL experiment runner directly
+    from scripts.launcher import run_experiment_universal
+
     try:
-        return run_main() or 0
+        return run_experiment_universal(
+            experiment_id="rl-guided",
+            profile=args.profile,
+            name=args.name,
+        )
     except KeyboardInterrupt:
         console.print("\n[yellow]Run interrupted by user[/yellow]")
         return 130

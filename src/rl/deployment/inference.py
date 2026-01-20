@@ -8,6 +8,8 @@ Provides fast, reliable action prediction with:
 - Error handling and fallback
 """
 
+from __future__ import annotations
+
 import time
 from collections import deque
 from typing import Any
@@ -87,14 +89,14 @@ class RLInference:
                 state, deterministic=deterministic
             )
 
-            # Extract scalar action
+            # Extract scalar action (robust to 0-D arrays from SB3)
             action: int
             if isinstance(action_result, np.ndarray):
-                action = (
-                    int(action_result[0])
-                    if action_result.size == 1
-                    else int(action_result)
-                )
+                if action_result.size == 1:
+                    # Handles numpy scalars / 0-D arrays without indexing errors
+                    action = int(action_result.reshape(-1)[0])
+                else:
+                    action = int(action_result.reshape(-1)[0])
             else:
                 action = int(action_result)
 
