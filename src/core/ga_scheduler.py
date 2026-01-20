@@ -7,6 +7,7 @@ Extracted from monolithic main.py for better testability and separation of conce
 
 from __future__ import annotations
 
+import os
 import random
 import time
 from collections.abc import Sequence
@@ -543,19 +544,31 @@ class GAScheduler:
         """
         rl_config = get_config().rl
 
+        # Allow runtime overrides for RL mode/model selection (e.g., rl-inference)
+        rl_mode = os.getenv("RL_MODE") or rl_config.mode
+        model_path_override = os.getenv("RL_AGENT_MODEL_PATH")
+        model_path_value = model_path_override or rl_config.agent.model_path
+
         # Check if RL is enabled in configuration
         if not rl_config.enabled:
             return False
 
         # Check mode (must be 'inference' or 'hybrid' for GA integration)
-        if rl_config.mode not in ["inference", "hybrid"]:
+        if rl_mode in {"rl_primary", "rl_fallback", "rl_assisted"}:
+            rl_mode = "inference"  # Backward compatibility for legacy naming
+
+        if rl_mode not in ["inference", "hybrid"]:
             console.print(
-                f"[yellow]RL mode '{rl_config.mode}' not compatible with "
+                f"[yellow]RL mode '{rl_mode}' not compatible with "
                 f"GA integration[/yellow]"
             )
             console.print(
                 "[dim]   Use mode 'inference' or 'hybrid' for production runs[/dim]"
             )
+            return False
+
+        resolved_model_path = self._resolve_rl_model_path(model_path_value)
+        if resolved_model_path is None:
             return False
 
         try:
@@ -588,31 +601,10 @@ class GAScheduler:
             )
 
             # Load trained model
-            model_path = rl_config.agent.model_path
-            if not model_path or model_path == "models/rl_agents/best_model.zip":
-                # Try to find best model from manifest
-                try:
-                    from src.rl.training.checkpoints import CheckpointManager
-
-                    manifest_path = rl_config.training.checkpoint_settings.manifest_path
-                    manager = CheckpointManager(manifest_path)
-                    best_checkpoint = manager.get_best_checkpoint(
-                        metric_name="mean_reward"
-                    )
-                    if best_checkpoint:
-                        model_path = best_checkpoint.model_path
-                        console.print(
-                            f"   [dim]Using best checkpoint: {model_path}[/dim]"
-                        )
-                except Exception as e:
-                    console.print(
-                        f"   [yellow]Could not load best checkpoint: {e}[/yellow]"
-                    )
-
             # Initialize model loader and load model
             loader = ModelLoader(cache_models=True)
             model: BaseAlgorithm = loader.load_model(
-                model_path, agent_type=rl_config.agent.type
+                str(resolved_model_path), agent_type=rl_config.agent.type
             )
             console.print(
                 f"   [green][!ok][/green] Model loaded: {rl_config.agent.type.upper()}"
@@ -665,6 +657,42 @@ class GAScheduler:
             console.print(f"[red]RL initialization failed: {e}[/red]")
             logger.exception("RL initialization error")
             return False
+
+    @staticmethod
+    def _find_latest_rl_model(models_dir: Path) -> Path | None:
+        """Locate the most recent RL model in the given directory."""
+
+        if not models_dir.exists():
+            return None
+
+        model_files = sorted(
+            models_dir.glob("*.zip"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        return model_files[0] if model_files else None
+
+    def _resolve_rl_model_path(
+        self, model_path_value: str | Path | None
+    ) -> Path | None:
+        """Resolve RL model path with fallbacks and user-friendly messaging."""
+
+        if model_path_value:
+            candidate = Path(model_path_value)
+            if candidate.is_file():
+                return candidate
+
+            console.print(f"[yellow]RL model not found at: {candidate}[/yellow]")
+
+        latest_model = self._find_latest_rl_model(Path("models/rl_agents"))
+        if latest_model:
+            console.print(f"   [dim]Using latest model: {latest_model}[/dim]")
+            return latest_model
+
+        console.print(
+            "[red]No RL model available. Train an agent first (uv run train-rl --prod)[/red]"
+        )
+        return None
 
     def _apply_rl_operators(self, gen: int) -> None:
         """
@@ -1351,7 +1379,18 @@ class GAScheduler:
         # === HEURISTICS ===
         if config.heuristics.master_enabled:
             enabled_features.append(("Heuristics", "ON"))
-            if config.heuristics.adaptive_priority.enabled:
+            adaptive_priority_cfg = config.heuristics.adaptive_priority
+            adaptive_priority_enabled = False
+            if isinstance(adaptive_priority_cfg, dict):
+                adaptive_priority_enabled = bool(
+                    adaptive_priority_cfg.get("enabled", False)
+                )
+            else:
+                adaptive_priority_enabled = getattr(
+                    adaptive_priority_cfg, "enabled", False
+                )
+
+            if adaptive_priority_enabled:
                 enabled_features.append(("  > Adaptive priority", "ON"))
 
         # === LARGE NEIGHBORHOOD SEARCH ===

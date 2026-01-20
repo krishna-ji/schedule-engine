@@ -102,7 +102,7 @@ def validate_experiment_config(name: str, experiment: dict) -> tuple[bool, list[
 
 def main() -> None:
     """Run config validation for all experiments."""
-    print_header("🔍 Validating Experiment Configurations")
+    print_header(" Validating Experiment Configurations")
 
     all_passed = True
     total_experiments = len(EXPERIMENT_REGISTRY)

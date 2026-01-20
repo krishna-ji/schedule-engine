@@ -328,6 +328,133 @@ Improvement:
     logger.info(f"Saved: {pdf_path.name}")
 
 
+def export_individual_charts(data: dict[str, dict], output_dir: Path) -> None:
+    """Export individual charts as separate PDF/PNG files for thesis."""
+
+    individual_dir = output_dir / "individual_charts"
+    individual_dir.mkdir(exist_ok=True)
+
+    chart_count = 0
+
+    # Episode reward
+    if "rollout/ep_rew_mean" in data:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        steps = data["rollout/ep_rew_mean"]["steps"]
+        values = data["rollout/ep_rew_mean"]["values"]
+        ax.plot(steps, values, linewidth=2, color=COLORS[0])
+        ax.set_xlabel("Training Step", fontsize=11)
+        ax.set_ylabel("Mean Episode Reward", fontsize=11)
+        ax.set_title("Episode Reward Progression", fontsize=12, fontweight="bold")
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(individual_dir / "episode_reward.pdf", bbox_inches="tight")
+        plt.savefig(individual_dir / "episode_reward.png", dpi=300, bbox_inches="tight")
+        plt.close()
+        chart_count += 1
+
+    # Episode length
+    if "rollout/ep_len_mean" in data:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        steps = data["rollout/ep_len_mean"]["steps"]
+        values = data["rollout/ep_len_mean"]["values"]
+        ax.plot(steps, values, linewidth=2, color=COLORS[2])
+        ax.set_xlabel("Training Step", fontsize=11)
+        ax.set_ylabel("Mean Episode Length", fontsize=11)
+        ax.set_title("Episode Length Over Time", fontsize=12, fontweight="bold")
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(individual_dir / "episode_length.pdf", bbox_inches="tight")
+        plt.savefig(individual_dir / "episode_length.png", dpi=300, bbox_inches="tight")
+        plt.close()
+        chart_count += 1
+
+    # Policy loss
+    if "train/policy_gradient_loss" in data:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        steps = data["train/policy_gradient_loss"]["steps"]
+        values = data["train/policy_gradient_loss"]["values"]
+        ax.plot(steps, values, linewidth=2, color=COLORS[3])
+        ax.set_xlabel("Training Step", fontsize=11)
+        ax.set_ylabel("Policy Gradient Loss", fontsize=11)
+        ax.set_title("Policy Network Loss", fontsize=12, fontweight="bold")
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(individual_dir / "policy_loss.pdf", bbox_inches="tight")
+        plt.savefig(individual_dir / "policy_loss.png", dpi=300, bbox_inches="tight")
+        plt.close()
+        chart_count += 1
+
+    # Value loss
+    if "train/value_loss" in data:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        steps = data["train/value_loss"]["steps"]
+        values = data["train/value_loss"]["values"]
+        ax.plot(steps, values, linewidth=2, color=COLORS[4])
+        ax.set_xlabel("Training Step", fontsize=11)
+        ax.set_ylabel("Value Function Loss", fontsize=11)
+        ax.set_title("Value Network Loss", fontsize=12, fontweight="bold")
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(individual_dir / "value_loss.pdf", bbox_inches="tight")
+        plt.savefig(individual_dir / "value_loss.png", dpi=300, bbox_inches="tight")
+        plt.close()
+        chart_count += 1
+
+    # Learning rate
+    if "train/learning_rate" in data:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        steps = data["train/learning_rate"]["steps"]
+        values = data["train/learning_rate"]["values"]
+        ax.plot(steps, values, linewidth=2, color=COLORS[5])
+        ax.set_xlabel("Training Step", fontsize=11)
+        ax.set_ylabel("Learning Rate", fontsize=11)
+        ax.set_title("Learning Rate Schedule", fontsize=12, fontweight="bold")
+        ax.set_yscale("log")
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(individual_dir / "learning_rate.pdf", bbox_inches="tight")
+        plt.savefig(individual_dir / "learning_rate.png", dpi=300, bbox_inches="tight")
+        plt.close()
+        chart_count += 1
+
+    # Entropy
+    if "train/entropy_loss" in data:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        steps = data["train/entropy_loss"]["steps"]
+        values = data["train/entropy_loss"]["values"]
+        ax.plot(steps, values, linewidth=2, color=COLORS[6])
+        ax.set_xlabel("Training Step", fontsize=11)
+        ax.set_ylabel("Policy Entropy", fontsize=11)
+        ax.set_title("Policy Entropy Over Time", fontsize=12, fontweight="bold")
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(individual_dir / "entropy.pdf", bbox_inches="tight")
+        plt.savefig(individual_dir / "entropy.png", dpi=300, bbox_inches="tight")
+        plt.close()
+        chart_count += 1
+
+    # Explained variance
+    if "train/explained_variance" in data:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        steps = data["train/explained_variance"]["steps"]
+        values = data["train/explained_variance"]["values"]
+        ax.plot(steps, values, linewidth=2, color=COLORS[7])
+        ax.axhline(y=0, color="k", linestyle="--", linewidth=0.5, alpha=0.5)
+        ax.set_xlabel("Training Step", fontsize=11)
+        ax.set_ylabel("Explained Variance", fontsize=11)
+        ax.set_title("Value Function Quality", fontsize=12, fontweight="bold")
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(individual_dir / "explained_variance.pdf", bbox_inches="tight")
+        plt.savefig(
+            individual_dir / "explained_variance.png", dpi=300, bbox_inches="tight"
+        )
+        plt.close()
+        chart_count += 1
+
+    logger.info(f"Exported {chart_count} individual chart(s) to {individual_dir.name}/")
+
+
 def export_csv_data(data: dict[str, dict], output_dir: Path) -> None:
     """Export raw metrics as CSV files."""
 
@@ -386,6 +513,7 @@ def generate_visualizations(
         plot_training_curves(data, viz_dir)
         plot_learning_metrics(data, viz_dir)
         plot_summary_dashboard(data, viz_dir)
+        export_individual_charts(data, viz_dir)  # NEW: Individual charts for thesis
         export_csv_data(data, viz_dir)
 
         logger.info("=" * 60)
