@@ -311,7 +311,7 @@ def export_full_results(
         ... )
         >>> print(paths["schedule"])  # Path to schedule.json
     """
-    print(f"📦 Exporting full results for {mode_name}...")
+    print(f" Exporting full results for {mode_name}...")
 
     # Create directory structure
     paths = create_output_structure(output_dir, mode_name)
@@ -361,8 +361,8 @@ def export_full_results(
         print(f"      ✗ NSGA plots failed: {e}")
 
     # 5. Summary
-    print(f"\n✅ Full export complete: {paths['root']}")
-    print(f"   📁 {paths['root'].relative_to(output_dir.parent)}")
+    print(f"\n Full export complete: {paths['root']}")
+    print(f"    {paths['root'].relative_to(output_dir.parent)}")
 
     return results
 
@@ -398,5 +398,5 @@ def export_comparison_results(
 
             f.write(f"{mode_name},{final_hard},{final_soft},{ngen},{best_gen}\n")
 
-    print(f"📊 Mode comparison saved: {comparison_path}")
+    print(f" Mode comparison saved: {comparison_path}")
     return comparison_path
