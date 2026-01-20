@@ -9,11 +9,11 @@ from collections.abc import Mapping, Sequence
 
 import torch
 
-from src.entities.course import Course
-from src.entities.group import Group
-from src.entities.instructor import Instructor
-from src.entities.room import Room
-from src.ga.sessiongene import SessionGene
+from src.domain.course import Course
+from src.domain.group import Group
+from src.domain.instructor import Instructor
+from src.domain.room import Room
+from src.domain.gene import SessionGene
 
 logger = logging.getLogger(__name__)
 

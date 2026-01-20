@@ -15,7 +15,7 @@ import numpy as np
 from gymnasium import spaces
 from numpy.typing import NDArray
 
-from src.core.types import Individual, SchedulingContext
+from src.domain.types import Individual, SchedulingContext
 from src.rl.gym_env.action_space import ActionMapper
 from src.rl.gym_env.reward_calculator import RewardCalculator
 from src.rl.gym_env.state_encoder import StateEncoder

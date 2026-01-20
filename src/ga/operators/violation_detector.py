@@ -33,8 +33,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 
 
 def detect_violated_genes(

@@ -16,8 +16,8 @@ import numpy as np
 
 from src.config import get_config
 from src.constraints.registry import soft_constraint
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.entities.decoded_session import CourseSession
+from src.io.time_system import QuantumTimeSystem
+from src.domain.session import CourseSession
 from src.utils.time_helpers import (
     get_midday_break_quanta,
     quantum_to_day_and_within_day,

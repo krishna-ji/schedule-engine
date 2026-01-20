@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from src.core.types import Individual
+from src.domain.types import Individual
 
 
 @dataclass

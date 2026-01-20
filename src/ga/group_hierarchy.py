@@ -6,7 +6,7 @@ Identifies parent groups and their subgroups to enable proper scheduling:
 - Practical sessions for subgroups separately
 """
 
-from src.entities.group import Group
+from src.domain.group import Group
 
 
 def analyze_group_hierarchy(

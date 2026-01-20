@@ -40,8 +40,8 @@ def init_worker(
 
         from src.config import init_config
         from src.config.models import Config
-        from src.core.types import SchedulingContext
-        from src.encoder.input_encoder import (
+        from src.domain.types import SchedulingContext
+        from src.io.data_loader import (
             derive_cohort_pairs_from_groups,
             link_courses_and_groups,
             link_courses_and_instructors,
@@ -50,7 +50,7 @@ def init_worker(
             load_instructors,
             load_rooms,
         )
-        from src.encoder.quantum_time_system import QuantumTimeSystem
+        from src.io.time_system import QuantumTimeSystem
 
         # Initialize config in worker process (required for constraint evaluation)
         if config_dict is not None:

@@ -5,8 +5,8 @@ Records constraint violations during fitness evaluation.
 Integrates with ViolationHeatmap to track hot genes.
 """
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 from src.metrics.violation_heatmap import ViolationHeatmap
 
 

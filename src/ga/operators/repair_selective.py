@@ -40,7 +40,7 @@ Usage:
 from collections import defaultdict
 from collections.abc import Callable
 
-from src.core.types import SchedulingContext
+from src.domain.types import SchedulingContext
 
 # Import original repair functions to reuse helper logic
 from src.ga.operators.repair import (
@@ -49,7 +49,7 @@ from src.ga.operators.repair import (
     _find_instructor_available_slot,
 )
 from src.ga.operators.violation_detector import detect_violated_genes
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 
 SelectiveRepairFunc = Callable[[list[SessionGene], set[int], SchedulingContext], int]
 

@@ -32,8 +32,8 @@ import copy
 import random
 from collections import defaultdict
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 from src.heuristics.registry import improvement_heuristic
 from src.heuristics.utils import (
     estimate_session_student_count,
@@ -396,7 +396,7 @@ def _apply_kempe_swap(chain: list[SessionGene]) -> bool:
     time1, time2 = gene1.time_quantum, gene2.time_quantum
 
     # Get quantum time system to check bounds
-    from src.encoder.quantum_time_system import QuantumTimeSystem
+    from src.io.time_system import QuantumTimeSystem
 
     qts = QuantumTimeSystem()
 

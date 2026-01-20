@@ -4,7 +4,7 @@ Scalar reward calculator (weighted sum of objectives).
 Traditional approach: reward = w1 * hard_improvement + w2 * soft_improvement
 """
 
-from src.core.types import Individual
+from src.domain.types import Individual
 from src.rl.rewards.base_reward import BaseRewardCalculator
 
 

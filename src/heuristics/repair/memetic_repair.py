@@ -6,8 +6,8 @@ Intended for memetic/Hybrid GA modes where local search is applied to the
 best individuals each generation.
 """
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 

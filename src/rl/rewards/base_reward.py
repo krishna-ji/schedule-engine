@@ -6,7 +6,7 @@ All reward calculators implement this interface for consistent usage.
 
 from abc import ABC, abstractmethod
 
-from src.core.types import Individual
+from src.domain.types import Individual
 
 
 class BaseRewardCalculator(ABC):

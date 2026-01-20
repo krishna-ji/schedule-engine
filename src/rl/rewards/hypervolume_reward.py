@@ -10,7 +10,7 @@ Increasing hypervolume = improving the Pareto front = good reward.
 import numpy as np
 from numpy.typing import NDArray
 
-from src.core.types import Individual
+from src.domain.types import Individual
 from src.rl.rewards.base_reward import BaseRewardCalculator
 
 try:

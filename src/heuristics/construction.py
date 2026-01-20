@@ -30,12 +30,12 @@ Usage:
 import random
 from collections import defaultdict
 
-from src.core.types import SchedulingContext
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.entities.course import Course
-from src.entities.instructor import Instructor
-from src.entities.room import Room
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.io.time_system import QuantumTimeSystem
+from src.domain.course import Course
+from src.domain.instructor import Instructor
+from src.domain.room import Room
+from src.domain.gene import SessionGene
 from src.heuristics.registry import construction_heuristic
 
 type AssignedTimes = dict[str, set[int]]
@@ -654,7 +654,7 @@ def _select_qualified_instructor(
     # Find available qualified instructors
     available_instructors = []
 
-    from src.encoder.quantum_time_system import QuantumTimeSystem
+    from src.io.time_system import QuantumTimeSystem
 
     time_system = QuantumTimeSystem()
 

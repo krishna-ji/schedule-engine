@@ -31,8 +31,8 @@ import copy
 import random
 from collections import defaultdict
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 from src.heuristics.registry import diversity_heuristic
 
 # ================
@@ -181,7 +181,7 @@ def crowding_mutation(
         # Mutate if in crowded region
         if time_usage[gene.time_quantum] > avg_time_usage * 1.5:
             # Move to less-used time
-            from src.encoder.quantum_time_system import QuantumTimeSystem
+            from src.io.time_system import QuantumTimeSystem
 
             time_system = QuantumTimeSystem()
             all_quanta = time_system.get_all_operating_quanta()
@@ -458,7 +458,7 @@ def _inject_diversity(
             course = context.courses.get((gene.course_id, gene.course_type))
             if not course:
                 continue
-            from src.encoder.quantum_time_system import QuantumTimeSystem
+            from src.io.time_system import QuantumTimeSystem
 
             time_system = QuantumTimeSystem()
             all_quanta = time_system.get_all_operating_quanta()

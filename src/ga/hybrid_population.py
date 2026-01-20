@@ -22,15 +22,15 @@ import os
 import random
 from concurrent.futures import ProcessPoolExecutor
 
-from src.core.types import Individual, SchedulingContext
-from src.entities.course import Course
-from src.entities.instructor import Instructor
-from src.entities.room import Room
+from src.domain.types import Individual, SchedulingContext
+from src.domain.course import Course
+from src.domain.instructor import Instructor
+from src.domain.room import Room
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.individual import create_individual
 from src.ga.population import generate_course_group_aware_population
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 from src.utils.system_info import get_cpu_count
 
 type CourseGroupPair = tuple[tuple[str, str], list[str], str, int]

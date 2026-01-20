@@ -6,7 +6,7 @@ ENHANCEMENT #6: Selects which solutions to apply local search to.
 
 import numpy as np
 
-from src.core.types import Individual
+from src.domain.types import Individual
 
 
 class SolutionSelector:

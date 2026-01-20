@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 
 from src.config import get_config
-from src.core.types import SchedulingContext
+from src.domain.types import SchedulingContext
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)

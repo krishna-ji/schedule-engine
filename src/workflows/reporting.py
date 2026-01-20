@@ -14,38 +14,38 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from src.core.ga_scheduler import GAMetrics
-from src.core.types import Individual
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.entities.course import Course
-from src.entities.decoded_session import CourseSession
-from src.exporter.exporter import export_everything
-from src.exporter.plot_convergence import (
+from src.ga.scheduler import GAMetrics
+from src.domain.types import Individual
+from src.io.time_system import QuantumTimeSystem
+from src.domain.course import Course
+from src.domain.session import CourseSession
+from src.io.export.exporter import export_everything
+from src.io.export.plot_convergence import (
     plot_constraint_satisfaction_evolution,
     plot_convergence_dashboard,
     plot_convergence_rate,
     plot_multi_metric_convergence,
 )
-from src.exporter.plot_detailed_constraints import (
+from src.io.export.plot_detailed_constraints import (
     plot_constraint_summary,
     plot_individual_hard_constraints,
     plot_individual_soft_constraints,
 )
 
 # NEW: Import advanced evaluation metric plotting modules
-from src.exporter.plot_hypervolume import plot_hypervolume_trend
-from src.exporter.plot_spacing import (
+from src.io.export.plot_hypervolume import plot_hypervolume_trend
+from src.io.export.plot_spacing import (
     plot_spacing_distribution,
     plot_spacing_trend,
     plot_spacing_with_pareto,
 )
-from src.exporter.plotdiversity import plot_diversity_trend
-from src.exporter.plothard import plot_hard_constraint_violation_over_generation
-from src.exporter.plotpareto import plot_pareto_front
-from src.exporter.plotsoft import plot_soft_constraint_violation_over_generation
-from src.exporter.violation_reporter import generate_violation_report
+from src.io.export.plotdiversity import plot_diversity_trend
+from src.io.export.plothard import plot_hard_constraint_violation_over_generation
+from src.io.export.plotpareto import plot_pareto_front
+from src.io.export.plotsoft import plot_soft_constraint_violation_over_generation
+from src.io.export.violation_reporter import generate_violation_report
 from src.ga.heuristic_tracker import HeuristicTracker
-from src.lns.lns_operator import get_lns_stats
+from src.heuristics.repair.lns_operator import get_lns_stats
 from src.utils.system_info import get_cpu_count
 
 
