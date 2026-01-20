@@ -42,9 +42,9 @@ Usage:
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from src.core.types import Individual, SchedulingContext
+from src.domain.types import Individual, SchedulingContext
 from src.ga.operators.local_search import optimize_gene_exhaustive, optimize_gene_greedy
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 from src.utils.system_info import get_cpu_count
 
 type ExhaustiveArgs = tuple[

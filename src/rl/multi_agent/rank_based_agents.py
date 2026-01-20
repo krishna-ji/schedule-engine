@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 if TYPE_CHECKING:
     from stable_baselines3 import PPO
 
-from src.core.types import Individual
+from src.domain.types import Individual
 
 
 class RankBasedAgent:

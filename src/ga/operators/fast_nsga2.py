@@ -6,7 +6,7 @@ Provides 5-10x speedup for populations > 200.
 
 from typing import Protocol, cast
 
-from src.core.types import Individual
+from src.domain.types import Individual
 
 
 class _FitnessProtocol(Protocol):

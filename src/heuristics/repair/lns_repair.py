@@ -5,12 +5,12 @@ Large Neighborhood Search repair operator integrated as a heuristic.
 This operator uses conflict detection and subproblem solving for repair.
 """
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 # Import the original LNS repair logic
-from src.lns.lns_operator import lns_igls_repair
+from src.heuristics.repair.lns_operator import lns_igls_repair
 
 
 @repair_heuristic(

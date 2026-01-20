@@ -14,11 +14,11 @@ Constraint Coverage: Same as base repairs (6 of 8 hard, 1 of 4 soft)
 Application: Default repair mode in Modes B-E (recommended for speed)
 """
 
-from src.core.types import SchedulingContext
+from src.domain.types import SchedulingContext
 
 # Import the original selective repair logic
 from src.ga.operators.repair_selective import repair_individual_selective
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 

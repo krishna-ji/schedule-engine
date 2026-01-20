@@ -6,8 +6,8 @@ fast hill-climbing repair that quickly addresses obvious constraint
 violations without the overhead of exhaustive search.
 """
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 

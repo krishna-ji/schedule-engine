@@ -1,7 +1,7 @@
 import random
 
 from src.config import get_config
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 
 
 def crossover_course_group_aware(
@@ -95,7 +95,7 @@ def crossover_course_group_aware(
 
     # Validate start_quanta don't exceed valid range after swap
     # If invalid, clip start_quanta only (num_quanta is FIXED by course requirements)
-    from src.encoder.quantum_time_system import QuantumTimeSystem
+    from src.io.time_system import QuantumTimeSystem
 
     time_system = QuantumTimeSystem()
     max_valid_quantum = time_system.total_quanta

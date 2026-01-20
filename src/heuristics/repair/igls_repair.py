@@ -11,11 +11,11 @@ Constraint Coverage:
 Application: Stagnation-triggered repair in Modes C-E (adaptive strategy)
 """
 
-from src.core.types import SchedulingContext
+from src.domain.types import SchedulingContext
 
 # Import the original IGLS repair logic
 from src.ga.operators.repair import repair_individual_unified
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 from src.heuristics.registry import repair_heuristic
 
 

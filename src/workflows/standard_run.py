@@ -20,10 +20,10 @@ from rich.progress import (
 )
 
 from src.config.models import Config
-from src.core.ga_scheduler import GAConfig, GAScheduler
-from src.core.types import SchedulingContext
-from src.decoder.individual_decoder import decode_individual
-from src.encoder.input_encoder import (
+from src.ga.scheduler import GAConfig, GAScheduler
+from src.domain.types import SchedulingContext
+from src.io.decoder import decode_individual
+from src.io.data_loader import (
     derive_cohort_pairs_from_groups,
     link_courses_and_groups,
     link_courses_and_instructors,
@@ -32,14 +32,14 @@ from src.encoder.input_encoder import (
     load_instructors,
     load_rooms,
 )
-from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.io.time_system import QuantumTimeSystem
 from src.utils.console_service import get_console
 from src.utils.constraint_logger import ConstraintLogger
 from src.utils.logger import GALogger
 from src.utils.performance_profiler import cleanup_profiler, init_profiler
 from src.utils.system_info import get_cpu_count
-from src.validation import validate_input
-from src.validation.feasibility_checker import (
+from src.io import validate_input
+from src.io.feasibility import (
     check_feasibility,
     generate_feasibility_report_file,
 )

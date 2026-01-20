@@ -32,8 +32,8 @@ Usage:
 import random
 from collections import defaultdict
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 from src.heuristics.registry import perturbation_heuristic
 from src.heuristics.utils import (
     estimate_session_student_count,

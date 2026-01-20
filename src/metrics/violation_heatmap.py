@@ -25,7 +25,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 
 
 class ViolationHeatmap:
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     heatmap = ViolationHeatmap()
 
     # Simulate some violations
-    from src.ga.sessiongene import SessionGene
+    from src.domain.gene import SessionGene
 
     gene1 = SessionGene("CS101", "theory", "INST1", ["GRP1"], "ROOM1", 0, 3)
     gene2 = SessionGene("CS102", "practical", "INST2", ["GRP2"], "ROOM2", 3, 2)

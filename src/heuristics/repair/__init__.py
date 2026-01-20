@@ -19,9 +19,13 @@ providing unified management and RL integration.
 """
 
 from src.heuristics.repair.break_repair import repair_break_placement
+
+# LNS components (moved from src/lns/)
+from src.heuristics.repair.conflict_detection import find_hard_conflict_sessions
 from src.heuristics.repair.exhaustive_repair import exhaustive_repair
 from src.heuristics.repair.greedy_repair import greedy_repair
 from src.heuristics.repair.igls_repair import igls_repair
+from src.heuristics.repair.lns_operator import lns_igls_repair
 from src.heuristics.repair.lns_repair import lns_repair
 from src.heuristics.repair.memetic_repair import memetic_repair
 from src.heuristics.repair.selective_repair import selective_repair
@@ -34,4 +38,7 @@ __all__ = [
     "exhaustive_repair",
     "memetic_repair",
     "repair_break_placement",
+    # LNS components
+    "find_hard_conflict_sessions",
+    "lns_igls_repair",
 ]
