@@ -187,6 +187,7 @@ def run_nsga2(
         ):
             print(
                 f"  Gen {gen:3d}: min_hard={stats.min_hard[-1]:3.0f}, "
+                f"min_soft={stats.min_soft[-1]:5.0f}, "
                 f"feasible={stats.feasible_count[-1]}/{config.pop_size}"
             )
 

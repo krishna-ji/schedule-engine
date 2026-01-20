@@ -15,6 +15,14 @@ if TYPE_CHECKING:
     from src.notebooks.evolution import EvolutionStats
 
 
+def _is_interactive() -> bool:
+    """Check if matplotlib backend is interactive (can show plots)."""
+    backend = plt.get_backend()
+    # Non-interactive backends that shouldn't use plt.show()
+    non_interactive = {"agg", "cairo", "pdf", "pgf", "ps", "svg", "template"}
+    return backend.lower() not in non_interactive
+
+
 def plot_convergence(
     stats: EvolutionStats | dict[str, Any],
     output_path: str | Path | None = None,
@@ -70,8 +78,11 @@ def plot_convergence(
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
         print(f" Saved: {output_path}")
 
-    if show:
+    if show and _is_interactive():
         plt.show()
+    elif output_path:
+        # Close figure to free memory when saving and not showing
+        plt.close(fig)
 
     return fig
 
@@ -119,8 +130,11 @@ def plot_constraint_breakdown(
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
         print(f" Saved: {output_path}")
 
-    if show:
+    if show and _is_interactive():
         plt.show()
+    elif output_path:
+        # Close figure to free memory when saving and not showing
+        plt.close(fig)
 
     return fig
 
@@ -183,8 +197,10 @@ def plot_comparison(
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
         print(f" Saved: {output_path}")
 
-    if show:
+    if show and _is_interactive():
         plt.show()
+    elif output_path:
+        plt.close(fig)
 
     return fig
 
@@ -213,14 +229,29 @@ def print_summary(
         f"Best Solution: hard={best.fitness.values[0]}, soft={best.fitness.values[1]}"
     )
     print(
-        f"Final Generation: min_hard={data['min_hard'][-1]:.0f}, avg={data['avg_hard'][-1]:.1f}"
+        f"Final Generation: min_hard={data['min_hard'][-1]:.0f}, "
+        f"min_soft={data['min_soft'][-1]:.0f}, avg_hard={data['avg_hard'][-1]:.1f}"
     )
     print(f"Feasible Solutions: {data['feasible'][-1]}")
     print(f"Elapsed Time: {elapsed:.1f}s")
 
     if breakdown:
-        print("\nConstraint Breakdown:")
-        for name, val in breakdown.items():
-            print(f"  {name}: {val}")
+        # Separate hard and soft constraints
+        hard_constraints = {
+            k: v for k, v in breakdown.items() if not k.startswith("soft_")
+        }
+        soft_constraints = {k: v for k, v in breakdown.items() if k.startswith("soft_")}
+
+        if hard_constraints:
+            print("\nHard Constraint Violations:")
+            for name, val in hard_constraints.items():
+                print(f"  {name}: {val}")
+
+        if soft_constraints:
+            print("\nSoft Constraint Penalties:")
+            for name, val in soft_constraints.items():
+                # Remove 'soft_' prefix for cleaner display
+                display_name = name.replace("soft_", "")
+                print(f"  {display_name}: {val}")
 
     print("=" * 60)
