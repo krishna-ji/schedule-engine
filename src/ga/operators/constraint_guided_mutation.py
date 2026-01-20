@@ -17,10 +17,10 @@ Expected Impact: 20-30% faster convergence to zero violations.
 
 import random
 
-from src.core.types import Individual, SchedulingContext
-from src.decoder.individual_decoder import decode_individual
-from src.entities.decoded_session import CourseSession
-from src.ga.sessiongene import SessionGene
+from src.domain.types import Individual, SchedulingContext
+from src.io.decoder import decode_individual
+from src.domain.session import CourseSession
+from src.domain.gene import SessionGene
 
 
 def constraint_guided_mutation(

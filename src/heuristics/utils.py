@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any, cast
 
-from src.core.types import SchedulingContext
-from src.entities.course import Course
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.course import Course
+from src.domain.gene import SessionGene
 
 
 def get_course_for_gene(context: SchedulingContext, gene: SessionGene) -> Course:

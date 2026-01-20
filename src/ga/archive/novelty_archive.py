@@ -9,7 +9,7 @@ from collections import deque
 import numpy as np
 from numpy.typing import NDArray
 
-from src.core.types import Individual
+from src.domain.types import Individual
 from src.ga.archive.behavioral_descriptors import BehavioralDescriptors
 
 

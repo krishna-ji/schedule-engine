@@ -1,8 +1,8 @@
 import random
 
-from src.core.types import Individual, SchedulingContext
-from src.entities.course import Course
-from src.ga.sessiongene import SessionGene
+from src.domain.types import Individual, SchedulingContext
+from src.domain.course import Course
+from src.domain.gene import SessionGene
 
 
 def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:

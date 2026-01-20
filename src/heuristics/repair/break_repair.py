@@ -10,8 +10,8 @@ import random
 from typing import Any
 
 from src.config import get_config
-from src.core.types import Individual
-from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.domain.types import Individual
+from src.io.time_system import QuantumTimeSystem
 from src.heuristics.registry import repair_heuristic
 
 
@@ -73,7 +73,7 @@ def repair_break_placement(
         _build_group_day_schedules,
         _get_break_window_quanta,
     )
-    from src.decoder import decode_individual
+    from src.io import decode_individual
 
     qts = QuantumTimeSystem()
     repairs = 0
@@ -139,7 +139,7 @@ def _shift_session_out_of_break(
     Returns:
         1 if repair successful, 0 otherwise
     """
-    from src.ga.sessiongene import SessionGene
+    from src.domain.gene import SessionGene
     from src.utils.time_helpers import quantum_to_day_and_within_day
 
     # Find genes that involve this group and overlap with break window

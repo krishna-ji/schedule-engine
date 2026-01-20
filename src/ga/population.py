@@ -3,15 +3,15 @@ from __future__ import annotations
 import random
 from concurrent.futures import ProcessPoolExecutor
 
-from src.core.types import Individual, SchedulingContext
-from src.entities.course import Course
-from src.entities.group import Group
-from src.entities.instructor import Instructor
-from src.entities.room import Room
+from src.domain.types import Individual, SchedulingContext
+from src.domain.course import Course
+from src.domain.group import Group
+from src.domain.instructor import Instructor
+from src.domain.room import Room
 from src.ga.course_group_pairs import generate_course_group_pairs
 from src.ga.group_hierarchy import analyze_group_hierarchy
 from src.ga.individual import create_individual
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 from src.utils.console_service import get_console
 from src.utils.parallel_worker import get_worker_context, init_worker
 from src.utils.system_info import get_cpu_count
@@ -155,7 +155,7 @@ def _create_pure_random_gene(
     context: SchedulingContext,
 ) -> SessionGene | None:
     """Create gene with completely random assignment (no conflict avoidance)."""
-    from src.ga.sessiongene import SessionGene
+    from src.domain.gene import SessionGene
 
     # course_id is tuple (course_code, course_type)
     course_code, course_type = course_id
@@ -599,7 +599,7 @@ def create_session_gene_with_conflict_avoidance(
 
         logging.warning(f"No instructors available for {course_id}, using placeholder")
         # Create a placeholder instructor to ensure gene is created
-        from src.entities.instructor import Instructor
+        from src.domain.instructor import Instructor
 
         placeholder = Instructor(
             instructor_id="PLACEHOLDER",

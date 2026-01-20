@@ -4,12 +4,12 @@ from src.constraints.registry import (
     get_enabled_hard_constraints,
     get_enabled_soft_constraints,
 )
-from src.decoder.individual_decoder import decode_individual
-from src.entities.course import Course
-from src.entities.group import Group
-from src.entities.instructor import Instructor
-from src.entities.room import Room
-from src.ga.sessiongene import SessionGene
+from src.io.decoder import decode_individual
+from src.domain.course import Course
+from src.domain.group import Group
+from src.domain.instructor import Instructor
+from src.domain.room import Room
+from src.domain.gene import SessionGene
 
 
 def evaluate(

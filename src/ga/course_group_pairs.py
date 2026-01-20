@@ -6,8 +6,8 @@ Generates (Course, Group) pairs following parent-subgroup rules:
 - Practical (P): Each subgroup separately
 """
 
-from src.entities.course import Course
-from src.entities.group import Group
+from src.domain.course import Course
+from src.domain.group import Group
 
 
 def generate_course_group_pairs(

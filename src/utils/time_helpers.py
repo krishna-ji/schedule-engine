@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.config import get_config
-from src.encoder.quantum_time_system import QuantumTimeSystem
+from src.io.time_system import QuantumTimeSystem
 
 
 def get_midday_break_quanta(qts: QuantumTimeSystem) -> dict[str, set[int]]:

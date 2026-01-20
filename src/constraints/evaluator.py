@@ -23,8 +23,8 @@ from src.constraints.soft import (
     student_lunch_break,
     student_schedule_compactness,
 )
-from src.entities.course import Course
-from src.entities.decoded_session import CourseSession
+from src.domain.course import Course
+from src.domain.session import CourseSession
 
 
 class ConstraintEvaluator:

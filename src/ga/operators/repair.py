@@ -60,10 +60,10 @@ Usage:
 from collections import defaultdict
 from collections.abc import Iterable
 
-from src.core.types import SchedulingContext
-from src.entities.instructor import Instructor
+from src.domain.types import SchedulingContext
+from src.domain.instructor import Instructor
 from src.ga.operators.repair_wrappers import repair_operator
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 
 # ================
 # 1. INSTRUCTOR AVAILABILITY REPAIR (Priority 1)

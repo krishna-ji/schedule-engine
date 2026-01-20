@@ -32,10 +32,10 @@ Usage:
 
 import random
 
-from src.core.types import SchedulingContext
-from src.entities.course import Course
-from src.entities.room import Room
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.course import Course
+from src.domain.room import Room
+from src.domain.gene import SessionGene
 
 
 def optimize_gene_greedy(

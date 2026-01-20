@@ -30,8 +30,8 @@ Usage:
 import copy
 import random
 
-from src.core.types import SchedulingContext
-from src.ga.sessiongene import SessionGene
+from src.domain.types import SchedulingContext
+from src.domain.gene import SessionGene
 
 # Import other heuristic categories for orchestration
 from src.heuristics import improvement, perturbation
@@ -470,7 +470,7 @@ def _destroy_solution(
 
     Returns indices of destroyed genes.
     """
-    from src.encoder.quantum_time_system import QuantumTimeSystem
+    from src.io.time_system import QuantumTimeSystem
 
     num_destroy = int(len(individual) * destroy_rate)
     destroy_indices = random.sample(range(len(individual)), num_destroy)
@@ -518,7 +518,7 @@ def _repair_solution(
     This is simplified - full implementation would use proper construction.
     """
     # Simple repair: for each destroyed gene, find valid assignment
-    from src.encoder.quantum_time_system import QuantumTimeSystem
+    from src.io.time_system import QuantumTimeSystem
 
     time_system = QuantumTimeSystem()
     all_quanta = time_system.get_all_operating_quanta()

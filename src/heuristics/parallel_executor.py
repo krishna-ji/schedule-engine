@@ -12,7 +12,7 @@ from collections.abc import Callable
 from concurrent.futures import as_completed
 from typing import Any, Protocol, TypeGuard, cast
 
-from src.core.types import Individual
+from src.domain.types import Individual
 from src.utils.parallel_worker import get_worker_context, init_worker
 from src.utils.system_info import get_cpu_count
 

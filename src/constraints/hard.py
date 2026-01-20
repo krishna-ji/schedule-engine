@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections import defaultdict
 
 from src.constraints.registry import hard_constraint
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.entities.course import Course
-from src.entities.decoded_session import CourseSession
+from src.io.time_system import QuantumTimeSystem
+from src.domain.course import Course
+from src.domain.session import CourseSession
 
 # Time system singleton
 _QTS = QuantumTimeSystem()

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from types import FrameType
 from typing import Any
 
-from src.core.types import Individual, SchedulingContext
+from src.domain.types import Individual, SchedulingContext
 from src.heuristics import get_enabled_heuristics
 
 logger = logging.getLogger(__name__)

@@ -21,7 +21,7 @@ EnvFactory = Callable[[], GymEnv[Any, Any]]
 
 from stable_baselines3.common.vec_env import VecEnv  # noqa: E402
 
-from src.core.types import SchedulingContext  # noqa: E402
+from src.domain.types import SchedulingContext  # noqa: E402
 from src.rl.gym_env import ScheduleEnv  # noqa: E402
 from src.rl.training import RLTrainer
 from src.rl.training.config_loader import (

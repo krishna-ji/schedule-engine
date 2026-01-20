@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.ga.sessiongene import SessionGene
+from src.domain.gene import SessionGene
 
 
 def gene_distance(g1: SessionGene, g2: SessionGene) -> float:
