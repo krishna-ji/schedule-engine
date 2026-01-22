@@ -44,7 +44,12 @@ class ActionMapper:
     - Heuristic execution with context
     """
 
-    def __init__(self, use_config: bool = True, timeout_seconds: float = 30.0):
+    def __init__(
+        self,
+        use_config: bool = True,
+        timeout_seconds: float = 30.0,
+        action_id_map: dict[str, int] | None = None,
+    ):
         """
         Initialize action mapper.
 
@@ -55,17 +60,15 @@ class ActionMapper:
         self.use_config = use_config
         self.timeout_seconds = timeout_seconds
         self.actions: list[ActionInfo] = []
+        if use_config and action_id_map is None:
+            from schedule_engine.config import get_config
+
+            action_id_map = get_config().rl.environment.action_id_map
+        self.action_id_map = action_id_map or {}
         self._build_action_space()
 
     def _build_action_space(self) -> None:
         """Build action space from heuristic registry."""
-        # Action 0: No-op
-        self.actions.append(
-            ActionInfo(
-                action_id=0, name="no-op", category="meta", function=None, enabled=True
-            )
-        )
-
         # Actions 1-19: Heuristics
         if self.use_config:
             heuristics = get_enabled_heuristics().values()
@@ -76,6 +79,17 @@ class ActionMapper:
 
         # Sort by category then name for consistent ordering
         heuristics_sorted = sorted(heuristics, key=lambda h: (h.category.value, h.name))
+
+        if self.use_config and self.action_id_map:
+            self._build_action_space_with_mapping(heuristics_sorted)
+            return
+
+        # Default ordering: action 0 = no-op, then sorted heuristics
+        self.actions.append(
+            ActionInfo(
+                action_id=0, name="no-op", category="meta", function=None, enabled=True
+            )
+        )
 
         for idx, h in enumerate(heuristics_sorted, start=1):
             self.actions.append(
@@ -88,6 +102,71 @@ class ActionMapper:
                     modifies_individual=getattr(h, "modifies_individual", False),
                 )
             )
+
+    def _build_action_space_with_mapping(self, heuristics: list[Any]) -> None:
+        """Build action space using a stable action ID map."""
+        actions_by_id: dict[int, ActionInfo] = {
+            0: ActionInfo(
+                action_id=0, name="no-op", category="meta", function=None, enabled=True
+            )
+        }
+
+        used_ids = set()
+        for name, action_id in self.action_id_map.items():
+            if action_id <= 0:
+                raise ValueError(
+                    f"Invalid action_id {action_id} for heuristic '{name}'. "
+                    "Action IDs must be >= 1."
+                )
+            if action_id in used_ids:
+                raise ValueError(
+                    f"Duplicate action_id {action_id} in action_id_map."
+                )
+            used_ids.add(action_id)
+
+        heuristic_by_name = {h.name: h for h in heuristics}
+        for name, action_id in sorted(self.action_id_map.items(), key=lambda item: item[1]):
+            heuristic = heuristic_by_name.get(name)
+            if heuristic is None:
+                logger.warning(
+                    "Action map entry for '%s' not found in enabled heuristics; skipping.",
+                    name,
+                )
+                continue
+            actions_by_id[action_id] = ActionInfo(
+                action_id=action_id,
+                name=heuristic.name,
+                category=heuristic.category,
+                function=heuristic.function,
+                enabled=getattr(heuristic, "enabled", True),
+                modifies_individual=getattr(heuristic, "modifies_individual", False),
+            )
+
+        next_id = max(actions_by_id.keys(), default=0) + 1
+        unmapped = [h for h in heuristics if h.name not in self.action_id_map]
+        for heuristic in unmapped:
+            actions_by_id[next_id] = ActionInfo(
+                action_id=next_id,
+                name=heuristic.name,
+                category=heuristic.category,
+                function=heuristic.function,
+                enabled=getattr(heuristic, "enabled", True),
+                modifies_individual=getattr(heuristic, "modifies_individual", False),
+            )
+            next_id += 1
+
+        max_id = max(actions_by_id.keys(), default=0)
+        for action_id in range(max_id + 1):
+            if action_id not in actions_by_id:
+                actions_by_id[action_id] = ActionInfo(
+                    action_id=action_id,
+                    name=f"unused_{action_id}",
+                    category="meta",
+                    function=None,
+                    enabled=False,
+                )
+
+        self.actions = [actions_by_id[action_id] for action_id in range(max_id + 1)]
 
     def apply_action(
         self,
@@ -218,6 +297,7 @@ class ActionMapper:
 
                 # Handle in-place modification heuristics
                 if action_info.modifies_individual and isinstance(result, int):
+                    self._invalidate_fitness(individual_copy)
                     modified = individual_copy
                 else:
                     modified = result
@@ -242,6 +322,7 @@ class ActionMapper:
 
                 # Handle in-place modification heuristics (return int improvement count)
                 if action_info.modifies_individual and isinstance(result, int):
+                    self._invalidate_fitness(individual_copy)
                     modified = individual_copy
                 else:
                     modified = result
@@ -324,6 +405,12 @@ class ActionMapper:
         """Signal handler for timeout."""
         raise TimeoutError("Heuristic execution timed out")
 
+    @staticmethod
+    def _invalidate_fitness(individual: Individual) -> None:
+        """Mark a DEAP individual fitness as invalid after in-place mutation."""
+        if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
+            individual.fitness.values = ()  # type: ignore[attr-defined]
+
     def _execute_with_timeout(
         self,
         func: Callable[..., Any],
@@ -387,7 +474,7 @@ class ActionMapper:
         """
         if result is None:
             return False
-        if not isinstance(result, list):
+        if not isinstance(result, list | tuple):
             return False
         if len(result) == 0:
             return False
@@ -444,7 +531,9 @@ class ActionMapper:
 
 
 def create_action_mapper(
-    use_config: bool = True, timeout_seconds: float = 30.0
+    use_config: bool = True,
+    timeout_seconds: float = 30.0,
+    action_id_map: dict[str, int] | None = None,
 ) -> ActionMapper:
     """
     Factory function to create action mapper.
@@ -452,8 +541,13 @@ def create_action_mapper(
     Args:
         use_config: Whether to respect configuration killswitches
         timeout_seconds: Maximum time for any single heuristic execution
+        action_id_map: Optional stable mapping of heuristic names to action IDs
 
     Returns:
         Configured ActionMapper instance
     """
-    return ActionMapper(use_config=use_config, timeout_seconds=timeout_seconds)
+    return ActionMapper(
+        use_config=use_config,
+        timeout_seconds=timeout_seconds,
+        action_id_map=action_id_map,
+    )
