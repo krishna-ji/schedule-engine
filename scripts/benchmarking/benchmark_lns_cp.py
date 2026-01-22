@@ -17,12 +17,27 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# Add src/ to path for local package imports
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
 
-from configs.experiments.baseline import BaselineTestConfig
-from src.config.models import Config as PydanticConfig
-from src.workflows.standard_run import run_standard_workflow
+from schedule_engine.config.loader import dict_to_pydantic
+from schedule_engine.config.models import Config as PydanticConfig
+from schedule_engine.workflows.standard_run import run_standard_workflow
+
+
+def build_benchmark_config(lns_enabled: bool) -> PydanticConfig:
+    """Create a minimal Pydantic config for benchmarking runs."""
+    config_dict = {
+        "experiment_name": "benchmark-lns" if lns_enabled else "benchmark-baseline",
+        "environment": "benchmark",
+        "ngen": 100,
+        "pop_size": 50,
+        "cxpb": 0.70,
+        "mutpb": 0.20,
+        "lns_enabled": lns_enabled,
+    }
+    return dict_to_pydantic(config_dict)
 
 
 def run_baseline_benchmark(output_dir: Path) -> dict[str, Any]:
@@ -39,7 +54,7 @@ def run_baseline_benchmark(output_dir: Path) -> dict[str, Any]:
     print("BASELINE GA BENCHMARK (without LNS-CP)")
 
     # Load test config with LNS disabled
-    config = cast(PydanticConfig, BaselineTestConfig(lns_enabled=False).to_pydantic())
+    config = cast(PydanticConfig, build_benchmark_config(lns_enabled=False))
 
     print(f"\nConfiguration: {config.name} (LNS disabled)")
     print(f"Generations: {config.ga.ngen}")
@@ -120,7 +135,7 @@ def run_lns_cp_benchmark(output_dir: Path) -> dict[str, Any]:
     print("LNS-CP HYBRID BENCHMARK (with LNS-CP)")
 
     # Load test config with LNS enabled
-    config = cast(PydanticConfig, BaselineTestConfig(lns_enabled=True).to_pydantic())
+    config = cast(PydanticConfig, build_benchmark_config(lns_enabled=True))
 
     print(f"\nConfiguration: {config.name} (LNS enabled)")
     print(f"Generations: {config.ga.ngen}")
@@ -149,7 +164,7 @@ def run_lns_cp_benchmark(output_dir: Path) -> dict[str, Any]:
         elapsed = time.time() - start_time
 
         # Extract LNS statistics
-        from src.lns.lns_operator import get_lns_stats
+        from schedule_engine.heuristics.repair.lns_operator import get_lns_stats
 
         lns_stats = get_lns_stats()
 

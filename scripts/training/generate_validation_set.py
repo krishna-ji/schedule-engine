@@ -16,12 +16,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Add project root to path
+# Add src/ to path for local package imports
 project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "src"))
 
-from src.core.types import SchedulingContext  # noqa: E402
-from src.encoder import (  # noqa: E402
+from schedule_engine.domain.types import SchedulingContext  # noqa: E402
+from schedule_engine.io import (  # noqa: E402
     QuantumTimeSystem,
     link_courses_and_groups,
     link_courses_and_instructors,
@@ -30,8 +30,8 @@ from src.encoder import (  # noqa: E402
     load_instructors,
     load_rooms,
 )
-from src.rl.training.curriculum import create_default_curriculum  # noqa: E402
-from src.utils.logging_config import get_logger  # noqa: E402
+from schedule_engine.rl.training.curriculum import create_default_curriculum  # noqa: E402
+from schedule_engine.utils.logging_config import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 

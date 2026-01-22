@@ -3,15 +3,16 @@ Display current constraint configuration (both hard and soft).
 Quick utility to see which constraints are enabled and their weights.
 """
 
-import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
 
 from rich.console import Console
 from rich.table import Table
 
-from src.config import get_config
+from schedule_engine.config import get_config
 
 console = Console()
 
@@ -116,7 +117,7 @@ def main():
     )
     console.print("[bold cyan]" + "=" * 60 + "[/bold cyan]")
     console.print(
-        "\n[dim]To modify: Update Python presets in src/config/presets/data.py or profile overrides.[/dim]\n"
+        "\n[dim]To modify: Update defaults in src/schedule_engine/config/models.py or supply overrides via schedule_engine.config.loader.[/dim]\n"
     )
 
 

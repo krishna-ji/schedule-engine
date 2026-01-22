@@ -99,7 +99,7 @@ hard_constraints:
 ### Step 4: Register in Evaluator
 ```python
 # In src/ga/evaluator/detailed_fitness.py or fitness.py
-from src.constraints.hard import no_triple_booking
+from schedule_engine.constraints.hard import no_triple_booking
 
 # Add to constraint dict
 hard_constraint_funcs = {

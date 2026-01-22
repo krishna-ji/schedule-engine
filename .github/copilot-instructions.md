@@ -114,7 +114,7 @@ schedule-engine/
 
 **Config access**:
 ```python
-from src.config import get_config
+from schedule_engine.config import get_config
 config = get_config()  # Returns Pydantic Config model
 ```
 
@@ -303,12 +303,12 @@ Always log notable runs in `output/` and reference them inside documentation or 
 - **Type Hints**: **MANDATORY** for all function signatures, use `from __future__ import annotations`
 - **Error Handling**: Raise informative exceptions with context
 - **Logging**:
-  - Use `from src.utils.console_service import get_console` for user-facing output (Rich)
+  - Use `from schedule_engine.utils.console_service import get_console` for user-facing output (Rich)
   - Use `logging.getLogger(__name__)` for debugging
 - **Docstrings**: Google-style docstrings for all public APIs
   - **NO separate .md files for code documentation** - docstrings only!
 - **Config Access**:
-  - Always use `from src.config import get_config; config = get_config()`
+  - Always use `from schedule_engine.config import get_config; config = get_config()`
   - Never import deprecated `config.ga_params`
 
 ### Code Organization & Type Annotations Template
@@ -331,9 +331,9 @@ from deap import base, tools
 from rich.console import Console
 
 # Local imports
-from src.config import get_config
-from src.entities.course import Course
-from src.ga.sessiongene import SessionGene
+from schedule_engine.config import get_config
+from schedule_engine.entities.course import Course
+from schedule_engine.ga.sessiongene import SessionGene
 
 # Logger
 logger = logging.getLogger(__name__)

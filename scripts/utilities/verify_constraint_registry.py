@@ -7,7 +7,7 @@ Run this to validate:
 3. No duplicates or missing constraints
 """
 
-from src.constraints.registry import (
+from schedule_engine.constraints.registry import (
     get_all_hard_constraints,
     get_all_soft_constraints,
     get_registry_stats,
