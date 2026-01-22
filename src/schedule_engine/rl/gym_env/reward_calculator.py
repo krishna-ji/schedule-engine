@@ -122,6 +122,9 @@ class RewardCalculator:
         if self.use_hypervolume and population is not None:
             fitness_reward = self._calculate_hypervolume_reward(population)
             hypervolume_reward = fitness_reward
+        elif population is not None:
+            fitness_reward = self._calculate_population_best_reward(population)
+            hypervolume_reward = 0.0
         else:
             fitness_reward = self._calculate_fitness_reward(
                 prev_individual, new_individual
@@ -248,6 +251,34 @@ class RewardCalculator:
         normalized_reward = np.tanh(delta_hv / self.hypervolume_scale)
 
         return float(normalized_reward)
+
+    def _calculate_population_best_reward(
+        self, population: list[Individual]
+    ) -> float:
+        """Calculate reward based on population best fitness improvement."""
+        valid_fitness = [
+            self._get_combined_fitness(individual)
+            for individual in population
+            if hasattr(individual, "fitness")
+            and individual.fitness.valid  # type: ignore[attr-defined]
+        ]
+
+        if not valid_fitness:
+            return 0.0
+
+        current_best = min(valid_fitness)
+
+        if self.prev_best_fitness is None:
+            self.prev_best_fitness = current_best
+            return 0.0
+
+        prev_best = self.prev_best_fitness
+        improvement = prev_best - current_best
+        self.prev_best_fitness = current_best
+
+        if prev_best != 0:
+            return improvement / abs(prev_best)
+        return improvement
 
     def _get_combined_fitness(self, individual: Individual) -> float:
         """

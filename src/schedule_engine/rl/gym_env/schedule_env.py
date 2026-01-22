@@ -60,6 +60,8 @@ class ScheduleEnv(gym.Env):
         debug_logging: bool = True,
         env_rank: int = 0,
         debug_log_interval: int = 25,
+        diversity_update_interval: int = 1,
+        diversity_sample_size: int | None = None,
     ):
         """
         Initialize RL environment.
@@ -88,7 +90,10 @@ class ScheduleEnv(gym.Env):
 
         # Initialize components
         self.state_encoder = StateEncoder(
-            max_generations=max_generations, history_size=10
+            max_generations=max_generations,
+            history_size=10,
+            diversity_update_interval=diversity_update_interval,
+            diversity_sample_size=diversity_sample_size,
         )
         self.action_mapper = ActionMapper(use_config=True, timeout_seconds=30.0)
         self.reward_calculator = RewardCalculator(
@@ -270,7 +275,9 @@ class ScheduleEnv(gym.Env):
                     reward=-0.1,
                     success=False,
                     best_fitness=self._get_best_fitness(),
-                    diversity=self.state_encoder._calculate_diversity(self.population),
+                    diversity=self.state_encoder._calculate_diversity(
+                        self.population, self.current_generation
+                    ),
                     stagnation=self.generations_without_improvement,
                     duration_ms=duration_ms,
                 )
@@ -285,7 +292,9 @@ class ScheduleEnv(gym.Env):
         action_label = action_info.name if action_info else f"action_{action}"
 
         # Apply action to best individual
-        best_individual = min(self.population, key=lambda ind: ind.fitness.values[0])  # type: ignore[attr-defined]
+        best_individual = min(
+            self.population, key=self._get_combined_fitness_value
+        )
         prev_fitness = best_individual.fitness.values  # type: ignore[attr-defined]
         prev_individual = self._clone_individual(best_individual)
         working_individual = self._clone_individual(best_individual)
@@ -343,7 +352,7 @@ class ScheduleEnv(gym.Env):
             # Replace worst individual with modified copy
             worst_idx = max(
                 range(len(self.population)),
-                key=lambda i: self.population[i].fitness.values[0],  # type: ignore[attr-defined]
+                key=lambda i: self._get_combined_fitness_value(self.population[i]),
             )
             self.population[worst_idx] = self._clone_individual(evaluated_candidate)
             result_individual = self._clone_individual(evaluated_candidate)
@@ -353,7 +362,9 @@ class ScheduleEnv(gym.Env):
 
         # Phase 7: Calculate diversity metrics
         self.profiler.start_phase("calculate_diversity", len(self.population))
-        population_diversity = self.state_encoder._calculate_diversity(self.population)
+        population_diversity = self.state_encoder._calculate_diversity(
+            self.population, self.current_generation
+        )
         self.profiler.end_phase()
 
         # Phase 8: Calculate reward
@@ -363,6 +374,7 @@ class ScheduleEnv(gym.Env):
             result_individual,
             population_diversity,
             self.current_generation,
+            population=self.population,
         )
         self.profiler.end_phase()
 
@@ -446,8 +458,15 @@ class ScheduleEnv(gym.Env):
         """Get best fitness in current population."""
         if not self.population:
             return float("inf")
-        best_ind = min(self.population, key=lambda ind: ind.fitness.values[0])  # type: ignore[attr-defined]
-        hard, soft = best_ind.fitness.values  # type: ignore[attr-defined]
+        best_ind = min(self.population, key=self._get_combined_fitness_value)
+        return self._get_combined_fitness_value(best_ind)
+
+    @staticmethod
+    def _get_combined_fitness_value(individual: Individual) -> float:
+        """Compute combined fitness value for comparisons."""
+        if not hasattr(individual, "fitness") or not individual.fitness.valid:  # type: ignore[attr-defined]
+            return float("inf")
+        hard, soft = individual.fitness.values  # type: ignore[attr-defined]
         return float(abs(hard) * 100 + abs(soft))
 
     def _get_info(self) -> dict[str, Any]:
@@ -605,6 +624,8 @@ def create_schedule_env(
     debug_logging: bool = False,
     env_rank: int = 0,
     debug_log_interval: int = 25,
+    diversity_update_interval: int | None = None,
+    diversity_sample_size: int | None = None,
 ) -> ScheduleEnv:
     """
     Factory function to create ScheduleEnv.
@@ -619,10 +640,19 @@ def create_schedule_env(
         debug_logging: Enable verbose instrumentation output
         env_rank: Environment index when running in parallel
         debug_log_interval: Interval between debug log lines
+        diversity_update_interval: Compute diversity metrics every N generations
+        diversity_sample_size: Optional subsample size for diversity metrics
 
     Returns:
         Configured ScheduleEnv instance
     """
+    if diversity_update_interval is None:
+        from schedule_engine.config import get_config
+
+        env_config = get_config().rl.environment
+        diversity_update_interval = env_config.diversity_update_interval
+        diversity_sample_size = env_config.diversity_sample_size
+
     return ScheduleEnv(
         initial_population=initial_population,
         context=context,
@@ -633,4 +663,6 @@ def create_schedule_env(
         debug_logging=debug_logging,
         env_rank=env_rank,
         debug_log_interval=debug_log_interval,
+        diversity_update_interval=diversity_update_interval,
+        diversity_sample_size=diversity_sample_size,
     )
