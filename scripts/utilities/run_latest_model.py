@@ -7,9 +7,9 @@ from pathlib import Path
 
 from rich.console import Console
 
-# Add project root to path
+# Add src/ to path for local package imports
 project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "src"))
 
 console = Console()
 
@@ -125,15 +125,51 @@ def main() -> int:
 
     console.print("\n[yellow]Starting RL-guided GA run...[/yellow]\n")
 
-    # Use the launcher's RL experiment runner directly
-    from scripts.launcher import run_experiment_universal
+    from schedule_engine.config.loader import dict_to_pydantic
+    from schedule_engine.workflows.standard_run import run_standard_workflow
+
+    agent_type = "ppo"
+    metadata_path = latest_model.with_suffix(".json")
+    if metadata_path.exists():
+        try:
+            import json
+
+            with open(metadata_path) as f:
+                metadata = json.load(f)
+            agent_type = metadata.get("agent_type", agent_type)
+        except Exception:
+            pass
+
+    profile_settings = {
+        "test": {"ngen": 30, "pop_size": 10},
+        "prod": {"ngen": 200, "pop_size": 50},
+    }
+    settings = profile_settings.get(args.profile, profile_settings["test"])
+
+    config = dict_to_pydantic(
+        {
+            "experiment_name": args.name or f"rl-inference-{args.profile}",
+            "environment": "test" if args.profile == "test" else "prod",
+            "ngen": settings["ngen"],
+            "pop_size": settings["pop_size"],
+            "rl_enabled": True,
+            "rl_mode": "inference",
+            "rl_agent_path": str(latest_model),
+            "rl_agent_type": agent_type,
+        }
+    )
 
     try:
-        return run_experiment_universal(
-            experiment_id="rl-guided",
-            profile=args.profile,
-            name=args.name,
+        run_standard_workflow(
+            pop_size=config.ga.pop_size,
+            generations=config.ga.ngen,
+            crossover_prob=config.ga.cxpb,
+            mutation_prob=config.ga.mutpb,
+            data_dir="data",
+            output_dir=None,
+            config=config,
         )
+        return 0
     except KeyboardInterrupt:
         console.print("\n[yellow]Run interrupted by user[/yellow]")
         return 130

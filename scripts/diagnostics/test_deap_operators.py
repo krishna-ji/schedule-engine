@@ -9,10 +9,10 @@ import random
 
 from deap import base, creator, tools
 
-from src.core.types import SchedulingContext
-from src.ga.operators.crossover import crossover_course_group_aware
-from src.ga.operators.mutation import mutate_individual
-from src.ga.sessiongene import SessionGene
+from schedule_engine.domain.types import SchedulingContext
+from schedule_engine.ga.operators.crossover import crossover_course_group_aware
+from schedule_engine.ga.operators.mutation import mutate_individual
+from schedule_engine.domain.gene import SessionGene
 
 # Setup DEAP types
 if not hasattr(creator, "FitnessMulti"):
@@ -42,41 +42,46 @@ def create_mock_individual():
 
 def create_mock_context():
     """Create minimal SchedulingContext for testing."""
-    from src.entities.course import Course
-    from src.entities.group import Group
-    from src.entities.instructor import Instructor
-    from src.entities.room import Room
+    from schedule_engine.domain.course import Course
+    from schedule_engine.domain.group import Group
+    from schedule_engine.domain.instructor import Instructor
+    from schedule_engine.domain.room import Room
 
     context = SchedulingContext(
         courses={
             ("TEST101", "theory"): Course(
                 course_id="TEST101",
-                course_code="TEST101",
-                course_name="Test Course",
-                course_type="theory",
+                name="Test Course",
                 quanta_per_week=2,
+                required_room_features="lecture",
+                course_type="theory",
+                course_code="TEST101",
             )
         },
         instructors={
             f"INST{i}": Instructor(
                 instructor_id=f"INST{i}",
                 name=f"Instructor {i}",
-                is_full_time=True,
                 qualified_courses=[("TEST101", "theory")],
             )
             for i in range(10)
         },
         groups={
             f"GRP{i}": Group(
-                group_id=f"GRP{i}", group_name=f"Group {i}", student_count=30
+                group_id=f"GRP{i}", name=f"Group {i}", student_count=30
             )
             for i in range(10)
         },
         rooms={
-            f"ROOM{i}": Room(room_id=f"ROOM{i}", room_name=f"Room {i}", capacity=50)
+            f"ROOM{i}": Room(
+                room_id=f"ROOM{i}",
+                name=f"Room {i}",
+                capacity=50,
+                room_features="lecture",
+            )
             for i in range(10)
         },
-        available_quanta=set(range(70)),
+        available_quanta=list(range(70)),
     )
     return context
 

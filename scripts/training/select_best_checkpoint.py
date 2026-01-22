@@ -14,12 +14,12 @@ import json
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+# Add src/ to path for local package imports
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
 
-from src.rl.training.checkpoints import CheckpointManager
-from src.utils.logging_config import get_logger
+from schedule_engine.rl.training.checkpoints import CheckpointManager
+from schedule_engine.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 

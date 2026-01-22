@@ -206,7 +206,7 @@ ngen: int = 100  # Clear and type-checked
 
 ```python
 # In application code
-from src.config import get_config
+from schedule_engine.config import get_config
 
 config = get_config()  # Returns Pydantic Config model
 ngen = config.ngen

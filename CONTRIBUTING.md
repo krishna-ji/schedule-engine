@@ -73,8 +73,8 @@ import numpy as np
 from deap import tools
 
 # 3. Local modules
-from src.config import get_config
-from src.core.types import Individual
+from schedule_engine.config import get_config
+from schedule_engine.core.types import Individual
 ```
 
 ## Testing

@@ -8,9 +8,9 @@ Checks that all implemented features are working correctly.
 import sys
 from pathlib import Path
 
-# Add project root to Python path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+# Add src/ to Python path for local package imports
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
 
 
 def check_files_exist():
@@ -18,18 +18,11 @@ def check_files_exist():
     print(" Checking file creation...")
 
     required_files = [
-        "src/__init__.py",
-        "src/utils/console_helpers.py",
-        "src/utils/logging_config.py",
+        "src/schedule_engine/__init__.py",
+        "src/schedule_engine/utils/console_helpers.py",
+        "src/schedule_engine/utils/logging_config.py",
         ".editorconfig",
         "CONTRIBUTING.md",
-        "test/unit/__init__.py",
-        "test/unit/conftest.py",
-        "test/unit/test_config_loader.py",
-        "test/unit/test_encoder.py",
-        "test/unit/test_constraints.py",
-        "test/unit/test_operators.py",
-        "test/unit/test_utils.py",
     ]
 
     all_exist = True
@@ -49,9 +42,9 @@ def check_imports():
     print("\n Checking module imports...")
 
     imports_to_test = [
-        ("src", "Package initialization"),
-        ("src.utils.console_helpers", "Console helpers"),
-        ("src.utils.logging_config", "Logging config"),
+        ("schedule_engine", "Package initialization"),
+        ("schedule_engine.utils.console_helpers", "Console helpers"),
+        ("schedule_engine.utils.logging_config", "Logging config"),
     ]
 
     all_imported = True
@@ -71,7 +64,7 @@ def check_console_helpers():
     print("\n Testing console helpers...")
 
     try:
-        from src.utils.console_helpers import (
+        from schedule_engine.utils.console_helpers import (
             print_error,
             print_info,
             print_success,
@@ -96,7 +89,7 @@ def check_logging_config():
     print("\n Testing logging configuration...")
 
     try:
-        from src.utils.logging_config import get_logger, setup_logging
+        from schedule_engine.utils.logging_config import get_logger, setup_logging
 
         logger = setup_logging(level="WARNING")
         module_logger = get_logger("test_module")
@@ -116,8 +109,8 @@ def check_bare_exceptions_fixed():
     print("\n Checking for bare exceptions...")
 
     files_to_check = [
-        "src/ga/population.py",
-        "src/exporter/plotpareto.py",
+        "src/schedule_engine/ga/population.py",
+        "src/schedule_engine/io/export/plotpareto.py",
     ]
 
     bare_exceptions_found = False
@@ -142,7 +135,7 @@ def check_package_metadata():
     print("\n Checking package metadata...")
 
     try:
-        from src import __author__, __license__, __version__
+        from schedule_engine import __author__, __license__, __version__
 
         print(f"   Version: {__version__}")
         print(f"   Author: {__author__}")

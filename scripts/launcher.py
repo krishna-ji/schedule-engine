@@ -139,7 +139,7 @@ def main_stats() -> int:
 def main_archive() -> int:
     """Archive incomplete runs."""
     try:
-        from src.workflows.experiment_manager import ExperimentManager
+        from schedule_engine.workflows.experiment_manager import ExperimentManager
         manager = ExperimentManager()
         console.print("[cyan]Before archiving:[/cyan]")
         manager.print_manifest_stats()

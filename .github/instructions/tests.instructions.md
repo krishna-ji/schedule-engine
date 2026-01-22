@@ -38,7 +38,7 @@ We use **pytest** with these key conventions:
 #### 1. Use pytest fixtures for test data
 ```python
 import pytest
-from src.entities.course import Course
+from schedule_engine.entities.course import Course
 
 @pytest.fixture
 def sample_course():
@@ -96,7 +96,7 @@ def test_sum_with_edge_cases(input, expected):
 ```python
 from unittest.mock import Mock, patch
 
-@patch('src.ga.evaluator.fitness.get_config')
+@patch('schedule_engine.ga.evaluator.fitness.get_config')
 def test_fitness_with_mocked_config(mock_config):
     mock_config.return_value.ga.cxpb = 0.75
     # Test code using config
