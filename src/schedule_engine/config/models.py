@@ -744,6 +744,20 @@ class RLEnvironmentConfig(BaseModel):
 
     max_steps_per_episode: int = Field(default=100, ge=1, le=1000)
     observation_history_size: int = Field(default=10, ge=1, le=50)
+    diversity_update_interval: int = Field(
+        default=1,
+        ge=1,
+        description="Compute diversity metrics every N generations",
+    )
+    diversity_sample_size: int | None = Field(
+        default=None,
+        ge=2,
+        description="Optional population subsample size for diversity metrics",
+    )
+    action_id_map: dict[str, int] = Field(
+        default_factory=dict,
+        description="Stable mapping of heuristic names to action IDs",
+    )
     render_mode: Literal["ansi", "human"] | None = None
 
 

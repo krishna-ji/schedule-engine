@@ -162,7 +162,7 @@ def train_agent(
 class EvaluationResult:
     """Results from a single evaluation run."""
 
-    best_fitness: tuple[float, float]
+    best_fitness: float
     convergence_gen: int
 
 
@@ -187,16 +187,16 @@ def evaluate_agent(
     for gen in range(max_generations):
         action, _ = agent.predict(obs, deterministic=True)
         obs, _reward, terminated, truncated, info = env.step(action)
-        best_fitness = info["best_fitness"]
+        best_fitness = float(info["best_fitness"])
 
-        if best_fitness[0] == 0 and convergence == max_generations:
+        if best_fitness == 0 and convergence == max_generations:
             convergence = gen
 
         if terminated or truncated:
             break
 
     return EvaluationResult(
-        best_fitness=info["best_fitness"],
+        best_fitness=float(info["best_fitness"]),
         convergence_gen=convergence,
     )
 
