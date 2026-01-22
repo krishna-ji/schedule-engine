@@ -12,8 +12,8 @@ University course scheduling engine that combines NSGA-II genetic algorithms wit
 - Progressive experiment modes (baseline NSGA-II through RL-guided selection).
 - CPU multiprocessing for parallel fitness evaluation, operators, and local search phases.
 - GPU acceleration reserved for RL training and neural network inference.
-- **100% strict mypy typing** on all pure Python packages.
-- DRY helper module (`src/notebooks/`) for clean, reusable notebook code.
+- **Mypy with targeted strictness** for core modules.
+- DRY helper module (`schedule_engine.notebooks`) for clean, reusable notebook code.
 
 ## Quick Start
 
@@ -35,10 +35,10 @@ Each notebook has inline configuration - just tweak the parameters and run!
 
 ## Notebook Helper Module
 
-All notebooks use shared helpers from `src/notebooks/`:
+All notebooks use shared helpers from `schedule_engine.notebooks`:
 
 ```python
-from src.notebooks import (
+from schedule_engine.notebooks import (
     load_data,           # Load course/instructor/room/group data
     run_nsga2,           # Run NSGA-II evolution
     export_full_results, # Export schedule.json, calendar.pdf, plots
@@ -46,7 +46,7 @@ from src.notebooks import (
 )
 
 # Load data
-data = load_data()
+data = load_data("data")
 
 # Configure & run
 config = EvolutionConfig(ngen=100, pop_size=50, cxpb=0.7, mutpb=0.2)
@@ -71,10 +71,10 @@ uv run typecheck        # Type checking
 ## Code Quality
 
 ```bash
-black src/ test/         # Auto-format
-ruff check src/ test/    # Lint
-mypy src/                # Type check (strict mode)
-pytest test/unit/        # Run tests
+black src/schedule_engine/ test/         # Auto-format
+ruff check src/schedule_engine/ test/    # Lint
+mypy src/schedule_engine/                # Type check
+pytest test/                             # Run tests
 ```
 ## Repository Layout
 
@@ -82,29 +82,27 @@ pytest test/unit/        # Run tests
 schedule-engine/
 ├── notebooks/           # Jupyter notebooks (primary workflow)
 ├── src/
-│   ├── notebooks/       # DRY helper module for notebooks
-│   ├── config/          # Pydantic config models
-│   ├── core/            # GA scheduler
-│   ├── ga/              # Operators, population
-│   ├── constraints/     # Hard/soft constraint functions
-│   ├── encoder/         # JSON → entities
-│   ├── decoder/         # Individual → CourseSession
-│   ├── entities/        # Domain models
-│   ├── rl/              # RL environment & agents
-│   └── ...
+│   ├── schedule_engine/ # Core package
+│   │   ├── notebooks/   # DRY helper module for notebooks
+│   │   ├── config/      # Pydantic config models
+│   │   ├── constraints/ # Hard/soft constraint functions
+│   │   ├── domain/      # Domain models
+│   │   ├── ga/          # Operators, population
+│   │   ├── heuristics/  # Heuristic operators
+│   │   ├── io/          # Loading, decoding, export
+│   │   ├── metrics/     # Analysis metrics
+│   │   ├── rl/          # RL environment & agents
+│   │   ├── utils/       # Shared utilities
+│   │   └── workflows/   # Orchestration
 ├── scripts/             # CLI utilities
 ├── data/                # Input JSON files
 ├── output/              # Experiment results
 └── test/                # Unit tests
 ```
 
-## Documentation
-
-See `docs/INDEX.md` for full navigation.
-
 ## Tech Stack
 
-- **Python 3.12** (strict mypy typing)
+- **Python 3.12**
 - **GA Core**: DEAP 1.4.1, NumPy 1.26.4, pymoo 0.6.1.3
 - **RL Stack**: PyTorch 2.4.1+CUDA12.1, Stable-Baselines3 2.3.2, Gymnasium 0.29.1
 - **Config**: Pydantic 2.10.3

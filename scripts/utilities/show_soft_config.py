@@ -3,15 +3,16 @@ Display current soft constraint configuration.
 Quick utility to see which constraints are enabled and their weights.
 """
 
-import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
 
 from rich.console import Console
 
-from src.config import get_config  # get_config().soft_constraints
-from src.constraints.registry import get_enabled_soft_constraints
+from schedule_engine.config import get_config  # get_config().soft_constraints
+from schedule_engine.constraints.registry import get_enabled_soft_constraints
 
 console = Console()
 
@@ -59,7 +60,7 @@ def main():
     console.print(f"[bold]Total enabled weight: [cyan]{total_weight:.2f}[/cyan][/bold]")
     console.print("[bold cyan]" + "═" * 60 + "[/bold cyan]")
     console.print(
-        "[dim]To modify: Update Python presets in src/config/presets/data.py or profile overrides.[/dim]\n"
+        "[dim]To modify: Update defaults in src/schedule_engine/config/models.py or supply overrides via schedule_engine.config.loader.[/dim]\n"
     )
 
 

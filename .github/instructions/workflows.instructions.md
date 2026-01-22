@@ -59,8 +59,8 @@ os.makedirs(output_dir, exist_ok=True)
 
 ### Stage 2: Data Loading
 ```python
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.encoder.input_encoder import load_courses, load_groups, ...
+from schedule_engine.encoder.quantum_time_system import QuantumTimeSystem
+from schedule_engine.encoder.input_encoder import load_courses, load_groups, ...
 
 qts = QuantumTimeSystem()
 courses = load_courses(os.path.join(data_dir, "Course.json"))
@@ -80,7 +80,7 @@ context = SchedulingContext(
 ### Stage 3: Validation (Optional)
 ```python
 if validate:
-    from src.validation import validate_input
+    from schedule_engine.validation import validate_input
     is_valid, warnings = validate_input(context)
     if not is_valid:
         console.print("[yellow]Validation warnings:[/yellow]")
@@ -90,7 +90,7 @@ if validate:
 
 ### Stage 4: Feasibility Check (Optional)
 ```python
-from src.validation.feasibility_checker import run_feasibility_checks
+from schedule_engine.validation.feasibility_checker import run_feasibility_checks
 
 if config.feasibility.enable_checks:
     results = run_feasibility_checks(context, config)
@@ -100,7 +100,7 @@ if config.feasibility.enable_checks:
 
 ### Stage 5: GA Execution
 ```python
-from src.core.ga_scheduler import GAScheduler, GAConfig
+from schedule_engine.core.ga_scheduler import GAScheduler, GAConfig
 
 ga_config = GAConfig(
     pop_size=pop_size,
@@ -121,7 +121,7 @@ scheduler.evolve()
 
 ### Stage 6: Decoding
 ```python
-from src.decoder.individual_decoder import decode_individual
+from schedule_engine.decoder.individual_decoder import decode_individual
 
 best_individual = scheduler.get_best_solution()
 decoded_schedule = decode_individual(best_individual, context)
@@ -129,7 +129,7 @@ decoded_schedule = decode_individual(best_individual, context)
 
 ### Stage 7: Reporting
 ```python
-from src.workflows.reporting import generate_reports
+from schedule_engine.workflows.reporting import generate_reports
 
 generate_reports(
     decoded_schedule=decoded_schedule,
@@ -271,8 +271,8 @@ Timing displayed as: `ops=3.74s, eval=2.07s, replace=0.58s, metrics=0.36s`
 Track experiments systematically with `src/workflows/experiment_manager.py`:
 
 ```python
-from src.workflows.experiment_manager import ExperimentManager
-from src.config.runtime_mode import RuntimeMode
+from schedule_engine.workflows.experiment_manager import ExperimentManager
+from schedule_engine.config.runtime_mode import RuntimeMode
 
 # Initialize manager
 manager = ExperimentManager(base_dir="output")

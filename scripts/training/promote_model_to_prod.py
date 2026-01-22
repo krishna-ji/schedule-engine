@@ -23,16 +23,16 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-# Add project root to path
+# Add src/ to path for local package imports
 project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "src"))
 
 REGISTRY_PATH = project_root / "models" / "rl_agents" / "registry.json"
 
-from src.config import get_config
-from src.rl.deployment.registry import ModelRegistry
-from src.rl.training.checkpoints import CheckpointManager, CheckpointMetadata
-from src.utils.logging_config import get_logger
+from schedule_engine.config import get_config
+from schedule_engine.rl.deployment.registry import ModelRegistry
+from schedule_engine.rl.training.checkpoints import CheckpointManager, CheckpointMetadata
+from schedule_engine.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 

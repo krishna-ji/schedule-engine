@@ -4,11 +4,17 @@ Display Time Configuration Settings
 Shows time-related parameters and quantum conversions for verification.
 """
 
+import sys
+from pathlib import Path
+
 from rich.console import Console
 
-from src.config import get_config
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.utils.time_helpers import (
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
+
+from schedule_engine.config import get_config
+from schedule_engine.io.time_system import QuantumTimeSystem
+from schedule_engine.utils.time_helpers import (
     get_midday_break_quanta,
     quantum_to_day_and_within_day,
 )
@@ -205,7 +211,7 @@ def main():
     console.print("[dim]All time configurations aligned with QuantumTimeSystem[/dim]")
     console.print("[dim]No hardcoded QUANTA_PER_DAY or magic numbers[/dim]")
     console.print(
-        "[dim]To modify: Update Python presets in src/config/presets/data.py or profile overrides.[/dim]\n"
+        "[dim]To modify: Update defaults in src/schedule_engine/config/models.py or supply overrides via schedule_engine.config.loader.[/dim]\n"
     )
 
 

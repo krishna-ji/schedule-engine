@@ -107,7 +107,7 @@ def export_schedule_json(decoded_schedule, output_path):
 
 ### Calendar PDF
 ```python
-from src.exporter.exporter import generate_calendar_pdf
+from schedule_engine.exporter.exporter import generate_calendar_pdf
 
 generate_calendar_pdf(
     decoded_schedule,
@@ -118,7 +118,7 @@ generate_calendar_pdf(
 
 ### Violation Report
 ```python
-from src.exporter.violation_reporter import generate_violation_report
+from schedule_engine.exporter.violation_reporter import generate_violation_report
 
 generate_violation_report(
     decoded_schedule,
@@ -129,8 +129,8 @@ generate_violation_report(
 
 ### Evolution Plots
 ```python
-from src.exporter.plothard import plot_hard_constraints
-from src.exporter.plotsoft import plot_soft_constraints
+from schedule_engine.exporter.plothard import plot_hard_constraints
+from schedule_engine.exporter.plotsoft import plot_soft_constraints
 
 plot_hard_constraints(metrics.hard_violations_per_gen, output_dir)
 plot_soft_constraints(metrics.soft_penalties_per_gen, output_dir)

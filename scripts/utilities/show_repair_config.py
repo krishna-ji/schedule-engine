@@ -3,19 +3,20 @@ Display current repair heuristics configuration.
 Quick utility to see which repair heuristics are enabled and their priorities.
 """
 
-import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from src.config import get_config  # get_config().repair
-from src.ga.operators.repair_registry import (
-    get_all_repair_heuristics,
-    get_enabled_repair_heuristics,
+from schedule_engine.config import get_config  # get_config().repair
+from schedule_engine.ga.operators.repair_wrappers import (
+    get_all_repair_operators,
+    get_enabled_repair_operators,
 )
 
 console = Console()
@@ -56,8 +57,8 @@ def main():
     console.print()
 
     # Get repair heuristics
-    all_repairs = get_all_repair_heuristics()
-    enabled_repairs = get_enabled_repair_heuristics()
+    all_repairs = get_all_repair_operators()
+    enabled_repairs = get_enabled_repair_operators()
 
     enabled_count = len(enabled_repairs)
     total_count = len(all_repairs)

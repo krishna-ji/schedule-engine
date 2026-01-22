@@ -19,13 +19,14 @@ import sys
 import time
 from pathlib import Path
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# Add src/ to path for local package imports
+project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(project_root / "src"))
 
 import torch
 
-from src.core.types import SchedulingContext
-from src.encoder.input_encoder import (
+from schedule_engine.domain.types import SchedulingContext
+from schedule_engine.io.data_loader import (
     link_courses_and_groups,
     link_courses_and_instructors,
     load_courses,
@@ -33,10 +34,10 @@ from src.encoder.input_encoder import (
     load_instructors,
     load_rooms,
 )
-from src.encoder.quantum_time_system import QuantumTimeSystem
-from src.ga.population import generate_course_group_aware_population
-from src.rl.agents import create_ppo_agent
-from src.rl.gym_env.schedule_env import create_schedule_env
+from schedule_engine.io.time_system import QuantumTimeSystem
+from schedule_engine.ga.population import generate_course_group_aware_population
+from schedule_engine.rl.agents import create_ppo_agent
+from schedule_engine.rl.gym_env.schedule_env import create_schedule_env
 
 
 def load_context(data_dir: str = "data") -> SchedulingContext:
