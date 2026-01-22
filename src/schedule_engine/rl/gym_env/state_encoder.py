@@ -93,6 +93,8 @@ class StateEncoder:
         history_size: int = 10,
         normalize: bool = True,
         enable_constraint_breakdown: bool = True,
+        diversity_update_interval: int = 1,
+        diversity_sample_size: int | None = None,
     ):
         """
         Initialize state encoder.
@@ -107,10 +109,15 @@ class StateEncoder:
         self.history_size = history_size
         self.normalize = normalize
         self.enable_constraint_breakdown = enable_constraint_breakdown
+        self.diversity_update_interval = max(1, diversity_update_interval)
+        self.diversity_sample_size = diversity_sample_size
 
         # Track previous state for delta features
         self.prev_best_fitness: float | None = None
         self.prev_avg_fitness: float | None = None
+        self._last_population_diversity: float | None = None
+        self._last_phenotype_diversity: float | None = None
+        self._last_diversity_generation: int | None = None
 
         # Heuristic application history
         self.heuristic_history: list[int] = []
@@ -163,9 +170,24 @@ class StateEncoder:
         if not population:
             return self._get_zero_features()
 
-        # Extract fitness values (both objectives)
-        hard_violations = np.array([ind.fitness.values[0] for ind in population])  # type: ignore[attr-defined]
-        soft_violations = np.array([ind.fitness.values[1] for ind in population])  # type: ignore[attr-defined]
+        valid_population = [
+            ind
+            for ind in population
+            if hasattr(ind, "fitness")
+            and getattr(ind.fitness, "valid", False)  # type: ignore[attr-defined]
+            and len(ind.fitness.values) >= 2  # type: ignore[attr-defined]
+        ]
+
+        if not valid_population:
+            return self._get_zero_features()
+
+        # Extract fitness values (both objectives) from valid individuals
+        hard_violations = np.array(
+            [ind.fitness.values[0] for ind in valid_population]  # type: ignore[attr-defined]
+        )
+        soft_violations = np.array(
+            [ind.fitness.values[1] for ind in valid_population]  # type: ignore[attr-defined]
+        )
 
         # Combined fitness (weighted sum for single metric)
         fitness_values = hard_violations * 100 + soft_violations
@@ -178,11 +200,15 @@ class StateEncoder:
         fitness_range = worst_fitness - best_fitness
 
         # Diversity metrics
-        population_diversity = self._calculate_diversity(population)
+        population_diversity = self._calculate_diversity(
+            valid_population, current_generation
+        )
         genotype_diversity = self._calculate_genotype_diversity(population)
-        phenotype_diversity = self._calculate_phenotype_diversity(population)
+        phenotype_diversity = self._calculate_phenotype_diversity(
+            valid_population, current_generation
+        )
         fitness_diversity = fitness_std / (avg_fitness + 1e-6)
-        unique_fitness_ratio = self._calculate_unique_fitness_ratio(population)
+        unique_fitness_ratio = self._calculate_unique_fitness_ratio(valid_population)
 
         # Progress metrics
         convergence_rate = self._calculate_convergence_rate(fitness_std, avg_fitness)
@@ -224,18 +250,32 @@ class StateEncoder:
             recent_heuristic_ids=self.heuristic_history[-self.history_size :],
         )
 
-    def _calculate_diversity(self, population: list[Individual]) -> float:
+    def _calculate_diversity(
+        self, population: list[Individual], current_generation: int
+    ) -> float:
         """Calculate population diversity using fitness distance (optimized with scipy)."""
+        if (
+            self.diversity_update_interval > 1
+            and self._last_population_diversity is not None
+            and self._last_diversity_generation is not None
+            and current_generation % self.diversity_update_interval != 0
+        ):
+            return self._last_population_diversity
+
         if len(population) < 2:
             return 0.0
 
-        fitness_array = np.array([ind.fitness.values for ind in population])  # type: ignore[attr-defined]
+        sample = self._maybe_sample_population(population)
+        fitness_array = np.array([ind.fitness.values for ind in sample])  # type: ignore[attr-defined]
         # Use scipy pdist for 10-30x faster pairwise distance calculation
         from scipy.spatial.distance import pdist
 
         distances = pdist(fitness_array, metric="euclidean")
 
-        return float(np.mean(distances)) if len(distances) > 0 else 0.0
+        diversity = float(np.mean(distances)) if len(distances) > 0 else 0.0
+        self._last_population_diversity = diversity
+        self._last_diversity_generation = current_generation
+        return diversity
 
     def _calculate_genotype_diversity(self, population: list[Individual]) -> float:
         """
@@ -258,7 +298,9 @@ class StateEncoder:
         max_diversity = len(population) * len(population[0])
         return len(unique_assignments) / max(max_diversity, 1)
 
-    def _calculate_phenotype_diversity(self, population: list[Individual]) -> float:
+    def _calculate_phenotype_diversity(
+        self, population: list[Individual], current_generation: int
+    ) -> float:
         """
         Calculate phenotype diversity (unique fitness outcomes).
 
@@ -266,11 +308,20 @@ class StateEncoder:
         individuals are in terms of their evaluated fitness. Uses normalized
         pairwise distances in fitness space.
         """
+        if (
+            self.diversity_update_interval > 1
+            and self._last_phenotype_diversity is not None
+            and self._last_diversity_generation is not None
+            and current_generation % self.diversity_update_interval != 0
+        ):
+            return self._last_phenotype_diversity
+
         if len(population) < 2:
             return 0.0
 
         # Extract fitness vectors (hard, soft)
-        fitness_array = np.array([ind.fitness.values for ind in population])  # type: ignore[attr-defined]
+        sample = self._maybe_sample_population(population)
+        fitness_array = np.array([ind.fitness.values for ind in sample])  # type: ignore[attr-defined]
 
         # Calculate pairwise Euclidean distances in fitness space (scipy optimized)
         from scipy.spatial.distance import pdist
@@ -288,7 +339,10 @@ class StateEncoder:
         if fitness_range < 1e-6:
             return 0.0
 
-        return float(min(avg_distance / (fitness_range + 1e-6), 1.0))
+        diversity = float(min(avg_distance / (fitness_range + 1e-6), 1.0))
+        self._last_phenotype_diversity = diversity
+        self._last_diversity_generation = current_generation
+        return diversity
 
     def _calculate_unique_fitness_ratio(self, population: list[Individual]) -> float:
         """
@@ -510,6 +564,24 @@ class StateEncoder:
         self.prev_best_fitness = None
         self.prev_avg_fitness = None
         self.heuristic_history = []
+        self._last_population_diversity = None
+        self._last_phenotype_diversity = None
+        self._last_diversity_generation = None
+
+    def _maybe_sample_population(
+        self, population: list[Individual]
+    ) -> list[Individual]:
+        """Optionally subsample the population for diversity calculations."""
+        if (
+            self.diversity_sample_size is None
+            or self.diversity_sample_size <= 0
+            or len(population) <= self.diversity_sample_size
+        ):
+            return population
+
+        import random
+
+        return random.sample(population, self.diversity_sample_size)
 
     @property
     def observation_dim(self) -> int:
