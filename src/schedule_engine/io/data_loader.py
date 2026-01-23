@@ -493,7 +493,7 @@ def link_courses_and_groups(
         console = Console()
 
         console.print()
-        console.print("[yellow]ℹ️  Non-schedulable courses filtered out[/yellow]")
+        console.print("[yellow]️  Non-schedulable courses filtered out[/yellow]")
 
         # Group by course code for compact display
         from collections import defaultdict

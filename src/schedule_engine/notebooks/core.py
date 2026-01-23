@@ -46,12 +46,14 @@ __all__ = [
     "load_data",
     "create_random_individual",
     "create_evaluator",
+    "create_detailed_evaluator",
     "course_aware_crossover",
     "smart_mutation",
     "setup_deap",
     "get_constraint_breakdown",
     "run_nsga2",
     "get_best_individual",
+    "print_constraint_details",
 ]
 
 
@@ -100,6 +102,35 @@ class EvolutionStats:
     avg_soft: list[float] = field(default_factory=list)
     feasible_count: list[int] = field(default_factory=list)
     elapsed_time: float = 0.0
+
+
+def print_constraint_details(
+    hard_breakdown: dict[str, float],
+    soft_breakdown: dict[str, float],
+    gen: int | None = None,
+) -> None:
+    """Print detailed constraint penalties in a readable format."""
+    prefix = f"Gen {gen:3d}" if gen is not None else "Current"
+
+    # Hard constraints
+    hard_total = sum(hard_breakdown.values())
+    hard_str = " | ".join(
+        f"{k[:12]}={int(v)}" for k, v in hard_breakdown.items() if v > 0
+    )
+    if not hard_str:
+        hard_str = "all OK"
+
+    # Soft constraints
+    soft_total = sum(soft_breakdown.values())
+    soft_str = " | ".join(
+        f"{k[:12]}={int(v)}" for k, v in soft_breakdown.items() if v > 0
+    )
+    if not soft_str:
+        soft_str = "all OK"
+
+    print(
+        f"  {prefix}: HARD={int(hard_total)} [{hard_str}] | SOFT={int(soft_total)} [{soft_str}]"
+    )
 
 
 def load_data(
@@ -222,6 +253,64 @@ def create_evaluator(
         return float(hard), float(soft)
 
     return evaluate
+
+
+def create_detailed_evaluator(
+    data: NotebookData,
+) -> Callable[
+    [list[SessionGene]], tuple[float, float, dict[str, float], dict[str, float]]
+]:
+    """
+    Create a detailed fitness evaluation function that returns individual constraint penalties.
+
+    Returns:
+        Function that returns (hard_total, soft_total, hard_breakdown, soft_breakdown)
+    """
+    from schedule_engine.constraints.registry import (
+        constraint_needs_courses,
+        get_enabled_hard_constraints,
+        get_enabled_soft_constraints,
+    )
+
+    def evaluate_detailed(
+        individual: list[SessionGene],
+    ) -> tuple[float, float, dict[str, float], dict[str, float]]:
+        """Evaluate with full breakdown."""
+        sessions = decode_individual(
+            individual,
+            data.courses,
+            data.instructors,
+            data.groups,
+            data.rooms,
+        )
+
+        hard_breakdown: dict[str, float] = {}
+        soft_breakdown: dict[str, float] = {}
+
+        # Hard constraints (weight=1 for all)
+        for name, info in get_enabled_hard_constraints().items():
+            func = info["function"]
+            if constraint_needs_courses(name):
+                penalty = func(sessions, data.courses)
+            else:
+                penalty = func(sessions)
+            hard_breakdown[name] = float(penalty)
+
+        # Soft constraints (weight=1 for all)
+        for name, info in get_enabled_soft_constraints().items():
+            func = info["function"]
+            if constraint_needs_courses(name):
+                penalty = func(sessions, data.courses)
+            else:
+                penalty = func(sessions)
+            soft_breakdown[name] = float(penalty)
+
+        hard_total = sum(hard_breakdown.values())
+        soft_total = sum(soft_breakdown.values())
+
+        return hard_total, soft_total, hard_breakdown, soft_breakdown
+
+    return evaluate_detailed
 
 
 def course_aware_crossover(
@@ -380,11 +469,13 @@ def run_nsga2(
     config: EvolutionConfig,
     create_individual_fn: Callable[[NotebookData], list[SessionGene]] | None = None,
     evaluate_fn: Callable[[list[SessionGene]], tuple[float, float]] | None = None,
-    crossover_fn: Callable[
-        [list[SessionGene], list[SessionGene]],
-        tuple[list[SessionGene], list[SessionGene]],
-    ]
-    | None = None,
+    crossover_fn: (
+        Callable[
+            [list[SessionGene], list[SessionGene]],
+            tuple[list[SessionGene], list[SessionGene]],
+        ]
+        | None
+    ) = None,
     mutate_fn: Callable[[list[SessionGene]], list[SessionGene]] | None = None,
 ) -> tuple[list[Any], EvolutionStats]:
     """
@@ -469,15 +560,29 @@ def run_nsga2(
         if config.verbose and (
             gen % config.log_interval == 0 or gen == config.ngen - 1
         ):
-            print(
-                f"  Gen {gen:3d}: min_hard={stats.min_hard[-1]:3.0f}, "
-                f"min_soft={stats.min_soft[-1]:5.0f}, "
-                f"feasible={stats.feasible_count[-1]}/{config.pop_size}"
+            # Get detailed breakdown for best individual
+            best_ind = min(
+                pop, key=lambda ind: (ind.fitness.values[0], ind.fitness.values[1])
             )
+            breakdown = get_constraint_breakdown(list(best_ind), data)
+
+            # Split into hard and soft
+            from schedule_engine.constraints.registry import (
+                get_enabled_hard_constraints,
+                get_enabled_soft_constraints,
+            )
+
+            hard_names = set(get_enabled_hard_constraints().keys())
+            soft_names = set(get_enabled_soft_constraints().keys())
+
+            hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
+            soft_bd = {k: v for k, v in breakdown.items() if k in soft_names}
+
+            print_constraint_details(hard_bd, soft_bd, gen)
 
     stats.elapsed_time = time.time() - start_time
 
     if config.verbose:
-        print(f" Evolution complete in {stats.elapsed_time:.1f}s")
+        print(f"✅ Evolution complete in {stats.elapsed_time:.1f}s")
 
     return pop, stats
