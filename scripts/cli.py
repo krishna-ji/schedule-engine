@@ -1,61 +1,18 @@
 """
 CLI Entry Points for Schedule Engine Scripts
 
-This module provides clean entry points for all utility scripts,
-enabling easy execution via UV shortcuts defined in pyproject.toml.
-
-All entry points follow the pattern:
-    def entry_name():
-        from scripts.category.script_name import main
-        main()
-
-This allows UV shortcuts like:
-    uv run diagnose-gpu
-    uv run benchmark-gpu
-    uv run show-config
+Entry points for UV shortcuts defined in pyproject.toml.
+Usage: uv run show-config, uv run tensorboard, etc.
 """
-
-# ==================
-# DIAGNOSTICS
-# ==================
-
-
-def diagnose_gpu():
-    """Diagnose GPU/CUDA setup and configuration."""
-    from scripts.diagnostics.diagnose_gpu import main
-
-    main()
-
-
-def test_dashboard():
-    """Test TensorBoard dashboard integration."""
-    from scripts.diagnostics.test_dashboard_integration import main
-
-    main()
-
 
 # ==================
 # BENCHMARKING
 # ==================
 
 
-def benchmark_gpu():
-    """Benchmark GPU vs CPU training performance."""
-    from scripts.benchmarking.benchmark_gpu_training import main
-
-    main()
-
-
 def benchmark_lns():
     """Benchmark Large Neighborhood Search with Constraint Programming."""
     from scripts.benchmarking.benchmark_lns_cp import main
-
-    main()
-
-
-def benchmark_constraints():
-    """Benchmark constraint checking performance."""
-    from scripts.benchmarking.bench_constraint_check import main
 
     main()
 
@@ -99,15 +56,8 @@ def check_data():
 
 
 def verify_config():
-    """Verify configuration standardization."""
-    from scripts.validation.verify_config_standardization import main
-
-    main()
-
-
-def verify_enhancements():
-    """Verify Phase 3 advanced enhancements."""
-    from scripts.validation.verify_enhancements import main
+    """Verify dataclass configs work correctly."""
+    from scripts.validation.test_dataclass_configs import main
 
     main()
 
@@ -152,16 +102,23 @@ def tensorboard():
     main()
 
 
-def git_squash():
-    """Interactive git commit squashing tool."""
-    from scripts.utilities.git_squash import main
+def run_model():
+    """Run latest trained RL model."""
+    from scripts.utilities.run_latest_model import main
 
     main()
 
 
-def refactor_csv():
-    """Refactor CSV export functionality."""
-    from scripts.utilities.refactor_csv_exports import main
+def compare_heuristics():
+    """Compare heuristic performance results."""
+    from scripts.utilities.compare_heuristics import main
+
+    main()
+
+
+def visualize_training():
+    """Generate RL training visualizations."""
+    from scripts.utilities.visualize_rl_training import main
 
     main()
 
@@ -171,27 +128,18 @@ def refactor_csv():
 # ==================
 
 __all__ = [
-    # Diagnostics
-    "diagnose_gpu",
-    "test_dashboard",
-    # Benchmarking
-    "benchmark_gpu",
     "benchmark_lns",
-    "benchmark_constraints",
-    # Training
     "generate_validation",
     "select_checkpoint",
     "promote_model",
-    # Validation
     "check_data",
     "verify_config",
-    "verify_enhancements",
-    # Utilities
     "show_config",
     "show_repair",
     "show_soft",
     "show_time",
     "tensorboard",
-    "git_squash",
-    "refactor_csv",
+    "run_model",
+    "compare_heuristics",
+    "visualize_training",
 ]

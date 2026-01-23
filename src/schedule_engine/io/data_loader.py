@@ -205,6 +205,11 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         tut = item.get("T", 0)
         prac = item.get("P", 0)
 
+        # Skip non-schedulable courses (0 credits, 0 L/T/P)
+        # Examples: Survey Camp, Industrial Attachment, Group Work
+        if credits == 0 and lec == 0 and tut == 0 and prac == 0:
+            continue
+
         practical_features = item.get("PracticalRoomFeatures", "").strip()
         practical_features = [
             f.strip().lower() for f in practical_features.split(",") if f.strip()
@@ -488,7 +493,7 @@ def link_courses_and_groups(
         console = Console()
 
         console.print()
-        console.print("[yellow][!warn] groups enrolled but courses missing[/yellow]")
+        console.print("[yellow]ℹ️  Non-schedulable courses filtered out[/yellow]")
 
         # Group by course code for compact display
         from collections import defaultdict
@@ -500,10 +505,12 @@ def link_courses_and_groups(
         for course_code, group_ids in sorted(courses_by_code.items()):
             groups_str = ", ".join(sorted(group_ids))
             console.print(
-                f"  [dim]{course_code}:[/dim] {groups_str} [dim](ltp null)[/dim]"
+                f"  [dim]{course_code}:[/dim] {groups_str} [dim](0 credits/LTP)[/dim]"
             )
 
-        console.print(f"  [dim]{len(missing_courses)} course enrollments skipped[/dim]")
+        console.print(
+            f"  [dim]{len(missing_courses)} enrollments skipped (Survey Camp, Industrial Attachment, etc.)[/dim]"
+        )
         console.print()
 
     # Note: We no longer warn about unassigned courses here since filtering
