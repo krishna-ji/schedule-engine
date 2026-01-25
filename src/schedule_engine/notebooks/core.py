@@ -109,28 +109,29 @@ def print_constraint_details(
     soft_breakdown: dict[str, float],
     gen: int | None = None,
 ) -> None:
-    """Print detailed constraint penalties in a readable format."""
+    """Print detailed constraint penalties with fixed-width alignment."""
     prefix = f"Gen {gen:3d}" if gen is not None else "Current"
 
-    # Hard constraints
+    # Calculate totals
     hard_total = sum(hard_breakdown.values())
-    hard_str = " | ".join(
-        f"{k[:12]}={int(v)}" for k, v in hard_breakdown.items() if v > 0
-    )
-    if not hard_str:
-        hard_str = "all OK"
-
-    # Soft constraints
     soft_total = sum(soft_breakdown.values())
-    soft_str = " | ".join(
-        f"{k[:12]}={int(v)}" for k, v in soft_breakdown.items() if v > 0
-    )
-    if not soft_str:
-        soft_str = "all OK"
 
-    print(
-        f"  {prefix}: HARD={int(hard_total)} [{hard_str}] | SOFT={int(soft_total)} [{soft_str}]"
-    )
+    # Sort constraints alphabetically for consistent display
+    hard_items = sorted(hard_breakdown.items())
+    soft_items = sorted(soft_breakdown.items())
+
+    # Format ALL constraints with fixed width (show zeros too)
+    hard_parts = [f"{k[:13]:13s}={int(v):4d}" for k, v in hard_items]
+    soft_parts = [f"{k[:13]:13s}={int(v):4d}" for k, v in soft_items]
+
+    # Join with | separator
+    hard_str = " | ".join(hard_parts) if hard_parts else "none"
+    soft_str = " | ".join(soft_parts) if soft_parts else "none"
+
+    # Print with totals first, fixed-width columns
+    print(f"  {prefix}:  Hard={int(hard_total):4d}  Soft={int(soft_total):4d}")
+    print(f"         HARD: [{hard_str}]")
+    print(f"         SOFT: [{soft_str}]")
 
 
 def load_data(
@@ -208,10 +209,19 @@ def load_data(
 
 def create_random_individual(data: NotebookData) -> list[SessionGene]:
     """
-    Create a random individual (chromosome) for the GA.
+    Create a TRULY random individual (chromosome) for the GA.
 
-    Each gene represents one course-group session assignment.
-    Random assignment of instructor, room, and time slot.
+    Preserves:
+        - Course-group pairs (no pedagogical violations)
+        - Number of quanta per course
+
+    Random (can violate):
+        - Instructor assignment (any instructor, can be unqualified)
+        - Room assignment (any room, can be wrong type/size)
+        - Time assignment (any quanta, can have conflicts)
+
+    This creates ~2500-3000 violations vs ~5000+ with "smart" init that
+    accidentally creates scheduling conflicts during construction.
 
     Args:
         data: NotebookData containing all entities
@@ -219,14 +229,60 @@ def create_random_individual(data: NotebookData) -> list[SessionGene]:
     Returns:
         List of SessionGene objects forming the chromosome
     """
-    from schedule_engine.ga.population import generate_course_group_aware_population
-
-    population = generate_course_group_aware_population(
-        n=1,
-        context=data.context,
-        parallel=False,
+    from schedule_engine.ga.population import (
+        analyze_group_hierarchy,
+        generate_course_group_pairs,
     )
-    return list(population[0])
+
+    # Get course-group pairs (preserves pedagogical structure)
+    hierarchy = analyze_group_hierarchy(data.context.groups)
+    pair_tuples = generate_course_group_pairs(
+        data.context.courses,
+        data.context.groups,
+        hierarchy,
+        silent=True,
+    )
+
+    # Convert to simpler format
+    course_group_pairs = [
+        (course_key, group_ids, num_quanta)
+        for course_key, group_ids, _, num_quanta in pair_tuples
+    ]
+
+    # Get all available resources (for random selection)
+    all_instructors = list(data.instructors.values())
+    all_rooms = list(data.rooms.values())
+    all_quanta = list(range(data.qts.total_quanta))
+
+    genes = []
+    for course_id, group_ids, num_quanta in course_group_pairs:
+        # TRULY RANDOM: Any instructor, room, time
+        instructor = random.choice(all_instructors)
+        room = random.choice(all_rooms)
+
+        # Random contiguous time block (start_quanta)
+        max_start = len(all_quanta) - num_quanta
+        if max_start > 0:
+            start_quanta = random.randint(0, max_start)
+        else:
+            start_quanta = 0
+
+        # Get course info for session type
+        course = data.courses.get(course_id)
+        course_type = course.course_type if course else "theory"
+
+        gene = SessionGene(
+            course_id=course_id[0] if isinstance(course_id, tuple) else course_id,
+            course_type=course_type,
+            group_ids=group_ids,
+            instructor_id=instructor.instructor_id,
+            room_id=room.room_id,
+            start_quanta=start_quanta,
+            num_quanta=num_quanta,
+        )
+        genes.append(gene)
+
+    return genes
 
 
 def create_evaluator(
@@ -583,6 +639,6 @@ def run_nsga2(
     stats.elapsed_time = time.time() - start_time
 
     if config.verbose:
-        print(f"✅ Evolution complete in {stats.elapsed_time:.1f}s")
+        print(f" Evolution complete in {stats.elapsed_time:.1f}s")
 
     return pop, stats
