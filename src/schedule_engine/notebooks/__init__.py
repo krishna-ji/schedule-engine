@@ -35,12 +35,11 @@ from schedule_engine.notebooks.export import (
     export_schedule_json,
     export_stats_csv,
 )
-from schedule_engine.notebooks.strategies import (
-    AdaptiveSelector,
-    RoundRobinSelector,
-    SimpleRLSelector,
-    load_trained_agent,
-    local_search_individual,
+from schedule_engine.notebooks.parallel_repair import (
+    RepairStats,
+    apply_fast_repair,
+    build_occupied_map,
+    parallel_repair_population,
 )
 from schedule_engine.notebooks.rl_helpers import (
     EvaluationResult,
@@ -52,9 +51,16 @@ from schedule_engine.notebooks.rl_helpers import (
     set_global_seed,
     train_agent,
 )
+from schedule_engine.notebooks.strategies import (
+    AdaptiveSelector,
+    RoundRobinSelector,
+    SimpleRLSelector,
+    load_trained_agent,
+    local_search_individual,
+)
 from schedule_engine.notebooks.viz import (
-    plot_convergence,
     plot_constraint_breakdown,
+    plot_convergence,
     print_summary,
 )
 
@@ -88,4 +94,9 @@ __all__ = [
     "evaluate_agent",
     "run_ablation",
     "set_global_seed",
+    # Parallel repair
+    "RepairStats",
+    "apply_fast_repair",
+    "build_occupied_map",
+    "parallel_repair_population",
 ]

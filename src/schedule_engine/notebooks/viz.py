@@ -190,7 +190,6 @@ def print_summary(
     """
     print("\n" + "=" * 60)
     print(" EVOLUTION SUMMARY")
-    print("=" * 60)
 
     # Best fitness
     best = min(

@@ -468,10 +468,8 @@ If using these figures, cite the RL training configuration:
 def main() -> None:
     """Main visualization pipeline."""
 
-    print("=" * 60)
     print("RL TRAINING VISUALIZATION GENERATOR")
     print("Publication-Quality Figures for Thesis/Academic Use")
-    print("=" * 60)
 
     # Paths
     project_root = Path(__file__).resolve().parents[2]
@@ -502,7 +500,7 @@ def main() -> None:
 
         print("\n" + "=" * 60)
         print(" VISUALIZATION COMPLETE!")
-        print("=" * 60)
+
         print(f"\nOutput directory: {output_dir}")
         print("\nGenerated files:")
         print("   01_training_curves.pdf")

@@ -8,14 +8,19 @@ with a handful of profiles used in notebooks and scripts.
 
 from schedule_engine.config.loader import dict_to_pydantic
 
-print("=" * 60)
 print("CONFIG LOADER - VALIDATION TEST")
-print("=" * 60)
+
 print()
 
 profiles = [
-    ("Baseline (test)", {"experiment_name": "baseline-test", "ngen": 30, "pop_size": 10}),
-    ("Baseline (prod)", {"experiment_name": "baseline-prod", "ngen": 200, "pop_size": 50}),
+    (
+        "Baseline (test)",
+        {"experiment_name": "baseline-test", "ngen": 30, "pop_size": 10},
+    ),
+    (
+        "Baseline (prod)",
+        {"experiment_name": "baseline-prod", "ngen": 200, "pop_size": 50},
+    ),
     ("Memetic", {"experiment_name": "memetic", "heuristics_mode": "memetic"}),
     ("Adaptive", {"experiment_name": "adaptive", "heuristics_mode": "adaptive"}),
     ("RL-guided", {"experiment_name": "rl-guided", "rl_enabled": True}),
@@ -29,6 +34,5 @@ for name, profile in profiles:
     print(f"  ✓ lns_enabled={config.lns.enabled}, rl_enabled={config.rl.enabled}")
     print()
 
-print("=" * 60)
+
 print("✓ ALL TESTS PASSED")
-print("=" * 60)
