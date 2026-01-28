@@ -533,9 +533,13 @@ def run_nsga2(
         | None
     ) = None,
     mutate_fn: Callable[[list[SessionGene]], list[SessionGene]] | None = None,
+    seed: int | None = 42,
 ) -> tuple[list[Any], EvolutionStats]:
     """
     Run standard NSGA-II evolution.
+
+    IMPORTANT: seed is reset at START of evolution to ensure reproducibility
+    regardless of any pre-evolution test code that may have consumed random numbers.
 
     Args:
         data: NotebookData containing scheduling entities
@@ -544,11 +548,18 @@ def run_nsga2(
         evaluate_fn: Fitness evaluation function
         crossover_fn: Crossover operator
         mutate_fn: Mutation operator
+        seed: Random seed for reproducibility (reset at start of evolution)
 
     Returns:
         Tuple of (final_population, evolution_stats)
     """
     import time
+
+    # CRITICAL: Reset random seed at START of evolution for reproducibility
+    # This ensures identical Gen 0 across all notebooks regardless of test code
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
 
     setup_deap(config.fitness_weights)
 
