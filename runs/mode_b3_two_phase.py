@@ -42,6 +42,7 @@ from schedule_engine.ga.operators.repair import (
     repair_room_overlap_reassign,
     repair_room_type_mismatches,
 )
+from schedule_engine.io.decoder import decode_individual
 from schedule_engine.notebooks.core import (
     EvolutionStats,
     course_aware_crossover,
@@ -53,13 +54,12 @@ from schedule_engine.notebooks.core import (
     print_constraint_details,
     setup_deap,
     smart_mutation,
+    stats_to_ga_metrics,
+    track_nsga_metrics,
 )
-from schedule_engine.notebooks.export import export_full_results
-from schedule_engine.notebooks.viz import (
-    plot_constraint_breakdown,
-    plot_convergence,
-    print_summary,
-)
+from schedule_engine.notebooks.viz import print_summary
+from schedule_engine.utils.json_utils import to_jsonable
+from schedule_engine.workflows.reporting import generate_reports
 
 
 @dataclass
@@ -275,6 +275,7 @@ def main() -> None:
         stats.feasible_count.append(sum(1 for h in hard_vals if h == 0))
         stats.min_soft.append(float(min(soft_vals)))
         stats.avg_soft.append(float(np.mean(soft_vals)))
+        track_nsga_metrics(pop, stats, data)
 
         if gen % LOG_INTERVAL == 0 or gen == NGEN - 1 or gen == PHASE_SWITCH_GEN:
             best_ind = min(
@@ -314,30 +315,21 @@ def main() -> None:
     breakdown = get_constraint_breakdown(best, data)
     print_summary(final_pop, stats, breakdown)
 
-    # Export figures
-    logger.info("Exporting figures...")
-    plot_convergence(
-        stats, OUTPUT_DIR / "mode_b3_convergence.png", title_prefix="Mode B3: "
-    )
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_b3_convergence.png'}")
-
-    plot_constraint_breakdown(
-        breakdown,
-        OUTPUT_DIR / "mode_b3_breakdown.png",
-        title="Mode B3: Constraint Violations",
-    )
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_b3_breakdown.png'}")
-
     # ==========================================================================
     # EXPORT RESULTS
     # ==========================================================================
     logger.info("Exporting full results...")
-    export_paths = export_full_results(
+    best_schedule = decode_individual(
+        best, data.courses, data.instructors, data.groups, data.rooms
+    )
+    ga_metrics = stats_to_ga_metrics(stats)
+    generate_reports(
+        decoded_schedule=best_schedule,
+        metrics=ga_metrics,
         population=final_pop,
-        stats=stats,
-        data=data,
-        output_dir=OUTPUT_DIR,
-        mode_name="mode_b3_two_phase",
+        qts=data.qts,
+        output_dir=str(OUTPUT_DIR),
+        course_map=data.courses,
     )
 
     metadata = {
@@ -371,7 +363,7 @@ def main() -> None:
     }
 
     with open(OUTPUT_DIR / "experiment_metadata.json", "w") as f:
-        json.dump(metadata, f, indent=2)
+        json.dump(to_jsonable(metadata), f, indent=2)
     logger.info(f"Saved: {OUTPUT_DIR / 'experiment_metadata.json'}")
 
     logger.info("=" * 60)

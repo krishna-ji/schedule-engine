@@ -23,14 +23,9 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from schedule_engine.metrics import (
-    average_pairwise_diversity,
-    calculate_hypervolume,
-    calculate_spacing,
-)
+from schedule_engine.io.decoder import decode_individual
 from schedule_engine.notebooks.core import (
     EvolutionConfig,
-    EvolutionStats,
     course_aware_crossover,
     create_evaluator,
     create_random_individual,
@@ -38,17 +33,14 @@ from schedule_engine.notebooks.core import (
     get_constraint_breakdown,
     load_data,
     run_nsga2,
+    stats_to_ga_metrics,
     smart_mutation,
 )
-from schedule_engine.notebooks.export import export_full_results
 from schedule_engine.notebooks.viz import (
-    plot_constraint_breakdown,
-    plot_convergence,
-    plot_diversity_metrics,
-    plot_feasibility_progress,
-    plot_pareto_front,
     print_summary,
 )
+from schedule_engine.utils.json_utils import to_jsonable
+from schedule_engine.workflows.reporting import generate_reports
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:
@@ -77,103 +69,6 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     logger.addHandler(console_handler)
 
     return logger
-
-
-def _plot_metrics_summary(
-    stats: "EvolutionStats",
-    spacing: float,
-    hypervolume: float,
-    diversity: float,
-    save_path: Path,
-) -> None:
-    """Plot a summary of NSGA-II quality metrics."""
-    import matplotlib.pyplot as plt
-
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-
-    # 1. Convergence (Hard)
-    ax1 = axes[0, 0]
-    ax1.plot(stats.generations, stats.min_hard, "b-", linewidth=2, label="Min")
-    ax1.plot(stats.generations, stats.avg_hard, "g--", linewidth=1, label="Avg")
-    ax1.set_xlabel("Generation")
-    ax1.set_ylabel("Hard Violations")
-    ax1.set_title("Hard Constraint Convergence")
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-
-    # 2. Convergence (Soft)
-    ax2 = axes[0, 1]
-    ax2.plot(stats.generations, stats.min_soft, "r-", linewidth=2, label="Min")
-    ax2.plot(
-        stats.generations,
-        stats.avg_soft,
-        "orange",
-        linestyle="--",
-        linewidth=1,
-        label="Avg",
-    )
-    ax2.set_xlabel("Generation")
-    ax2.set_ylabel("Soft Penalty")
-    ax2.set_title("Soft Constraint Convergence")
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
-
-    # 3. Feasibility Progress
-    ax3 = axes[1, 0]
-    ax3.plot(stats.generations, stats.feasible_count, "g-", linewidth=2)
-    ax3.fill_between(
-        stats.generations, 0, stats.feasible_count, alpha=0.3, color="green"
-    )
-    ax3.set_xlabel("Generation")
-    ax3.set_ylabel("Feasible Count")
-    ax3.set_title("Feasibility Progress")
-    ax3.grid(True, alpha=0.3)
-
-    # 4. Quality Metrics Summary (Text)
-    ax4 = axes[1, 1]
-    ax4.axis("off")
-
-    metrics_text = f"""
-    NSGA-II Quality Metrics
-    ══════════════════════════════
-
-    Spacing:           {spacing:.4f}
-    (Lower = more uniform Pareto front)
-
-    Hypervolume:       {hypervolume:.2f}
-    (Higher = better Pareto front quality)
-
-    Population Diversity: {diversity:.4f}
-    (Higher = more diverse solutions)
-
-    ──────────────────────────────
-    Final Results:
-    • Min Hard: {stats.min_hard[-1]:.0f}
-    • Min Soft: {stats.min_soft[-1]:.1f}
-    • Feasible: {stats.feasible_count[-1]}/{len(stats.generations)}
-    • Time: {stats.elapsed_time:.1f}s
-    """
-
-    ax4.text(
-        0.1,
-        0.9,
-        metrics_text,
-        transform=ax4.transAxes,
-        fontsize=12,
-        verticalalignment="top",
-        fontfamily="monospace",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
-    )
-
-    plt.suptitle(
-        "Mode A: NSGA-II Baseline - Complete Metrics Summary",
-        fontsize=14,
-        fontweight="bold",
-    )
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"✅ Saved: {save_path}")
 
 
 def main() -> None:
@@ -270,88 +165,34 @@ def main() -> None:
     print_summary(final_pop, stats, breakdown)
 
     # ==========================================================================
-    # NSGA-II SPECIFIC VISUALIZATIONS
+    # NSGA-II METRICS SUMMARY
     # ==========================================================================
-    logger.info("Generating NSGA-II visualizations...")
-
-    # 1. Basic Convergence Plot
-    plot_convergence(
-        stats,
-        OUTPUT_DIR / "mode_a_convergence.png",
-        title_prefix="Mode A: ",
-        show=False,
-    )
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_a_convergence.png'}")
-
-    # 2. Constraint Breakdown
-    plot_constraint_breakdown(
-        breakdown,
-        OUTPUT_DIR / "mode_a_breakdown.png",
-        title="Mode A: Constraint Violations",
-        show=False,
-    )
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_a_breakdown.png'}")
-
-    # 3. Pareto Front Plot (Objective Space)
-    plot_pareto_front(
-        final_pop,
-        OUTPUT_DIR / "mode_a_pareto_front.png",
-        title="Mode A: Pareto Front (Hard vs Soft)",
-        show=False,
-    )
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_a_pareto_front.png'}")
-
-    # 4. Feasibility Progress
-    plot_feasibility_progress(
-        stats,
-        OUTPUT_DIR / "mode_a_feasibility.png",
-        title_prefix="Mode A: ",
-        show=False,
-    )
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_a_feasibility.png'}")
-
-    # 5. Calculate and log NSGA-II metrics
     logger.info("Calculating NSGA-II quality metrics...")
 
-    # Spacing (Pareto front uniformity)
-    spacing = calculate_spacing(final_pop)
+    spacing = stats.spacing[-1] if stats.spacing else 0.0
     logger.info(f"  Spacing: {spacing:.4f} (lower = more uniform)")
 
-    # Hypervolume (quality of Pareto front)
-    # Reference point: worst possible values + margin
-    ref_point = (
-        max(ind.fitness.values[0] for ind in final_pop) * 1.1 + 1,
-        max(ind.fitness.values[1] for ind in final_pop) * 1.1 + 1,
-    )
-    hypervolume = calculate_hypervolume(final_pop, ref_point)
+    hypervolume = stats.hypervolume[-1] if stats.hypervolume else 0.0
     logger.info(f"  Hypervolume: {hypervolume:.2f} (higher = better)")
 
-    # Population diversity
-    diversity = average_pairwise_diversity(
-        final_pop, sample_size=min(50, len(final_pop))
-    )
+    diversity = stats.diversity[-1] if stats.diversity else 0.0
     logger.info(f"  Population Diversity: {diversity:.4f} (higher = more diverse)")
 
-    # 6. Summary metrics plot
-    _plot_metrics_summary(
-        stats,
-        spacing,
-        hypervolume,
-        diversity,
-        OUTPUT_DIR / "mode_a_metrics_summary.png",
-    )
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_a_metrics_summary.png'}")
-
     # ==========================================================================
-    # EXPORT RESULTS
+    # EXPORT RESULTS (FULL NSGA REPORTS)
     # ==========================================================================
     logger.info("Exporting full results...")
-    export_paths = export_full_results(
+    best_schedule = decode_individual(
+        best, data.courses, data.instructors, data.groups, data.rooms
+    )
+    ga_metrics = stats_to_ga_metrics(stats)
+    generate_reports(
+        decoded_schedule=best_schedule,
+        metrics=ga_metrics,
         population=final_pop,
-        stats=stats,
-        data=data,
-        output_dir=OUTPUT_DIR,
-        mode_name="mode_a_baseline",
+        qts=data.qts,
+        output_dir=str(OUTPUT_DIR),
+        course_map=data.courses,
     )
 
     # Save experiment metadata (convert numpy types to native Python)
@@ -386,19 +227,15 @@ def main() -> None:
             "spacing": to_native(spacing),
             "hypervolume": to_native(hypervolume),
             "population_diversity": to_native(diversity),
-            "pareto_front_size": len(
-                [
-                    ind
-                    for ind in final_pop
-                    if ind.fitness.values[0] == stats.min_hard[-1]
-                ]
+            "pareto_front_size": (
+                stats.pareto_front_size[-1] if stats.pareto_front_size else 0
             ),
         },
         "constraint_breakdown": {k: to_native(v) for k, v in breakdown.items()},
     }
 
     with open(OUTPUT_DIR / "experiment_metadata.json", "w") as f:
-        json.dump(metadata, f, indent=2)
+        json.dump(to_jsonable(metadata), f, indent=2)
     logger.info(f"Saved: {OUTPUT_DIR / 'experiment_metadata.json'}")
 
     logger.info("=" * 60)

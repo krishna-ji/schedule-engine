@@ -43,6 +43,8 @@ __all__ = [
     "NotebookData",
     "EvolutionConfig",
     "EvolutionStats",
+    "track_nsga_metrics",
+    "stats_to_ga_metrics",
     "load_data",
     "create_random_individual",
     "create_evaluator",
@@ -102,6 +104,125 @@ class EvolutionStats:
     avg_soft: list[float] = field(default_factory=list)
     feasible_count: list[int] = field(default_factory=list)
     elapsed_time: float = 0.0
+    diversity: list[float] = field(default_factory=list)
+    hypervolume: list[float] = field(default_factory=list)
+    spacing: list[float] = field(default_factory=list)
+    pareto_front_size: list[int] = field(default_factory=list)
+    feasibility_rate: list[float] = field(default_factory=list)
+    igd: list[float] = field(default_factory=list)
+    spread: list[float] = field(default_factory=list)
+    detailed_hard: dict[str, list[float]] = field(default_factory=dict)
+    detailed_soft: dict[str, list[float]] = field(default_factory=dict)
+    hypervolume_ref_point: tuple[float, float] | None = None
+    reference_front: list[Any] = field(default_factory=list)
+
+
+def _init_detailed_metrics(stats: EvolutionStats) -> None:
+    """Initialize per-constraint metric storage if needed."""
+    if stats.detailed_hard and stats.detailed_soft:
+        return
+
+    from schedule_engine.constraints.registry import (
+        get_enabled_hard_constraints,
+        get_enabled_soft_constraints,
+    )
+
+    stats.detailed_hard = {
+        name: [] for name in get_enabled_hard_constraints().keys()
+    }
+    stats.detailed_soft = {
+        name: [] for name in get_enabled_soft_constraints().keys()
+    }
+
+
+def track_nsga_metrics(
+    population: list[Any],
+    stats: EvolutionStats,
+    data: NotebookData,
+) -> None:
+    """Track NSGA-II metrics for the current generation."""
+    from deap import tools
+
+    from schedule_engine.metrics import average_pairwise_diversity
+    from schedule_engine.metrics.convergence import (
+        calculate_constraint_satisfaction_rate,
+    )
+    from schedule_engine.metrics.hypervolume import (
+        calculate_hypervolume,
+        get_hypervolume_reference_point,
+    )
+    from schedule_engine.metrics.pareto_metrics import (
+        calculate_inverted_generational_distance,
+        calculate_spacing,
+        calculate_spread,
+        get_pareto_front_size,
+    )
+
+    if not population:
+        return
+
+    _init_detailed_metrics(stats)
+
+    stats.diversity.append(average_pairwise_diversity(population))
+
+    if stats.hypervolume_ref_point is None:
+        stats.hypervolume_ref_point = get_hypervolume_reference_point(
+            population, margin=0.1
+        )
+    stats.hypervolume.append(
+        calculate_hypervolume(population, stats.hypervolume_ref_point)
+    )
+
+    stats.spacing.append(calculate_spacing(population))
+    stats.pareto_front_size.append(get_pareto_front_size(population))
+    stats.feasibility_rate.append(calculate_constraint_satisfaction_rate(population))
+
+    if not stats.reference_front:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
+        import copy
+
+        stats.reference_front = [copy.deepcopy(ind) for ind in pareto_front]
+
+    if stats.reference_front:
+        stats.igd.append(
+            calculate_inverted_generational_distance(
+                population, stats.reference_front
+            )
+        )
+    else:
+        stats.igd.append(0.0)
+
+    stats.spread.append(calculate_spread(population))
+
+    best = tools.selBest(population, 1)[0]
+    breakdown = get_constraint_breakdown(list(best), data)
+
+    for name in stats.detailed_hard:
+        stats.detailed_hard[name].append(breakdown.get(name, 0))
+
+    for name in stats.detailed_soft:
+        stats.detailed_soft[name].append(breakdown.get(name, 0))
+
+
+def stats_to_ga_metrics(stats: EvolutionStats) -> "GAMetrics":
+    """Convert notebook stats into core GA metrics for report export."""
+    from schedule_engine.ga.scheduler import GAMetrics
+
+    return GAMetrics(
+        hard_violations=list(stats.min_hard),
+        soft_penalties=list(stats.min_soft),
+        diversity=list(stats.diversity),
+        detailed_hard={k: list(v) for k, v in stats.detailed_hard.items()},
+        detailed_soft={k: list(v) for k, v in stats.detailed_soft.items()},
+        hypervolume=list(stats.hypervolume),
+        spacing=list(stats.spacing),
+        pareto_front_size=list(stats.pareto_front_size),
+        feasibility_rate=list(stats.feasibility_rate),
+        igd=list(stats.igd),
+        spread=list(stats.spread),
+    )
 
 
 def print_constraint_details(
@@ -623,6 +744,7 @@ def run_nsga2(
         stats.min_soft.append(float(min(soft_vals)))
         stats.avg_soft.append(float(np.mean(soft_vals)))
         stats.feasible_count.append(sum(1 for h in hard_vals if h == 0))
+        track_nsga_metrics(pop, stats, data)
 
         if config.verbose and (
             gen % config.log_interval == 0 or gen == config.ngen - 1
