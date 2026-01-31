@@ -22,6 +22,10 @@ from schedule_engine.notebooks.core import EvolutionStats
 __all__ = [
     "plot_convergence",
     "plot_constraint_breakdown",
+    "plot_pareto_front",
+    "plot_diversity_metrics",
+    "plot_constraint_trends",
+    "plot_feasibility_progress",
     "print_summary",
 ]
 
@@ -249,6 +253,260 @@ def print_summary(
         print(f"\n   Total Hard: {hard_total}, Total Soft: {soft_total:.1f}")
 
     print("\n" + "=" * 60)
+
+
+def plot_pareto_front(
+    population: list[Any],
+    save_path: Path | str | None = None,
+    title: str = "Pareto Front (Objective Space)",
+    show: bool = True,
+) -> None:
+    """
+    Plot the Pareto front in objective space (Hard vs Soft violations).
+
+    Highlights non-dominated solutions and shows population distribution.
+
+    Args:
+        population: Final population with fitness values
+        save_path: Optional path to save the plot
+        title: Plot title
+        show: Whether to display the plot
+    """
+    from deap import tools
+
+    # Extract all fitness values
+    all_hard = [ind.fitness.values[0] for ind in population]
+    all_soft = [ind.fitness.values[1] for ind in population]
+
+    # Get Pareto front (non-dominated solutions)
+    pareto_front = tools.sortNondominated(
+        population, len(population), first_front_only=True
+    )[0]
+    pf_hard = [ind.fitness.values[0] for ind in pareto_front]
+    pf_soft = [ind.fitness.values[1] for ind in pareto_front]
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Plot all solutions (faded)
+    ax.scatter(all_hard, all_soft, c="lightgray", alpha=0.5, s=30, label="Dominated")
+
+    # Plot Pareto front (highlighted)
+    ax.scatter(
+        pf_hard,
+        pf_soft,
+        c="red",
+        s=80,
+        marker="*",
+        edgecolors="black",
+        linewidths=0.5,
+        label=f"Pareto Front (n={len(pareto_front)})",
+        zorder=5,
+    )
+
+    # Connect Pareto front points
+    sorted_pf = sorted(zip(pf_hard, pf_soft), key=lambda x: x[0])
+    pf_hard_sorted = [p[0] for p in sorted_pf]
+    pf_soft_sorted = [p[1] for p in sorted_pf]
+    ax.plot(pf_hard_sorted, pf_soft_sorted, "r--", alpha=0.5, linewidth=1)
+
+    # Mark feasible region
+    ax.axvline(
+        x=0, color="green", linestyle=":", alpha=0.7, label="Feasibility Boundary"
+    )
+
+    # Best solution
+    best = min(
+        population, key=lambda ind: (ind.fitness.values[0], ind.fitness.values[1])
+    )
+    ax.scatter(
+        [best.fitness.values[0]],
+        [best.fitness.values[1]],
+        c="blue",
+        s=200,
+        marker="D",
+        edgecolors="black",
+        linewidths=2,
+        label=f"Best: ({best.fitness.values[0]:.0f}, {best.fitness.values[1]:.0f})",
+        zorder=10,
+    )
+
+    ax.set_xlabel("Hard Constraint Violations", fontsize=12)
+    ax.set_ylabel("Soft Constraint Penalty", fontsize=12)
+    ax.set_title(title, fontsize=14)
+    ax.legend(loc="upper right")
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"✅ Saved: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def plot_diversity_metrics(
+    diversity_history: list[float],
+    generations: list[int] | None = None,
+    save_path: Path | str | None = None,
+    title: str = "Population Diversity Over Generations",
+    show: bool = True,
+) -> None:
+    """
+    Plot diversity metrics over generations.
+
+    Args:
+        diversity_history: List of diversity values per generation
+        generations: List of generation numbers (defaults to 0..n-1)
+        save_path: Optional path to save the plot
+        title: Plot title
+        show: Whether to display the plot
+    """
+    if generations is None:
+        generations = list(range(len(diversity_history)))
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    ax.plot(generations, diversity_history, "b-", linewidth=2, label="Diversity")
+    ax.fill_between(generations, 0, diversity_history, alpha=0.2, color="blue")
+
+    # Add trend line
+    if len(diversity_history) > 10:
+        z = np.polyfit(generations, diversity_history, 1)
+        p = np.poly1d(z)
+        ax.plot(
+            generations,
+            p(generations),
+            "r--",
+            linewidth=1,
+            alpha=0.7,
+            label=f"Trend (slope={z[0]:.4f})",
+        )
+
+    ax.set_xlabel("Generation", fontsize=12)
+    ax.set_ylabel("Population Diversity", fontsize=12)
+    ax.set_title(title, fontsize=14)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Add annotations
+    if diversity_history:
+        ax.annotate(
+            f"Start: {diversity_history[0]:.3f}",
+            xy=(generations[0], diversity_history[0]),
+            xytext=(10, 10),
+            textcoords="offset points",
+            fontsize=9,
+        )
+        ax.annotate(
+            f"End: {diversity_history[-1]:.3f}",
+            xy=(generations[-1], diversity_history[-1]),
+            xytext=(-50, 10),
+            textcoords="offset points",
+            fontsize=9,
+        )
+
+    plt.tight_layout()
+
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"✅ Saved: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def plot_constraint_trends(
+    constraint_history: dict[str, list[float]],
+    generations: list[int] | None = None,
+    save_path: Path | str | None = None,
+    title: str = "Constraint Violations Over Generations",
+    show: bool = True,
+) -> None:
+    """
+    Plot individual constraint trends over generations.
+
+    Args:
+        constraint_history: Dict mapping constraint names to list of values per gen
+        generations: List of generation numbers
+        save_path: Optional path to save the plot
+        title: Plot title
+        show: Whether to display the plot
+    """
+    if not constraint_history:
+        print("⚠️ No constraint history to plot")
+        return
+
+    # Determine generations
+    first_key = next(iter(constraint_history))
+    if generations is None:
+        generations = list(range(len(constraint_history[first_key])))
+
+    # Separate hard and soft constraints
+    hard_constraints = {
+        "student_group_exclusivity",
+        "instructor_exclusivity",
+        "room_exclusivity",
+        "instructor_qualifications",
+        "room_suitability",
+        "course_completeness",
+        "instructor_time_availability",
+        "room_time_availability",
+    }
+
+    hard_history = {
+        k: v for k, v in constraint_history.items() if k in hard_constraints
+    }
+    soft_history = {
+        k: v for k, v in constraint_history.items() if k not in hard_constraints
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Hard constraints
+    ax1 = axes[0]
+    for name, values in hard_history.items():
+        short_name = name.replace("_", " ").title()[:20]
+        ax1.plot(generations, values, linewidth=1.5, label=short_name)
+    ax1.set_xlabel("Generation")
+    ax1.set_ylabel("Violations")
+    ax1.set_title("Hard Constraints")
+    ax1.legend(loc="upper right", fontsize=8)
+    ax1.grid(True, alpha=0.3)
+
+    # Soft constraints
+    ax2 = axes[1]
+    for name, values in soft_history.items():
+        short_name = name.replace("_", " ").title()[:20]
+        ax2.plot(generations, values, linewidth=1.5, label=short_name)
+    ax2.set_xlabel("Generation")
+    ax2.set_ylabel("Penalty")
+    ax2.set_title("Soft Constraints")
+    ax2.legend(loc="upper right", fontsize=8)
+    ax2.grid(True, alpha=0.3)
+
+    plt.suptitle(title, fontsize=14)
+    plt.tight_layout()
+
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"✅ Saved: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
 
 def plot_feasibility_progress(
