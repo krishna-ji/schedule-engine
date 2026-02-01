@@ -40,7 +40,7 @@ from schedule_engine.notebooks.core import (
     stats_to_ga_metrics,
     track_nsga_metrics,
 )
-from schedule_engine.notebooks.strategies import local_search_individual
+from schedule_engine.ga.operators.repair_engine import RepairEngine
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
 from schedule_engine.workflows.reporting import generate_reports
@@ -63,6 +63,10 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setFormatter(formatter)
 
     logger = logging.getLogger("mode_b_memetic")
+
+    logger.handlers.clear()
+
+    logger.propagate = False
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -89,6 +93,10 @@ def main() -> None:
     # MODE B: Local search parameters
     LOCAL_SEARCH_PROB = 0.1
     LOCAL_SEARCH_ITERATIONS = 5
+    REPAIR_POLICY = "round_robin"
+    REPAIR_BUDGET_MS = 50.0
+    REPAIR_MAX_CANDIDATES = 20
+    REPAIR_EPSILON = 0.1
     LOG_INTERVAL = 10
 
     # Paths
@@ -102,7 +110,10 @@ def main() -> None:
     logger.info("=" * 60)
     logger.info("MODE B: MEMETIC NSGA-II")
     logger.info("=" * 60)
-    logger.info(f"Config: pop={POP_SIZE}, ngen={NGEN}, LS_prob={LOCAL_SEARCH_PROB}")
+    logger.info(
+        f"Config: pop={POP_SIZE}, ngen={NGEN}, LS_prob={LOCAL_SEARCH_PROB}, "
+        f"policy={REPAIR_POLICY}, budget_ms={REPAIR_BUDGET_MS}"
+    )
     logger.info(f"Output: {OUTPUT_DIR}")
 
     # LOAD DATA
@@ -117,6 +128,19 @@ def main() -> None:
     logger.info(f"Data loaded: {data.summary()}")
 
     evaluate = create_evaluator(data)
+    repair_engine = RepairEngine(
+        context=data.context,
+        evaluator=evaluate,
+        policy=REPAIR_POLICY,
+        max_steps=LOCAL_SEARCH_ITERATIONS,
+        max_candidates=REPAIR_MAX_CANDIDATES,
+        budget_ms=REPAIR_BUDGET_MS,
+        epsilon=REPAIR_EPSILON,
+        rng=random.Random(SEED),
+        logger=logger,
+        log_steps=True,
+        log_candidates=True,
+    )
 
     # TEST COMPONENTS
 
@@ -125,9 +149,9 @@ def main() -> None:
     logger.info(f"Individual: {len(test_ind)} genes")
     logger.info(f"Initial fitness: hard={evaluate(test_ind)[0]}")
 
-    improved_ind, improvement = local_search_individual(
-        test_ind, data, evaluate, max_iterations=5
-    )
+    test_stats = repair_engine.repair_individual(test_ind)
+    improvement = test_stats.total_delta_hard
+    improved_ind = test_ind
     logger.info(
         f"After LS: hard={evaluate(improved_ind)[0]} (improvement={improvement})"
     )
@@ -158,6 +182,8 @@ def main() -> None:
         ind.fitness.values = toolbox.evaluate(ind)
 
     stats = EvolutionStats()
+    total_repairs = 0
+    repair_history: list[dict[str, float | int]] = []
 
     for gen in range(NGEN):
         offspring = [copy.deepcopy(ind) for ind in toolbox.select(pop, len(pop))]
@@ -176,14 +202,28 @@ def main() -> None:
                 del ind.fitness.values
 
         # MODE B: Local Search
-        for ind in offspring:
-            if random.random() < LOCAL_SEARCH_PROB:
-                genes = list(ind)
-                improved_genes, _ = local_search_individual(
-                    genes, data, evaluate, LOCAL_SEARCH_ITERATIONS
-                )
-                ind[:] = improved_genes
+        repair_indices = [
+            idx for idx in range(len(offspring)) if random.random() < LOCAL_SEARCH_PROB
+        ]
+        per_individual_budget = (
+            REPAIR_BUDGET_MS / max(1, len(repair_indices))
+            if REPAIR_BUDGET_MS > 0
+            else 0
+        )
+        gen_repairs = 0
+        gen_delta_hard = 0.0
+        gen_delta_soft = 0.0
+        for idx in repair_indices:
+            ind = offspring[idx]
+            repair_stats = repair_engine.repair_individual(
+                ind, budget_ms=per_individual_budget
+            )
+            gen_repairs += repair_stats.applied_steps
+            gen_delta_hard += repair_stats.total_delta_hard
+            gen_delta_soft += repair_stats.total_delta_soft
+            if repair_stats.applied_steps > 0:
                 del ind.fitness.values
+        total_repairs += gen_repairs
 
         # Evaluate
         for ind in offspring:
@@ -204,6 +244,15 @@ def main() -> None:
         stats.avg_soft.append(float(np.mean(soft_vals)))
         track_nsga_metrics(pop, stats, data)
 
+        repair_history.append(
+            {
+                "generation": gen,
+                "repairs_applied": gen_repairs,
+                "delta_hard": gen_delta_hard,
+                "delta_soft": gen_delta_soft,
+            }
+        )
+
         if gen % LOG_INTERVAL == 0 or gen == NGEN - 1:
             best_ind = min(
                 pop, key=lambda ind: (ind.fitness.values[0], ind.fitness.values[1])
@@ -221,9 +270,11 @@ def main() -> None:
             }
             hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
             soft_bd = {k: v for k, v in breakdown.items() if k not in hard_names}
-            print_constraint_details(hard_bd, soft_bd, gen)
+            print_constraint_details(hard_bd, soft_bd, gen, logger=logger)
             logger.debug(
-                f"Gen {gen}: min_hard={min(hard_vals)}, feasible={stats.feasible_count[-1]}"
+                f"Gen {gen}: min_hard={min(hard_vals)}, feasible={stats.feasible_count[-1]}, "
+                f"repairs={gen_repairs}, delta_hard={gen_delta_hard:.2f}, "
+                f"delta_soft={gen_delta_soft:.2f}"
             )
 
     stats.elapsed_time = time.time() - start
@@ -237,7 +288,7 @@ def main() -> None:
 
     best = get_best_individual(final_pop)
     breakdown = get_constraint_breakdown(best, data)
-    print_summary(final_pop, stats, breakdown)
+    print_summary(final_pop, stats, breakdown, logger=logger)
 
     # EXPORT RESULTS
 
@@ -267,6 +318,10 @@ def main() -> None:
             "fitness_weights": list(FITNESS_WEIGHTS),
             "local_search_prob": LOCAL_SEARCH_PROB,
             "local_search_iterations": LOCAL_SEARCH_ITERATIONS,
+            "repair_policy": REPAIR_POLICY,
+            "repair_budget_ms": REPAIR_BUDGET_MS,
+            "repair_max_candidates": REPAIR_MAX_CANDIDATES,
+            "repair_epsilon": REPAIR_EPSILON,
         },
         "results": {
             "elapsed_time": stats.elapsed_time,
@@ -275,8 +330,10 @@ def main() -> None:
             "final_feasible_count": (
                 stats.feasible_count[-1] if stats.feasible_count else 0
             ),
+            "total_repairs": total_repairs,
         },
         "constraint_breakdown": breakdown,
+        "repair_history": repair_history,
     }
 
     with open(OUTPUT_DIR / "experiment_metadata.json", "w") as f:

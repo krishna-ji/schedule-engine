@@ -41,7 +41,7 @@ from schedule_engine.notebooks.core import (
     stats_to_ga_metrics,
     track_nsga_metrics,
 )
-from schedule_engine.notebooks.strategies import AdaptiveSelector
+from schedule_engine.ga.operators.repair_engine import RepairEngine
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
 from schedule_engine.workflows.reporting import generate_reports
@@ -64,6 +64,10 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setFormatter(formatter)
 
     logger = logging.getLogger("mode_d_adaptive")
+
+    logger.handlers.clear()
+
+    logger.propagate = False
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -89,8 +93,11 @@ def main() -> None:
 
     # MODE D: Adaptive selection
     REPAIR_PROB = 0.3
-    LEARNING_RATE = 0.1
-    MIN_PROB = 0.05
+    REPAIR_POLICY = "epsilon_greedy"
+    REPAIR_EPSILON = 0.1
+    REPAIR_BUDGET_MS = 50.0
+    REPAIR_MAX_STEPS = 1
+    REPAIR_MAX_CANDIDATES = 20
     LOG_INTERVAL = 10
 
     # Paths
@@ -104,7 +111,10 @@ def main() -> None:
     logger.info("=" * 60)
     logger.info("MODE D: ADAPTIVE HEURISTICS")
     logger.info("=" * 60)
-    logger.info(f"Config: pop={POP_SIZE}, ngen={NGEN}, learning_rate={LEARNING_RATE}")
+    logger.info(
+        f"Config: pop={POP_SIZE}, ngen={NGEN}, repair_policy={REPAIR_POLICY}, "
+        f"eps={REPAIR_EPSILON}, budget_ms={REPAIR_BUDGET_MS}"
+    )
     logger.info(f"Output: {OUTPUT_DIR}")
 
     # LOAD DATA
@@ -119,21 +129,36 @@ def main() -> None:
     logger.info(f"Data loaded: {data.summary()}")
 
     evaluate = create_evaluator(data)
+    repair_engine = RepairEngine(
+        context=data.context,
+        evaluator=evaluate,
+        policy=REPAIR_POLICY,
+        max_steps=REPAIR_MAX_STEPS,
+        max_candidates=REPAIR_MAX_CANDIDATES,
+        budget_ms=REPAIR_BUDGET_MS,
+        epsilon=REPAIR_EPSILON,
+        rng=random.Random(SEED),
+        logger=logger,
+        log_steps=True,
+        log_candidates=True,
+    )
 
-    # TEST ADAPTIVE SELECTOR
+    # TEST ADAPTIVE REPAIR ENGINE
 
-    logger.info("Testing adaptive selector...")
-    selector = AdaptiveSelector(learning_rate=LEARNING_RATE, min_prob=MIN_PROB)
+    logger.info("Testing adaptive repair engine...")
     test_ind = create_random_individual(data)
 
-    logger.info(f"Initial probs: {selector.probs}")
     logger.info(f"Initial fitness: hard={evaluate(test_ind)[0]}")
 
     for _ in range(10):
-        name, fixes = selector.apply(test_ind, data)
+        step_result = repair_engine.step(test_ind)
+        logger.debug(
+            f"Applied {step_result.operator}: delta_hard={step_result.delta_hard}, "
+            f"delta_soft={step_result.delta_soft}"
+        )
 
     logger.info(
-        f"After 10 applications: fitness={evaluate(test_ind)[0]}, probs={selector.probs}"
+        f"After 10 applications: fitness={evaluate(test_ind)[0]}"
     )
 
     # RUN ADAPTIVE NSGA-II
@@ -142,10 +167,6 @@ def main() -> None:
 
     start = time.time()
     setup_deap(FITNESS_WEIGHTS)
-    selector = AdaptiveSelector(
-        learning_rate=LEARNING_RATE, min_prob=MIN_PROB
-    )  # Fresh selector
-
     toolbox = base.Toolbox()
     toolbox.register(
         "individual", lambda: creator.Individual(create_random_individual(data))
@@ -162,7 +183,8 @@ def main() -> None:
 
     stats = EvolutionStats()
     total_repairs = 0
-    prob_history: list[dict[str, float]] = []
+    operator_history: list[dict[str, float]] = []
+    repair_history: list[dict[str, float | int]] = []
 
     for gen in range(NGEN):
         offspring = [copy.deepcopy(ind) for ind in toolbox.select(pop, len(pop))]
@@ -181,13 +203,28 @@ def main() -> None:
                 del ind.fitness.values
 
         # MODE D: Adaptive Repair
-        for ind in offspring:
-            if random.random() < REPAIR_PROB:
-                genes = list(ind)
-                _, fixes = selector.apply(genes, data)
-                total_repairs += fixes
-                ind[:] = genes
+        repair_indices = [
+            idx for idx in range(len(offspring)) if random.random() < REPAIR_PROB
+        ]
+        per_individual_budget = (
+            REPAIR_BUDGET_MS / max(1, len(repair_indices))
+            if REPAIR_BUDGET_MS > 0
+            else 0
+        )
+        gen_repairs = 0
+        gen_delta_hard = 0.0
+        gen_delta_soft = 0.0
+        for idx in repair_indices:
+            ind = offspring[idx]
+            repair_stats = repair_engine.repair_individual(
+                ind, budget_ms=per_individual_budget, max_steps=REPAIR_MAX_STEPS
+            )
+            gen_repairs += repair_stats.applied_steps
+            gen_delta_hard += repair_stats.total_delta_hard
+            gen_delta_soft += repair_stats.total_delta_soft
+            if repair_stats.applied_steps > 0:
                 del ind.fitness.values
+        total_repairs += gen_repairs
 
         # Evaluate
         for ind in offspring:
@@ -206,7 +243,17 @@ def main() -> None:
         stats.feasible_count.append(sum(1 for h in hard_vals if h == 0))
         stats.min_soft.append(float(min(soft_vals)))
         stats.avg_soft.append(float(np.mean(soft_vals)))
-        prob_history.append(dict(selector.probs))
+        operator_scores: dict[str, float] = {}
+        for name, stats_dict in repair_engine.operator_stats.items():
+            applied = stats_dict.get("applied", 0.0)
+            if applied > 0:
+                operator_scores[name] = (
+                    stats_dict.get("delta_hard", 0.0) * 1000
+                    + stats_dict.get("delta_soft", 0.0)
+                ) / applied
+            else:
+                operator_scores[name] = 0.0
+        operator_history.append(operator_scores)
         track_nsga_metrics(pop, stats, data)
 
         if gen % LOG_INTERVAL == 0 or gen == NGEN - 1:
@@ -226,15 +273,29 @@ def main() -> None:
             }
             hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
             soft_bd = {k: v for k, v in breakdown.items() if k not in hard_names}
-            print_constraint_details(hard_bd, soft_bd, gen)
-            probs_str = ", ".join(f"{k}:{v:.2f}" for k, v in selector.probs.items())
-            logger.debug(f"Gen {gen}: Adaptive probs: [{probs_str}]")
+            print_constraint_details(hard_bd, soft_bd, gen, logger=logger)
+            scores_str = ", ".join(
+                f"{k}:{v:.2f}" for k, v in operator_scores.items()
+            )
+            logger.debug(
+                f"Gen {gen}: repairs={gen_repairs}, delta_hard={gen_delta_hard:.2f}, "
+                f"delta_soft={gen_delta_soft:.2f}, scores=[{scores_str}]"
+            )
+
+        repair_history.append(
+            {
+                "generation": gen,
+                "repairs_applied": gen_repairs,
+                "delta_hard": gen_delta_hard,
+                "delta_soft": gen_delta_soft,
+            }
+        )
 
     stats.elapsed_time = time.time() - start
     logger.info(
         f"Evolution completed in {stats.elapsed_time:.1f}s (total repairs: {total_repairs})"
     )
-    logger.info(f"Final heuristic stats: {selector.get_stats()}")
+    logger.info(f"Final heuristic stats: {repair_engine.operator_stats}")
 
     final_pop = pop
 
@@ -244,24 +305,24 @@ def main() -> None:
 
     best = get_best_individual(final_pop)
     breakdown = get_constraint_breakdown(best, data)
-    print_summary(final_pop, stats, breakdown)
+    print_summary(final_pop, stats, breakdown, logger=logger)
 
-    # Plot probability evolution
+    # Plot operator score evolution
     fig, ax = plt.subplots(figsize=(10, 5))
-    heuristic_names = list(prob_history[0].keys())
+    heuristic_names = list(operator_history[0].keys())
     for name in heuristic_names:
-        probs = [p[name] for p in prob_history]
-        ax.plot(probs, label=name)
+        scores = [p.get(name, 0.0) for p in operator_history]
+        ax.plot(scores, label=name)
 
     ax.set_xlabel("Generation")
-    ax.set_ylabel("Selection Probability")
-    ax.set_title("Mode D: Adaptive Heuristic Probability Evolution")
+    ax.set_ylabel("Avg Improvement Score")
+    ax.set_title("Mode D: Adaptive Operator Score Evolution")
     ax.legend()
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "mode_d_probabilities.png", dpi=150)
+    plt.savefig(OUTPUT_DIR / "mode_d_operator_scores.png", dpi=150)
     plt.close()
-    logger.info(f"Saved: {OUTPUT_DIR / 'mode_d_probabilities.png'}")
+    logger.info(f"Saved: {OUTPUT_DIR / 'mode_d_operator_scores.png'}")
 
     # EXPORT RESULTS
 
@@ -290,8 +351,11 @@ def main() -> None:
             "mutpb": MUTPB,
             "fitness_weights": list(FITNESS_WEIGHTS),
             "repair_prob": REPAIR_PROB,
-            "learning_rate": LEARNING_RATE,
-            "min_prob": MIN_PROB,
+            "repair_policy": REPAIR_POLICY,
+            "repair_budget_ms": REPAIR_BUDGET_MS,
+            "repair_max_steps": REPAIR_MAX_STEPS,
+            "repair_max_candidates": REPAIR_MAX_CANDIDATES,
+            "repair_epsilon": REPAIR_EPSILON,
         },
         "results": {
             "elapsed_time": stats.elapsed_time,
@@ -301,9 +365,10 @@ def main() -> None:
             "final_feasible_count": (
                 stats.feasible_count[-1] if stats.feasible_count else 0
             ),
-            "final_heuristic_probs": prob_history[-1] if prob_history else {},
+            "final_operator_scores": operator_history[-1] if operator_history else {},
         },
         "constraint_breakdown": breakdown,
+        "repair_history": repair_history,
     }
 
     with open(OUTPUT_DIR / "experiment_metadata.json", "w") as f:

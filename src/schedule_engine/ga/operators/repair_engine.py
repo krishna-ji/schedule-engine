@@ -13,6 +13,7 @@ import random
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
+import logging
 from typing import Callable, Iterable, Protocol
 
 from schedule_engine.domain.gene import SessionGene
@@ -471,6 +472,9 @@ class RepairEngine:
         epsilon: float = 0.1,
         rng: random.Random | None = None,
         operators: Iterable[RepairOperator] | None = None,
+        logger: logging.Logger | None = None,
+        log_steps: bool = False,
+        log_candidates: bool = True,
     ) -> None:
         self.context = context
         self._evaluate = evaluator
@@ -478,6 +482,9 @@ class RepairEngine:
         self.max_candidates = max_candidates
         self.budget_ms = budget_ms
         self.rng = rng or random.Random()
+        self.logger = logger or logging.getLogger(__name__)
+        self.log_steps = log_steps
+        self.log_candidates = log_candidates
 
         self.operators = list(
             operators
@@ -519,7 +526,7 @@ class RepairEngine:
 
         current_hard, current_soft = self._evaluate(individual)
 
-        for _ in range(max_steps):
+        for step_idx in range(max_steps):
             if budget_ms > 0 and (time.perf_counter() - start_time) * 1000 > budget_ms:
                 break
 
@@ -538,6 +545,15 @@ class RepairEngine:
             if operator is None:
                 break
 
+            if self.log_steps:
+                self.logger.debug(
+                    "Repair step %d: operator=%s hard=%.2f soft=%.2f",
+                    step_idx,
+                    operator_name,
+                    current_hard,
+                    current_soft,
+                )
+
             candidates = operator.propose(
                 individual,
                 self.context,
@@ -545,6 +561,12 @@ class RepairEngine:
                 self.max_candidates,
                 self.rng,
             )
+            if self.log_candidates:
+                self.logger.debug(
+                    "Repair operator %s proposed %d candidates",
+                    operator_name,
+                    len(candidates),
+                )
 
             best: RepairCandidate | None = None
             best_after: tuple[float, float] | None = None
@@ -569,6 +591,11 @@ class RepairEngine:
                     after=(current_hard, current_soft),
                 )
                 stats.record(result)
+                if self.log_steps:
+                    self.logger.debug(
+                        "Repair operator %s: no improving candidate",
+                        operator_name,
+                    )
                 continue
 
             self._apply_candidate(individual, best)
@@ -583,6 +610,18 @@ class RepairEngine:
             )
             stats.record(result)
             current_hard, current_soft = after_hard, after_soft
+            if self.log_steps:
+                self.logger.debug(
+                    "Repair operator %s applied gene=%d delta_hard=%.2f delta_soft=%.2f "
+                    "start=%s room=%s instructor=%s",
+                    operator_name,
+                    best.gene_idx,
+                    result.delta_hard,
+                    result.delta_soft,
+                    best.new_start,
+                    best.new_room_id,
+                    best.new_instructor_id,
+                )
 
             # Update operator stats for epsilon-greedy
             op_stats = self.operator_stats.setdefault(

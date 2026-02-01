@@ -14,6 +14,7 @@ DRY Principle: All notebooks import from here instead of duplicating code.
 from __future__ import annotations
 
 import copy
+import logging
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -229,6 +230,7 @@ def print_constraint_details(
     hard_breakdown: dict[str, float],
     soft_breakdown: dict[str, float],
     gen: int | None = None,
+    logger: logging.Logger | None = None,
 ) -> None:
     """Print detailed constraint penalties with fixed-width alignment."""
     prefix = f"Gen {gen:3d}" if gen is not None else "Current"
@@ -249,10 +251,17 @@ def print_constraint_details(
     hard_str = " | ".join(hard_parts) if hard_parts else "none"
     soft_str = " | ".join(soft_parts) if soft_parts else "none"
 
-    # Print with totals first, fixed-width columns
-    print(f"  {prefix}:  Hard={int(hard_total):4d}  Soft={int(soft_total):4d}")
-    print(f"         HARD: [{hard_str}]")
-    print(f"         SOFT: [{soft_str}]")
+    lines = [
+        f"  {prefix}:  Hard={int(hard_total):4d}  Soft={int(soft_total):4d}",
+        f"         HARD: [{hard_str}]",
+        f"         SOFT: [{soft_str}]",
+    ]
+    if logger is None:
+        for line in lines:
+            print(line)
+    else:
+        for line in lines:
+            logger.info(line)
 
 
 def load_data(
@@ -654,6 +663,7 @@ def run_nsga2(
     ) = None,
     mutate_fn: Callable[[list[SessionGene]], list[SessionGene]] | None = None,
     seed: int | None = 42,
+    logger: logging.Logger | None = None,
 ) -> tuple[list[Any], EvolutionStats]:
     """
     Run standard NSGA-II evolution.
@@ -669,6 +679,7 @@ def run_nsga2(
         crossover_fn: Crossover operator
         mutate_fn: Mutation operator
         seed: Random seed for reproducibility (reset at start of evolution)
+        logger: Optional logger for constraint detail output
 
     Returns:
         Tuple of (final_population, evolution_stats)
@@ -766,7 +777,7 @@ def run_nsga2(
             hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
             soft_bd = {k: v for k, v in breakdown.items() if k in soft_names}
 
-            print_constraint_details(hard_bd, soft_bd, gen)
+            print_constraint_details(hard_bd, soft_bd, gen, logger=logger)
 
     stats.elapsed_time = time.time() - start_time
 

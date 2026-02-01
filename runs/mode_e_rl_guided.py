@@ -64,6 +64,10 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setFormatter(formatter)
 
     logger = logging.getLogger("mode_e_rl_guided")
+
+    logger.handlers.clear()
+
+    logger.propagate = False
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -262,7 +266,7 @@ def main() -> None:
             }
             hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
             soft_bd = {k: v for k, v in breakdown.items() if k not in hard_names}
-            print_constraint_details(hard_bd, soft_bd, gen)
+            print_constraint_details(hard_bd, soft_bd, gen, logger=logger)
             q_str = ", ".join(f"{k}:{v:.2f}" for k, v in action_qs.items())
             logger.debug(f"Gen {gen}: epsilon={selector.epsilon:.3f}, Q=[{q_str}]")
 
@@ -281,7 +285,7 @@ def main() -> None:
 
     best = get_best_individual(final_pop)
     breakdown = get_constraint_breakdown(best, data)
-    print_summary(final_pop, stats, breakdown)
+    print_summary(final_pop, stats, breakdown, logger=logger)
 
     # Plot Q-value evolution
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))

@@ -12,6 +12,7 @@ DRY Principle: All notebooks import visualization functions from here.
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -183,6 +184,7 @@ def print_summary(
     population: list[Any],
     stats: EvolutionStats,
     breakdown: dict[str, int | float] | None = None,
+    logger: logging.Logger | None = None,
 ) -> None:
     """
     Print a formatted summary of evolution results.
@@ -191,9 +193,11 @@ def print_summary(
         population: Final population
         stats: Evolution statistics
         breakdown: Optional constraint breakdown for best individual
+        logger: Optional logger to write summary (defaults to print)
     """
-    print("\n" + "=" * 60)
-    print(" EVOLUTION SUMMARY")
+    lines: list[str] = []
+    lines.append("\n" + "=" * 60)
+    lines.append(" EVOLUTION SUMMARY")
 
     # Best fitness
     best = min(
@@ -201,31 +205,31 @@ def print_summary(
     )
     hard, soft = best.fitness.values
 
-    print(f"\n Best Solution:")
-    print(f"   Hard Violations: {hard:.0f}")
-    print(f"   Soft Penalty:    {soft:.1f}")
-    print(f"   Feasible:        {' Yes' if hard == 0 else ' No'}")
+    lines.append(f"\n Best Solution:")
+    lines.append(f"   Hard Violations: {hard:.0f}")
+    lines.append(f"   Soft Penalty:    {soft:.1f}")
+    lines.append(f"   Feasible:        {' Yes' if hard == 0 else ' No'}")
 
     # Population stats
     hard_vals = [ind.fitness.values[0] for ind in population]
     soft_vals = [ind.fitness.values[1] for ind in population]
     feasible_count = sum(1 for h in hard_vals if h == 0)
 
-    print(f"\n Final Population (n={len(population)}):")
-    print(
+    lines.append(f"\n Final Population (n={len(population)}):")
+    lines.append(
         f"   Feasible:     {feasible_count}/{len(population)} ({100*feasible_count/len(population):.1f}%)"
     )
-    print(f"   Min Hard:     {min(hard_vals):.0f}")
-    print(f"   Avg Hard:     {np.mean(hard_vals):.1f}")
-    print(f"   Min Soft:     {min(soft_vals):.1f}")
-    print(f"   Avg Soft:     {np.mean(soft_vals):.1f}")
+    lines.append(f"   Min Hard:     {min(hard_vals):.0f}")
+    lines.append(f"   Avg Hard:     {np.mean(hard_vals):.1f}")
+    lines.append(f"   Min Soft:     {min(soft_vals):.1f}")
+    lines.append(f"   Avg Soft:     {np.mean(soft_vals):.1f}")
 
     # Timing
-    print(f"\n️ Execution Time: {stats.elapsed_time:.1f}s")
+    lines.append(f"\n️ Execution Time: {stats.elapsed_time:.1f}s")
 
     # Constraint breakdown
     if breakdown:
-        print(f"\n Best Solution Constraint Breakdown:")
+        lines.append(f"\n Best Solution Constraint Breakdown:")
         hard_total = 0
         soft_total = 0.0
         hard_constraints = {
@@ -240,7 +244,7 @@ def print_summary(
         for name, value in sorted(breakdown.items()):
             is_hard = name in hard_constraints
             marker = "" if is_hard and value > 0 else "" if is_hard else ""
-            print(
+            lines.append(
                 f"   {marker} {name}: {value:.0f}"
                 if value == int(value)
                 else f"   {marker} {name}: {value:.1f}"
@@ -250,9 +254,16 @@ def print_summary(
             else:
                 soft_total += float(value)
 
-        print(f"\n   Total Hard: {hard_total}, Total Soft: {soft_total:.1f}")
+        lines.append(f"\n   Total Hard: {hard_total}, Total Soft: {soft_total:.1f}")
 
-    print("\n" + "=" * 60)
+    lines.append("\n" + "=" * 60)
+
+    if logger is None:
+        for line in lines:
+            print(line)
+    else:
+        for line in lines:
+            logger.info(line)
 
 
 def plot_pareto_front(

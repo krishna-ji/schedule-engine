@@ -62,6 +62,8 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
     # Setup logger
     logger = logging.getLogger("mode_a_baseline")
+    logger.handlers.clear()
+    logger.propagate = False
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -144,6 +146,7 @@ def main() -> None:
         crossover_fn=course_aware_crossover,
         mutate_fn=lambda ind: smart_mutation(ind, data),
         seed=SEED,
+        logger=logger,
     )
     logger.info(f"Evolution completed in {stats.elapsed_time:.1f}s")
 
@@ -156,7 +159,7 @@ def main() -> None:
     breakdown = get_constraint_breakdown(best, data)
 
     # Print summary
-    print_summary(final_pop, stats, breakdown)
+    print_summary(final_pop, stats, breakdown, logger=logger)
 
     # NSGA-II METRICS SUMMARY
 
