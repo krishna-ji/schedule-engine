@@ -22,12 +22,8 @@ from schedule_engine.domain.session import CourseSession
 from schedule_engine.io.export.exporter import export_everything
 from schedule_engine.io.export.plot_convergence import (
     plot_constraint_satisfaction_evolution,
-    plot_convergence_dashboard,
-    plot_convergence_rate,
-    plot_multi_metric_convergence,
 )
 from schedule_engine.io.export.plot_detailed_constraints import (
-    plot_constraint_summary,
     plot_individual_hard_constraints,
     plot_individual_soft_constraints,
 )
@@ -37,7 +33,6 @@ from schedule_engine.io.export.plot_hypervolume import plot_hypervolume_trend
 from schedule_engine.io.export.plot_spacing import (
     plot_spacing_distribution,
     plot_spacing_trend,
-    plot_spacing_with_pareto,
 )
 from schedule_engine.io.export.plotdiversity import plot_diversity_trend
 from schedule_engine.io.export.plothard import plot_hard_constraint_violation_over_generation
@@ -71,8 +66,8 @@ def generate_reports(
         - Evolution plots: hard/soft constraint trends, diversity
         - Pareto front visualization
         - Detailed constraint breakdown plots
-        - Advanced metrics: hypervolume, spacing, IGD, spread, convergence
-        - Multi-metric convergence dashboard
+        - Advanced metrics: hypervolume, spacing, feasibility rate
+        - Individual constraint trend plots (one per constraint)
 
     Args:
         decoded_schedule: Best schedule solution (list of CourseSessions)
@@ -166,7 +161,7 @@ def generate_reports(
     # Core evolution plots
     plot_tasks.append(
         (
-            "hard_constraint_trend.pdf",
+            "total_hard_constraint_violations_over_generations.pdf",
             plot_hard_constraint_violation_over_generation,
             (metrics.hard_violations, output_dir),
             {},
@@ -174,7 +169,7 @@ def generate_reports(
     )
     plot_tasks.append(
         (
-            "soft_constraint_trend.pdf",
+            "total_soft_constraint_penalty_over_generations.pdf",
             plot_soft_constraint_violation_over_generation,
             (metrics.soft_penalties, output_dir),
             {},
@@ -182,7 +177,7 @@ def generate_reports(
     )
     plot_tasks.append(
         (
-            "diversity_trend.pdf",
+            "population_diversity_over_generations.pdf",
             plot_diversity_trend,
             (metrics.diversity, output_dir),
             {},
@@ -191,13 +186,18 @@ def generate_reports(
 
     # Pareto front
     plot_tasks.append(
-        ("pareto_front.pdf", plot_pareto_front, (population, output_dir), {})
+        (
+            "pareto_front_population_and_nondominated.pdf",
+            plot_pareto_front,
+            (population, output_dir),
+            {},
+        )
     )
 
     # Detailed constraints
     plot_tasks.append(
         (
-            "hard/individual_constraints.pdf",
+            "constraints/hard_constraint_*_violations_over_generations.pdf",
             plot_individual_hard_constraints,
             (metrics.detailed_hard, output_dir),
             {},
@@ -205,17 +205,9 @@ def generate_reports(
     )
     plot_tasks.append(
         (
-            "soft/individual_constraints.pdf",
+            "constraints/soft_constraint_*_penalty_over_generations.pdf",
             plot_individual_soft_constraints,
             (metrics.detailed_soft, output_dir),
-            {},
-        )
-    )
-    plot_tasks.append(
-        (
-            "constraint_summary.pdf",
-            plot_constraint_summary,
-            (metrics.detailed_hard, metrics.detailed_soft, output_dir),
             {},
         )
     )
@@ -224,7 +216,7 @@ def generate_reports(
     if metrics.hypervolume:
         plot_tasks.append(
             (
-                "hypervolume_trend.pdf",
+                "hypervolume_indicator_over_generations.pdf",
                 plot_hypervolume_trend,
                 (metrics.hypervolume, output_dir),
                 {},
@@ -233,21 +225,18 @@ def generate_reports(
 
     if metrics.spacing:
         plot_tasks.append(
-            ("spacing_trend.pdf", plot_spacing_trend, (metrics.spacing, output_dir), {})
-        )
-        plot_tasks.append(
             (
-                "spacing_distribution.pdf",
-                plot_spacing_distribution,
-                (population, output_dir),
+                "spacing_metric_over_generations.pdf",
+                plot_spacing_trend,
+                (metrics.spacing, output_dir),
                 {},
             )
         )
         plot_tasks.append(
             (
-                "spacing_pareto_combined.pdf",
-                plot_spacing_with_pareto,
-                (population, metrics.spacing, output_dir),
+                "spacing_distribution_final_pareto_front.pdf",
+                plot_spacing_distribution,
+                (population, output_dir),
                 {},
             )
         )
@@ -255,66 +244,10 @@ def generate_reports(
     if metrics.feasibility_rate:
         plot_tasks.append(
             (
-                "feasibility_evolution.pdf",
+                "feasibility_rate_over_generations.pdf",
                 plot_constraint_satisfaction_evolution,
                 (metrics.feasibility_rate, output_dir),
                 {},
-            )
-        )
-
-    if metrics.hard_violations:
-        plot_tasks.append(
-            (
-                "convergence_rate_hard_violations.pdf",
-                plot_convergence_rate,
-                (metrics.hard_violations, output_dir, "Hard Violations"),
-                {},
-            )
-        )
-
-    if metrics.hypervolume and metrics.spacing:
-        metrics_dict = {
-            "hypervolume": metrics.hypervolume,
-            "spacing": metrics.spacing,
-            "diversity": metrics.diversity,
-        }
-        if metrics.igd:
-            metrics_dict["igd"] = metrics.igd
-        if metrics.spread:
-            metrics_dict["spread"] = metrics.spread
-
-        plot_tasks.append(
-            (
-                "convergence_multi_metric.pdf",
-                plot_multi_metric_convergence,
-                (metrics_dict, output_dir),
-                {},
-            )
-        )
-
-    # Comprehensive dashboard
-    if (
-        metrics.hard_violations
-        and metrics.soft_penalties
-        and metrics.diversity
-        and metrics.hypervolume
-        and metrics.spacing
-        and metrics.feasibility_rate
-    ):
-        plot_tasks.append(
-            (
-                "convergence_dashboard.pdf",
-                plot_convergence_dashboard,
-                (),
-                {
-                    "hard_violations": metrics.hard_violations,
-                    "soft_penalties": metrics.soft_penalties,
-                    "diversity": metrics.diversity,
-                    "hypervolume": metrics.hypervolume,
-                    "spacing": metrics.spacing,
-                    "feasibility_rate": metrics.feasibility_rate,
-                    "output_dir": output_dir,
-                },
             )
         )
 

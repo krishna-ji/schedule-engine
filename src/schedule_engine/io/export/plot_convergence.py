@@ -416,7 +416,7 @@ def plot_constraint_satisfaction_evolution(
         output_dir: Directory to save plots
 
     Saves:
-        - plots/feasibility_evolution.pdf: Feasibility rate plot
+        - plots/nsga/feasibility_rate_over_generations.pdf: Feasibility rate plot
     """
     if not feasibility_rates:
         return
@@ -484,6 +484,6 @@ def plot_constraint_satisfaction_evolution(
     ax.set_ylim([0, 105])
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    output_path = os.path.join(plot_dir, "feasibility_evolution.pdf")
+    output_path = os.path.join(plot_dir, "feasibility_rate_over_generations.pdf")
     save_figure(fig, output_path)
     plt.close(fig)

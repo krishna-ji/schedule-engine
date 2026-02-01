@@ -42,7 +42,7 @@ def plot_spacing_trend(spacing_history: list, output_dir: str) -> None:
         output_dir: Directory to save plots
 
     Saves:
-        - plots/nsga/spacing_trend.pdf: Main trend plot
+        - plots/nsga/spacing_metric_over_generations.pdf: Main trend plot
 
     Note:
         CSV data available in csv/constraint_metrics.csv (spacing column)
@@ -122,7 +122,7 @@ def plot_spacing_trend(spacing_history: list, output_dir: str) -> None:
 
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    output_path = plot_dir / "spacing_trend.pdf"
+    output_path = plot_dir / "spacing_metric_over_generations.pdf"
     save_figure(fig, output_path)
     plt.close(fig)
 
@@ -139,7 +139,7 @@ def plot_spacing_distribution(population: list, output_dir: str) -> None:
         output_dir: Directory to save plots
 
     Saves:
-        - plots/nsga/spacing_distribution.pdf: Histogram of distances
+        - plots/nsga/spacing_distribution_final_pareto_front.pdf: Histogram of distances
     """
     if not population:
         return
@@ -213,7 +213,7 @@ def plot_spacing_distribution(population: list, output_dir: str) -> None:
 
     ax.grid(True, alpha=0.3, linestyle="--", axis="y")
 
-    output_path = plot_dir / "spacing_distribution.pdf"
+    output_path = plot_dir / "spacing_distribution_final_pareto_front.pdf"
     save_figure(fig, output_path)
     plt.close(fig)
 

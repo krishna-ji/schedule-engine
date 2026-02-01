@@ -18,7 +18,7 @@ def plot_hard_constraint_violation_over_generation(
     hard_trend: list[int], output_dir: str
 ) -> None:
     """
-    Plots the trend of hard constraint violations over generations.
+    Plots the trend of total hard constraint violations over generations.
 
     Args:
         hard_trend (List[int]): List of hard constraint violation counts per generation.
@@ -42,12 +42,14 @@ def plot_hard_constraint_violation_over_generation(
 
     format_axis(
         ax,
-        xlabel="Generation (0 = Initial Population)",
+        xlabel="Generation",
         ylabel="Violations",
-        title="Hard Constraint Violations Over Generations",
+        title="Total Hard Constraint Violations Over Generations",
         legend=True,
     )
 
     plt.tight_layout()
     plot_dir = get_nsga_plot_dir(output_dir)
-    save_figure(fig, plot_dir / "hard_constraint_trend.pdf")
+    save_figure(
+        fig, plot_dir / "total_hard_constraint_violations_over_generations.pdf"
+    )
