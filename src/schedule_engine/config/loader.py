@@ -204,6 +204,17 @@ def _extract_repair_config(flat_dict: dict[str, Any]) -> dict[str, Any]:
         "apply_after_crossover": flat_dict.get("repair_apply_after_crossover", False),
         "memetic_mode": flat_dict.get("repair_memetic_mode", False),
         "elite_percentage": flat_dict.get("repair_elite_percentage", 0.20),
+        "budget_ms_per_generation": flat_dict.get(
+            "repair_budget_ms_per_generation", 50
+        ),
+        "max_steps_per_individual": flat_dict.get(
+            "repair_max_steps_per_individual", 5
+        ),
+        "max_candidates_per_operator": flat_dict.get(
+            "repair_max_candidates_per_operator", 20
+        ),
+        "policy": flat_dict.get("repair_policy", "round_robin"),
+        "epsilon": flat_dict.get("repair_epsilon", 0.1),
         "heuristics_overrides": flat_dict.get("repair_heuristics_overrides", {}),
     }
 

@@ -8,6 +8,7 @@ from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.mutation import mutate_gene, mutate_individual
 from schedule_engine.ga.operators.repair import repair_individual, repair_individual_unified
 from schedule_engine.ga.operators.repair_selective import repair_individual_selective
+from schedule_engine.ga.operators.repair_engine import RepairEngine
 
 # Modern decorator-based repair registry
 from schedule_engine.ga.operators.repair_wrappers import (
@@ -30,6 +31,7 @@ __all__ = [
     "repair_individual",
     "repair_individual_unified",
     "repair_individual_selective",
+    "RepairEngine",
     # Violation detection
     "detect_violated_genes",
     # Repair registry (decorator-based)

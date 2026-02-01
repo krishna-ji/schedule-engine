@@ -304,6 +304,30 @@ class RepairConfig(BaseModel):
     recheck_after_repair: bool = True
     adaptive_repair: dict[str, Any] = Field(default_factory=dict)
     heuristics: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    budget_ms_per_generation: int = Field(
+        default=50,
+        ge=0,
+        description="Total repair budget per generation in milliseconds",
+    )
+    max_steps_per_individual: int = Field(
+        default=5,
+        ge=1,
+        le=100,
+        description="Max repair steps per individual",
+    )
+    max_candidates_per_operator: int = Field(
+        default=20,
+        ge=1,
+        le=200,
+        description="Max candidates to evaluate per operator",
+    )
+    policy: Literal["round_robin", "epsilon_greedy"] = Field(
+        default="round_robin",
+        description="Operator selection policy for repair",
+    )
+    epsilon: float = Field(
+        default=0.1, ge=0.0, le=1.0, description="Exploration rate for epsilon-greedy"
+    )
 
     # NEW: IGLS System
     exhaustive_search: ExhaustiveSearchConfig = Field(

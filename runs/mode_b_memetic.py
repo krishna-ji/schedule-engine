@@ -84,7 +84,7 @@ def main() -> None:
     NGEN = 500
     CXPB = 0.8
     MUTPB = 0.4
-    FITNESS_WEIGHTS = (-1.0, -0.01)  # Hard prioritized; soft scaled down 100x
+    FITNESS_WEIGHTS = (-1.0, -1.0)  # Align with other Mode B runs for fair comparison
 
     # MODE B: Local search parameters
     LOCAL_SEARCH_PROB = 0.1

@@ -15,7 +15,6 @@ import logging
 import random
 import sys
 import time
-from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -26,17 +25,7 @@ from deap import base, creator, tools
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.ga.operators.repair import (
-    repair_group_overlaps,
-    repair_instructor_availability,
-    repair_instructor_conflicts,
-    repair_instructor_qualifications,
-    repair_room_conflicts,
-    repair_room_overlap_reassign,
-    repair_room_type_mismatches,
-)
+from schedule_engine.ga.operators.repair_engine import RepairEngine
 from schedule_engine.io.decoder import decode_individual
 from schedule_engine.notebooks.core import (
     EvolutionStats,
@@ -55,50 +44,6 @@ from schedule_engine.notebooks.core import (
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
 from schedule_engine.workflows.reporting import generate_reports
-
-
-@dataclass
-class RepairStats:
-    """Track repair operator statistics."""
-
-    total_fixes: int = 0
-    by_operator: dict[str, int] = field(default_factory=dict)
-
-
-def apply_repair_operators(
-    individual: list[SessionGene],
-    context: SchedulingContext,
-    max_iterations: int = 3,
-) -> RepairStats:
-    """Apply constraint-aware repair operators in priority order."""
-    stats = RepairStats()
-
-    repair_operators = [
-        ("instructor_availability", repair_instructor_availability),
-        ("group_overlaps", repair_group_overlaps),
-        ("room_overlap_reassign", repair_room_overlap_reassign),
-        ("room_conflicts", repair_room_conflicts),
-        ("instructor_conflicts", repair_instructor_conflicts),
-        ("instructor_qualifications", repair_instructor_qualifications),
-        ("room_type_mismatches", repair_room_type_mismatches),
-    ]
-
-    for _ in range(max_iterations):
-        iteration_fixes = 0
-        for name, operator in repair_operators:
-            try:
-                fixes = operator(individual, context)
-                if fixes > 0:
-                    stats.by_operator[name] = stats.by_operator.get(name, 0) + fixes
-                    stats.total_fixes += fixes
-                    iteration_fixes += fixes
-            except Exception:
-                pass
-
-        if iteration_fixes == 0:
-            break
-
-    return stats
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:
@@ -143,7 +88,11 @@ def main() -> None:
 
     # MODE B2: Adaptive targeting parameters
     REPAIR_FRACTION = 0.3  # Repair worst 30%
-    REPAIR_ITERATIONS = 5
+    REPAIR_POLICY = "round_robin"
+    REPAIR_BUDGET_MS = 50.0
+    REPAIR_MAX_STEPS = 5
+    REPAIR_MAX_CANDIDATES = 20
+    REPAIR_EPSILON = 0.1
     LOG_INTERVAL = 10
 
     # Paths
@@ -158,7 +107,8 @@ def main() -> None:
     logger.info("MODE B2: MEMETIC + ADAPTIVE TARGETING")
     logger.info("=" * 60)
     logger.info(
-        f"Config: pop={POP_SIZE}, ngen={NGEN}, repair_fraction={REPAIR_FRACTION}"
+        f"Config: pop={POP_SIZE}, ngen={NGEN}, repair_fraction={REPAIR_FRACTION}, "
+        f"policy={REPAIR_POLICY}, budget_ms={REPAIR_BUDGET_MS}"
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
@@ -175,6 +125,16 @@ def main() -> None:
 
     context = data.context
     evaluate = create_evaluator(data)
+    repair_engine = RepairEngine(
+        context=context,
+        evaluator=evaluate,
+        policy=REPAIR_POLICY,
+        max_steps=REPAIR_MAX_STEPS,
+        max_candidates=REPAIR_MAX_CANDIDATES,
+        budget_ms=REPAIR_BUDGET_MS,
+        epsilon=REPAIR_EPSILON,
+        rng=random.Random(SEED),
+    )
 
     # RUN ADAPTIVE TARGETING NSGA-II
 
@@ -227,20 +187,24 @@ def main() -> None:
 
         # MODE B2: Adaptive Targeting - repair worst fraction
         indexed_offspring = [
-            (i, ind.fitness.values[0]) for i, ind in enumerate(offspring)
+            (i, ind.fitness.values[0], ind.fitness.values[1])
+            for i, ind in enumerate(offspring)
         ]
-        indexed_offspring.sort(key=lambda x: x[1], reverse=True)
+        indexed_offspring.sort(key=lambda x: (x[1], x[2]), reverse=True)
 
         n_repair = max(1, int(REPAIR_FRACTION * len(offspring)))
-        worst_indices = [idx for idx, _ in indexed_offspring[:n_repair]]
+        worst_indices = [idx for idx, _, _ in indexed_offspring[:n_repair]]
 
+        per_individual_budget = (
+            REPAIR_BUDGET_MS / max(1, len(worst_indices)) if REPAIR_BUDGET_MS > 0 else 0
+        )
         for idx in worst_indices:
             ind = offspring[idx]
-            genes = list(ind)
-            repair_stats = apply_repair_operators(genes, context, REPAIR_ITERATIONS)
-            total_repairs += repair_stats.total_fixes
-            if repair_stats.total_fixes > 0:
-                ind[:] = genes
+            repair_stats = repair_engine.repair_individual(
+                ind, budget_ms=per_individual_budget
+            )
+            total_repairs += repair_stats.applied_steps
+            if repair_stats.applied_steps > 0:
                 del ind.fitness.values
 
         # Re-evaluate repaired individuals
@@ -324,7 +288,11 @@ def main() -> None:
             "mutpb": MUTPB,
             "fitness_weights": list(FITNESS_WEIGHTS),
             "repair_fraction": REPAIR_FRACTION,
-            "repair_iterations": REPAIR_ITERATIONS,
+            "repair_policy": REPAIR_POLICY,
+            "repair_budget_ms": REPAIR_BUDGET_MS,
+            "repair_max_steps": REPAIR_MAX_STEPS,
+            "repair_max_candidates": REPAIR_MAX_CANDIDATES,
+            "repair_epsilon": REPAIR_EPSILON,
         },
         "results": {
             "elapsed_time": stats.elapsed_time,

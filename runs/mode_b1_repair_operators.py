@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 """
-Mode B1: Memetic + Fast Parallel Repair Operators
+Mode B1: Memetic + Budgeted Repair Operators
 
-Enhancement over Mode B: Replaces blind local search with 4 optimized constraint-aware repair heuristics.
-
-Performance Optimizations:
-1. Cached Occupation Maps: Build map ONCE per iteration, not per gene (O(n) → O(1))
-2. Parallel Processing: Repair multiple individuals simultaneously
-3. Fast Conflict Detection: Simplified checks without repeated list comprehensions
-4. Early Termination: Skip genes that don't need repair
+Enhancement over Mode B: Uses domain-safe repair operators with lexicographic
+scoring (hard first, then soft) and a fixed repair budget per generation.
 
 Usage:
     python runs/mode_b1_repair_operators.py
@@ -31,8 +26,7 @@ from deap import base, creator, tools
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.domain.types import SchedulingContext
+from schedule_engine.ga.operators.repair_engine import RepairEngine
 from schedule_engine.io.decoder import decode_individual
 from schedule_engine.notebooks.core import (
     EvolutionStats,
@@ -47,11 +41,6 @@ from schedule_engine.notebooks.core import (
     smart_mutation,
     stats_to_ga_metrics,
     track_nsga_metrics,
-)
-from schedule_engine.notebooks.parallel_repair import (
-    RepairStats,
-    apply_fast_repair,
-    build_occupied_map,
 )
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
@@ -100,7 +89,11 @@ def main() -> None:
 
     # MODE B1: Repair operator parameters
     REPAIR_PROB = 0.3
-    REPAIR_ITERATIONS = 2
+    REPAIR_POLICY = "round_robin"
+    REPAIR_BUDGET_MS = 50.0
+    REPAIR_MAX_STEPS = 5
+    REPAIR_MAX_CANDIDATES = 20
+    REPAIR_EPSILON = 0.1
     LOG_INTERVAL = 20
 
     # Paths
@@ -112,9 +105,12 @@ def main() -> None:
     # Setup logging
     logger = setup_logging(OUTPUT_DIR)
     logger.info("=" * 60)
-    logger.info("MODE B1: MEMETIC + FAST PARALLEL REPAIR OPERATORS")
+    logger.info("MODE B1: MEMETIC + BUDGETED REPAIR OPERATORS")
     logger.info("=" * 60)
-    logger.info(f"Config: pop={POP_SIZE}, ngen={NGEN}, repair_prob={REPAIR_PROB}")
+    logger.info(
+        f"Config: pop={POP_SIZE}, ngen={NGEN}, repair_prob={REPAIR_PROB}, "
+        f"policy={REPAIR_POLICY}, budget_ms={REPAIR_BUDGET_MS}"
+    )
     logger.info(f"Output: {OUTPUT_DIR}")
 
     # LOAD DATA
@@ -130,8 +126,18 @@ def main() -> None:
 
     context = data.context
     evaluate = create_evaluator(data)
+    repair_engine = RepairEngine(
+        context=context,
+        evaluator=evaluate,
+        policy=REPAIR_POLICY,
+        max_steps=REPAIR_MAX_STEPS,
+        max_candidates=REPAIR_MAX_CANDIDATES,
+        budget_ms=REPAIR_BUDGET_MS,
+        epsilon=REPAIR_EPSILON,
+        rng=random.Random(SEED),
+    )
 
-    # RUN MEMETIC FAST REPAIR NSGA-II
+    # RUN MEMETIC BUDGETED REPAIR NSGA-II
 
     logger.info("Starting Memetic Fast Repair NSGA-II evolution...")
 
@@ -176,18 +182,24 @@ def main() -> None:
                 toolbox.mutate(ind)
                 del ind.fitness.values
 
-        # MODE B1: FAST Constraint-Aware Repair
+        # MODE B1: Budgeted constraint-aware repair (RL-ready)
         repair_start = time.time()
-        for ind in offspring:
-            if random.random() < REPAIR_PROB:
-                genes_list = list(ind)
-                repair_stats = apply_fast_repair(genes_list, context, REPAIR_ITERATIONS)
-                total_repairs += repair_stats.total_fixes
-
-                if repair_stats.total_fixes > 0:
-                    ind.clear()
-                    ind.extend(genes_list)
-                    del ind.fitness.values
+        repair_indices = [
+            idx for idx in range(len(offspring)) if random.random() < REPAIR_PROB
+        ]
+        per_individual_budget = (
+            REPAIR_BUDGET_MS / max(1, len(repair_indices))
+            if REPAIR_BUDGET_MS > 0
+            else 0
+        )
+        for idx in repair_indices:
+            ind = offspring[idx]
+            repair_stats = repair_engine.repair_individual(
+                ind, budget_ms=per_individual_budget
+            )
+            total_repairs += repair_stats.applied_steps
+            if repair_stats.applied_steps > 0:
+                del ind.fitness.values
         total_repair_time += time.time() - repair_start
 
         # Evaluate
@@ -275,7 +287,11 @@ def main() -> None:
             "mutpb": MUTPB,
             "fitness_weights": list(FITNESS_WEIGHTS),
             "repair_prob": REPAIR_PROB,
-            "repair_iterations": REPAIR_ITERATIONS,
+            "repair_policy": REPAIR_POLICY,
+            "repair_budget_ms": REPAIR_BUDGET_MS,
+            "repair_max_steps": REPAIR_MAX_STEPS,
+            "repair_max_candidates": REPAIR_MAX_CANDIDATES,
+            "repair_epsilon": REPAIR_EPSILON,
         },
         "results": {
             "elapsed_time": stats.elapsed_time,
