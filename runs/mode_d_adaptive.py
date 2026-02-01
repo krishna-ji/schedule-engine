@@ -73,9 +73,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run Mode D: Adaptive Heuristics."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     random.seed(SEED)
     np.random.seed(SEED)
@@ -107,9 +107,8 @@ def main() -> None:
     logger.info(f"Config: pop={POP_SIZE}, ngen={NGEN}, learning_rate={LEARNING_RATE}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     data = load_data(
         data_dir=DATA_DIR,
@@ -121,9 +120,8 @@ def main() -> None:
 
     evaluate = create_evaluator(data)
 
-    # ==========================================================================
     # TEST ADAPTIVE SELECTOR
-    # ==========================================================================
+
     logger.info("Testing adaptive selector...")
     selector = AdaptiveSelector(learning_rate=LEARNING_RATE, min_prob=MIN_PROB)
     test_ind = create_random_individual(data)
@@ -138,9 +136,8 @@ def main() -> None:
         f"After 10 applications: fitness={evaluate(test_ind)[0]}, probs={selector.probs}"
     )
 
-    # ==========================================================================
     # RUN ADAPTIVE NSGA-II
-    # ==========================================================================
+
     logger.info("Starting Adaptive NSGA-II evolution...")
 
     start = time.time()
@@ -241,9 +238,8 @@ def main() -> None:
 
     final_pop = pop
 
-    # ==========================================================================
     # RESULTS & VISUALIZATION
-    # ==========================================================================
+
     logger.info("Generating results and visualizations...")
 
     best = get_best_individual(final_pop)
@@ -267,9 +263,8 @@ def main() -> None:
     plt.close()
     logger.info(f"Saved: {OUTPUT_DIR / 'mode_d_probabilities.png'}")
 
-    # ==========================================================================
     # EXPORT RESULTS
-    # ==========================================================================
+
     logger.info("Exporting full results...")
     best_schedule = decode_individual(
         best, data.courses, data.instructors, data.groups, data.rooms

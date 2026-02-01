@@ -55,9 +55,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 09: Multi-Agent Systems."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     POP_SIZE = 20
     MAX_GENERATIONS = 50
@@ -80,9 +80,8 @@ def main() -> None:
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA & CREATE ENVIRONMENT
-    # ==========================================================================
+
     logger.info("Loading data and creating environment...")
     set_global_seed(SEED)
 
@@ -100,9 +99,8 @@ def main() -> None:
         f"Environment created: obs_space={env.observation_space.shape}, action_space={env.action_space.n}"
     )
 
-    # ==========================================================================
     # RUN MULTI-EPISODE SELECTION ANALYSIS
-    # ==========================================================================
+
     logger.info("Running multi-episode selection analysis...")
     coordinator = AgentCoordinator(strategy="state_based")
 
@@ -153,9 +151,8 @@ def main() -> None:
         f"Completed {NUM_EPISODES} episodes, {len(all_selections)} total selections"
     )
 
-    # ==========================================================================
     # RESULTS SUMMARY
-    # ==========================================================================
+
     selection_counts = Counter(all_selections)
 
     logger.info("=" * 60)
@@ -176,9 +173,8 @@ def main() -> None:
     logger.info(f"  Max:  {max(steps_per_episode)}")  # type: ignore[type-var]
     logger.info("=" * 60)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_09_multi_agent_systems",

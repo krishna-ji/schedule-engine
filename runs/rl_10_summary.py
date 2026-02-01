@@ -48,9 +48,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 10: Summary & Component Status."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_10_summary" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -63,9 +63,8 @@ def main() -> None:
     logger.info(f"Timestamp: {TIMESTAMP}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # CHECK RL CONFIGURATION
-    # ==========================================================================
+
     logger.info("Checking RL configuration...")
     config = build_notebook_config()
 
@@ -74,9 +73,8 @@ def main() -> None:
     logger.info(f"  Default agent: {config.rl.default_agent}")
     logger.info(f"  Use hypervolume reward: {config.rl.use_hypervolume_reward}")
 
-    # ==========================================================================
     # CHECK COMPONENT AVAILABILITY
-    # ==========================================================================
+
     logger.info("Checking component availability...")
     component_status: dict[str, str] = {}
 
@@ -132,9 +130,8 @@ def main() -> None:
     for component, status in component_status.items():
         logger.info(f"  {component:20s}: {status}")
 
-    # ==========================================================================
     # SUMMARY RESULTS
-    # ==========================================================================
+
     available = sum(1 for s in component_status.values() if "✓" in s)
     total = len(component_status)
 
@@ -165,9 +162,8 @@ All scripts are now STANDALONE with:
     )
     logger.info("=" * 60)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_10_summary",

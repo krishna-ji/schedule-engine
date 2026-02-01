@@ -559,12 +559,11 @@ def setup_deap(fitness_weights: tuple[float, ...] = (-1.0, -0.01)) -> None:
         fitness_weights: Weights for fitness objectives (negative = minimize)
     """
     global _DEAP_TYPES_CREATED
-
-    if _DEAP_TYPES_CREATED:
-        return
-
-    # Create fitness class (multi-objective: minimize both)
-    if not hasattr(creator, "FitnessMulti"):
+    # Create or update fitness class (multi-objective: minimize both)
+    if hasattr(creator, "FitnessMulti"):
+        if creator.FitnessMulti.weights != fitness_weights:
+            creator.FitnessMulti.weights = fitness_weights
+    else:
         creator.create("FitnessMulti", base.Fitness, weights=fitness_weights)
 
     # Create Individual class as list with fitness attribute

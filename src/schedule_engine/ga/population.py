@@ -696,19 +696,6 @@ def create_session_gene_with_conflict_avoidance(
             f"BUG: Got {len(assigned_quanta)} quanta but needed {quanta_needed} for {course_id}"
         )
 
-    # Update tracking structures
-    used_quanta.update(assigned_quanta)
-    instructor_id = instructor.instructor_id
-    if instructor_id not in instructor_schedule:
-        instructor_schedule[instructor_id] = set()
-    instructor_schedule[instructor_id].update(assigned_quanta)
-
-    # Update group schedules for ALL groups in this session
-    for gid in group_ids:
-        if gid not in group_schedule:
-            group_schedule[gid] = set()
-        group_schedule[gid].update(assigned_quanta)
-
     # Create session gene with multi-group support
     # Extract actual course_id from course object (plain code, no tuple)
     actual_course_id = (
@@ -725,6 +712,7 @@ def create_session_gene_with_conflict_avoidance(
     # Convert quanta list to contiguous representation
     from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
 
+    instructor_id = instructor.instructor_id
     start_q, num_q = quanta_list_to_contiguous(assigned_quanta)
 
     # DEBUG: Verify num_q matches quanta_needed
@@ -743,6 +731,20 @@ def create_session_gene_with_conflict_avoidance(
         start_quanta=start_q,
         num_quanta=num_q,
     )
+
+    # Update tracking structures using the gene's contiguous quanta
+    assigned_quanta = session_gene.get_quanta_list()
+    used_quanta.update(assigned_quanta)
+    instructor_id = instructor.instructor_id
+    if instructor_id not in instructor_schedule:
+        instructor_schedule[instructor_id] = set()
+    instructor_schedule[instructor_id].update(assigned_quanta)
+
+    # Update group schedules for ALL groups in this session
+    for gid in group_ids:
+        if gid not in group_schedule:
+            group_schedule[gid] = set()
+        group_schedule[gid].update(assigned_quanta)
 
     return session_gene
 
@@ -830,17 +832,6 @@ def create_component_session_with_conflict_avoidance(
                 assigned_quanta.extend(context.available_quanta)
             assigned_quanta = assigned_quanta[:quanta_needed]
 
-    # Update tracking structures
-    used_quanta.update(assigned_quanta)
-    instructor_id = instructor.instructor_id
-    if instructor_id not in instructor_schedule:
-        instructor_schedule[instructor_id] = set()
-    instructor_schedule[instructor_id].update(assigned_quanta)
-
-    if group_id not in group_schedule:
-        group_schedule[group_id] = set()
-    group_schedule[group_id].update(assigned_quanta)
-
     # Create session gene
     # Extract course_id and course_type
     actual_course_id = course_id[0] if isinstance(course_id, tuple) else course_id
@@ -849,6 +840,7 @@ def create_component_session_with_conflict_avoidance(
     # Convert quanta list to contiguous representation
     from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
 
+    instructor_id = instructor.instructor_id
     start_q, num_q = quanta_list_to_contiguous(assigned_quanta)
 
     session_gene = SessionGene(
@@ -860,6 +852,18 @@ def create_component_session_with_conflict_avoidance(
         start_quanta=start_q,
         num_quanta=num_q,
     )
+
+    # Update tracking structures using the gene's contiguous quanta
+    assigned_quanta = session_gene.get_quanta_list()
+    used_quanta.update(assigned_quanta)
+    instructor_id = instructor.instructor_id
+    if instructor_id not in instructor_schedule:
+        instructor_schedule[instructor_id] = set()
+    instructor_schedule[instructor_id].update(assigned_quanta)
+
+    if group_id not in group_schedule:
+        group_schedule[group_id] = set()
+    group_schedule[group_id].update(assigned_quanta)
 
     return session_gene
 

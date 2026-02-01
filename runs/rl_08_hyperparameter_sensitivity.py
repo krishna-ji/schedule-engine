@@ -56,9 +56,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 08: Hyperparameter Sensitivity."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     POP_SIZE = 20
     MAX_GENERATIONS = 40
@@ -87,9 +87,8 @@ def main() -> None:
     logger.info(f"Learning rates to test: {LEARNING_RATES}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     set_global_seed(SEED)
 
@@ -97,9 +96,8 @@ def main() -> None:
     _, context = load_context(DATA_DIR, config)
     logger.info("Scheduling context loaded")
 
-    # ==========================================================================
     # LEARNING RATE SWEEP
-    # ==========================================================================
+
     logger.info("Running learning rate sweep...")
     sweep_results: list[dict[str, Any]] = []
 
@@ -139,9 +137,8 @@ def main() -> None:
             f"  lr={lr:.0e}: best={result.best_fitness}, conv={result.convergence_gen}"
         )
 
-    # ==========================================================================
     # RESULTS SUMMARY
-    # ==========================================================================
+
     logger.info("=" * 60)
     logger.info("RL EXPERIMENT 08: HYPERPARAMETER SENSITIVITY RESULTS")
     logger.info("=" * 60)
@@ -162,9 +159,8 @@ def main() -> None:
     )
     logger.info("=" * 60)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_08_hyperparameter_sensitivity",

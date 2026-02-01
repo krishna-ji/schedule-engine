@@ -55,9 +55,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 02: DQN Baseline."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     POP_SIZE = 20
     MAX_GENERATIONS = 50
@@ -80,9 +80,8 @@ def main() -> None:
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA & CREATE ENVIRONMENT
-    # ==========================================================================
+
     logger.info("Loading data and creating environment...")
     set_global_seed(SEED)
 
@@ -100,9 +99,8 @@ def main() -> None:
         f"Environment created: obs_space={env.observation_space.shape}, action_space={env.action_space.n}"
     )
 
-    # ==========================================================================
     # TRAIN DQN AGENT
-    # ==========================================================================
+
     logger.info("Training DQN agent...")
     agent, train_time = train_agent(
         agent_type="dqn",
@@ -112,9 +110,8 @@ def main() -> None:
     )
     logger.info(f"DQN agent trained in {train_time:.2f}s")
 
-    # ==========================================================================
     # EVALUATE AGENT
-    # ==========================================================================
+
     logger.info("Evaluating agent...")
     result = evaluate_agent(agent, env, max_generations=MAX_GENERATIONS)
 
@@ -126,9 +123,8 @@ def main() -> None:
     logger.info(f"Convergence:   Generation {result.convergence_gen}/{MAX_GENERATIONS}")
     logger.info("=" * 50)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_02_dqn_baseline",

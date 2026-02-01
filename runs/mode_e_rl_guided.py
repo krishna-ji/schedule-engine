@@ -73,9 +73,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run Mode E: RL-Guided NSGA-II."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     random.seed(SEED)
     np.random.seed(SEED)
@@ -111,9 +111,8 @@ def main() -> None:
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     data = load_data(
         data_dir=DATA_DIR,
@@ -125,15 +124,14 @@ def main() -> None:
 
     evaluate = create_evaluator(data)
 
-    # ==========================================================================
     # TEST RL SELECTOR
-    # ==========================================================================
+
     logger.info("Testing RL selector...")
     selector = SimpleRLSelector(
         learning_rate=LEARNING_RATE,
         epsilon=EPSILON_START,
         epsilon_decay=EPSILON_DECAY,
-        epsilon_min=EPSILON_END,
+        min_epsilon=EPSILON_END,
     )
     test_ind = create_random_individual(data)
 
@@ -141,15 +139,14 @@ def main() -> None:
     logger.info(f"Initial epsilon: {selector.epsilon:.3f}")
 
     for _ in range(10):
-        name, fixes = selector.apply(test_ind, data)
+        name, fixes, _reward = selector.apply(test_ind, data, evaluate)
         selector.decay_epsilon()
 
     logger.info(f"After 10 applications: Q-table={selector.q_table}")
     logger.info(f"Epsilon after decay: {selector.epsilon:.3f}")
 
-    # ==========================================================================
     # RUN RL-GUIDED NSGA-II
-    # ==========================================================================
+
     logger.info("Starting RL-Guided NSGA-II evolution...")
 
     start = time.time()
@@ -158,7 +155,7 @@ def main() -> None:
         learning_rate=LEARNING_RATE,
         epsilon=EPSILON_START,
         epsilon_decay=EPSILON_DECAY,
-        epsilon_min=EPSILON_END,
+        min_epsilon=EPSILON_END,
     )
 
     toolbox = base.Toolbox()
@@ -202,18 +199,10 @@ def main() -> None:
         for ind in offspring:
             if random.random() < REPAIR_PROB:
                 genes = list(ind)
-
-                # Store old fitness for reward calculation
-                old_fitness = sum(evaluate(genes))
-
-                _, fixes = selector.apply(genes, data)
+                _, fixes, reward = selector.apply(genes, data, evaluate)
                 total_repairs += fixes
                 ind[:] = genes
                 del ind.fitness.values
-
-                # Calculate reward based on improvement
-                new_fitness = sum(evaluate(list(ind)))
-                reward = old_fitness - new_fitness
                 gen_rewards.append(reward)
 
         if gen_rewards:
@@ -242,7 +231,18 @@ def main() -> None:
         stats.min_soft.append(float(min(soft_vals)))
         stats.avg_soft.append(float(np.mean(soft_vals)))
         epsilon_history.append(selector.epsilon)
-        q_table_history.append(dict(selector.q_table))
+        if selector.q_table:
+            action_qs = {action: 0.0 for action in selector.actions}
+            for state_qs in selector.q_table.values():
+                for action, q_value in state_qs.items():
+                    action_qs[action] += q_value
+            action_qs = {
+                action: q_value / len(selector.q_table)
+                for action, q_value in action_qs.items()
+            }
+        else:
+            action_qs = {action: 0.0 for action in selector.actions}
+        q_table_history.append(action_qs)
         track_nsga_metrics(pop, stats, data)
 
         if gen % LOG_INTERVAL == 0 or gen == NGEN - 1:
@@ -263,7 +263,7 @@ def main() -> None:
             hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
             soft_bd = {k: v for k, v in breakdown.items() if k not in hard_names}
             print_constraint_details(hard_bd, soft_bd, gen)
-            q_str = ", ".join(f"{k}:{v:.2f}" for k, v in selector.q_table.items())
+            q_str = ", ".join(f"{k}:{v:.2f}" for k, v in action_qs.items())
             logger.debug(f"Gen {gen}: epsilon={selector.epsilon:.3f}, Q=[{q_str}]")
 
     stats.elapsed_time = time.time() - start
@@ -275,9 +275,8 @@ def main() -> None:
 
     final_pop = pop
 
-    # ==========================================================================
     # RESULTS & VISUALIZATION
-    # ==========================================================================
+
     logger.info("Generating results and visualizations...")
 
     best = get_best_individual(final_pop)
@@ -332,9 +331,8 @@ def main() -> None:
     plt.close()
     logger.info(f"Saved: {OUTPUT_DIR / 'mode_e_rl_learning.png'}")
 
-    # ==========================================================================
     # EXPORT RESULTS
-    # ==========================================================================
+
     logger.info("Exporting full results...")
     best_schedule = decode_individual(
         best, data.courses, data.instructors, data.groups, data.rooms

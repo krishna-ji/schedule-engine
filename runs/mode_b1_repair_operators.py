@@ -84,9 +84,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run Mode B1: Memetic + Fast Parallel Repair Operators."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     random.seed(SEED)
     np.random.seed(SEED)
@@ -117,9 +117,8 @@ def main() -> None:
     logger.info(f"Config: pop={POP_SIZE}, ngen={NGEN}, repair_prob={REPAIR_PROB}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     data = load_data(
         data_dir=DATA_DIR,
@@ -132,9 +131,8 @@ def main() -> None:
     context = data.context
     evaluate = create_evaluator(data)
 
-    # ==========================================================================
     # RUN MEMETIC FAST REPAIR NSGA-II
-    # ==========================================================================
+
     logger.info("Starting Memetic Fast Repair NSGA-II evolution...")
 
     # Reset seed for reproducibility
@@ -242,18 +240,16 @@ def main() -> None:
 
     final_pop = pop
 
-    # ==========================================================================
     # RESULTS & VISUALIZATION
-    # ==========================================================================
+
     logger.info("Generating results and visualizations...")
 
     best = get_best_individual(final_pop)
     breakdown = get_constraint_breakdown(best, data)
     print_summary(final_pop, stats, breakdown)
 
-    # ==========================================================================
     # EXPORT RESULTS
-    # ==========================================================================
+
     logger.info("Exporting full results...")
     best_schedule = decode_individual(
         best, data.courses, data.instructors, data.groups, data.rooms

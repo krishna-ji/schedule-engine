@@ -10,6 +10,7 @@ from __future__ import annotations
 import random
 import time
 from dataclasses import dataclass
+import copy
 from pathlib import Path
 from typing import Any
 
@@ -94,6 +95,7 @@ def create_env(
     pop_size: int,
     max_generations: int,
     max_steps: int,
+    initial_population: list[Any] | None = None,
     debug_logging: bool = False,
 ) -> ScheduleEnv:
     """Create a ScheduleEnv backed by a fresh population.
@@ -103,16 +105,20 @@ def create_env(
         pop_size: Population size used for the environment.
         max_generations: Maximum GA generations per episode.
         max_steps: Maximum RL steps per episode.
+        initial_population: Optional pre-generated population to reuse.
         debug_logging: Enable verbose environment logging.
 
     Returns:
         Configured ScheduleEnv instance.
     """
-    population = generate_course_group_aware_population(
-        n=pop_size,
-        context=context,
-        parallel=False,
-    )
+    if initial_population is None:
+        population = generate_course_group_aware_population(
+            n=pop_size,
+            context=context,
+            parallel=False,
+        )
+    else:
+        population = initial_population
     return create_schedule_env(
         initial_population=population,
         context=context,
@@ -233,14 +239,21 @@ def run_ablation(
         set_global_seed(trial_seed)
         config = build_notebook_config(seed=trial_seed, overrides={"pop_size": pop_size})
         _, context = load_context(data_dir, config)
+        base_population = generate_course_group_aware_population(
+            n=pop_size,
+            context=context,
+            parallel=False,
+        )
 
         for method_key, method_cfg in methods.items():
+            set_global_seed(trial_seed)
             agent_type = method_cfg["agent_type"]
             env = create_env(
                 context=context,
                 pop_size=pop_size,
                 max_generations=max_generations,
                 max_steps=max_steps,
+                initial_population=copy.deepcopy(base_population),
                 debug_logging=False,
             )
             agent, _ = train_agent(

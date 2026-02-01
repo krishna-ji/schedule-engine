@@ -33,12 +33,10 @@ from schedule_engine.notebooks.core import (
     get_constraint_breakdown,
     load_data,
     run_nsga2,
-    stats_to_ga_metrics,
     smart_mutation,
+    stats_to_ga_metrics,
 )
-from schedule_engine.notebooks.viz import (
-    print_summary,
-)
+from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
 from schedule_engine.workflows.reporting import generate_reports
 
@@ -73,9 +71,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run Mode A: Baseline Pure NSGA-II experiment."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     random.seed(SEED)
     np.random.seed(SEED)
@@ -114,9 +112,8 @@ def main() -> None:
         log_interval=20,
     )
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     data = load_data(
         data_dir=DATA_DIR,
@@ -126,9 +123,8 @@ def main() -> None:
     )
     logger.info(f"Data loaded: {data.summary()}")
 
-    # ==========================================================================
     # TEST COMPONENTS
-    # ==========================================================================
+
     logger.info("Testing components...")
     test_ind = create_random_individual(data)
     logger.info(f"Individual has {len(test_ind)} genes")
@@ -137,9 +133,8 @@ def main() -> None:
     test_fitness = evaluate(test_ind)
     logger.info(f"Test fitness: hard={test_fitness[0]}, soft={test_fitness[1]}")
 
-    # ==========================================================================
     # RUN NSGA-II EVOLUTION
-    # ==========================================================================
+
     logger.info("Starting NSGA-II evolution...")
     final_pop, stats = run_nsga2(
         data=data,
@@ -152,9 +147,8 @@ def main() -> None:
     )
     logger.info(f"Evolution completed in {stats.elapsed_time:.1f}s")
 
-    # ==========================================================================
     # RESULTS & VISUALIZATION
-    # ==========================================================================
+
     logger.info("Generating results and visualizations...")
 
     # Get best solution
@@ -164,9 +158,8 @@ def main() -> None:
     # Print summary
     print_summary(final_pop, stats, breakdown)
 
-    # ==========================================================================
     # NSGA-II METRICS SUMMARY
-    # ==========================================================================
+
     logger.info("Calculating NSGA-II quality metrics...")
 
     spacing = stats.spacing[-1] if stats.spacing else 0.0
@@ -178,9 +171,8 @@ def main() -> None:
     diversity = stats.diversity[-1] if stats.diversity else 0.0
     logger.info(f"  Population Diversity: {diversity:.4f} (higher = more diverse)")
 
-    # ==========================================================================
     # EXPORT RESULTS (FULL NSGA REPORTS)
-    # ==========================================================================
+
     logger.info("Exporting full results...")
     best_schedule = decode_individual(
         best, data.courses, data.instructors, data.groups, data.rooms

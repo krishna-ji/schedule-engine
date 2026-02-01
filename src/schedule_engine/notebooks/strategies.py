@@ -31,9 +31,9 @@ __all__ = [
 ]
 
 
-# =============================================================================
+# ===
 # MODE B: LOCAL SEARCH (Memetic)
-# =============================================================================
+# ===
 
 
 def local_search_individual(
@@ -107,9 +107,9 @@ def local_search_individual(
     return individual, total_improvement
 
 
-# =============================================================================
+# ===
 # MODE C: ROUND-ROBIN HEURISTIC SELECTION
-# =============================================================================
+# ===
 
 
 class RoundRobinSelector:
@@ -193,9 +193,9 @@ class RoundRobinSelector:
         return 0
 
 
-# =============================================================================
+# ===
 # MODE D: ADAPTIVE HEURISTIC SELECTION
-# =============================================================================
+# ===
 
 
 class AdaptiveSelector:
@@ -355,9 +355,9 @@ class AdaptiveSelector:
         }
 
 
-# =============================================================================
+# ===
 # MODE E: RL-GUIDED HEURISTIC SELECTION
-# =============================================================================
+# ===
 
 
 class SimpleRLSelector:
@@ -379,6 +379,7 @@ class SimpleRLSelector:
         epsilon: float = 0.3,
         epsilon_decay: float = 0.99,
         min_epsilon: float = 0.05,
+        epsilon_min: float | None = None,
     ) -> None:
         """
         Initialize Q-learning selector.
@@ -389,7 +390,10 @@ class SimpleRLSelector:
             epsilon: Initial exploration probability
             epsilon_decay: Epsilon decay per episode
             min_epsilon: Minimum epsilon value
+            epsilon_min: Backward-compatible alias for min_epsilon
         """
+        if epsilon_min is not None:
+            min_epsilon = epsilon_min
         self.lr = learning_rate
         self.gamma = discount
         self.epsilon = epsilon

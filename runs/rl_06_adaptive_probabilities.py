@@ -48,9 +48,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 06: Adaptive Probabilities."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
 
     # Paths
@@ -66,9 +66,8 @@ def main() -> None:
     logger.info(f"Config: seed={SEED}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # COMPARE FIXED VS ADAPTIVE CONFIGURATIONS
-    # ==========================================================================
+
     logger.info("Comparing fixed vs adaptive configurations...")
 
     # Create config with fixed probabilities (default)
@@ -99,9 +98,8 @@ def main() -> None:
     logger.info(f"  mutpb: {adaptive_config.ga.mutpb}")
     logger.info("=" * 60)
 
-    # ==========================================================================
     # RESULTS SUMMARY
-    # ==========================================================================
+
     logger.info("=" * 60)
     logger.info("RL EXPERIMENT 06: ADAPTIVE PROBABILITIES RESULTS")
     logger.info("=" * 60)
@@ -120,9 +118,8 @@ When adaptive_probabilities=True:
     )
     logger.info("=" * 60)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_06_adaptive_probabilities",

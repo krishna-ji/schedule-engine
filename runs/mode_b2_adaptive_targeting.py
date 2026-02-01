@@ -127,9 +127,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run Mode B2: Memetic + Adaptive Targeting."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     random.seed(SEED)
     np.random.seed(SEED)
@@ -162,9 +162,8 @@ def main() -> None:
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     data = load_data(
         data_dir=DATA_DIR,
@@ -177,9 +176,8 @@ def main() -> None:
     context = data.context
     evaluate = create_evaluator(data)
 
-    # ==========================================================================
     # RUN ADAPTIVE TARGETING NSGA-II
-    # ==========================================================================
+
     logger.info("Starting Adaptive Targeting NSGA-II evolution...")
 
     # Reset seed for reproducibility
@@ -238,9 +236,12 @@ def main() -> None:
 
         for idx in worst_indices:
             ind = offspring[idx]
-            repair_stats = apply_repair_operators(list(ind), context, REPAIR_ITERATIONS)
+            genes = list(ind)
+            repair_stats = apply_repair_operators(genes, context, REPAIR_ITERATIONS)
             total_repairs += repair_stats.total_fixes
-            del ind.fitness.values
+            if repair_stats.total_fixes > 0:
+                ind[:] = genes
+                del ind.fitness.values
 
         # Re-evaluate repaired individuals
         for ind in offspring:
@@ -288,18 +289,16 @@ def main() -> None:
 
     final_pop = pop
 
-    # ==========================================================================
     # RESULTS & VISUALIZATION
-    # ==========================================================================
+
     logger.info("Generating results and visualizations...")
 
     best = get_best_individual(final_pop)
     breakdown = get_constraint_breakdown(best, data)
     print_summary(final_pop, stats, breakdown)
 
-    # ==========================================================================
     # EXPORT RESULTS
-    # ==========================================================================
+
     logger.info("Exporting full results...")
     best_schedule = decode_individual(
         best, data.courses, data.instructors, data.groups, data.rooms

@@ -15,6 +15,7 @@ import numpy as np
 from gymnasium import spaces
 from numpy.typing import NDArray
 
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.types import Individual, SchedulingContext
 from schedule_engine.rl.gym_env.action_space import ActionMapper
 from schedule_engine.rl.gym_env.reward_calculator import RewardCalculator
@@ -576,18 +577,29 @@ class ScheduleEnv(gym.Env):
         """
         Return a copy so mutations don't alias population references.
 
-        Uses shallow copy + manual list copy for 10-50x speedup vs deepcopy.
-        Safe because SessionGene objects are immutable after creation.
+        Uses shallow copy for DEAP metadata and deep-copies genes to avoid
+        cross-episode or cross-env mutation leakage.
         """
         # Shallow copy the individual (copies DEAP metadata)
         cloned = copy.copy(individual)
 
-        # Manually copy the chromosome list (list of SessionGene objects)
-        # SessionGene objects themselves don't need deep copy - they're effectively immutable
-        cloned[:] = individual[:]
+        # Copy the chromosome list and its genes (SessionGene is mutable)
+        cloned[:] = [
+            SessionGene(
+                course_id=gene.course_id,
+                course_type=gene.course_type,
+                instructor_id=gene.instructor_id,
+                group_ids=list(gene.group_ids),
+                room_id=gene.room_id,
+                start_quanta=gene.start_quanta,
+                num_quanta=gene.num_quanta,
+            )
+            for gene in individual
+        ]
 
-        # Copy fitness (shallow copy is sufficient - tuples are immutable)
+        # Copy fitness so mutations don't alias original individuals
         if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
+            cloned.fitness = copy.copy(individual.fitness)  # type: ignore[attr-defined]
             cloned.fitness.values = individual.fitness.values  # type: ignore[attr-defined]
 
         return cloned

@@ -45,6 +45,7 @@ from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
 from schedule_engine.workflows.reporting import generate_reports
 
+
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
     log_file = output_dir / "mode_b_memetic.log"
@@ -71,9 +72,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run Mode B: Memetic NSGA-II experiment."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     random.seed(SEED)
     np.random.seed(SEED)
@@ -83,7 +84,7 @@ def main() -> None:
     NGEN = 500
     CXPB = 0.8
     MUTPB = 0.4
-    FITNESS_WEIGHTS = (-1.0, -1)  # Hard has 100x priority over soft
+    FITNESS_WEIGHTS = (-1.0, -0.01)  # Hard prioritized; soft scaled down 100x
 
     # MODE B: Local search parameters
     LOCAL_SEARCH_PROB = 0.1
@@ -104,9 +105,8 @@ def main() -> None:
     logger.info(f"Config: pop={POP_SIZE}, ngen={NGEN}, LS_prob={LOCAL_SEARCH_PROB}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     data = load_data(
         data_dir=DATA_DIR,
@@ -118,9 +118,8 @@ def main() -> None:
 
     evaluate = create_evaluator(data)
 
-    # ==========================================================================
     # TEST COMPONENTS
-    # ==========================================================================
+
     logger.info("Testing components...")
     test_ind = create_random_individual(data)
     logger.info(f"Individual: {len(test_ind)} genes")
@@ -133,9 +132,8 @@ def main() -> None:
         f"After LS: hard={evaluate(improved_ind)[0]} (improvement={improvement})"
     )
 
-    # ==========================================================================
     # RUN MEMETIC NSGA-II
-    # ==========================================================================
+
     logger.info("Starting Memetic NSGA-II evolution...")
 
     # Reset seed for reproducibility
@@ -233,18 +231,16 @@ def main() -> None:
 
     final_pop = pop
 
-    # ==========================================================================
     # RESULTS & VISUALIZATION
-    # ==========================================================================
+
     logger.info("Generating results and visualizations...")
 
     best = get_best_individual(final_pop)
     breakdown = get_constraint_breakdown(best, data)
     print_summary(final_pop, stats, breakdown)
 
-    # ==========================================================================
     # EXPORT RESULTS
-    # ==========================================================================
+
     logger.info("Exporting full results...")
     best_schedule = decode_individual(
         best, data.courses, data.instructors, data.groups, data.rooms

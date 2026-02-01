@@ -342,7 +342,7 @@ def plot_pareto_front(
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"✅ Saved: {save_path}")
+        print(f" Saved: {save_path}")
 
     if show:
         plt.show()
@@ -417,7 +417,7 @@ def plot_diversity_metrics(
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"✅ Saved: {save_path}")
+        print(f" Saved: {save_path}")
 
     if show:
         plt.show()
@@ -443,7 +443,7 @@ def plot_constraint_trends(
         show: Whether to display the plot
     """
     if not constraint_history:
-        print("⚠️ No constraint history to plot")
+        print("️ No constraint history to plot")
         return
 
     # Determine generations
@@ -501,7 +501,7 @@ def plot_constraint_trends(
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        print(f"✅ Saved: {save_path}")
+        print(f" Saved: {save_path}")
 
     if show:
         plt.show()

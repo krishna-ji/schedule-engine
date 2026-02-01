@@ -50,9 +50,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 07: Full Ablation Study."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     POP_SIZE = 20
     MAX_GENERATIONS = 50
@@ -81,9 +81,8 @@ def main() -> None:
     logger.info(f"Config: methods={list(METHODS.keys())}, trials={TRIALS}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # RUN ABLATION STUDY
-    # ==========================================================================
+
     logger.info(f"Running ablation study: {len(METHODS)} methods × {TRIALS} trials...")
     logger.info("This may take several minutes...")
 
@@ -100,9 +99,8 @@ def main() -> None:
 
     logger.info("Ablation study completed")
 
-    # ==========================================================================
     # RESULTS SUMMARY
-    # ==========================================================================
+
     logger.info("=" * 70)
     logger.info("RL EXPERIMENT 07: FULL ABLATION STUDY RESULTS")
     logger.info("=" * 70)
@@ -133,9 +131,8 @@ def main() -> None:
 
     logger.info("=" * 70)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_07_full_ablation_study",

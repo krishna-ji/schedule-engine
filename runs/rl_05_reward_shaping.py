@@ -56,9 +56,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 05: Reward Shaping."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     POP_SIZE = 20
     MAX_GENERATIONS = 30
@@ -81,9 +81,8 @@ def main() -> None:
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA & CREATE ENVIRONMENT
-    # ==========================================================================
+
     logger.info("Loading data and creating environment...")
     set_global_seed(SEED)
 
@@ -101,9 +100,8 @@ def main() -> None:
         f"Environment created with population of {len(env.population)} individuals"
     )
 
-    # ==========================================================================
     # COMPARE REWARD CALCULATION METHODS
-    # ==========================================================================
+
     logger.info("Comparing reward calculation methods...")
     scalar_calc = RewardCalculator(use_hypervolume=False)
     hv_calc = RewardCalculator(use_hypervolume=True)
@@ -146,9 +144,8 @@ def main() -> None:
             f"Transition {i}: Scalar={scalar_reward:.4f}, Hypervolume={hv_reward:.4f}"
         )
 
-    # ==========================================================================
     # RESULTS SUMMARY
-    # ==========================================================================
+
     scalar_rewards = [r["scalar_reward"] for r in comparison_results]
     hv_rewards = [r["hv_reward"] for r in comparison_results]
 
@@ -171,9 +168,8 @@ def main() -> None:
     logger.info(f"Correlation between methods: {correlation:.4f}")
     logger.info("=" * 60)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_05_reward_shaping",

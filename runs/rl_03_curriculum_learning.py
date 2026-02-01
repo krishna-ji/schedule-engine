@@ -56,9 +56,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 03: Curriculum Learning."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     POP_SIZE = 20
 
@@ -84,9 +84,8 @@ def main() -> None:
     logger.info(f"Stages: {[s['name'] for s in STAGES]}")
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA
-    # ==========================================================================
+
     logger.info("Loading data...")
     set_global_seed(SEED)
 
@@ -94,9 +93,8 @@ def main() -> None:
     _, context = load_context(DATA_DIR, config)
     logger.info("Scheduling context loaded")
 
-    # ==========================================================================
     # CURRICULUM TRAINING LOOP
-    # ==========================================================================
+
     logger.info("Starting curriculum training...")
     agent = None
     stage_results: list[dict[str, object]] = []
@@ -146,9 +144,8 @@ def main() -> None:
             f"Stage {stage['name']}: best={result.best_fitness}, conv={result.convergence_gen} (train={train_time:.2f}s)"
         )
 
-    # ==========================================================================
     # RESULTS SUMMARY
-    # ==========================================================================
+
     logger.info("=" * 60)
     logger.info("RL EXPERIMENT 03: CURRICULUM LEARNING RESULTS")
     logger.info("=" * 60)
@@ -160,9 +157,8 @@ def main() -> None:
         )
     logger.info("=" * 60)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_03_curriculum_learning",

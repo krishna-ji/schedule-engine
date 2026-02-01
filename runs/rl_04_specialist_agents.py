@@ -55,9 +55,9 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 def main() -> None:
     """Run RL Experiment 04: Specialist Agents."""
-    # ==========================================================================
+
     # CONFIGURATION
-    # ==========================================================================
+
     SEED = 42
     POP_SIZE = 20
     MAX_GENERATIONS = 50
@@ -80,9 +80,8 @@ def main() -> None:
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
-    # ==========================================================================
     # LOAD DATA & CREATE ENVIRONMENT
-    # ==========================================================================
+
     logger.info("Loading data and creating environment...")
     set_global_seed(SEED)
 
@@ -100,9 +99,8 @@ def main() -> None:
         f"Environment created: obs_space={env.observation_space.shape}, action_space={env.action_space.n}"
     )
 
-    # ==========================================================================
     # RUN AGENT SELECTION LOOP
-    # ==========================================================================
+
     logger.info("Running agent selection analysis...")
     coordinator = AgentCoordinator(strategy="state_based")
     selection_history: list[list[str]] = []
@@ -138,9 +136,8 @@ def main() -> None:
 
     logger.info(f"Completed {NUM_EPISODES} episodes")
 
-    # ==========================================================================
     # ANALYZE SELECTION PATTERNS
-    # ==========================================================================
+
     logger.info("Analyzing selection patterns...")
     all_selections = [sel for episode in selection_history for sel in episode]
     selection_counts = Counter(all_selections)
@@ -155,9 +152,8 @@ def main() -> None:
         logger.info(f"  {agent_name}: {count} ({pct:.1f}%)")
     logger.info("=" * 50)
 
-    # ==========================================================================
     # SAVE RESULTS
-    # ==========================================================================
+
     logger.info("Saving results...")
     results_data = {
         "experiment": "rl_04_specialist_agents",
