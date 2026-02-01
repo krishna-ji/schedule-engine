@@ -190,6 +190,7 @@ def main() -> None:
     repair_history: list[dict[str, float | int]] = []
 
     for gen in range(NGEN):
+        gen_start = time.time()
         # MODE B3: Phase-dependent parameters
         if gen <= PHASE_SWITCH_GEN:
             repair_prob = PHASE1_REPAIR_PROB
@@ -216,6 +217,7 @@ def main() -> None:
                 del ind.fitness.values
 
         # Repair with phase-dependent parameters
+        repair_start = time.time()
         repair_indices = [
             idx for idx in range(len(offspring)) if random.random() < repair_prob
         ]
@@ -242,6 +244,7 @@ def main() -> None:
             if repair_stats.applied_steps > 0:
                 del ind.fitness.values
         total_repairs += gen_repairs
+        repair_time_ms = (time.time() - repair_start) * 1000
 
         # Evaluate
         for ind in offspring:
@@ -268,8 +271,11 @@ def main() -> None:
                 "repairs_applied": gen_repairs,
                 "delta_hard": gen_delta_hard,
                 "delta_soft": gen_delta_soft,
+                "repair_time_ms": repair_time_ms,
             }
         )
+
+        stats.generation_times.append(time.time() - gen_start)
 
         if gen % LOG_INTERVAL == 0 or gen == NGEN - 1 or gen == PHASE_SWITCH_GEN + 1:
             best_ind = min(
@@ -326,6 +332,8 @@ def main() -> None:
         qts=data.qts,
         output_dir=str(OUTPUT_DIR),
         course_map=data.courses,
+        repair_history=repair_history,
+        generation_times=stats.generation_times,
     )
 
     metadata = {
@@ -362,6 +370,7 @@ def main() -> None:
         },
         "constraint_breakdown": breakdown,
         "repair_history": repair_history,
+        "generation_times": stats.generation_times,
     }
 
     with open(OUTPUT_DIR / "experiment_metadata.json", "w") as f:

@@ -38,6 +38,14 @@ from schedule_engine.io.export.plotdiversity import plot_diversity_trend
 from schedule_engine.io.export.plothard import plot_hard_constraint_violation_over_generation
 from schedule_engine.io.export.plotpareto import plot_pareto_front
 from schedule_engine.io.export.plotsoft import plot_soft_constraint_violation_over_generation
+from schedule_engine.io.export.plot_population_summary import (
+    plot_fitness_histograms_and_feasibility,
+)
+from schedule_engine.io.export.plot_repair_analysis import (
+    plot_operator_performance,
+    plot_repair_efficacy_over_generations,
+    plot_repair_time_and_share,
+)
 from schedule_engine.io.export.violation_reporter import generate_violation_report
 from schedule_engine.ga.heuristic_tracker import HeuristicTracker
 from schedule_engine.heuristics.repair.lns_operator import get_lns_stats
@@ -52,6 +60,9 @@ def generate_reports(
     output_dir: str,
     course_map: dict[tuple, Course] | None = None,
     heuristic_tracker: HeuristicTracker | None = None,
+    repair_history: list[dict[str, Any]] | None = None,
+    generation_times: list[float] | None = None,
+    operator_stats: dict[str, dict[str, float]] | None = None,
 ) -> None:
     """
     Generate all output artifacts: plots, JSON, PDFs, violation reports.
@@ -68,6 +79,9 @@ def generate_reports(
         - Detailed constraint breakdown plots
         - Advanced metrics: hypervolume, spacing, feasibility rate
         - Individual constraint trend plots (one per constraint)
+        - Repair efficacy and timing plots (when provided)
+        - Operator performance plots (when provided)
+        - Fitness distribution + feasibility plot
 
     Args:
         decoded_schedule: Best schedule solution (list of CourseSessions)
@@ -247,6 +261,42 @@ def generate_reports(
                 "feasibility_rate_over_generations.pdf",
                 plot_constraint_satisfaction_evolution,
                 (metrics.feasibility_rate, output_dir),
+                {},
+            )
+        )
+        plot_tasks.append(
+            (
+                "final_population_fitness_histograms_and_feasibility_rate.pdf",
+                plot_fitness_histograms_and_feasibility,
+                (population, metrics.feasibility_rate, output_dir),
+                {},
+            )
+        )
+
+    if repair_history:
+        plot_tasks.append(
+            (
+                "repair_efficacy_over_generations.pdf",
+                plot_repair_efficacy_over_generations,
+                (repair_history, output_dir),
+                {},
+            )
+        )
+        plot_tasks.append(
+            (
+                "repair_time_and_share_over_generations.pdf",
+                plot_repair_time_and_share,
+                (repair_history, generation_times, output_dir),
+                {},
+            )
+        )
+
+    if operator_stats:
+        plot_tasks.append(
+            (
+                "operator_performance_summary.pdf",
+                plot_operator_performance,
+                (operator_stats, output_dir),
                 {},
             )
         )

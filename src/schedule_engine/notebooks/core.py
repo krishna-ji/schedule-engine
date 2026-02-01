@@ -104,6 +104,7 @@ class EvolutionStats:
     min_soft: list[float] = field(default_factory=list)
     avg_soft: list[float] = field(default_factory=list)
     feasible_count: list[int] = field(default_factory=list)
+    generation_times: list[float] = field(default_factory=list)
     elapsed_time: float = 0.0
     diversity: list[float] = field(default_factory=list)
     hypervolume: list[float] = field(default_factory=list)
@@ -221,6 +222,7 @@ def stats_to_ga_metrics(stats: EvolutionStats) -> "GAMetrics":
         spacing=list(stats.spacing),
         pareto_front_size=list(stats.pareto_front_size),
         feasibility_rate=list(stats.feasibility_rate),
+        generation_times=list(stats.generation_times),
         igd=list(stats.igd),
         spread=list(stats.spread),
     )
@@ -720,6 +722,7 @@ def run_nsga2(
 
     # Evolution loop
     for gen in range(config.ngen):
+        gen_start = time.time()
         # Selection + variation
         offspring = [copy.deepcopy(ind) for ind in toolbox.select(pop, len(pop))]
 
@@ -755,6 +758,7 @@ def run_nsga2(
         stats.avg_soft.append(float(np.mean(soft_vals)))
         stats.feasible_count.append(sum(1 for h in hard_vals if h == 0))
         track_nsga_metrics(pop, stats, data)
+        stats.generation_times.append(time.time() - gen_start)
 
         if config.verbose and (
             gen % config.log_interval == 0 or gen == config.ngen - 1

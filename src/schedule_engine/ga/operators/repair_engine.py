@@ -545,6 +545,13 @@ class RepairEngine:
             if operator is None:
                 break
 
+            # Track attempted steps for success rate reporting
+            op_stats = self.operator_stats.setdefault(
+                operator_name,
+                {"steps": 0.0, "applied": 0.0, "delta_hard": 0.0, "delta_soft": 0.0},
+            )
+            op_stats["steps"] += 1.0
+
             if self.log_steps:
                 self.logger.debug(
                     "Repair step %d: operator=%s hard=%.2f soft=%.2f",
@@ -625,7 +632,8 @@ class RepairEngine:
 
             # Update operator stats for epsilon-greedy
             op_stats = self.operator_stats.setdefault(
-                operator_name, {"applied": 0.0, "delta_hard": 0.0, "delta_soft": 0.0}
+                operator_name,
+                {"steps": 0.0, "applied": 0.0, "delta_hard": 0.0, "delta_soft": 0.0},
             )
             op_stats["applied"] += 1.0
             op_stats["delta_hard"] += result.delta_hard

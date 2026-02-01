@@ -289,6 +289,7 @@ class GAMetrics:
     spacing: list[float] = field(default_factory=list)
     feasibility_rate: list[float] = field(default_factory=list)
     pareto_front_size: list[int] = field(default_factory=list)
+    generation_times: list[float] = field(default_factory=list)
 
     # Phase 2: Advanced metrics
     igd: list[float] = field(default_factory=list)

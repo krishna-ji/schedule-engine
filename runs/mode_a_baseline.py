@@ -188,6 +188,7 @@ def main() -> None:
         qts=data.qts,
         output_dir=str(OUTPUT_DIR),
         course_map=data.courses,
+        generation_times=stats.generation_times,
     )
 
     # Save experiment metadata (convert numpy types to native Python)
@@ -227,6 +228,7 @@ def main() -> None:
             ),
         },
         "constraint_breakdown": {k: to_native(v) for k, v in breakdown.items()},
+        "generation_times": [to_native(v) for v in stats.generation_times],
     }
 
     with open(OUTPUT_DIR / "experiment_metadata.json", "w") as f:
