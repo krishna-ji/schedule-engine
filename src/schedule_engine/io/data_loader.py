@@ -205,9 +205,9 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         tut = item.get("T", 0)
         prac = item.get("P", 0)
 
-        # Skip non-schedulable courses (0 credits, 0 L/T/P)
+        # Skip non-schedulable courses (zero credits OR zero L/T/P)
         # Examples: Survey Camp, Industrial Attachment, Group Work
-        if credits == 0 and lec == 0 and tut == 0 and prac == 0:
+        if credits == 0 or (lec == 0 and tut == 0 and prac == 0):
             continue
 
         practical_features = item.get("PracticalRoomFeatures", "").strip()
@@ -467,6 +467,7 @@ def link_courses_and_groups(
 
     # Link groups to ALL courses with matching course_code (theory AND practical)
     for group_id, group in groups.items():
+        valid_courses: list[str] = []
         for course_code in group.enrolled_courses:
             # Check for both theory and practical versions
             theory_key = (course_code, "theory")
@@ -485,6 +486,11 @@ def link_courses_and_groups(
 
             if not found_any:
                 missing_courses.append((course_code, group_id))
+            else:
+                valid_courses.append(course_code)
+
+        # Remove non-schedulable/missing courses from group enrollments
+        group.enrolled_courses = valid_courses
 
     # Display missing courses in a table if any found
     if missing_courses:
@@ -493,7 +499,7 @@ def link_courses_and_groups(
         console = Console()
 
         console.print()
-        console.print("[yellow]️  Non-schedulable courses filtered out[/yellow]")
+        console.print("[yellow]️  Non-schedulable or missing courses skipped[/yellow]")
 
         # Group by course code for compact display
         from collections import defaultdict
@@ -505,7 +511,7 @@ def link_courses_and_groups(
         for course_code, group_ids in sorted(courses_by_code.items()):
             groups_str = ", ".join(sorted(group_ids))
             console.print(
-                f"  [dim]{course_code}:[/dim] {groups_str} [dim](0 credits/LTP)[/dim]"
+                f"  [dim]{course_code}:[/dim] {groups_str} [dim](non-schedulable)[/dim]"
             )
 
         console.print(

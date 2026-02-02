@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -103,6 +104,11 @@ def _log_capacity_warnings(report: FeasibilityReport, logger: logging.Logger) ->
                 )
 
 
+def _safe_for_console(text: str) -> str:
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    return text.encode(encoding, errors="replace").decode(encoding)
+
+
 def run_feasibility_checks(
     data: Any,
     output_dir: Path | str,
@@ -128,16 +134,24 @@ def run_feasibility_checks(
         expected_quanta,
     )
 
-    is_feasible, report = check_feasibility(
-        data.courses, data.instructors, data.rooms, data.groups, data.qts
-    )
+    cfg = get_config().feasibility
+    original_fail = cfg.fail_on_infeasibility
+    if original_fail:
+        cfg.fail_on_infeasibility = False
+
+    try:
+        is_feasible, report = check_feasibility(
+            data.courses, data.instructors, data.rooms, data.groups, data.qts
+        )
+    finally:
+        cfg.fail_on_infeasibility = original_fail
 
     cfg = get_config().feasibility
     should_write = force_report or (
         cfg.generate_report and (is_feasible or cfg.save_report_on_success)
     )
     if should_write:
-        report_path = output_dir / "log_feasibility.log"
+        report_path = output_dir / "feasibility.log"
         generate_feasibility_report_file(report, str(report_path))
         logger.info("Feasibility report saved: %s", report_path)
 
@@ -152,7 +166,19 @@ def run_feasibility_checks(
 
     _log_capacity_warnings(report, logger)
 
-    if not is_feasible and not cfg.fail_on_infeasibility:
+    if should_write:
+        try:
+            logger.info("Feasibility report (full):")
+            with report_path.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    logger.info(_safe_for_console(line.rstrip("\n")))
+        except OSError as exc:
+            logger.warning("Unable to read feasibility report: %s", exc)
+
+    if not is_feasible:
+        if original_fail:
+            logger.error("Problem is infeasible; stopping run (see feasibility.log).")
+            raise SystemExit(1)
         logger.warning("Proceeding despite infeasibility (see log_feasibility.log).")
 
     return is_feasible, report
