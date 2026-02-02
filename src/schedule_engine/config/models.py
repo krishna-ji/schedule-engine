@@ -786,7 +786,14 @@ class RLEnvironmentConfig(BaseModel):
 
 
 class RLRewardConfig(BaseModel):
-    """RL reward function configuration"""
+    """RL reward function configuration.
+
+    NOTE: Reward weights changed significantly during RL tuning:
+    - fitness_weight: 1.0 → 10.0 (stronger learning signal)
+    - diversity_weight: 0.1 → 1.0 (make diversity matter)
+    - normalize: True → False (avoid clipping)
+    These changes improved RL convergence and exploration-exploitation balance.
+    """
 
     fitness_weight: float = Field(
         default=10.0, ge=0.0
@@ -799,7 +806,12 @@ class RLRewardConfig(BaseModel):
 
 
 class RLPPOConfig(BaseModel):
-    """PPO agent hyperparameters"""
+    """PPO agent hyperparameters.
+
+    NOTE: n_steps reduced from 2048 → 512 for more frequent policy updates.
+    Trade-off: 4x more frequent logging and updates, but less stable gradient estimates.
+    This improves responsiveness to reward changes during training.
+    """
 
     learning_rate: float = Field(default=0.0003, gt=0.0)
     n_steps: int = Field(

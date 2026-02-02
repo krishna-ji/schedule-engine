@@ -23,24 +23,20 @@ def init_config(
 def get_config() -> Config:
     """Return the cached config (must be initialized first).
 
-    For notebook workflows, use init_config() explicitly.
-    For standalone scripts/tests, a default test config is created.
+    For notebook workflows, use init_config() explicitly before calling this.
+    For CLI workflows, the launcher initializes config automatically.
+
+    Raises:
+        RuntimeError: If config has not been initialized via init_config()
     """
 
     global _config
     if _config is None:
-        # Create a default test config for standalone usage
-        from schedule_engine.config.loader import dict_to_pydantic
-
-        default_dict = {
-            "experiment_name": "Default Test Config",
-            "environment": "test",
-            "ngen": 30,
-            "pop_size": 10,
-            "cxpb": 0.70,
-            "mutpb": 0.20,
-        }
-        _config = dict_to_pydantic(default_dict)
+        raise RuntimeError(
+            "Config not initialized. Call init_config() before get_config(). "
+            "For notebooks: from schedule_engine.config.loader import load_from_dataclass; "
+            "config = load_from_dataclass(your_config_dataclass); init_config(config)"
+        )
     return _config
 
 

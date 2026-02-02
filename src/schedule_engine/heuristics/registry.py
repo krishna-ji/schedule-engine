@@ -35,8 +35,8 @@ from enum import Enum
 from typing import Any
 
 from schedule_engine.config import (
-    get_config,  # Imported here to allow tests to monkeypatch this symbol
-)
+    get_config,
+)  # Imported here to allow tests to monkeypatch this symbol
 
 HeuristicFunc = Callable[..., Any]
 DecoratorFunc = Callable[[HeuristicFunc], HeuristicFunc]
@@ -291,7 +291,10 @@ def get_enabled_heuristics(
         for name, meta in heuristics_to_check.items():
             category_config = getattr(heuristics_config, meta.category.value, None)
 
-            # Treat missing or empty category configs as "use defaults" to avoid disabling the registry
+            # SEMANTIC CHANGE: Empty {} vs None handling
+            # - None or empty {}: Use registry defaults (enable all registered heuristics)
+            # - Non-empty {}: Only enable explicitly listed heuristics (whitelist mode)
+            # This allows progressive config migration without breaking existing experiments.
             category_config_provided = category_config is not None and bool(
                 category_config
             )

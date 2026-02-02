@@ -205,8 +205,12 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         tut = item.get("T", 0)
         prac = item.get("P", 0)
 
-        # Skip non-schedulable courses (zero credits OR zero L/T/P)
-        # Examples: Survey Camp, Industrial Attachment, Group Work
+        # Skip non-schedulable courses (zero credits OR zero L/T/P hours)
+        # Rationale: These are typically non-classroom activities:
+        # - Survey Camp, Industrial Attachment, Group Work (0 credits)
+        # - Self-study, project work (0 L/T/P hours)
+        # This filtering is intentional to focus on schedulable classroom sessions.
+        # Skipped courses are logged below for transparency.
         if credits == 0 or (lec == 0 and tut == 0 and prac == 0):
             continue
 
@@ -499,7 +503,7 @@ def link_courses_and_groups(
         console = Console()
 
         console.print()
-        console.print("[yellow]️  Non-schedulable or missing courses skipped[/yellow]")
+        console.print("[yellow]Non-schedulable or missing courses skipped[/yellow]")
 
         # Group by course code for compact display
         from collections import defaultdict
