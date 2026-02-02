@@ -11,8 +11,8 @@ DRY Principle: All notebooks import visualization functions from here.
 
 from __future__ import annotations
 
-from pathlib import Path
 import logging
+from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -221,11 +221,11 @@ def print_summary(
     )
     lines.append(f"   Min Hard:     {min(hard_vals):.0f}")
     lines.append(f"   Avg Hard:     {np.mean(hard_vals):.1f}")
-    lines.append(f"   Min Soft:     {min(soft_vals):.1f}")
+    lines.append(f"\n Min Soft:     {min(soft_vals):.1f}")
     lines.append(f"   Avg Soft:     {np.mean(soft_vals):.1f}")
 
     # Timing
-    lines.append(f"\n️ Execution Time: {stats.elapsed_time:.1f}s")
+    lines.append(f"\n[TIME] Execution Time: {stats.elapsed_time:.1f}s")
 
     # Constraint breakdown
     if breakdown:
@@ -454,7 +454,7 @@ def plot_constraint_trends(
         show: Whether to display the plot
     """
     if not constraint_history:
-        print("️ No constraint history to plot")
+        print("[!] No constraint history to plot")
         return
 
     # Determine generations

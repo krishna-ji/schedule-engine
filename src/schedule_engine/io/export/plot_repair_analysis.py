@@ -19,17 +19,17 @@ def _extract_repair_series(repair_history: list[dict]) -> dict[str, list[float]]
     if not repair_history:
         return {}
 
-    ordered = sorted(
-        repair_history, key=lambda item: int(item.get("generation", 0))
-    )
+    ordered = sorted(repair_history, key=lambda item: int(item.get("generation", 0)))
     generations = [int(item.get("generation", idx)) for idx, item in enumerate(ordered)]
     repairs_applied = [float(item.get("repairs_applied", 0.0)) for item in ordered]
     delta_hard = [float(item.get("delta_hard", 0.0)) for item in ordered]
     delta_soft = [float(item.get("delta_soft", 0.0)) for item in ordered]
     repair_time_ms = [
-        float(item.get("repair_time_ms"))
-        if item.get("repair_time_ms") is not None
-        else np.nan
+        (
+            float(item.get("repair_time_ms"))
+            if item.get("repair_time_ms") is not None
+            else np.nan
+        )
         for item in ordered
     ]
 
@@ -243,6 +243,7 @@ def plot_operator_performance(
         title="Operator Success Rate",
         legend=False,
     )
+    ax.set_xticks(range(len(names)))
     ax.set_xticklabels(names, rotation=30, ha="right")
     plt.tight_layout()
     save_figure(fig, plot_dir / "operator_success_rate_percent.pdf")
@@ -263,6 +264,7 @@ def plot_operator_performance(
         title="Operator Average Improvement",
         legend=False,
     )
+    ax.set_xticks(range(len(names)))
     ax.set_xticklabels(names, rotation=30, ha="right")
     plt.tight_layout()
     save_figure(fig, plot_dir / "operator_average_improvement_score.pdf")

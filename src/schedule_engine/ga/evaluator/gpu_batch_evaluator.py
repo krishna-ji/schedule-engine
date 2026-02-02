@@ -10,10 +10,10 @@ from collections.abc import Mapping, Sequence
 import torch
 
 from schedule_engine.domain.course import Course
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.domain.gene import SessionGene
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,9 @@ class GPUConstraintEvaluator:
             gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory // (
                 1024**3
             )
-            logger.info(f"✓ GPU Evaluator initialized: {gpu_name} ({gpu_memory_gb}GB)")
+            logger.info(
+                f"[OK] GPU Evaluator initialized: {gpu_name} ({gpu_memory_gb}GB)"
+            )
 
             if auto_tune_batch_size:
                 self.optimal_batch_size = self._auto_tune_batch_size(gpu_memory_gb)

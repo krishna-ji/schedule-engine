@@ -180,7 +180,7 @@ def main():
                 notes=f"Selected as best by {args.metric}={best.validation_metrics[args.metric]:.4f}",
             )
 
-            logger.info("✓ Promoted checkpoint to 'validated' status")
+            logger.info("[OK] Promoted checkpoint to 'validated' status")
 
         # Save to output file
         if args.output:
@@ -202,9 +202,9 @@ def main():
             with open(output_path, "w") as f:
                 json.dump(result, f, indent=2)
 
-            logger.info(f"\n✓ Result saved to: {output_path}")
+            logger.info(f"\n[OK] Result saved to: {output_path}")
 
-        logger.info("\n✓ Checkpoint selection complete!")
+        logger.info("\n[OK] Checkpoint selection complete!")
 
         # Return path for easy use in scripts
         print(f"\nBest model path: {best.model_path}")
