@@ -345,7 +345,7 @@ def create_random_individual(data: NotebookData) -> list[SessionGene]:
 
     Preserves:
         - Course-group pairs (no pedagogical violations)
-        - Number of quanta per course
+        - Total quanta per course (split into subsessions, e.g. 5 -> 2,2,1 for theory)
 
     Random (can violate):
         - Instructor assignment (any instructor, can be unqualified)
@@ -364,6 +364,7 @@ def create_random_individual(data: NotebookData) -> list[SessionGene]:
     from schedule_engine.ga.population import (
         analyze_group_hierarchy,
         generate_course_group_pairs,
+        get_subsession_durations,
     )
 
     # Get course-group pairs (preserves pedagogical structure)
@@ -375,44 +376,43 @@ def create_random_individual(data: NotebookData) -> list[SessionGene]:
         silent=True,
     )
 
-    # Convert to simpler format
-    course_group_pairs = [
-        (course_key, group_ids, num_quanta)
-        for course_key, group_ids, _, num_quanta in pair_tuples
-    ]
-
     # Get all available resources (for random selection)
     all_instructors = list(data.instructors.values())
     all_rooms = list(data.rooms.values())
     all_quanta = list(range(data.qts.total_quanta))
 
     genes = []
-    for course_id, group_ids, num_quanta in course_group_pairs:
-        # TRULY RANDOM: Any instructor, room, time
-        instructor = random.choice(all_instructors)
-        room = random.choice(all_rooms)
-
-        # Random contiguous time block (start_quanta)
-        max_start = len(all_quanta) - num_quanta
-        if max_start > 0:
-            start_quanta = random.randint(0, max_start)
-        else:
-            start_quanta = 0
-
+    for course_id, group_ids, _session_type, _num_quanta in pair_tuples:
         # Get course info for session type
         course = data.courses.get(course_id)
         course_type = course.course_type if course else "theory"
+        total_quanta = course.quanta_per_week if course else int(_num_quanta)
 
-        gene = SessionGene(
-            course_id=course_id[0] if isinstance(course_id, tuple) else course_id,
-            course_type=course_type,
-            group_ids=group_ids,
-            instructor_id=instructor.instructor_id,
-            room_id=room.room_id,
-            start_quanta=start_quanta,
-            num_quanta=num_quanta,
-        )
-        genes.append(gene)
+        # Break into subsessions (e.g., 5 -> [2,2,1] for theory)
+        subsession_durations = get_subsession_durations(total_quanta, course_type)
+
+        for num_quanta in subsession_durations:
+            # TRULY RANDOM: Any instructor, room, time
+            instructor = random.choice(all_instructors)
+            room = random.choice(all_rooms)
+
+            # Random contiguous time block (start_quanta)
+            max_start = len(all_quanta) - num_quanta
+            if max_start > 0:
+                start_quanta = random.randint(0, max_start)
+            else:
+                start_quanta = 0
+
+            gene = SessionGene(
+                course_id=course_id[0] if isinstance(course_id, tuple) else course_id,
+                course_type=course_type,
+                group_ids=group_ids,
+                instructor_id=instructor.instructor_id,
+                room_id=room.room_id,
+                start_quanta=start_quanta,
+                num_quanta=num_quanta,
+            )
+            genes.append(gene)
 
     return genes
 
