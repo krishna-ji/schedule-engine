@@ -225,36 +225,51 @@ def print_summary(
     lines.append(f"   Avg Soft:     {np.mean(soft_vals):.1f}")
 
     # Timing
-    lines.append(f"\n[TIME] Execution Time: {stats.elapsed_time:.1f}s")
+    lines.append(f"\nExecution Time: {stats.elapsed_time:.1f}s")
 
     # Constraint breakdown
     if breakdown:
         lines.append(f"\n Best Solution Constraint Breakdown:")
-        hard_total = 0
-        soft_total = 0.0
-        hard_constraints = {
-            "student_group_exclusivity",
-            "instructor_exclusivity",
-            "room_exclusivity",
-            "instructor_qualifications",
-            "room_suitability",
-            "course_completeness",
-        }
+        from schedule_engine.constraints.registry import (
+            get_enabled_hard_constraints,
+            get_enabled_soft_constraints,
+        )
+
+        hard_registry = get_enabled_hard_constraints()
+        soft_registry = get_enabled_soft_constraints()
+        hard_names = set(hard_registry.keys())
+        soft_names = set(soft_registry.keys())
+
+        hard_total_raw = 0.0
+        soft_total_raw = 0.0
+        hard_total_weighted = 0.0
+        soft_total_weighted = 0.0
 
         for name, value in sorted(breakdown.items()):
-            is_hard = name in hard_constraints
-            marker = "" if is_hard and value > 0 else "" if is_hard else ""
+            is_hard = name in hard_names
+            marker = "" if is_hard else ""
             lines.append(
                 f"   {marker} {name}: {value:.0f}"
                 if value == int(value)
                 else f"   {marker} {name}: {value:.1f}"
             )
             if is_hard:
-                hard_total += int(value)
-            else:
-                soft_total += float(value)
+                hard_total_raw += float(value)
+                weight = hard_registry.get(name, {}).get("weight", 1.0)
+                hard_total_weighted += float(value) * float(weight)
+            elif name in soft_names:
+                soft_total_raw += float(value)
+                weight = soft_registry.get(name, {}).get("weight", 1.0)
+                soft_total_weighted += float(value) * float(weight)
 
-        lines.append(f"\n   Total Hard: {hard_total}, Total Soft: {soft_total:.1f}")
+        lines.append(
+            "\n   Total Hard (raw): "
+            f"{hard_total_raw:.1f}, Total Hard (weighted): {hard_total_weighted:.1f}"
+        )
+        lines.append(
+            "   Total Soft (raw): "
+            f"{soft_total_raw:.1f}, Total Soft (weighted): {soft_total_weighted:.1f}"
+        )
 
     lines.append("\n" + "=" * 60)
 

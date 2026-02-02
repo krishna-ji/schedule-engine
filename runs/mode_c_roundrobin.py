@@ -43,6 +43,7 @@ from schedule_engine.notebooks.core import (
 from schedule_engine.ga.operators.repair_engine import RepairEngine
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
+from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
 from schedule_engine.workflows.reporting import generate_reports
 
 
@@ -91,13 +92,14 @@ def main() -> None:
     FITNESS_WEIGHTS = (-1.0, -1.0)
 
     # MODE C: Round-robin repair
-    REPAIR_PROB = 0.3
+    REPAIR_PROB = 0.45
     REPAIR_POLICY = "round_robin"
-    REPAIR_BUDGET_MS = 50.0
-    REPAIR_MAX_STEPS = 1
-    REPAIR_MAX_CANDIDATES = 20
+    REPAIR_BUDGET_MS = 120.0
+    REPAIR_MAX_STEPS = 3
+    REPAIR_MAX_CANDIDATES = 30
     REPAIR_EPSILON = 0.1
     LOG_INTERVAL = 10
+    EXPECTED_QUANTA = 42
 
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -126,6 +128,7 @@ def main() -> None:
         closed_days=["Saturday"],
     )
     logger.info(f"Data loaded: {data.summary()}")
+    run_feasibility_checks(data, OUTPUT_DIR, logger, expected_quanta=EXPECTED_QUANTA)
 
     evaluate = create_evaluator(data)
     repair_engine = RepairEngine(

@@ -228,8 +228,9 @@ def plot_operator_performance(
     plot_dir = get_nsga_plot_dir(output_dir)
 
     fig, ax = create_thesis_figure(1, 1, figsize=(11, 6))
+    x = np.arange(len(names))
     ax.bar(
-        names,
+        x,
         success_rate,
         color=get_color("green"),
         alpha=0.85,
@@ -244,13 +245,14 @@ def plot_operator_performance(
         legend=False,
     )
     ax.set_xticks(range(len(names)))
+    ax.set_xticks(x)
     ax.set_xticklabels(names, rotation=30, ha="right")
     plt.tight_layout()
     save_figure(fig, plot_dir / "operator_success_rate_percent.pdf")
 
     fig, ax = create_thesis_figure(1, 1, figsize=(11, 6))
     ax.bar(
-        names,
+        x,
         avg_improvement,
         color=get_color("blue"),
         alpha=0.85,
@@ -265,6 +267,7 @@ def plot_operator_performance(
         legend=False,
     )
     ax.set_xticks(range(len(names)))
+    ax.set_xticks(x)
     ax.set_xticklabels(names, rotation=30, ha="right")
     plt.tight_layout()
     save_figure(fig, plot_dir / "operator_average_improvement_score.pdf")

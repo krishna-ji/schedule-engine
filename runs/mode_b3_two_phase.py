@@ -48,6 +48,7 @@ from schedule_engine.notebooks.core import (
 )
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
+from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
 from schedule_engine.workflows.reporting import generate_reports
 
 
@@ -107,6 +108,7 @@ def main() -> None:
     REPAIR_MAX_CANDIDATES = 20
     REPAIR_EPSILON = 0.1
     LOG_INTERVAL = 10
+    EXPECTED_QUANTA = 42
 
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -141,6 +143,7 @@ def main() -> None:
         closed_days=["Saturday"],
     )
     logger.info(f"Data loaded: {data.summary()}")
+    run_feasibility_checks(data, OUTPUT_DIR, logger, expected_quanta=EXPECTED_QUANTA)
 
     context = data.context
     evaluate = create_evaluator(data)

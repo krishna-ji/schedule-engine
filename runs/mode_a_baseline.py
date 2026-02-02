@@ -38,6 +38,7 @@ from schedule_engine.notebooks.core import (
 )
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
+from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
 from schedule_engine.workflows.reporting import generate_reports
 
 
@@ -85,6 +86,7 @@ def main() -> None:
     NGEN = 200
     CXPB = 0.9
     MUTPB = 0.2
+    EXPECTED_QUANTA = 42
 
     # Fitness weights: -1.0 = minimize both (equal weight)
     FITNESS_WEIGHTS = (-1.0, -1.0)
@@ -124,6 +126,7 @@ def main() -> None:
         closed_days=["Saturday"],
     )
     logger.info(f"Data loaded: {data.summary()}")
+    run_feasibility_checks(data, OUTPUT_DIR, logger, expected_quanta=EXPECTED_QUANTA)
 
     # TEST COMPONENTS
 
