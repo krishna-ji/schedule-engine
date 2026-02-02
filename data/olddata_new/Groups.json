@@ -1,0 +1,911 @@
+[
+    {
+        "group_id": "BAM2AB",
+        "name": "Automobile Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENME 151",
+            "ENME 152",
+            "ENME 153",
+            "ENME 155",
+            "ENSH 151",
+            "ENSH 153"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAM2A",
+                "student_count": 24
+            },
+            {
+                "id": "BAM2B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BME2AB",
+        "name": "Mechanical Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENME 151",
+            "ENME 152",
+            "ENME 153",
+            "ENME 155",
+            "ENSH 151",
+            "ENSH 152"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BME2A",
+                "student_count": 24
+            },
+            {
+                "id": "BME2B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAM4AB",
+        "name": "Automobile Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENEE 254",
+            "ENME 252",
+            "ENME 253",
+            "ENME 255",
+            "ENME 256",
+            "ENSH 252"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAM4A",
+                "student_count": 24
+            },
+            {
+                "id": "BAM4B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BME4AB",
+        "name": "Mechanical Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENEE 254",
+            "ENME 251",
+            "ENME 252",
+            "ENME 253",
+            "ENME 254",
+            "ENSH 253"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BME4A",
+                "student_count": 24
+            },
+            {
+                "id": "BME4B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BME5AB",
+        "name": "Mechanical Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "EE602",
+            "ME601",
+            "ME602",
+            "ME604",
+            "ME605",
+            "SH603"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BME5A",
+                "student_count": 24
+            },
+            {
+                "id": "BME5B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAM5AB",
+        "name": "Automobile Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "AM601",
+            "AM602",
+            "AM603",
+            "EE602",
+            "ME601",
+            "SH603"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAM5A",
+                "student_count": 24
+            },
+            {
+                "id": "BAM5B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BME7AB",
+        "name": "Mechanical Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "ME701",
+            "ME702",
+            "ME703",
+            "ME704",
+            "ME705",
+            "ME706",
+            "ME707",
+            "ME725"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BME7A",
+                "student_count": 24
+            },
+            {
+                "id": "BME7B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAM7AB",
+        "name": "Automobile Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "AM701",
+            "AM702",
+            "AM703",
+            "AM704",
+            "AM707",
+            "AM725",
+            "ME703"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAM7A",
+                "student_count": 24
+            },
+            {
+                "id": "BAM7B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAR2AB",
+        "name": "Architecture Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENAR 151",
+            "ENAR 152",
+            "ENAR 153",
+            "ENAR 154",
+            "ENAR 155",
+            "ENCE 156",
+            "ENSH 155"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAR2A",
+                "student_count": 24
+            },
+            {
+                "id": "BAR2B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAR4AB",
+        "name": "Architecture Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENAR 251",
+            "ENAR 252",
+            "ENAR 253",
+            "ENAR 254",
+            "ENAR 255",
+            "ENCE 260",
+            "ENCE 261"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAR4A",
+                "student_count": 24
+            },
+            {
+                "id": "BAR4B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAR5AB",
+        "name": "Architecture Semester 5",
+        "student_count": 48,
+        "courses": [
+            "AR601",
+            "AR602",
+            "AR603",
+            "AR604",
+            "AR605",
+            "CE607",
+            "EE604"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAR5A",
+                "student_count": 24
+            },
+            {
+                "id": "BAR5B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAR7AB",
+        "name": "Architecture Semester 7",
+        "student_count": 48,
+        "courses": [
+            "AR701"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAR7A",
+                "student_count": 24
+            },
+            {
+                "id": "BAR7B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BAR9AB",
+        "name": "Architecture Semester 9",
+        "student_count": 48,
+        "courses": [
+            "AR801",
+            "AR802",
+            "AR803",
+            "AR805",
+            "AR806",
+            "AR825"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BAR9A",
+                "student_count": 24
+            },
+            {
+                "id": "BAR9B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE2AB",
+        "name": "Civil Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENCE 151",
+            "ENCE 152",
+            "ENCE 153",
+            "ENME 158",
+            "ENSH 151",
+            "ENSH 152"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE2A",
+                "student_count": 24
+            },
+            {
+                "id": "BCE2B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE2CD",
+        "name": "Civil Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENCE 151",
+            "ENCE 152",
+            "ENCE 153",
+            "ENME 158",
+            "ENSH 151",
+            "ENSH 152"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE2C",
+                "student_count": 24
+            },
+            {
+                "id": "BCE2D",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE2EF",
+        "name": "Civil Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENCE 151",
+            "ENCE 152",
+            "ENCE 153",
+            "ENME 158",
+            "ENSH 151",
+            "ENSH 152"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE2E",
+                "student_count": 24
+            },
+            {
+                "id": "BCE2F",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE4AB",
+        "name": "Civil Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENCE 251",
+            "ENCE 252",
+            "ENCE 253",
+            "ENCE 254",
+            "ENCE 255",
+            "ENCE 256",
+            "ENSH 251",
+            "ENSH 253"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE4A",
+                "student_count": 24
+            },
+            {
+                "id": "BCE4B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE4CD",
+        "name": "Civil Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENCE 251",
+            "ENCE 252",
+            "ENCE 253",
+            "ENCE 254",
+            "ENCE 255",
+            "ENCE 256",
+            "ENSH 251",
+            "ENSH 253"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE4C",
+                "student_count": 24
+            },
+            {
+                "id": "BCE4D",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE4EF",
+        "name": "Civil Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENCE 251",
+            "ENCE 252",
+            "ENCE 253",
+            "ENCE 254",
+            "ENCE 255",
+            "ENCE 256",
+            "ENSH 251",
+            "ENSH 253"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE4E",
+                "student_count": 24
+            },
+            {
+                "id": "BCE4F",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE5AB",
+        "name": "Civil Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "CE601",
+            "CE602",
+            "CE603",
+            "CE604",
+            "CE605",
+            "CE606",
+            "SH603"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE5A",
+                "student_count": 24
+            },
+            {
+                "id": "BCE5B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE5CD",
+        "name": "Civil Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "CE601",
+            "CE602",
+            "CE603",
+            "CE604",
+            "CE605",
+            "CE606",
+            "SH603"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE5C",
+                "student_count": 24
+            },
+            {
+                "id": "BCE5D",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE5EF",
+        "name": "Civil Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "CE601",
+            "CE602",
+            "CE603",
+            "CE604",
+            "CE605",
+            "CE606",
+            "SH603"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE5E",
+                "student_count": 24
+            },
+            {
+                "id": "BCE5F",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE7AB",
+        "name": "Civil Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "CE701",
+            "CE702",
+            "CE703",
+            "CE704",
+            "CE705",
+            "CE707",
+            "CE725"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE7A",
+                "student_count": 24
+            },
+            {
+                "id": "BCE7B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE7CD",
+        "name": "Civil Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "CE701",
+            "CE702",
+            "CE703",
+            "CE704",
+            "CE705",
+            "CE707",
+            "CE725"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE7C",
+                "student_count": 24
+            },
+            {
+                "id": "BCE7D",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCE7EF",
+        "name": "Civil Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "CE701",
+            "CE702",
+            "CE703",
+            "CE704",
+            "CE705",
+            "CE707",
+            "CE725"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCE7E",
+                "student_count": 24
+            },
+            {
+                "id": "BCE7F",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BEI2AB",
+        "name": "Electronics and Communication Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENCT 151",
+            "ENEE 154",
+            "ENEX 151",
+            "ENEX 152",
+            "ENSH 151",
+            "ENSH 153"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BEI2A",
+                "student_count": 24
+            },
+            {
+                "id": "BEI2B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCT2AB",
+        "name": "Computer Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENCT 151",
+            "ENEE 154",
+            "ENEX 151",
+            "ENEX 152",
+            "ENSH 151",
+            "ENSH 153"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCT2A",
+                "student_count": 24
+            },
+            {
+                "id": "BCT2B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BEI4AB",
+        "name": "Electronics and Communication Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENCT 251",
+            "ENEX 252",
+            "ENEX 253",
+            "ENEX 254",
+            "ENEX 255",
+            "ENSH 252"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BEI4A",
+                "student_count": 24
+            },
+            {
+                "id": "BEI4B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCT4AB",
+        "name": "Computer Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENCT 252",
+            "ENCT 253",
+            "ENCT 254",
+            "ENEX 252",
+            "ENEX 254",
+            "ENSH 252"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCT4A",
+                "student_count": 24
+            },
+            {
+                "id": "BCT4B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCT5AB",
+        "name": "Computer Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "CT601",
+            "CT602",
+            "CT603",
+            "EX602",
+            "EX603",
+            "SH601",
+            "SH602"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCT5A",
+                "student_count": 24
+            },
+            {
+                "id": "BCT5B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BEI5AB",
+        "name": "Electronics and Communication Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "CE615",
+            "CT603",
+            "CT610",
+            "CT612",
+            "CT613",
+            "EX605"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BEI5A",
+                "student_count": 24
+            },
+            {
+                "id": "BEI5B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BEI7AB",
+        "name": "Electronics and Communication Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "CT710",
+            "EX707",
+            "EX710",
+            "EX715",
+            "EX716",
+            "EX725",
+            "ME708"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BEI7A",
+                "student_count": 24
+            },
+            {
+                "id": "BEI7B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BCT7AB",
+        "name": "Computer Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "CT701",
+            "CT702",
+            "CT703",
+            "CT704",
+            "CT707",
+            "CT725",
+            "EX701",
+            "ME708"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BCT7A",
+                "student_count": 24
+            },
+            {
+                "id": "BCT7B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BIE2AB",
+        "name": "Industrial Engineering Semester 2",
+        "student_count": 48,
+        "courses": [
+            "ENME 151",
+            "ENME 152",
+            "ENME 153",
+            "ENME 155",
+            "ENSH 151",
+            "ENSH 153"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BIE2A",
+                "student_count": 24
+            },
+            {
+                "id": "BIE2B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BIE4AB",
+        "name": "Industrial Engineering Semester 4",
+        "student_count": 48,
+        "courses": [
+            "ENEE 254",
+            "ENIE 251",
+            "ENIE 252",
+            "ENIE 253",
+            "ENIE 254",
+            "ENME 255",
+            "ENSH 252"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BIE4A",
+                "student_count": 24
+            },
+            {
+                "id": "BIE4B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BIE5AB",
+        "name": "Industrial Engineering Semester 5",
+        "student_count": 48,
+        "courses": [
+            "EE602",
+            "EE606",
+            "IE601",
+            "IE602",
+            "IE603",
+            "IE604",
+            "IE621",
+            "SH603"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BIE5A",
+                "student_count": 24
+            },
+            {
+                "id": "BIE5B",
+                "student_count": 24
+            }
+        ]
+    },
+    {
+        "group_id": "BIE7AB",
+        "name": "Industrial Engineering Semester 7",
+        "student_count": 48,
+        "courses": [
+            "IE701",
+            "IE702",
+            "IE703",
+            "IE704",
+            "IE707",
+            "IE722",
+            "IE745"
+        ],
+        "prefers_break": true,
+        "subgroups": [
+            {
+                "id": "BIE7A",
+                "student_count": 24
+            },
+            {
+                "id": "BIE7B",
+                "student_count": 24
+            }
+        ]
+    }
+]

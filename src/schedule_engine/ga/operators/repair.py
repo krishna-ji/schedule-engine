@@ -60,10 +60,10 @@ Usage:
 from collections import defaultdict
 from collections.abc import Iterable
 
-from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.domain.instructor import Instructor
-from schedule_engine.ga.operators.repair_wrappers import repair_operator
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.instructor import Instructor
+from schedule_engine.domain.types import SchedulingContext
+from schedule_engine.ga.operators.repair_wrappers import repair_operator
 
 # ================
 # 1. INSTRUCTOR AVAILABILITY REPAIR (Priority 1)
@@ -155,7 +155,10 @@ def _find_instructor_available_slot(
             continue
 
         # Check instructor availability (PRIMARY CHECK)
-        if not all(q in instructor.available_quanta for q in range(start_q, end_q)):
+        # Full-time instructors are always available during operating hours
+        if not instructor.is_full_time and not all(
+            q in instructor.available_quanta for q in range(start_q, end_q)
+        ):
             continue
 
         # Check no conflicts with other genes
@@ -702,7 +705,10 @@ def _find_available_instructor(
         if course_key not in getattr(instructor, "qualified_courses", set()):
             continue
 
-        if not all(q in instructor.available_quanta for q in duration_range):
+        # Full-time instructors are always available during operating hours
+        if not instructor.is_full_time and not all(
+            q in instructor.available_quanta for q in duration_range
+        ):
             continue
 
         conflict = False
@@ -862,7 +868,9 @@ def repair_individual_unified(
     if selective:
         try:
             from schedule_engine.config import get_config
-            from schedule_engine.ga.operators.repair_selective import repair_individual_selective
+            from schedule_engine.ga.operators.repair_selective import (
+                repair_individual_selective,
+            )
 
             detection_strategy = get_config().repair.detection_strategy
             logger.debug(f" Applying selective repair (strategy={detection_strategy})")
@@ -877,7 +885,9 @@ def repair_individual_unified(
         except Exception:  # pragma: no cover - fallback to full scan
             pass
 
-    from schedule_engine.ga.operators.repair_wrappers import get_enabled_repair_operators
+    from schedule_engine.ga.operators.repair_wrappers import (
+        get_enabled_repair_operators,
+    )
 
     stats = {
         "iterations": 0,

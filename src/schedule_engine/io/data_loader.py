@@ -139,10 +139,21 @@ def load_instructors(path: str, qts: QuantumTimeSystem) -> dict[str, Instructor]
     instructors = {}
     for item in data:
         availability = item.get("availability", {})
-        is_full_time = not bool(availability)
         available_quanta = (
             encode_availability(availability, qts) if availability else set()
         )
+
+        # Determine full-time status:
+        # - No availability specified = full-time (available all operating hours)
+        # - Availability specified but encodes to empty = treat as full-time
+        #   (happens when specified hours are outside operating hours, e.g., 7:00-8:30 vs 10:00-17:00)
+        # - Availability specified and has valid quanta = part-time
+        is_full_time = not bool(availability) or not available_quanta
+        if not available_quanta:
+            # Full-time instructors are available during all operating hours
+            available_quanta = (
+                set()
+            )  # Will be filled by caller or treated as "always available"
 
         # Parse courses - support both old flat list and new object format
         courses_data = item.get("courses", [])

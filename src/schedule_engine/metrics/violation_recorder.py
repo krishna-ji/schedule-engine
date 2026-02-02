@@ -5,8 +5,8 @@ Records constraint violations during fitness evaluation.
 Integrates with ViolationHeatmap to track hot genes.
 """
 
-from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.metrics.violation_heatmap import ViolationHeatmap
 
 
@@ -29,11 +29,15 @@ def record_violations_to_heatmap(
 
     # Check each gene for violations
     for gene in individual:
-        # 1. Instructor availability
+        # 1. Instructor availability (full-time instructors are always available)
         instructor = context.instructors.get(gene.instructor_id)
-        if instructor and any(
-            q not in instructor.available_quanta
-            for q in range(gene.start_quanta, gene.end_quanta)
+        if (
+            instructor
+            and not instructor.is_full_time
+            and any(
+                q not in instructor.available_quanta
+                for q in range(gene.start_quanta, gene.end_quanta)
+            )
         ):
             heatmap.record_violation(gene, "availability")
 

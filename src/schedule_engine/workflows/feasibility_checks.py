@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from schedule_engine.config import get_config
+from schedule_engine.config import get_config_or_default
 from schedule_engine.io.feasibility import (
     FeasibilityReport,
     check_feasibility,
@@ -134,24 +134,24 @@ def run_feasibility_checks(
         expected_quanta,
     )
 
-    cfg = get_config().feasibility
+    cfg = get_config_or_default().feasibility
     original_fail = cfg.fail_on_infeasibility
-    if original_fail:
-        cfg.fail_on_infeasibility = False
 
-    try:
-        is_feasible, report = check_feasibility(
-            data.courses, data.instructors, data.rooms, data.groups, data.qts
-        )
-    finally:
-        cfg.fail_on_infeasibility = original_fail
-
-    cfg = get_config().feasibility
-    should_write = force_report or (
-        cfg.generate_report and (is_feasible or cfg.save_report_on_success)
+    is_feasible, report = check_feasibility(
+        data.courses, data.instructors, data.rooms, data.groups, data.qts
     )
+
+    # Always define report_path
+    report_path = output_dir / "feasibility.log"
+
+    # Write report if forced, configured, or infeasible (always save issues)
+    should_write = (
+        force_report
+        or (cfg.generate_report and (is_feasible or cfg.save_report_on_success))
+        or not is_feasible
+    )  # Always write when infeasible
+
     if should_write:
-        report_path = output_dir / "feasibility.log"
         generate_feasibility_report_file(report, str(report_path))
         logger.info("Feasibility report saved: %s", report_path)
 
@@ -177,8 +177,30 @@ def run_feasibility_checks(
 
     if not is_feasible:
         if original_fail:
+            # Show error panel to console (same as was shown in check_feasibility)
+            from rich import box
+            from rich.panel import Panel
+
+            from schedule_engine.utils.console_service import get_console
+
+            console = get_console()
+            critical_count = summary.get("critical_failures", 0)
+            console.print()
+            console.print(
+                Panel(
+                    "[bold red][!ERR] PROBLEM IS INFEASIBLE[/bold red]\n\n"
+                    f"Found {critical_count} critical issue(s) that make this problem unsolvable.\n"
+                    "Please review the detailed report above and fix the identified issues.\n\n"
+                    f"[dim]Feasibility report saved to: {report_path}[/dim]\n"
+                    "[dim]Set get_config_or_default().feasibility.fail_on_infeasibility=False in config to continue anyway (not recommended).[/dim]",
+                    border_style="red",
+                    box=box.DOUBLE,
+                )
+            )
+            console.print()
+            console.print("[bold red] Exiting program...[/bold red]\n")
             logger.error("Problem is infeasible; stopping run (see feasibility.log).")
             raise SystemExit(1)
-        logger.warning("Proceeding despite infeasibility (see log_feasibility.log).")
+        logger.warning("Proceeding despite infeasibility (see feasibility.log).")
 
     return is_feasible, report

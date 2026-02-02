@@ -13,13 +13,13 @@ from schedule_engine.constraints.registry import (
     constraint_needs_courses,
     get_enabled_hard_constraints,
 )
-from schedule_engine.io.decoder import decode_individual
 from schedule_engine.domain.course import Course
-from schedule_engine.domain.session import CourseSession
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.session import CourseSession
+from schedule_engine.io.decoder import decode_individual
 
 
 class ViolationInfo:
@@ -310,7 +310,8 @@ def _track_instructor_availability_violations(
     conflicted_indices = set()
 
     for idx, session in enumerate(sessions):
-        if session.instructor:
+        # Full-time instructors are always available during operating hours
+        if session.instructor and not session.instructor.is_full_time:
             for q in session.session_quanta:
                 if q not in session.instructor.available_quanta:
                     violations += 1

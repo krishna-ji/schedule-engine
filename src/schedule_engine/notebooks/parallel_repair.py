@@ -103,8 +103,10 @@ def _find_qualified_available_instructor(
         if course_key not in getattr(instructor, "qualified_courses", set()):
             continue
 
-        # Check instructor availability
-        if not all(q in instructor.available_quanta for q in duration_range):
+        # Check instructor availability (full-time instructors are always available)
+        if not instructor.is_full_time and not all(
+            q in instructor.available_quanta for q in duration_range
+        ):
             continue
 
         # Check conflicts with other sessions
@@ -176,8 +178,10 @@ def _find_conflict_free_time(
         if end_q > max(available) + 1:
             continue
 
-        # Check instructor availability
-        if not all(q in instructor.available_quanta for q in range(start_q, end_q)):
+        # Check instructor availability (full-time instructors are always available)
+        if not instructor.is_full_time and not all(
+            q in instructor.available_quanta for q in range(start_q, end_q)
+        ):
             continue
 
         # Check all conflicts in one pass

@@ -32,10 +32,10 @@ Usage:
 
 import random
 
-from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.course import Course
-from schedule_engine.domain.room import Room
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.room import Room
+from schedule_engine.domain.types import SchedulingContext
 
 
 def optimize_gene_greedy(
@@ -389,9 +389,9 @@ def _count_gene_violations(
         if _has_instructor_conflict(gene, other_gene):
             violations += 1
 
-    # Check instructor availability
+    # Check instructor availability (full-time instructors are always available)
     instructor = context.instructors.get(gene.instructor_id)
-    if instructor:
+    if instructor and not instructor.is_full_time:
         for q in range(gene.start_quanta, gene.end_quanta):
             if q not in instructor.available_quanta:
                 violations += 1
