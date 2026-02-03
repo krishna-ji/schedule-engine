@@ -1,15 +1,15 @@
-# Constraint Registry
-from schedule_engine.constraints.registry import (
+# Constraint System (simplified - all constraints always enabled)
+from schedule_engine.constraints.all_constraints import (
     constraint_needs_courses,
     get_enabled_hard_constraints,
     get_enabled_soft_constraints,
 )
-from schedule_engine.io.decoder import decode_individual
 from schedule_engine.domain.course import Course
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.domain.gene import SessionGene
+from schedule_engine.io.decoder import decode_individual
 
 
 def evaluate_detailed(

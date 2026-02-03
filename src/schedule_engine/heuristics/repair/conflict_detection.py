@@ -9,7 +9,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
 
-from schedule_engine.constraints.registry import (
+from schedule_engine.constraints.all_constraints import (
     constraint_needs_courses,
     get_enabled_hard_constraints,
 )

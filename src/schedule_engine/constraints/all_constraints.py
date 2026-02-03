@@ -173,3 +173,61 @@ def evaluate_all(
     hard_total, hard_breakdown = evaluate_hard_constraints(sessions, courses)
     soft_total, soft_breakdown = evaluate_soft_constraints(sessions, courses)
     return hard_total, soft_total, hard_breakdown, soft_breakdown
+
+
+# =============================================================================
+# COMPATIBILITY FUNCTIONS (for old code migration)
+# =============================================================================
+
+
+def get_enabled_hard_constraints() -> dict[str, dict]:
+    """
+    Compatibility function for old registry interface.
+
+    Returns dict in old format: {name: {"function": fn, "weight": w}}
+    """
+    return {
+        c.name: {
+            "function": c.function,
+            "weight": c.weight,
+            "needs_courses": c.needs_courses,
+        }
+        for c in HARD_CONSTRAINTS
+    }
+
+
+def get_enabled_soft_constraints() -> dict[str, dict]:
+    """
+    Compatibility function for old registry interface.
+
+    Returns dict in old format: {name: {"function": fn, "weight": w}}
+    """
+    return {
+        c.name: {
+            "function": c.function,
+            "weight": c.weight,
+            "needs_courses": c.needs_courses,
+        }
+        for c in SOFT_CONSTRAINTS
+    }
+
+
+def get_all_hard_constraints() -> dict[str, dict]:
+    """Alias for get_enabled_hard_constraints (all are always enabled)."""
+    return get_enabled_hard_constraints()
+
+
+def get_all_soft_constraints() -> dict[str, dict]:
+    """Alias for get_enabled_soft_constraints (all are always enabled)."""
+    return get_enabled_soft_constraints()
+
+
+def constraint_needs_courses(constraint_name: str) -> bool:
+    """Check if a constraint needs the courses parameter."""
+    for c in HARD_CONSTRAINTS:
+        if c.name == constraint_name:
+            return c.needs_courses
+    for c in SOFT_CONSTRAINTS:
+        if c.name == constraint_name:
+            return c.needs_courses
+    return False

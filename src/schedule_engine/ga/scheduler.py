@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from stable_baselines3.common.base_class import BaseAlgorithm
 
 from schedule_engine.config import get_config
-from schedule_engine.constraints.registry import (
+from schedule_engine.constraints.all_constraints import (
     get_enabled_hard_constraints,
     get_enabled_soft_constraints,
 )
@@ -2539,7 +2539,9 @@ class GAScheduler:
             return
 
         # Import new metrics modules
-        from schedule_engine.metrics.convergence import calculate_constraint_satisfaction_rate
+        from schedule_engine.metrics.convergence import (
+            calculate_constraint_satisfaction_rate,
+        )
         from schedule_engine.metrics.hypervolume import (
             calculate_hypervolume,
             get_hypervolume_reference_point,
@@ -2717,7 +2719,9 @@ class GAScheduler:
 
         # ENHANCEMENT: Record violations to heatmap
         if self.violation_heatmap and gen >= 0:  # Skip initial pop
-            from schedule_engine.metrics.violation_recorder import record_violations_to_heatmap
+            from schedule_engine.metrics.violation_recorder import (
+                record_violations_to_heatmap,
+            )
 
             record_violations_to_heatmap(best, self.context, self.violation_heatmap)
             self.violation_heatmap.record_generation(gen)

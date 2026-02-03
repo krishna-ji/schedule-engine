@@ -20,9 +20,9 @@ from rich.progress import (
 )
 
 from schedule_engine.config.models import Config
-from schedule_engine.ga.scheduler import GAConfig, GAScheduler
 from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.io.decoder import decode_individual
+from schedule_engine.ga.scheduler import GAConfig, GAScheduler
+from schedule_engine.io import validate_input
 from schedule_engine.io.data_loader import (
     derive_cohort_pairs_from_groups,
     link_courses_and_groups,
@@ -32,17 +32,17 @@ from schedule_engine.io.data_loader import (
     load_instructors,
     load_rooms,
 )
+from schedule_engine.io.decoder import decode_individual
+from schedule_engine.io.feasibility import (
+    check_feasibility,
+    generate_feasibility_report_file,
+)
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.constraint_logger import ConstraintLogger
 from schedule_engine.utils.logger import GALogger
 from schedule_engine.utils.performance_profiler import cleanup_profiler, init_profiler
 from schedule_engine.utils.system_info import get_cpu_count
-from schedule_engine.io import validate_input
-from schedule_engine.io.feasibility import (
-    check_feasibility,
-    generate_feasibility_report_file,
-)
 from schedule_engine.workflows.reporting import generate_reports
 
 console = get_console()
@@ -300,32 +300,20 @@ def run_standard_workflow(
     )
 
     # ========================================
-    # Get enabled constraint names from REGISTRY (Single Source of Truth)
+    # Get all constraint names (all constraints always enabled)
     # ========================================
-    from schedule_engine.constraints.registry import (
+    from schedule_engine.constraints.all_constraints import (
         get_all_hard_constraints,
         get_all_soft_constraints,
     )
 
-    # Build constraint lists dynamically from registry + config
-    # This ensures we never miss a constraint or have mismatched names
+    # Build constraint lists - all constraints are always enabled now
     all_hard_constraints = get_all_hard_constraints()
     all_soft_constraints = get_all_soft_constraints()
 
-    # Get enabled constraints by checking config for each registered constraint
-    # CRITICAL: Order matters! This defines hc1-hc8 mapping used in console output
-    # Order is deterministic from registry (decorator registration order in hard.py)
-    hard_names = []
-    for name in all_hard_constraints:
-        constraint_cfg = getattr(config.hard_constraints, name, None)
-        if constraint_cfg and constraint_cfg.enabled:
-            hard_names.append(name)
-
-    soft_names = []
-    for name in all_soft_constraints:
-        constraint_cfg = getattr(config.soft_constraints, name, None)
-        if constraint_cfg and constraint_cfg.enabled:
-            soft_names.append(name)
+    # All constraints are enabled
+    hard_names = list(all_hard_constraints.keys())
+    soft_names = list(all_soft_constraints.keys())
 
     # ========================================
     # Step 4.5: Initialize Logger
