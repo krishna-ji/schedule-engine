@@ -5349,5 +5349,85 @@
       }
     ],
     "availability": {}
+  },
+  {
+    "id": "I280",
+    "name": "Project Supervisor A",
+    "courses": [
+      {
+        "coursecode": "AM755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "CE755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "CT755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "EX755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "ME755",
+        "coursetype": "Practical"
+      }
+    ],
+    "availability": {}
+  },
+  {
+    "id": "I281",
+    "name": "Project Supervisor B",
+    "courses": [
+      {
+        "coursecode": "AM755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "CE755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "CT755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "EX755",
+        "coursetype": "Practical"
+      },
+      {
+        "coursecode": "ME755",
+        "coursetype": "Practical"
+      }
+    ],
+    "availability": {}
+  },
+  {
+    "id": "I282",
+    "name": "Structure III Instructor",
+    "courses": [
+      {
+        "coursecode": "CE657",
+        "coursetype": "Theory"
+      }
+    ],
+    "availability": {}
+  },
+  {
+    "id": "I283",
+    "name": "Multimedia Systems Instructor",
+    "courses": [
+      {
+        "coursecode": "CT 785 03",
+        "coursetype": "Theory"
+      },
+      {
+        "coursecode": "CT 785 03",
+        "coursetype": "Practical"
+      }
+    ],
+    "availability": {}
   }
 ]

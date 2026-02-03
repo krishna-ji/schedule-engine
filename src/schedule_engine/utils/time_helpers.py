@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from schedule_engine.config import get_config
+from schedule_engine.config import get_config_or_default
 from schedule_engine.io.time_system import QuantumTimeSystem
 
 
@@ -16,7 +16,7 @@ def get_midday_break_quanta(qts: QuantumTimeSystem) -> dict[str, set[int]]:
     Returns:
         Dict mapping day_name -> set of quantum indices (within-day) for break period
     """
-    cfg = get_config()
+    cfg = get_config_or_default()
     break_quanta: dict[str, set[int]] = {}
 
     for day in qts.DAY_NAMES:

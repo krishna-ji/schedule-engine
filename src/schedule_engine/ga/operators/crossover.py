@@ -1,6 +1,6 @@
 import random
 
-from schedule_engine.config import get_config
+from schedule_engine.config import get_config_or_default
 from schedule_engine.domain.gene import SessionGene
 
 
@@ -50,7 +50,8 @@ def crossover_course_group_aware(
     # Verify both individuals have same (course, group) pairs
     # This catches any corruption early with a clear error message
     # Can be disabled via config for performance or experimental operators
-    if get_config().ga.validate_population_integrity:
+    cfg = get_config_or_default()
+    if cfg.ga.validate_population_integrity:
         keys1 = set(gene_map1.keys())
         keys2 = set(gene_map2.keys())
 
@@ -63,14 +64,14 @@ def crossover_course_group_aware(
                 f"   Missing in Individual 1: {missing_in_ind1}\n"
                 f"   Missing in Individual 2: {missing_in_ind2}\n"
                 f"   This indicates population corruption or invalid mutation.\n"
-                f"   To disable this check, set get_config().ga.validate_population_integrity=False in config/ga_params.py"
+                f"   To disable this check, set validate_population_integrity=False in config"
             )
 
     # For each (course, group) pair, probabilistically swap ATTRIBUTES
     # If validation is disabled, only swap for common keys (intersection)
     keys_to_process = (
         gene_map1.keys()
-        if get_config().ga.validate_population_integrity
+        if cfg.ga.validate_population_integrity
         else (set(gene_map1.keys()) & set(gene_map2.keys()))
     )
 

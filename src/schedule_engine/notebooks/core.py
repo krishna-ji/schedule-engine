@@ -125,16 +125,12 @@ def _init_detailed_metrics(stats: EvolutionStats) -> None:
         return
 
     from schedule_engine.constraints.registry import (
-        get_enabled_hard_constraints,
-        get_enabled_soft_constraints,
+        get_all_hard_constraints,
+        get_all_soft_constraints,
     )
 
-    stats.detailed_hard = {
-        name: [] for name in get_enabled_hard_constraints().keys()
-    }
-    stats.detailed_soft = {
-        name: [] for name in get_enabled_soft_constraints().keys()
-    }
+    stats.detailed_hard = {name: [] for name in get_all_hard_constraints().keys()}
+    stats.detailed_soft = {name: [] for name in get_all_soft_constraints().keys()}
 
 
 def track_nsga_metrics(
@@ -189,9 +185,7 @@ def track_nsga_metrics(
 
     if stats.reference_front:
         stats.igd.append(
-            calculate_inverted_generational_distance(
-                population, stats.reference_front
-            )
+            calculate_inverted_generational_distance(population, stats.reference_front)
         )
     else:
         stats.igd.append(0.0)
@@ -423,22 +417,55 @@ def create_evaluator(
     """
     Create a fitness evaluation function.
 
+    Uses all registered constraints directly from the registry (no config needed).
+    All hard and soft constraints are enabled with their default weights.
+
     Returns:
         Function that takes an individual and returns (hard_violations, soft_penalty)
     """
+    from schedule_engine.constraints.registry import (
+        get_all_hard_constraints,
+        get_all_soft_constraints,
+    )
+    from schedule_engine.io.decoder import decode_individual
 
-    from schedule_engine.ga.evaluator.fitness import evaluate as evaluate_fitness
+    # Cache constraint metadata at creation time
+    hard_constraints = get_all_hard_constraints()
+    soft_constraints = get_all_soft_constraints()
 
     def evaluate(individual: list[SessionGene]) -> tuple[float, float]:
         """Evaluate fitness: (hard violations, soft penalty)."""
-        hard, soft = evaluate_fitness(
+        sessions = decode_individual(
             individual,
             data.courses,
             data.instructors,
             data.groups,
             data.rooms,
         )
-        return float(hard), float(soft)
+
+        # Calculate hard constraint penalty
+        hard_penalty = 0.0
+        for name, metadata in hard_constraints.items():
+            func = metadata.function
+            weight = metadata.default_weight
+            if metadata.needs_courses:
+                penalty = func(sessions, data.courses)
+            else:
+                penalty = func(sessions)
+            hard_penalty += weight * penalty
+
+        # Calculate soft constraint penalty
+        soft_penalty = 0.0
+        for name, metadata in soft_constraints.items():
+            func = metadata.function
+            weight = metadata.default_weight
+            if metadata.needs_courses:
+                penalty = func(sessions, data.courses)
+            else:
+                penalty = func(sessions)
+            soft_penalty += weight * penalty
+
+        return float(hard_penalty), float(soft_penalty)
 
     return evaluate
 
@@ -451,14 +478,20 @@ def create_detailed_evaluator(
     """
     Create a detailed fitness evaluation function that returns individual constraint penalties.
 
+    Uses all registered constraints directly from the registry (no config needed).
+
     Returns:
         Function that returns (hard_total, soft_total, hard_breakdown, soft_breakdown)
     """
     from schedule_engine.constraints.registry import (
-        constraint_needs_courses,
-        get_enabled_hard_constraints,
-        get_enabled_soft_constraints,
+        get_all_hard_constraints,
+        get_all_soft_constraints,
     )
+    from schedule_engine.io.decoder import decode_individual
+
+    # Cache constraint metadata at creation time
+    hard_constraints = get_all_hard_constraints()
+    soft_constraints = get_all_soft_constraints()
 
     def evaluate_detailed(
         individual: list[SessionGene],
@@ -475,19 +508,19 @@ def create_detailed_evaluator(
         hard_breakdown: dict[str, float] = {}
         soft_breakdown: dict[str, float] = {}
 
-        # Hard constraints (weight=1 for all)
-        for name, info in get_enabled_hard_constraints().items():
-            func = info["function"]
-            if constraint_needs_courses(name):
+        # Hard constraints
+        for name, metadata in hard_constraints.items():
+            func = metadata.function
+            if metadata.needs_courses:
                 penalty = func(sessions, data.courses)
             else:
                 penalty = func(sessions)
             hard_breakdown[name] = float(penalty)
 
-        # Soft constraints (weight=1 for all)
-        for name, info in get_enabled_soft_constraints().items():
-            func = info["function"]
-            if constraint_needs_courses(name):
+        # Soft constraints
+        for name, metadata in soft_constraints.items():
+            func = metadata.function
+            if metadata.needs_courses:
                 penalty = func(sessions, data.courses)
             else:
                 penalty = func(sessions)
@@ -591,6 +624,8 @@ def get_constraint_breakdown(
     """
     Get detailed constraint violation breakdown.
 
+    Uses all registered constraints directly from the registry (no config needed).
+
     Args:
         individual: Individual to analyze
         data: NotebookData for context
@@ -607,23 +642,22 @@ def get_constraint_breakdown(
     )
 
     from schedule_engine.constraints.registry import (
-        constraint_needs_courses,
-        get_enabled_hard_constraints,
-        get_enabled_soft_constraints,
+        get_all_hard_constraints,
+        get_all_soft_constraints,
     )
 
     breakdown: dict[str, int | float] = {}
 
-    for name, info in get_enabled_hard_constraints().items():
-        func = info["function"]
-        if constraint_needs_courses(name):
+    for name, metadata in get_all_hard_constraints().items():
+        func = metadata.function
+        if metadata.needs_courses:
             breakdown[name] = func(sessions, data.courses)
         else:
             breakdown[name] = func(sessions)
 
-    for name, info in get_enabled_soft_constraints().items():
-        func = info["function"]
-        if constraint_needs_courses(name):
+    for name, metadata in get_all_soft_constraints().items():
+        func = metadata.function
+        if metadata.needs_courses:
             breakdown[name] = func(sessions, data.courses)
         else:
             breakdown[name] = func(sessions)
@@ -771,12 +805,12 @@ def run_nsga2(
 
             # Split into hard and soft
             from schedule_engine.constraints.registry import (
-                get_enabled_hard_constraints,
-                get_enabled_soft_constraints,
+                get_all_hard_constraints,
+                get_all_soft_constraints,
             )
 
-            hard_names = set(get_enabled_hard_constraints().keys())
-            soft_names = set(get_enabled_soft_constraints().keys())
+            hard_names = set(get_all_hard_constraints().keys())
+            soft_names = set(get_all_soft_constraints().keys())
 
             hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
             soft_bd = {k: v for k, v in breakdown.items() if k in soft_names}

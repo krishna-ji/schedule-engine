@@ -14,10 +14,10 @@ from collections.abc import Iterable
 
 import numpy as np
 
-from schedule_engine.config import get_config
+from schedule_engine.config import get_config_or_default
 from schedule_engine.constraints.registry import soft_constraint
-from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.domain.session import CourseSession
+from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.time_helpers import (
     get_midday_break_quanta,
     quantum_to_day_and_within_day,
@@ -46,7 +46,7 @@ def student_schedule_compactness(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty points for schedule gaps (excluding break time gaps).
     """
-    cfg = get_config()
+    cfg = get_config_or_default()
     gap_penalty = (
         cfg.soft_constraints.student_schedule_compactness.gap_penalty_per_quantum or 1
     )
@@ -111,7 +111,7 @@ def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty points for schedule gaps (excluding break time gaps).
     """
-    cfg = get_config()
+    cfg = get_config_or_default()
     gap_penalty = (
         cfg.soft_constraints.instructor_schedule_compactness.gap_penalty_per_quantum
         or 1
@@ -177,7 +177,7 @@ def student_lunch_break(sessions: list[CourseSession]) -> int:
     Returns:
         Total lunch break violation penalty across all groups and days.
     """
-    cfg = get_config()
+    cfg = get_config_or_default()
     distance_penalty = (
         cfg.soft_constraints.student_lunch_break.distance_penalty_per_quantum or 1
     )
@@ -256,7 +256,7 @@ def session_continuity(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty for non-preferred block configurations.
     """
-    cfg = get_config().time
+    cfg = get_config_or_default().time
 
     penalty = 0
 
@@ -353,7 +353,7 @@ def paired_cohort_practical_alignment(
     cohorts attend practicals in perfectly parallel time windows.
     """
 
-    cfg = get_config()
+    cfg = get_config_or_default()
     soft_cfg = getattr(cfg.soft_constraints, "paired_cohort_practical_alignment", None)
     if soft_cfg is not None and getattr(soft_cfg, "enabled", True) is False:
         return 0
@@ -481,7 +481,7 @@ def _get_break_window_quanta(
     Returns:
         Dict mapping day_name -> set of within-day quanta for break window
     """
-    cfg = get_config()
+    cfg = get_config_or_default()
     break_windows: dict[str, set[int]] = {}
 
     for day in qts.DAY_NAMES:
@@ -549,7 +549,7 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty for break placement violations
     """
-    cfg = get_config()
+    cfg = get_config_or_default()
 
     if not cfg.time.enforce_break_placement:
         return 0  # Constraint disabled

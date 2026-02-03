@@ -231,12 +231,12 @@ def print_summary(
     if breakdown:
         lines.append(f"\n Best Solution Constraint Breakdown:")
         from schedule_engine.constraints.registry import (
-            get_enabled_hard_constraints,
-            get_enabled_soft_constraints,
+            get_all_hard_constraints,
+            get_all_soft_constraints,
         )
 
-        hard_registry = get_enabled_hard_constraints()
-        soft_registry = get_enabled_soft_constraints()
+        hard_registry = get_all_hard_constraints()
+        soft_registry = get_all_soft_constraints()
         hard_names = set(hard_registry.keys())
         soft_names = set(soft_registry.keys())
 
@@ -255,11 +255,11 @@ def print_summary(
             )
             if is_hard:
                 hard_total_raw += float(value)
-                weight = hard_registry.get(name, {}).get("weight", 1.0)
+                weight = hard_registry.get(name).default_weight if hard_registry.get(name) else 1.0
                 hard_total_weighted += float(value) * float(weight)
             elif name in soft_names:
                 soft_total_raw += float(value)
-                weight = soft_registry.get(name, {}).get("weight", 1.0)
+                weight = soft_registry.get(name).default_weight if soft_registry.get(name) else 1.0
                 soft_total_weighted += float(value) * float(weight)
 
         lines.append(
