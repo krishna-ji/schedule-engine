@@ -15,7 +15,7 @@ from collections.abc import Iterable
 import numpy as np
 
 from schedule_engine.config import get_config_or_default
-from schedule_engine.constraints.registry import soft_constraint
+
 from schedule_engine.domain.session import CourseSession
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.time_helpers import (
@@ -27,12 +27,6 @@ from schedule_engine.utils.time_helpers import (
 _QTS = QuantumTimeSystem()
 
 
-@soft_constraint(
-    name="student_schedule_compactness",
-    description="Minimizes gaps in student schedules",
-    default_weight=1.5,
-    needs_courses=False,
-)
 def student_schedule_compactness(sessions: list[CourseSession]) -> int:
     """
     Encourages compact student schedules by minimizing idle time gaps.
@@ -92,12 +86,6 @@ def student_schedule_compactness(sessions: list[CourseSession]) -> int:
 
 
 # 2. Instructor Compactness
-@soft_constraint(
-    name="instructor_schedule_compactness",
-    description="Minimizes gaps in instructor schedules",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
     """
     Encourages compact instructor schedules by minimizing idle time gaps.
@@ -158,12 +146,6 @@ def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
 
 
 # 3. Group Midday Break Violation
-@soft_constraint(
-    name="student_lunch_break",
-    description="Encourages students to have midday break time",
-    default_weight=1.2,
-    needs_courses=False,
-)
 def student_lunch_break(sessions: list[CourseSession]) -> int:
     """
     Encourages students to have free time during the midday break period.
@@ -218,12 +200,6 @@ def student_lunch_break(sessions: list[CourseSession]) -> int:
     return penalty
 
 
-@soft_constraint(
-    name="session_continuity",
-    description="Encourages sessions to be in appropriate continuous blocks",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def session_continuity(sessions: list[CourseSession]) -> int:
     """
     Encourages sessions to be scheduled in continuous, appropriately-sized blocks.
@@ -329,14 +305,6 @@ def session_continuity(sessions: list[CourseSession]) -> int:
     return penalty
 
 
-@soft_constraint(
-    name="paired_cohort_practical_alignment",
-    description=(
-        "Encourages parallel practical sessions for paired cohorts that share practical courses"
-    ),
-    default_weight=1.0,
-    needs_courses=True,
-)
 def paired_cohort_practical_alignment(
     sessions: list[CourseSession],
     course_map: dict[tuple[str, ...], object],
@@ -528,12 +496,6 @@ def _build_group_day_schedules(
     return dict(group_day_map)
 
 
-@soft_constraint(
-    name="break_placement_compliance",
-    description="Ensures groups have proper break time during designated windows",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def break_placement_compliance(sessions: list[CourseSession]) -> int:
     """
     Penalizes schedules where groups don't have breaks during designated windows.

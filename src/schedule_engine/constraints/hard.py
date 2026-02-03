@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from collections import defaultdict
 import logging
+from collections import defaultdict
 
-from schedule_engine.constraints.registry import hard_constraint
-from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.session import CourseSession
+from schedule_engine.io.time_system import QuantumTimeSystem
 
 # Time system singleton
 _QTS = QuantumTimeSystem()
@@ -15,12 +14,6 @@ _WARNED_EMPTY_QUALIFICATIONS: set[tuple[str, str]] = set()
 logger = logging.getLogger(__name__)
 
 
-@hard_constraint(
-    name="student_group_exclusivity",
-    description="Ensures each student group can only be in one session at a time",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def student_group_exclusivity(sessions: list[CourseSession]) -> int:
     """
     Ensures each student group can only be in one session at a time.
@@ -51,12 +44,6 @@ def student_group_exclusivity(sessions: list[CourseSession]) -> int:
     return conflict_count
 
 
-@hard_constraint(
-    name="instructor_exclusivity",
-    description="Ensures each instructor can only teach one session at a time",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def instructor_exclusivity(sessions: list[CourseSession]) -> int:
     """
     Ensures each instructor can only teach one session at a time.
@@ -78,12 +65,6 @@ def instructor_exclusivity(sessions: list[CourseSession]) -> int:
     return conflicts
 
 
-@hard_constraint(
-    name="instructor_qualifications",
-    description="Ensures instructors are qualified to teach their assigned courses",
-    default_weight=1.0,
-    needs_courses=True,
-)
 def instructor_qualifications(
     sessions: list[CourseSession], course_map: dict[tuple, Course]
 ) -> int:
@@ -149,12 +130,6 @@ def instructor_qualifications(
     return violations
 
 
-@hard_constraint(
-    name="room_suitability",
-    description="Ensures rooms are suitable for the type of course being taught",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def room_suitability(sessions: list[CourseSession]) -> int:
     """
     Ensures rooms are suitable for the type of course being taught.
@@ -194,12 +169,6 @@ def room_suitability(sessions: list[CourseSession]) -> int:
     return violations
 
 
-@hard_constraint(
-    name="instructor_time_availability",
-    description="Ensures instructors are only scheduled during their available time windows",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def instructor_time_availability(sessions: list[CourseSession]) -> int:
     """
     Ensures instructors only teach during their available time slots.
@@ -233,12 +202,6 @@ def instructor_time_availability(sessions: list[CourseSession]) -> int:
     return violations
 
 
-@hard_constraint(
-    name="room_time_availability",
-    description="Ensures rooms are only used during their available time windows",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def room_time_availability(sessions: list[CourseSession]) -> int:
     """
     Ensures rooms are only used during their available time slots.
@@ -268,12 +231,6 @@ def room_time_availability(sessions: list[CourseSession]) -> int:
     return violations
 
 
-@hard_constraint(
-    name="course_completeness",
-    description="Ensures courses have the correct number of sessions per group",
-    default_weight=1.0,
-    needs_courses=True,
-)
 def course_completeness(
     sessions: list[CourseSession], course_map: dict[tuple, Course]
 ) -> int:
@@ -330,12 +287,6 @@ def course_completeness(
     return violations
 
 
-@hard_constraint(
-    name="room_exclusivity",
-    description="Ensures rooms are not double-booked",
-    default_weight=1.0,
-    needs_courses=False,
-)
 def room_exclusivity(sessions: list[CourseSession]) -> int:
     """
     Ensures each room can only host one session at a time.
