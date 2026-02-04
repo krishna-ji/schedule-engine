@@ -639,6 +639,370 @@ def repair_paired_cohort_practicals(
     return fixes
 
 
+# ================
+# 9. STUDENT SCHEDULE COMPACTNESS REPAIR (Priority 9)
+# ================
+
+
+@repair_operator(
+    name="repair_student_compactness",
+    description="Reduce idle gaps in student schedules by clustering sessions",
+    priority=9,
+    modifies_length=False,
+)
+def repair_student_compactness(
+    individual: list[SessionGene], context: SchedulingContext
+) -> int:
+    """
+    Improve student schedule compactness by moving isolated sessions closer to clusters.
+
+    Strategy:
+    1. For each group, identify sessions on each day
+    2. Find gaps between sessions (excluding lunch break)
+    3. Try to shift outer sessions toward the cluster center
+    4. Validate no new hard constraint violations
+
+    Returns:
+        Number of genes repositioned to reduce gaps.
+    """
+    from schedule_engine.io.time_system import QuantumTimeSystem
+    from schedule_engine.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
+
+    qts = QuantumTimeSystem()
+    break_quanta_by_day = get_midday_break_quanta(qts)
+    fixes = 0
+
+    # Build group -> day -> list of (gene_idx, gene, within_day_start)
+    group_day_genes: dict[str, dict[str, list[tuple[int, SessionGene, int]]]] = (
+        defaultdict(lambda: defaultdict(list))
+    )
+
+    for gene_idx, gene in enumerate(individual):
+        for group_id in gene.group_ids:
+            day, within_day = quantum_to_day_and_within_day(gene.start_quanta, qts)
+            group_day_genes[group_id][day].append((gene_idx, gene, within_day))
+
+    # Process each group-day combination
+    for group_id, days in group_day_genes.items():
+        for day_name, gene_list in days.items():
+            if len(gene_list) < 2:
+                continue  # Need at least 2 sessions to have gaps
+
+            # Sort by start time
+            sorted_genes = sorted(gene_list, key=lambda x: x[2])
+            break_quanta = break_quanta_by_day.get(day_name, set())
+
+            # Find the "center of mass" of sessions (median start time)
+            starts = [g[2] for g in sorted_genes]
+            center = starts[len(starts) // 2]
+
+            # Try to move outlier sessions closer to center
+            for gene_idx, gene, within_day in sorted_genes:
+                # Calculate gap to nearest neighbor
+                is_outlier = abs(within_day - center) > gene.num_quanta + 2
+
+                if not is_outlier:
+                    continue
+
+                # Find better position closer to center
+                day_offset = qts.day_quanta_offset.get(day_name, 0)
+                if day_offset is None:
+                    continue
+
+                # Target: move toward center, avoiding break time
+                if within_day < center:
+                    # Move later (toward center)
+                    target_within_day = min(center - gene.num_quanta, within_day + 2)
+                else:
+                    # Move earlier (toward center)
+                    target_within_day = max(center, within_day - 2)
+
+                # Skip if target is in break window
+                target_quanta = set(
+                    range(target_within_day, target_within_day + gene.num_quanta)
+                )
+                if target_quanta & break_quanta:
+                    continue
+
+                # Convert to absolute quanta
+                new_start = day_offset + target_within_day
+
+                # Validate no conflicts
+                if _is_move_valid(individual, gene, new_start, context):
+                    gene.start_quanta = new_start
+                    fixes += 1
+                    break  # One fix per group-day to avoid cascading issues
+
+    return fixes
+
+
+# ================
+# 10. INSTRUCTOR SCHEDULE COMPACTNESS REPAIR (Priority 10)
+# ================
+
+
+@repair_operator(
+    name="repair_instructor_compactness",
+    description="Reduce idle gaps in instructor schedules by clustering sessions",
+    priority=10,
+    modifies_length=False,
+)
+def repair_instructor_compactness(
+    individual: list[SessionGene], context: SchedulingContext
+) -> int:
+    """
+    Improve instructor schedule compactness by moving isolated sessions closer to clusters.
+
+    Strategy:
+    1. For each instructor, identify sessions on each day
+    2. Find gaps between sessions (excluding lunch break)
+    3. Try to shift outer sessions toward the cluster center
+    4. Validate no new hard constraint violations
+
+    Returns:
+        Number of genes repositioned to reduce gaps.
+    """
+    from schedule_engine.io.time_system import QuantumTimeSystem
+    from schedule_engine.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
+
+    qts = QuantumTimeSystem()
+    break_quanta_by_day = get_midday_break_quanta(qts)
+    fixes = 0
+
+    # Build instructor -> day -> list of (gene_idx, gene, within_day_start)
+    instructor_day_genes: dict[str, dict[str, list[tuple[int, SessionGene, int]]]] = (
+        defaultdict(lambda: defaultdict(list))
+    )
+
+    for gene_idx, gene in enumerate(individual):
+        day, within_day = quantum_to_day_and_within_day(gene.start_quanta, qts)
+        instructor_day_genes[gene.instructor_id][day].append(
+            (gene_idx, gene, within_day)
+        )
+
+    # Process each instructor-day combination
+    for instructor_id, days in instructor_day_genes.items():
+        for day_name, gene_list in days.items():
+            if len(gene_list) < 2:
+                continue  # Need at least 2 sessions to have gaps
+
+            # Sort by start time
+            sorted_genes = sorted(gene_list, key=lambda x: x[2])
+            break_quanta = break_quanta_by_day.get(day_name, set())
+
+            # Find the "center of mass" of sessions (median start time)
+            starts = [g[2] for g in sorted_genes]
+            center = starts[len(starts) // 2]
+
+            # Try to move outlier sessions closer to center
+            for gene_idx, gene, within_day in sorted_genes:
+                # Calculate gap to nearest neighbor
+                is_outlier = abs(within_day - center) > gene.num_quanta + 2
+
+                if not is_outlier:
+                    continue
+
+                # Find better position closer to center
+                day_offset = qts.day_quanta_offset.get(day_name, 0)
+                if day_offset is None:
+                    continue
+
+                # Target: move toward center, avoiding break time
+                if within_day < center:
+                    # Move later (toward center)
+                    target_within_day = min(center - gene.num_quanta, within_day + 2)
+                else:
+                    # Move earlier (toward center)
+                    target_within_day = max(center, within_day - 2)
+
+                # Skip if target is in break window
+                target_quanta = set(
+                    range(target_within_day, target_within_day + gene.num_quanta)
+                )
+                if target_quanta & break_quanta:
+                    continue
+
+                # Convert to absolute quanta
+                new_start = day_offset + target_within_day
+
+                # Validate no conflicts
+                if _is_move_valid(individual, gene, new_start, context):
+                    gene.start_quanta = new_start
+                    fixes += 1
+                    break  # One fix per instructor-day to avoid cascading issues
+
+    return fixes
+
+
+# ================
+# 11. STUDENT LUNCH BREAK REPAIR (Priority 11)
+# ================
+
+
+@repair_operator(
+    name="repair_student_lunch_break",
+    description="Free up lunch break time for student groups",
+    priority=11,
+    modifies_length=False,
+)
+def repair_student_lunch_break(
+    individual: list[SessionGene], context: SchedulingContext
+) -> int:
+    """
+    Improve student lunch breaks by moving sessions out of the midday window.
+
+    Strategy:
+    1. For each group-day, check if lunch break is occupied
+    2. Find sessions that overlap with lunch window
+    3. Try to shift them to before or after lunch
+    4. Validate no new hard constraint violations
+
+    Returns:
+        Number of genes repositioned to free up lunch time.
+    """
+    from schedule_engine.io.time_system import QuantumTimeSystem
+    from schedule_engine.utils.time_helpers import (
+        get_midday_break_quanta,
+        quantum_to_day_and_within_day,
+    )
+
+    qts = QuantumTimeSystem()
+    break_quanta_by_day = get_midday_break_quanta(qts)
+    fixes = 0
+
+    # Build group -> day -> list of genes that overlap with lunch
+    group_day_lunch_genes: dict[str, dict[str, list[tuple[int, SessionGene]]]] = (
+        defaultdict(lambda: defaultdict(list))
+    )
+
+    for gene_idx, gene in enumerate(individual):
+        day, _ = quantum_to_day_and_within_day(gene.start_quanta, qts)
+        break_quanta = break_quanta_by_day.get(day, set())
+
+        if not break_quanta:
+            continue
+
+        # Check if gene overlaps with lunch break
+        gene_within_day_quanta = set()
+        for q in range(gene.start_quanta, gene.end_quanta):
+            _, within_day = quantum_to_day_and_within_day(q, qts)
+            gene_within_day_quanta.add(within_day)
+
+        if gene_within_day_quanta & break_quanta:
+            for group_id in gene.group_ids:
+                group_day_lunch_genes[group_id][day].append((gene_idx, gene))
+
+    # Process each group-day with lunch violations
+    for group_id, days in group_day_lunch_genes.items():
+        for day_name, gene_list in days.items():
+            if not gene_list:
+                continue
+
+            break_quanta = break_quanta_by_day.get(day_name, set())
+            day_offset = qts.day_quanta_offset.get(day_name, 0)
+            day_quanta_count = qts.day_quanta_count.get(day_name, 14)
+
+            if day_offset is None or day_quanta_count is None:
+                continue
+
+            min_break = min(break_quanta) if break_quanta else 4
+            max_break = max(break_quanta) if break_quanta else 8
+
+            # Try to move ONE session out of lunch (limit work)
+            for gene_idx, gene in gene_list[:3]:  # Limit to 3 attempts
+                duration = gene.num_quanta
+
+                # Generate candidate slots: before lunch or after lunch
+                before_slots = list(range(0, max(0, min_break - duration + 1)))
+                after_slots = list(
+                    range(max_break + 1, day_quanta_count - duration + 1)
+                )
+
+                # Prefer slots closer to lunch window (less disruptive)
+                before_slots.sort(reverse=True)  # Latest before lunch first
+                after_slots.sort()  # Earliest after lunch first
+
+                candidate_slots = before_slots[:5] + after_slots[:5]
+
+                for target_within_day in candidate_slots:
+                    new_start = day_offset + target_within_day
+
+                    # Validate no conflicts
+                    if _is_move_valid(individual, gene, new_start, context):
+                        gene.start_quanta = new_start
+                        fixes += 1
+                        break  # Move on to next group-day
+
+                if fixes > 0:
+                    break  # One fix per group-day
+
+    return fixes
+
+
+# ================
+# MOVE VALIDATION HELPER
+# ================
+
+
+def _is_move_valid(
+    individual: list[SessionGene],
+    gene: SessionGene,
+    new_start: int,
+    context: SchedulingContext,
+) -> bool:
+    """
+    Check if moving a gene to new_start creates any hard constraint violations.
+
+    Validates:
+    - Instructor exclusivity (no double-booking)
+    - Room exclusivity (no double-booking)
+    - Group exclusivity (no overlapping sessions for same group)
+    - Instructor availability (part-time instructors)
+    - Time bounds (within available quanta)
+
+    Returns:
+        True if move is valid, False otherwise.
+    """
+    new_end = new_start + gene.num_quanta
+
+    # Check time bounds
+    if new_start < 0 or new_end > max(context.available_quanta) + 1:
+        return False
+
+    # Check instructor availability (part-time)
+    instructor = context.instructors.get(gene.instructor_id)
+    if instructor and not instructor.is_full_time:
+        for q in range(new_start, new_end):
+            if q not in instructor.available_quanta:
+                return False
+
+    # Build conflict map excluding current gene
+    occupied = _build_occupied_quanta_map(individual, gene)
+
+    # Check no conflicts in new position
+    for q in range(new_start, new_end):
+        # Instructor conflict
+        if gene.instructor_id in occupied["instructors"].get(q, set()):
+            return False
+
+        # Room conflict
+        if gene.room_id in occupied["rooms"].get(q, set()):
+            return False
+
+        # Group conflicts
+        for group_id in gene.group_ids:
+            if group_id in occupied["groups"].get(q, set()):
+                return False
+
+    return True
+
+
 def _find_conflict_free_slot(
     individual: list[SessionGene],
     current_gene: SessionGene,
