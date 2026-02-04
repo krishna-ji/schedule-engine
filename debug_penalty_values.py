@@ -112,7 +112,7 @@ def main() -> None:
     print(f"   Cohort pairs in context: {len(context.cohort_pairs or [])}")
 
     if not cohort_pairs_in_config and context.cohort_pairs:
-        print("   ❌ ISSUE: Config doesn't have cohort pairs, but context does!")
+        print("    ISSUE: Config doesn't have cohort pairs, but context does!")
         print("   ➜ The constraint function gets pairs from config, not context")
 
     # Test the constraint with proper debugging

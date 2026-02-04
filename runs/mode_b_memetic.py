@@ -85,8 +85,8 @@ def main() -> None:
     np.random.seed(SEED)
 
     # GA Parameters
-    POP_SIZE = 10
-    NGEN = 100
+    POP_SIZE = 20
+    NGEN = 1000
     CXPB = 0.8
     MUTPB = 0.4
     FITNESS_WEIGHTS = (-1.0, -1.0)  # Align with other Mode B runs for fair comparison

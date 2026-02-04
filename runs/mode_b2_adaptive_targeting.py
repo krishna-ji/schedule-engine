@@ -86,7 +86,7 @@ def main() -> None:
 
     # GA Parameters
     POP_SIZE = 10
-    NGEN = 4000
+    NGEN = 2000
     CXPB = 0.9
     MUTPB = 0.2
     FITNESS_WEIGHTS = (-1.0, -1.0)

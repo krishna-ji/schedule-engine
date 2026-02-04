@@ -59,7 +59,7 @@ def main() -> None:
         print(f"\nPractical courses with paired cohorts: {paired_practical_count}")
 
     else:
-        print("❌ NO PRACTICAL COURSES FOUND!")
+        print(" NO PRACTICAL COURSES FOUND!")
         print("→ This explains why paired_cohort penalty remains 0")
         print("→ All courses are theory/lecture type, no practicals to align")
 
