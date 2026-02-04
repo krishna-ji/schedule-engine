@@ -95,7 +95,7 @@ def _extract_time_config(flat_dict: dict[str, Any]) -> dict[str, Any]:
         "break_window_start": flat_dict.get("break_window_start", "12:00"),
         "break_window_end": flat_dict.get("break_window_end", "14:00"),
         "break_min_quanta": flat_dict.get("break_min_quanta", 1),
-        "break_violation_penalty": flat_dict.get("break_violation_penalty", 50),
+        "break_violation_penalty": flat_dict.get("break_violation_penalty", 1),
         "max_session_coalescence": flat_dict.get("max_session_coalescence", 3),
         "max_sessions_per_day": flat_dict.get("max_sessions_per_day", 3),
         "preferred_block_size_min": flat_dict.get("preferred_block_size_min", 1),
@@ -207,9 +207,7 @@ def _extract_repair_config(flat_dict: dict[str, Any]) -> dict[str, Any]:
         "budget_ms_per_generation": flat_dict.get(
             "repair_budget_ms_per_generation", 50
         ),
-        "max_steps_per_individual": flat_dict.get(
-            "repair_max_steps_per_individual", 5
-        ),
+        "max_steps_per_individual": flat_dict.get("repair_max_steps_per_individual", 5),
         "max_candidates_per_operator": flat_dict.get(
             "repair_max_candidates_per_operator", 20
         ),

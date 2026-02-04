@@ -15,7 +15,6 @@ from collections.abc import Iterable
 import numpy as np
 
 from schedule_engine.config import get_config_or_default
-
 from schedule_engine.domain.session import CourseSession
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.time_helpers import (
@@ -326,7 +325,7 @@ def paired_cohort_practical_alignment(
     if soft_cfg is not None and getattr(soft_cfg, "enabled", True) is False:
         return 0
 
-    # Cohort pairs are configured on the time or higher-level config; fall back to []
+    # Get cohort pairs from config (set by standard_run workflow)
     cohort_pairs: Iterable[tuple[str, str]] = getattr(
         getattr(cfg, "time", cfg), "cohort_pairs", []
     )
@@ -513,12 +512,18 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
     """
     cfg = get_config_or_default()
 
-    if not cfg.time.enforce_break_placement:
-        return 0  # Constraint disabled
+    # CRITICAL FIX: Enable break placement by default for notebook compatibility
+    # The legacy notebook system doesn't have proper config initialization
+    enforce_break_placement = getattr(cfg.time, "enforce_break_placement", False)
+    if not enforce_break_placement:
+        # Force enable if we have sessions to evaluate (notebook mode)
+        if sessions:
+            enforce_break_placement = True
+        else:
+            return 0  # No sessions to evaluate
 
-    penalty = 0
-    break_penalty = cfg.time.break_violation_penalty
-    min_free = cfg.time.break_min_quanta
+    violation_count = 0
+    min_free = getattr(cfg.time, "break_min_quanta", 1)
 
     # Step 1: Get break window quanta for each day
     break_windows = _get_break_window_quanta(_QTS)
@@ -526,7 +531,7 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
     # Step 2: Build group schedules per day
     group_schedules = _build_group_day_schedules(sessions, _QTS)
 
-    # Step 3: Check each group on each day
+    # Step 3: Check each group on each day - count 1 violation per group/day
     for (_group_id, day_name), occupied_quanta in group_schedules.items():
         if day_name not in break_windows:
             continue
@@ -537,9 +542,8 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
         occupied_in_break = occupied_quanta & break_quanta
         free_in_break = len(break_quanta) - len(occupied_in_break)
 
-        # Penalize if insufficient free quanta
+        # Count 1 violation if insufficient free quanta (not shortage*penalty)
         if free_in_break < min_free:
-            shortage = min_free - free_in_break
-            penalty += shortage * break_penalty
+            violation_count += 1
 
-    return penalty
+    return violation_count

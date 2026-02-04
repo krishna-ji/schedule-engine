@@ -25,6 +25,7 @@ from deap import base, creator, tools
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from schedule_engine.ga.operators.repair_engine import RepairEngine
 from schedule_engine.io.decoder import decode_individual
 from schedule_engine.notebooks.core import (
     EvolutionStats,
@@ -40,7 +41,6 @@ from schedule_engine.notebooks.core import (
     stats_to_ga_metrics,
     track_nsga_metrics,
 )
-from schedule_engine.ga.operators.repair_engine import RepairEngine
 from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
 from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
@@ -85,8 +85,8 @@ def main() -> None:
     np.random.seed(SEED)
 
     # GA Parameters
-    POP_SIZE = 100
-    NGEN = 500
+    POP_SIZE = 10
+    NGEN = 100
     CXPB = 0.8
     MUTPB = 0.4
     FITNESS_WEIGHTS = (-1.0, -1.0)  # Align with other Mode B runs for fair comparison

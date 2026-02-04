@@ -313,6 +313,11 @@ def load_data(
     link_courses_and_groups(courses, groups)
     link_courses_and_instructors(courses, instructors)
 
+    # CRITICAL FIX: Derive cohort pairs from Groups.json subgroup structure
+    from schedule_engine.io.data_loader import derive_cohort_pairs_from_groups
+
+    cohort_pairs = derive_cohort_pairs_from_groups(str(data_dir / "Groups.json"))
+
     # Create scheduling context
     available_quanta = list(range(qts.total_quanta))
     context = SchedulingContext(
@@ -321,6 +326,7 @@ def load_data(
         instructors=instructors,
         rooms=rooms,
         available_quanta=available_quanta,
+        cohort_pairs=cohort_pairs,  # ADD COHORT PAIRS TO CONTEXT
     )
 
     return NotebookData(
