@@ -9,16 +9,15 @@ Design goals:
 
 from __future__ import annotations
 
+import logging
 import random
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-import logging
 from typing import Callable, Iterable, Protocol
 
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.types import SchedulingContext
-
 
 FitnessFn = Callable[[list[SessionGene]], tuple[float, float]]
 
@@ -107,8 +106,7 @@ class RepairOperator(Protocol):
         state: ViolationState,
         max_candidates: int,
         rng: random.Random,
-    ) -> list[RepairCandidate]:
-        ...
+    ) -> list[RepairCandidate]: ...
 
 
 class RoundRobinPolicy:
@@ -357,32 +355,50 @@ class MoveTimeOperator:
         if not individual:
             return []
 
-        target_idx = state.gene_order[0]
-        gene = individual[target_idx]
-        num_quanta = gene.num_quanta
-
-        # Build list of possible starts (sampled).
-        available = sorted(state.available_quanta)
-        if not available:
-            return []
-        max_available = max(available)
-        possible_starts: list[int] = []
-        for start_q in available:
-            end_q = start_q + num_quanta
-            if end_q > max_available + 1:
-                continue
-            if any(q not in state.available_quanta for q in range(start_q, end_q)):
-                continue
-            possible_starts.append(start_q)
-
-        rng.shuffle(possible_starts)
         candidates = []
-        for start_q in possible_starts[:max_candidates]:
-            if not _is_instructor_available(gene.instructor_id, gene, start_q, context):
+        # Target top-3 violated genes (not just first)
+        target_indices = state.gene_order[:3]
+
+        for target_idx in target_indices:
+            gene = individual[target_idx]
+            num_quanta = gene.num_quanta
+
+            # Build list of possible starts (sampled).
+            available = sorted(state.available_quanta)
+            if not available:
                 continue
-            if not _is_time_conflict_free(gene, start_q, state):
-                continue
-            candidates.append(RepairCandidate(gene_idx=target_idx, new_start=start_q))
+            max_available = max(available)
+            possible_starts: list[int] = []
+            for start_q in available:
+                end_q = start_q + num_quanta
+                if end_q > max_available + 1:
+                    continue
+                if any(q not in state.available_quanta for q in range(start_q, end_q)):
+                    continue
+                # Skip current position
+                if start_q == gene.start_quanta:
+                    continue
+                possible_starts.append(start_q)
+
+            rng.shuffle(possible_starts)
+
+            # Relaxed filtering: only require instructor availability (hard requirement)
+            # Let the evaluation decide if conflicts are reduced
+            for start_q in possible_starts[: max_candidates // len(target_indices) + 5]:
+                if not _is_instructor_available(
+                    gene.instructor_id, gene, start_q, context
+                ):
+                    continue
+                # REMOVED: _is_time_conflict_free check - let evaluation decide
+                candidates.append(
+                    RepairCandidate(gene_idx=target_idx, new_start=start_q)
+                )
+                if len(candidates) >= max_candidates:
+                    break
+
+            if len(candidates) >= max_candidates:
+                break
+
         return candidates
 
 
@@ -400,22 +416,32 @@ class SwapRoomOperator:
         if not individual:
             return []
 
-        target_idx = state.gene_order[0]
-        gene = individual[target_idx]
-
-        room_ids = list(context.rooms.keys())
-        rng.shuffle(room_ids)
         candidates = []
-        for room_id in room_ids:
-            if room_id == gene.room_id:
-                continue
-            if not _is_room_suitable(room_id, gene, context):
-                continue
-            if not _is_room_conflict_free(gene, room_id, state):
-                continue
-            candidates.append(RepairCandidate(gene_idx=target_idx, new_room_id=room_id))
+        # Target top-3 violated genes (not just first)
+        target_indices = state.gene_order[:3]
+
+        for target_idx in target_indices:
+            gene = individual[target_idx]
+
+            room_ids = list(context.rooms.keys())
+            rng.shuffle(room_ids)
+
+            for room_id in room_ids:
+                if room_id == gene.room_id:
+                    continue
+                # Room suitability is a hard requirement - keep this check
+                if not _is_room_suitable(room_id, gene, context):
+                    continue
+                # REMOVED: _is_room_conflict_free check - let evaluation decide
+                candidates.append(
+                    RepairCandidate(gene_idx=target_idx, new_room_id=room_id)
+                )
+                if len(candidates) >= max_candidates:
+                    break
+
             if len(candidates) >= max_candidates:
                 break
+
         return candidates
 
 
@@ -433,28 +459,39 @@ class ReassignInstructorOperator:
         if not individual:
             return []
 
-        target_idx = state.gene_order[0]
-        gene = individual[target_idx]
-
-        instructor_ids = list(context.instructors.keys())
-        rng.shuffle(instructor_ids)
         candidates = []
-        for instructor_id in instructor_ids:
-            if instructor_id == gene.instructor_id:
-                continue
-            if not _is_instructor_qualified(instructor_id, gene, context):
-                continue
-            if not _is_instructor_available(
-                instructor_id, gene, gene.start_quanta, context
-            ):
-                continue
-            if not _is_instructor_conflict_free(gene, instructor_id, state):
-                continue
-            candidates.append(
-                RepairCandidate(gene_idx=target_idx, new_instructor_id=instructor_id)
-            )
+        # Target top-3 violated genes (not just first)
+        target_indices = state.gene_order[:3]
+
+        for target_idx in target_indices:
+            gene = individual[target_idx]
+
+            instructor_ids = list(context.instructors.keys())
+            rng.shuffle(instructor_ids)
+
+            for instructor_id in instructor_ids:
+                if instructor_id == gene.instructor_id:
+                    continue
+                # Qualification is a hard requirement - keep this check
+                if not _is_instructor_qualified(instructor_id, gene, context):
+                    continue
+                # Availability is a hard requirement - keep this check
+                if not _is_instructor_available(
+                    instructor_id, gene, gene.start_quanta, context
+                ):
+                    continue
+                # REMOVED: _is_instructor_conflict_free check - let evaluation decide
+                candidates.append(
+                    RepairCandidate(
+                        gene_idx=target_idx, new_instructor_id=instructor_id
+                    )
+                )
+                if len(candidates) >= max_candidates:
+                    break
+
             if len(candidates) >= max_candidates:
                 break
+
         return candidates
 
 
@@ -530,7 +567,9 @@ class RepairEngine:
             if budget_ms > 0 and (time.perf_counter() - start_time) * 1000 > budget_ms:
                 break
 
-            state = _build_violation_state(individual, self.context, current_hard, current_soft)
+            state = _build_violation_state(
+                individual, self.context, current_hard, current_soft
+            )
 
             if forced_operator:
                 operator_name = forced_operator
@@ -662,9 +701,7 @@ class RepairEngine:
         )
 
     @staticmethod
-    def _is_lex_better(
-        a: tuple[float, float], b: tuple[float, float]
-    ) -> bool:
+    def _is_lex_better(a: tuple[float, float], b: tuple[float, float]) -> bool:
         return (a[0], a[1]) < (b[0], b[1])
 
     def _evaluate_candidate(

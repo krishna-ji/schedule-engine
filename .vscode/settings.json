@@ -83,7 +83,6 @@
     // ==================
     // TERMINAL SETTINGS
     // ==================
-    "terminal.integrated.defaultProfile.windows": "PowerShell",
     // ==================
     // COPILOT SETTINGS
     // ==================
@@ -92,7 +91,7 @@
             "file": ".github/copilot-instructions.md"
         },
         {
-            "text": "Commit messages should use hybrid academic–software format. Include experiment context, dataset version, or model scope when relevant."
+            "text": "Commit messages should use hybrid academic-software format. Include experiment context, dataset version, or model scope when relevant."
         }
     ],
     // ==================
