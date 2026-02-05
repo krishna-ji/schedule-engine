@@ -3,15 +3,15 @@ from __future__ import annotations
 import random
 from concurrent.futures import ProcessPoolExecutor
 
-from schedule_engine.domain.types import Individual, SchedulingContext
 from schedule_engine.domain.course import Course
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
+from schedule_engine.domain.types import Individual, SchedulingContext
 from schedule_engine.ga.course_group_pairs import generate_course_group_pairs
 from schedule_engine.ga.group_hierarchy import analyze_group_hierarchy
 from schedule_engine.ga.individual import create_individual
-from schedule_engine.domain.gene import SessionGene
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.parallel_worker import get_worker_context, init_worker
 from schedule_engine.utils.system_info import get_cpu_count
@@ -576,6 +576,8 @@ def create_session_gene_with_conflict_avoidance(
     """
     Create ONE session gene for a (course, groups) combination.
 
+    ENHANCED: Uses instructor availability as a HARD FILTER when possible.
+
     Args:
         course_id: Course identifier
         group_ids: List of group IDs (can be single or multiple)
@@ -588,27 +590,71 @@ def create_session_gene_with_conflict_avoidance(
     Returns:
         SessionGene or None if creation failed
     """
-    # Find qualified instructors
-    qualified_instructors = find_qualified_instructors(course_id, context)
-    if not qualified_instructors:
-        qualified_instructors = list(context.instructors.values())
+    import logging
 
-    # CRITICAL: Never return None - always create gene with fallback
-    if not qualified_instructors:
-        import logging
+    # =================================================================
+    # ENHANCED: Try to find instructor-time pairs that respect availability
+    # =================================================================
 
-        logging.warning(f"No instructors available for {course_id}, using placeholder")
-        # Create a placeholder instructor to ensure gene is created
-        from schedule_engine.domain.instructor import Instructor
+    # Build set of quanta already used by THIS individual's instructors
+    used_by_instructors: set[int] = set()
+    for inst_id, inst_quanta in instructor_schedule.items():
+        used_by_instructors.update(inst_quanta)
 
-        placeholder = Instructor(
-            instructor_id="PLACEHOLDER",
-            name="Unassigned",
-            qualified_courses=[],
-        )
-        qualified_instructors = [placeholder]
+    # Build set of quanta used by groups in this session
+    used_by_groups: set[int] = set()
+    for gid in group_ids:
+        if gid in group_schedule:
+            used_by_groups.update(group_schedule[gid])
 
-    instructor = random.choice(qualified_instructors)
+    # Find instructors with availability
+    qualified_with_availability = find_qualified_instructors_with_availability(
+        course_id,
+        context,
+        num_quanta,
+        exclude_quanta=used_by_instructors | used_by_groups,
+    )
+
+    instructor = None
+    assigned_quanta: list[int] = []
+
+    if qualified_with_availability:
+        # Pick randomly from instructors with most flexibility
+        # Take top 3 by availability count and pick one randomly
+        top_instructors = qualified_with_availability[:3]
+        chosen_instructor, available_starts = random.choice(top_instructors)
+        instructor = chosen_instructor
+
+        # Pick a random valid start time from available slots
+        if available_starts:
+            start_q = random.choice(available_starts)
+            assigned_quanta = list(range(start_q, start_q + num_quanta))
+
+    # =================================================================
+    # FALLBACK: Use original logic if availability-based selection fails
+    # =================================================================
+
+    if instructor is None:
+        # Find qualified instructors (may not be available)
+        qualified_instructors = find_qualified_instructors(course_id, context)
+        if not qualified_instructors:
+            qualified_instructors = list(context.instructors.values())
+
+        # CRITICAL: Never return None - always create gene with fallback
+        if not qualified_instructors:
+            logging.warning(
+                f"No instructors available for {course_id}, using placeholder"
+            )
+            from schedule_engine.domain.instructor import Instructor
+
+            placeholder = Instructor(
+                instructor_id="PLACEHOLDER",
+                name="Unassigned",
+                qualified_courses=[],
+            )
+            qualified_instructors = [placeholder]
+
+        instructor = random.choice(qualified_instructors)
 
     # Find suitable rooms
     is_practical = session_type == "practical"
@@ -619,76 +665,54 @@ def create_session_gene_with_conflict_avoidance(
         suitable_rooms = list(context.rooms.values())
 
     # CRITICAL: Always create a gene even if no suitable rooms
-    # Use any room as fallback - repair will fix room suitability later
     if not suitable_rooms:
         suitable_rooms = list(context.rooms.values())
 
-    if not suitable_rooms:
-        # Absolute fallback - use first room
-        suitable_rooms = [list(context.rooms.values())[0]] if context.rooms else []
+    if not suitable_rooms and context.rooms:
+        suitable_rooms = [list(context.rooms.values())[0]]
 
     if not suitable_rooms:
-        # No rooms at all - create gene anyway with placeholder
-        import logging
-
         logging.warning(f"No rooms available for {course_id}, creating gene anyway")
 
     room = random.choice(suitable_rooms) if suitable_rooms else None
 
-    # Find available quanta that don't conflict
-    available_quanta = [q for q in context.available_quanta if q not in used_quanta]
+    # =================================================================
+    # If we didn't get assigned_quanta from availability check, use fallback
+    # =================================================================
 
-    if len(available_quanta) < num_quanta:
-        # Fall back to all if not enough free - allow conflicts, repair will fix later
-        available_quanta = list(context.available_quanta)
+    quanta_needed = num_quanta if num_quanta > 0 else 1
 
-    # CRITICAL: NEVER reduce quanta_needed - must always equal course.quanta_per_week
-    # Initial conflicts are acceptable; repair operators will resolve them during evolution
-    quanta_needed = num_quanta
-
-    # CRITICAL: Always assign some quanta, never return None
-    if quanta_needed == 0:
-        quanta_needed = 1  # Minimum 1 quantum
-
-    # Assign time quanta
-    assigned_quanta = assign_conflict_free_quanta(
-        quanta_needed, available_quanta, used_quanta
-    )
-
-    # DEBUG: Log what happened
-    import logging
-
-    if assigned_quanta and len(assigned_quanta) != quanta_needed:
-        print(
-            f" BUG DETECTED: {course_id} {session_type}: assigned_quanta has {len(assigned_quanta)} but needed {quanta_needed}"
-        )
-        print(f"   assigned_quanta={assigned_quanta[:10]}...")
-        logging.warning(
-            f"{course_id}: assign_conflict_free_quanta returned {len(assigned_quanta)} but needed {quanta_needed}"
-        )
-
-    # CRITICAL: If assignment fails, wrap around or duplicate quanta as needed
-    # Repair operators will fix overlaps later - maintaining correct num_quanta is priority
     if not assigned_quanta:
-        print(
-            f"️ WRAP-AROUND for {course_id} {session_type}: need {quanta_needed} from {len(context.available_quanta)} available"
+        # Find available quanta that don't conflict
+        available_quanta = [q for q in context.available_quanta if q not in used_quanta]
+
+        if len(available_quanta) < quanta_needed:
+            available_quanta = list(context.available_quanta)
+
+        # Assign time quanta
+        assigned_quanta = assign_conflict_free_quanta(
+            quanta_needed, available_quanta, used_quanta
         )
-        logging.info(
-            f"{course_id}: Using fallback (needed {quanta_needed}, available {len(context.available_quanta)})"
-        )
-        # Use random consecutive block from all available quanta
-        if len(context.available_quanta) >= quanta_needed:
-            start_idx = random.randint(0, len(context.available_quanta) - quanta_needed)
-            assigned_quanta = context.available_quanta[
-                start_idx : start_idx + quanta_needed
-            ]
-        else:
-            # Wrap around if needed to get exactly quanta_needed
-            assigned_quanta = []
-            while len(assigned_quanta) < quanta_needed:
-                assigned_quanta.extend(context.available_quanta)
-            assigned_quanta = assigned_quanta[:quanta_needed]
-        print(f"  ✓ Fallback gave {len(assigned_quanta)} quanta")
+
+        if assigned_quanta and len(assigned_quanta) != quanta_needed:
+            logging.warning(
+                f"{course_id}: assign_conflict_free_quanta returned {len(assigned_quanta)} but needed {quanta_needed}"
+            )
+
+        # CRITICAL: If assignment fails, wrap around
+        if not assigned_quanta:
+            if len(context.available_quanta) >= quanta_needed:
+                start_idx = random.randint(
+                    0, len(context.available_quanta) - quanta_needed
+                )
+                assigned_quanta = context.available_quanta[
+                    start_idx : start_idx + quanta_needed
+                ]
+            else:
+                assigned_quanta = []
+                while len(assigned_quanta) < quanta_needed:
+                    assigned_quanta.extend(context.available_quanta)
+                assigned_quanta = assigned_quanta[:quanta_needed]
 
     # VERIFICATION: Ensure we got exactly quanta_needed
     if len(assigned_quanta) != quanta_needed:
@@ -697,14 +721,12 @@ def create_session_gene_with_conflict_avoidance(
         )
 
     # Create session gene with multi-group support
-    # Extract actual course_id from course object (plain code, no tuple)
     actual_course_id = (
         course.course_id
         if hasattr(course, "course_id")
         else (course_id[0] if isinstance(course_id, tuple) else course_id)
     )
 
-    # Get course_type from course object
     actual_course_type = (
         course.course_type if hasattr(course, "course_type") else session_type
     )
@@ -1070,6 +1092,77 @@ def find_qualified_instructors(
             qualified.append(instructor)
 
     return qualified
+
+
+def find_qualified_instructors_with_availability(
+    course_id: str | CourseKey,
+    context: SchedulingContext,
+    required_quanta: int,
+    exclude_quanta: set[int] | None = None,
+) -> list[tuple[Instructor, list[int]]]:
+    """
+    Find instructors qualified AND available for a session.
+
+    This enforces instructor availability as a HARD FILTER during initialization,
+    not just relying on repair operators.
+
+    Args:
+        course_id: Can be plain string or (course_code, course_type) tuple
+        context: Scheduling context
+        required_quanta: Number of consecutive quanta needed
+        exclude_quanta: Quanta to exclude (already used by other sessions)
+
+    Returns:
+        List of (Instructor, available_slots) tuples where available_slots
+        is a list of valid start quanta for this instructor.
+        Sorted by availability (more options first).
+    """
+    exclude_set = exclude_quanta or set()
+    results: list[tuple[Instructor, list[int]]] = []
+
+    for instructor in context.instructors.values():
+        # Check if qualified
+        qualified_courses = getattr(instructor, "qualified_courses", [])
+        if course_id not in qualified_courses:
+            continue
+
+        # Find available start slots
+        available_starts: list[int] = []
+
+        if instructor.is_full_time:
+            # Full-time: available during all operating hours
+            inst_available = set(context.available_quanta)
+        else:
+            # Part-time: only during their specified availability
+            inst_available = set(instructor.available_quanta)
+
+        # Remove excluded quanta
+        inst_available -= exclude_set
+
+        # Convert to sorted list for consecutive block search
+        available_list = sorted(inst_available)
+
+        # Find valid start positions for consecutive blocks
+        for i, start_q in enumerate(available_list):
+            end_q = start_q + required_quanta
+
+            # Check if all quanta in range are available
+            valid = True
+            for q in range(start_q, end_q):
+                if q not in inst_available:
+                    valid = False
+                    break
+
+            if valid:
+                available_starts.append(start_q)
+
+        if available_starts:
+            results.append((instructor, available_starts))
+
+    # Sort by number of available slots (more flexibility first)
+    results.sort(key=lambda x: len(x[1]), reverse=True)
+
+    return results
 
 
 def find_suitable_rooms(

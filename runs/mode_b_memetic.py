@@ -92,8 +92,10 @@ def main() -> None:
     FITNESS_WEIGHTS = (-1.0, -1.0)  # Align with other Mode B runs for fair comparison
 
     # MODE B: Local search parameters
-    LOCAL_SEARCH_PROB = 0.2
-    LOCAL_SEARCH_ITERATIONS = 8
+    # Increased from 0.2 -> 0.5 to repair more offspring
+    # Increased from 8 -> 15 iterations for more thorough repair
+    LOCAL_SEARCH_PROB = 0.5
+    LOCAL_SEARCH_ITERATIONS = 15
     REPAIR_POLICY = "round_robin"
     REPAIR_BUDGET_MS = 120.0
     REPAIR_MAX_CANDIDATES = 30

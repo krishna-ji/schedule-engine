@@ -147,6 +147,29 @@ class EpsilonGreedyPolicy:
         return best_name
 
 
+# Module-level cache for family map (hierarchy-aware group relationships)
+_CACHED_FAMILY_MAP: dict[str, set[str]] | None = None
+
+
+def _get_family_map() -> dict[str, set[str]]:
+    """
+    Get cached family map for hierarchy-aware group conflict detection.
+
+    Maps each group_id to all related groups (self, siblings, parent).
+    """
+    global _CACHED_FAMILY_MAP
+
+    if _CACHED_FAMILY_MAP is None:
+        try:
+            from schedule_engine.ga.group_hierarchy import get_family_map_from_json
+
+            _CACHED_FAMILY_MAP = get_family_map_from_json("data/Groups.json")
+        except Exception:
+            _CACHED_FAMILY_MAP = {}
+
+    return _CACHED_FAMILY_MAP
+
+
 def _build_counts(
     individual: list[SessionGene],
 ) -> tuple[
@@ -154,6 +177,13 @@ def _build_counts(
     dict[int, dict[str, int]],
     dict[int, dict[str, int]],
 ]:
+    """
+    Build conflict count maps for violation scoring.
+
+    Now hierarchy-aware: counts related groups (parent/siblings) as conflicts.
+    """
+    family_map = _get_family_map()
+
     instructor_counts: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     room_counts: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     group_counts: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -162,8 +192,14 @@ def _build_counts(
         for q in range(gene.start_quanta, gene.end_quanta):
             instructor_counts[q][gene.instructor_id] += 1
             room_counts[q][gene.room_id] += 1
+
+            # Hierarchy-aware: count all related groups as occupied
             for gid in gene.group_ids:
-                group_counts[q][gid] += 1
+                if family_map and gid in family_map:
+                    for related_id in family_map[gid]:
+                        group_counts[q][related_id] += 1
+                else:
+                    group_counts[q][gid] += 1
 
     return instructor_counts, room_counts, group_counts
 

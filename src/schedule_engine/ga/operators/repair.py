@@ -190,6 +190,97 @@ def _find_instructor_available_slot(
 
 
 # ================
+# 1.5 INSTRUCTOR AVAILABILITY REASSIGN (Priority 1.5)
+# ================
+
+
+@repair_operator(
+    name="repair_instructor_availability_reassign",
+    description="Reassign to available instructor when current is unavailable at scheduled time",
+    priority=1,  # Run early - after time shift, alternative approach
+    modifies_length=False,
+)
+def repair_instructor_availability_reassign(
+    individual: list[SessionGene], context: SchedulingContext
+) -> int:
+    """
+    When instructor is unavailable at scheduled time, find another qualified instructor
+    who IS available, rather than just shifting time.
+
+    This is complementary to repair_instructor_availability which shifts time.
+    This operator changes the instructor instead, preserving the time slot.
+
+    Args:
+        individual: List of SessionGene objects (GA chromosome)
+        context: Scheduling context with entities and available quanta
+
+    Returns:
+        Number of genes repaired
+    """
+    fixes = 0
+    occupied = _build_occupied_quanta_map(individual)
+
+    for gene in individual:
+        instructor = context.instructors.get(gene.instructor_id)
+        if not instructor:
+            continue
+
+        if instructor.is_full_time:
+            continue
+
+        # Check if current time violates instructor availability
+        needs_repair = False
+        for q in range(gene.start_quanta, gene.end_quanta):
+            if q not in instructor.available_quanta:
+                needs_repair = True
+                break
+
+        if not needs_repair:
+            continue
+
+        # Find another qualified instructor who is available at this time
+        course_key = (gene.course_id, gene.course_type)
+        duration_range = range(gene.start_quanta, gene.end_quanta)
+
+        new_instructor_id = None
+        for candidate in context.instructors.values():
+            if candidate.instructor_id == gene.instructor_id:
+                continue
+
+            # Must be qualified for this course
+            qualified = getattr(candidate, "qualified_courses", set())
+            if course_key not in qualified and gene.course_id not in qualified:
+                continue
+
+            # Must be available at this time
+            if not candidate.is_full_time and not all(
+                q in candidate.available_quanta for q in duration_range
+            ):
+                continue
+
+            # Must not have conflicts with other sessions
+            has_conflict = False
+            for q in duration_range:
+                if candidate.instructor_id in occupied["instructors"].get(q, set()):
+                    has_conflict = True
+                    break
+
+            if has_conflict:
+                continue
+
+            new_instructor_id = candidate.instructor_id
+            break
+
+        if new_instructor_id is not None:
+            gene.instructor_id = new_instructor_id
+            fixes += 1
+            # Rebuild occupied map with the new instructor assignment
+            occupied = _build_occupied_quanta_map(individual)
+
+    return fixes
+
+
+# ================
 # 2. GROUP OVERLAP REPAIR (Priority 2)
 # ================
 
@@ -206,30 +297,52 @@ def repair_group_overlaps(
     """
     Resolve time conflicts where same group is scheduled in multiple sessions.
 
+    HIERARCHY-AWARE: Now detects conflicts between:
+    - Same group (BME1A vs BME1A)
+    - Sibling groups (BME1A vs BME1B) - share parent, can't both be scheduled
+    - Parent-child (BME1A vs BME1AB) - subgroup students are in parent session
+
     Uses NEW API: gene.start_quanta, gene.num_quanta
     """
     fixes = 0
-    # occupied = _build_occupied_quanta_map(individual)  # Unused
+    family_map = _get_family_map()
 
     for gene in individual:
-        # Check if any group in this gene has conflicts
-        has_conflict = False
+        # Build the set of all groups this gene is related to
+        gene_family: set[str] = set()
         for group_id in gene.group_ids:
-            for q in range(gene.start_quanta, gene.end_quanta):
-                # Count how many genes use this group at this quantum
-                genes_at_q = [
-                    g
-                    for g in individual
-                    if group_id in g.group_ids and g.start_quanta <= q < g.end_quanta
-                ]
-                if len(genes_at_q) > 1:
-                    has_conflict = True
+            if family_map and group_id in family_map:
+                gene_family.update(family_map[group_id])
+            else:
+                gene_family.add(group_id)
+
+        # Check if any related group has conflicts with other genes
+        has_conflict = False
+        for q in range(gene.start_quanta, gene.end_quanta):
+            # Find other genes at this quantum that share any related group
+            for other_gene in individual:
+                if other_gene is gene:
+                    continue
+                if not (other_gene.start_quanta <= q < other_gene.end_quanta):
+                    continue
+
+                # Check if other gene has any group in our family
+                for other_gid in other_gene.group_ids:
+                    other_family = (
+                        family_map.get(other_gid, {other_gid})
+                        if family_map
+                        else {other_gid}
+                    )
+                    if gene_family & other_family:  # Set intersection
+                        has_conflict = True
+                        break
+                if has_conflict:
                     break
             if has_conflict:
                 break
 
         if has_conflict:
-            # Try to shift to conflict-free time
+            # Try to shift to conflict-free time (hierarchy-aware)
             new_start = _find_conflict_free_slot(
                 individual, gene, context.available_quanta
             )
@@ -1008,8 +1121,15 @@ def _find_conflict_free_slot(
     current_gene: SessionGene,
     available_quanta: list[int],
 ) -> int | None:
-    """Find a time slot with no group/room/instructor conflicts."""
-    occupied = _build_occupied_quanta_map(individual, current_gene)
+    """
+    Find a time slot with no group/room/instructor conflicts.
+
+    Uses hierarchy-aware conflict detection: when checking groups,
+    also checks parent and sibling groups (e.g., BME1A, BME1B, BME1AB).
+    """
+    # Use hierarchy-aware occupied map
+    occupied = _build_occupied_quanta_map(individual, current_gene, use_hierarchy=True)
+    family_map = _get_family_map()
     duration = current_gene.num_quanta
 
     for start_q in available_quanta:
@@ -1020,16 +1140,23 @@ def _find_conflict_free_slot(
         # Check no conflicts
         conflict_free = True
         for q in range(start_q, end_q):
-            # Check instructor, room, and group conflicts
+            # Check instructor and room conflicts
             if current_gene.instructor_id in occupied["instructors"].get(q, set()):
                 conflict_free = False
                 break
             if current_gene.room_id in occupied["rooms"].get(q, set()):
                 conflict_free = False
                 break
+
+            # Check group conflicts (hierarchy-aware)
             for group_id in current_gene.group_ids:
-                if group_id in occupied["groups"].get(q, set()):
-                    conflict_free = False
+                # Get all related groups for this gene's group
+                related_groups = family_map.get(group_id, {group_id})
+                for related_id in related_groups:
+                    if related_id in occupied["groups"].get(q, set()):
+                        conflict_free = False
+                        break
+                if not conflict_free:
                     break
             if not conflict_free:
                 break
@@ -1156,14 +1283,48 @@ def _find_compatible_room(
 # HELPER FUNCTIONS
 # ================
 
+# Module-level cache for family map (hierarchy-aware group relationships)
+_CACHED_FAMILY_MAP: dict[str, set[str]] | None = None
+
+
+def _get_family_map() -> dict[str, set[str]]:
+    """
+    Get cached family map for hierarchy-aware group conflict detection.
+
+    The family map maps each group_id to all related groups:
+    - BME1A -> {BME1A, BME1B, BME1AB}  (self, sibling, parent)
+    - BME1AB -> {BME1A, BME1B, BME1AB}  (self and all subgroups)
+
+    This ensures that when BME1A is scheduled, BME1B and BME1AB
+    are also considered occupied (they share students).
+    """
+    global _CACHED_FAMILY_MAP
+
+    if _CACHED_FAMILY_MAP is None:
+        try:
+            from schedule_engine.ga.group_hierarchy import get_family_map_from_json
+
+            _CACHED_FAMILY_MAP = get_family_map_from_json("data/Groups.json")
+        except Exception:
+            # Fallback: no hierarchy awareness (each group only maps to itself)
+            _CACHED_FAMILY_MAP = {}
+
+    return _CACHED_FAMILY_MAP
+
 
 def _build_occupied_quanta_map(
-    individual: list[SessionGene], exclude_gene: SessionGene | None = None
+    individual: list[SessionGene],
+    exclude_gene: SessionGene | None = None,
+    use_hierarchy: bool = True,
 ) -> dict[str, dict[int, set[str]]]:
     """
     Build occupation map for detecting conflicts.
 
     Uses NEW API: range(gene.start_quanta, gene.end_quanta)
+
+    If use_hierarchy=True (default), marks ALL related groups as occupied
+    when any group in a family is scheduled. This fixes the critical issue
+    where BME1A and BME1AB were not recognized as conflicting.
 
     Returns:
         {
@@ -1172,6 +1333,8 @@ def _build_occupied_quanta_map(
             "instructors": {quantum: {instructor_id, ...}}
         }
     """
+    family_map = _get_family_map() if use_hierarchy else {}
+
     occupied: dict[str, dict[int, set[str]]] = {
         "groups": defaultdict(set),
         "rooms": defaultdict(set),
@@ -1185,8 +1348,14 @@ def _build_occupied_quanta_map(
         for q in range(gene.start_quanta, gene.end_quanta):
             occupied["rooms"][q].add(gene.room_id)
             occupied["instructors"][q].add(gene.instructor_id)
+
             for group_id in gene.group_ids:
-                occupied["groups"][q].add(group_id)
+                # Mark ALL related groups as occupied (hierarchy-aware)
+                if family_map and group_id in family_map:
+                    for related_id in family_map[group_id]:
+                        occupied["groups"][q].add(related_id)
+                else:
+                    occupied["groups"][q].add(group_id)
 
     return occupied
 
