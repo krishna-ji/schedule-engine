@@ -86,7 +86,7 @@ def main() -> None:
 
     # GA Parameters
     POP_SIZE = 50
-    NGEN = 1000
+    NGEN = 200
     CXPB = 0.8
     MUTPB = 0.4
     FITNESS_WEIGHTS = (-1.0, -1.0)  # Align with other Mode B runs for fair comparison
