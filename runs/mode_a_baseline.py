@@ -83,7 +83,7 @@ def main() -> None:
 
     # GA Parameters - SAME AS MODE B1 for fair comparison
     POP_SIZE = 50
-    NGEN = 200
+    NGEN = 1000
     CXPB = 0.9
     MUTPB = 0.2
     EXPECTED_QUANTA = 42

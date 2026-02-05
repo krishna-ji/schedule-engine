@@ -179,13 +179,9 @@ class ConstraintEvaluator:
         priorities = {}
 
         # Apply weights (from config or defaults)
-        # Hard constraints typically have weight 2.0-3.0
-        # Soft constraints typically have weight 0.5-2.0
+        # Each violation counts as 1 (no amplification)
         for constraint_name, violations in breakdown.items():
-            if constraint_name in self.HARD_CONSTRAINTS:
-                weight = 3.0  # Default hard constraint weight
-            else:
-                weight = 1.0  # Default soft constraint weight
+            weight = 1.0  # All constraints have weight 1.0
 
             priorities[constraint_name] = violations * weight
 

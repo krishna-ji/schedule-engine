@@ -100,19 +100,19 @@ def _extract_time_config(flat_dict: dict[str, Any]) -> dict[str, Any]:
         "max_sessions_per_day": flat_dict.get("max_sessions_per_day", 3),
         "preferred_block_size_min": flat_dict.get("preferred_block_size_min", 1),
         "preferred_block_size_max": flat_dict.get("preferred_block_size_max", 3),
-        "theory_isolated_penalty": flat_dict.get("theory_isolated_penalty", 10),
+        "theory_isolated_penalty": flat_dict.get("theory_isolated_penalty", 1),
         "theory_oversized_penalty_per_quantum": flat_dict.get(
-            "theory_oversized_penalty_per_quantum", 5
+            "theory_oversized_penalty_per_quantum", 1
         ),
         "theory_max_excused_isolated": flat_dict.get("theory_max_excused_isolated", 1),
-        "lab_isolated_penalty": flat_dict.get("lab_isolated_penalty", 15),
+        "lab_isolated_penalty": flat_dict.get("lab_isolated_penalty", 1),
         "lab_oversized_penalty_per_quantum": flat_dict.get(
-            "lab_oversized_penalty_per_quantum", 8
+            "lab_oversized_penalty_per_quantum", 1
         ),
         "practical_fragmentation_penalty": flat_dict.get(
-            "practical_fragmentation_penalty", 20
+            "practical_fragmentation_penalty", 1
         ),
-        "isolated_session_penalty": flat_dict.get("isolated_session_penalty", 5),
+        "isolated_session_penalty": flat_dict.get("isolated_session_penalty", 1),
         "oversized_block_penalty_per_quantum": flat_dict.get(
             "oversized_block_penalty_per_quantum", 1
         ),

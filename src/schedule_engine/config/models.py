@@ -393,7 +393,7 @@ class SoftConstraintsConfig(BaseModel):
 
     student_schedule_compactness: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
-            enabled=True, weight=1.0, gap_penalty_per_quantum=2
+            enabled=True, weight=1.0, gap_penalty_per_quantum=1
         )
     )
     instructor_schedule_compactness: SoftConstraintConfigWithPenalty = Field(
@@ -403,7 +403,7 @@ class SoftConstraintsConfig(BaseModel):
     )
     student_lunch_break: SoftConstraintConfigWithPenalty = Field(
         default_factory=lambda: SoftConstraintConfigWithPenalty(
-            enabled=True, weight=1.0, distance_penalty_per_quantum=2
+            enabled=True, weight=1.0, distance_penalty_per_quantum=1
         )
     )
     session_continuity: SoftConstraintConfigWithPenalty = Field(
@@ -416,7 +416,7 @@ class SoftConstraintsConfig(BaseModel):
             enabled=True, weight=1.0
         )
     )
-    soft_weight_factor: float = Field(default=0.01, ge=0.0, le=1.0)
+    soft_weight_factor: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class FeasibilityConfig(BaseModel):
@@ -505,7 +505,7 @@ class TimeConfig(BaseModel):
         description="Minimum free quanta required in break window",
     )
     break_violation_penalty: int = Field(
-        default=8, ge=0, le=100, description="Penalty per missing break quantum"
+        default=1, ge=0, le=100, description="Penalty per missing break quantum"
     )
 
     # Theory course block penalties
@@ -531,7 +531,7 @@ class TimeConfig(BaseModel):
     )
 
     # Legacy parameters (kept for backward compatibility, may be deprecated)
-    isolated_session_penalty: int = Field(default=5, ge=0, le=100)
+    isolated_session_penalty: int = Field(default=1, ge=0, le=100)
     oversized_block_penalty_per_quantum: int = Field(default=1, ge=0, le=10)
 
     max_sessions_per_day: int = Field(ge=1, le=12)

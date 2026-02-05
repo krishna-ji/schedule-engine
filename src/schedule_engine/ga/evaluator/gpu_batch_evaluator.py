@@ -733,7 +733,7 @@ class GPUConstraintEvaluator:
                 # Penalize large gaps (>2 quanta), excluding lunch time
                 # Simplified lunch detection: gaps during midday (quanta 15-20)
                 large_gaps = gaps > 2
-                gap_penalty = (gaps[large_gaps] * 1.5).sum()
+                gap_penalty = (gaps[large_gaps] * 1.0).sum()
                 soft_total[b] += gap_penalty
 
         # SC3: Lunch break violations (vectorized)
@@ -748,7 +748,7 @@ class GPUConstraintEvaluator:
             in_lunch = (
                 (time_start >= lunch_start) & (time_start < lunch_end) & valid_mask
             )
-            soft_total += in_lunch.sum(dim=1).float() * 1.2
+            soft_total += in_lunch.sum(dim=1).float() * 1.0
 
         # SC4: Session continuity (vectorized)
         # Prefer consecutive sessions for same course

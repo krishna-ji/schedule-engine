@@ -61,7 +61,7 @@ SOFT_CONSTRAINT_WEIGHT_MEDIUM: Final[float] = 1.5
 SOFT_CONSTRAINT_WEIGHT_LOW: Final[float] = 1.0
 
 # Soft weight factor (scales soft penalties relative to hard)
-SOFT_WEIGHT_FACTOR: Final[float] = 0.01
+SOFT_WEIGHT_FACTOR: Final[float] = 1.0
 
 
 # ================

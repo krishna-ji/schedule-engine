@@ -65,7 +65,7 @@ HARD_CONSTRAINTS: list[ConstraintInfo] = [
 # All soft constraints (always enabled)
 SOFT_CONSTRAINTS: list[ConstraintInfo] = [
     ConstraintInfo(
-        "student_schedule_compactness", student_schedule_compactness, 1.5, False
+        "student_schedule_compactness", student_schedule_compactness, 1.0, False
     ),
     ConstraintInfo(
         "instructor_schedule_compactness", instructor_schedule_compactness, 1.0, False
