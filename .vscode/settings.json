@@ -86,14 +86,6 @@
     // ==================
     // COPILOT SETTINGS
     // ==================
-    "github.copilot.chat.commitMessageGeneration.instructions": [
-        {
-            "file": ".github/copilot-instructions.md"
-        },
-        {
-            "text": "Commit messages should use hybrid academic-software format. Include experiment context, dataset version, or model scope when relevant."
-        }
-    ],
     // ==================
     // TOKEN CUSTOMIZATION
     // ==================
