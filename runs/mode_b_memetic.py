@@ -85,7 +85,7 @@ def main() -> None:
     np.random.seed(SEED)
 
     # GA Parameters
-    POP_SIZE = 20
+    POP_SIZE = 50
     NGEN = 1000
     CXPB = 0.8
     MUTPB = 0.4

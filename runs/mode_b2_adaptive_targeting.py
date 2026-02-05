@@ -2,7 +2,17 @@
 """
 Mode B2: Memetic + Adaptive Targeting
 
-Enhancement over Mode B1: Repairs worst 30% of population instead of random 20%.
+Enhancement over Mode B1: Tracks constraint violations over generations and
+prioritizes repair operators for constraints that are NOT decreasing.
+
+Constraint-to-Operator Mapping:
+- student_group_exclusivity  → move_time
+- instructor_exclusivity     → move_time
+- room_exclusivity          → move_time
+- room_time_availability    → move_time
+- instructor_time_availability → move_time, reassign_instructor
+- instructor_qualifications → reassign_instructor
+- room_suitability          → swap_room
 
 Usage:
     python runs/mode_b2_adaptive_targeting.py
@@ -15,6 +25,7 @@ import logging
 import random
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -45,6 +56,80 @@ from schedule_engine.notebooks.viz import print_summary
 from schedule_engine.utils.json_utils import to_jsonable
 from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
 from schedule_engine.workflows.reporting import generate_reports
+
+# Constraint-to-Operator mapping: which operator fixes which constraint
+CONSTRAINT_TO_OPERATOR: dict[str, list[str]] = {
+    # Time-based conflicts → move_time
+    "student_group_exclusivity": ["move_time"],
+    "instructor_exclusivity": ["move_time"],
+    "room_exclusivity": ["move_time"],
+    "room_time_availability": ["move_time"],
+    # Instructor-related → reassign_instructor (or move_time for availability)
+    "instructor_time_availability": ["move_time", "reassign_instructor"],
+    "instructor_qualifications": ["reassign_instructor"],
+    # Room-related → swap_room
+    "room_suitability": ["swap_room"],
+    # course_completeness is structural, not repairable by these operators
+}
+
+
+def get_stagnant_constraints(
+    violation_history: dict[str, list[int]],
+    lookback: int = 5,
+) -> list[str]:
+    """
+    Identify constraints whose violations are NOT decreasing.
+
+    A constraint is stagnant if:
+    - It has non-zero violations in the latest generation
+    - Its violation count has not decreased over the last `lookback` generations
+
+    Returns:
+        List of stagnant constraint names, sorted by current violation count (desc)
+    """
+    stagnant = []
+
+    for constraint_name, history in violation_history.items():
+        if len(history) < 2:
+            continue
+
+        current = history[-1]
+        if current == 0:
+            continue  # No violations, not stagnant
+
+        # Check if decreasing over lookback window
+        window = history[-lookback:] if len(history) >= lookback else history
+        if len(window) < 2:
+            continue
+
+        # Stagnant if first value in window <= last value (not decreasing)
+        if window[0] <= window[-1]:
+            stagnant.append((constraint_name, current))
+
+    # Sort by violation count descending
+    stagnant.sort(key=lambda x: x[1], reverse=True)
+    return [name for name, _ in stagnant]
+
+
+def get_priority_operators(stagnant_constraints: list[str]) -> list[str]:
+    """
+    Get prioritized operators based on stagnant constraints.
+
+    Returns:
+        List of operator names to prioritize (in order of priority)
+    """
+    operator_scores: dict[str, int] = defaultdict(int)
+
+    for idx, constraint_name in enumerate(stagnant_constraints):
+        operators = CONSTRAINT_TO_OPERATOR.get(constraint_name, [])
+        # Higher score for higher-priority (earlier) constraints
+        score = len(stagnant_constraints) - idx
+        for op in operators:
+            operator_scores[op] += score
+
+    # Sort by score descending
+    sorted_ops = sorted(operator_scores.items(), key=lambda x: x[1], reverse=True)
+    return [op for op, _ in sorted_ops]
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:
@@ -93,11 +178,10 @@ def main() -> None:
 
     # MODE B2: Adaptive targeting parameters
     REPAIR_FRACTION = 0.3  # Repair worst 30%
-    REPAIR_POLICY = "round_robin"
     REPAIR_BUDGET_MS = 50.0
     REPAIR_MAX_STEPS = 5
     REPAIR_MAX_CANDIDATES = 20
-    REPAIR_EPSILON = 0.1
+    STAGNATION_LOOKBACK = 5  # Generations to check for stagnation
     LOG_INTERVAL = 10
     EXPECTED_QUANTA = 42
 
@@ -114,7 +198,7 @@ def main() -> None:
     logger.info("=" * 60)
     logger.info(
         f"Config: pop={POP_SIZE}, ngen={NGEN}, repair_fraction={REPAIR_FRACTION}, "
-        f"policy={REPAIR_POLICY}, budget_ms={REPAIR_BUDGET_MS}"
+        f"budget_ms={REPAIR_BUDGET_MS}, stagnation_lookback={STAGNATION_LOOKBACK}"
     )
     logger.info(f"Output: {OUTPUT_DIR}")
 
@@ -135,11 +219,11 @@ def main() -> None:
     repair_engine = RepairEngine(
         context=context,
         evaluator=evaluate,
-        policy=REPAIR_POLICY,
+        policy="round_robin",  # Fallback policy when no stagnant constraints
         max_steps=REPAIR_MAX_STEPS,
         max_candidates=REPAIR_MAX_CANDIDATES,
         budget_ms=REPAIR_BUDGET_MS,
-        epsilon=REPAIR_EPSILON,
+        epsilon=0.1,
         rng=random.Random(SEED),
         logger=logger,
         log_steps=True,
@@ -173,7 +257,20 @@ def main() -> None:
 
     stats = EvolutionStats()
     total_repairs = 0
-    repair_history: list[dict[str, float | int]] = []
+    repair_history: list[dict[str, float | int | str | list[str]]] = []
+
+    # MODE B2: Track violation history for adaptive targeting
+    violation_history: dict[str, list[int]] = defaultdict(list)
+    hard_constraint_names = {
+        "student_group_exclusivity",
+        "instructor_exclusivity",
+        "instructor_qualifications",
+        "room_suitability",
+        "room_exclusivity",
+        "instructor_time_availability",
+        "room_time_availability",
+        "course_completeness",
+    }
 
     for gen in range(NGEN):
         gen_start = time.time()
@@ -197,7 +294,7 @@ def main() -> None:
             if not ind.fitness.valid:
                 ind.fitness.values = toolbox.evaluate(ind)
 
-        # MODE B2: Adaptive Targeting - repair worst fraction
+        # MODE B2: Adaptive Targeting - repair worst fraction with targeted operators
         repair_start = time.time()
         indexed_offspring = [
             (i, ind.fitness.values[0], ind.fitness.values[1])
@@ -208,6 +305,12 @@ def main() -> None:
         n_repair = max(1, int(REPAIR_FRACTION * len(offspring)))
         worst_indices = [idx for idx, _, _ in indexed_offspring[:n_repair]]
 
+        # Determine which operators to prioritize based on stagnant constraints
+        stagnant = get_stagnant_constraints(violation_history, STAGNATION_LOOKBACK)
+        priority_operators = get_priority_operators(stagnant)
+        # Use first priority operator if available, otherwise None (round-robin fallback)
+        forced_operator = priority_operators[0] if priority_operators else None
+
         per_individual_budget = (
             REPAIR_BUDGET_MS / max(1, len(worst_indices)) if REPAIR_BUDGET_MS > 0 else 0
         )
@@ -217,7 +320,7 @@ def main() -> None:
         for idx in worst_indices:
             ind = offspring[idx]
             repair_stats = repair_engine.repair_individual(
-                ind, budget_ms=per_individual_budget
+                ind, budget_ms=per_individual_budget, forced_operator=forced_operator
             )
             gen_repairs += repair_stats.applied_steps
             gen_delta_hard += repair_stats.total_delta_hard
@@ -246,6 +349,15 @@ def main() -> None:
         stats.avg_soft.append(float(np.mean(soft_vals)))
         track_nsga_metrics(pop, stats, data)
 
+        # MODE B2: Track per-constraint violations for adaptive targeting
+        best_ind = min(
+            pop, key=lambda ind: (ind.fitness.values[0], ind.fitness.values[1])
+        )
+        breakdown = get_constraint_breakdown(list(best_ind), data)
+        for constraint_name in hard_constraint_names:
+            violation_count = int(breakdown.get(constraint_name, 0))
+            violation_history[constraint_name].append(violation_count)
+
         repair_history.append(
             {
                 "generation": gen,
@@ -253,29 +365,24 @@ def main() -> None:
                 "delta_hard": gen_delta_hard,
                 "delta_soft": gen_delta_soft,
                 "repair_time_ms": repair_time_ms,
+                "forced_operator": forced_operator,
+                "stagnant_constraints": stagnant,
+                "priority_operators": priority_operators,
             }
         )
 
         stats.generation_times.append(time.time() - gen_start)
 
         if gen % LOG_INTERVAL == 0 or gen == NGEN - 1:
-            best_ind = min(
-                pop, key=lambda ind: (ind.fitness.values[0], ind.fitness.values[1])
-            )
-            breakdown = get_constraint_breakdown(list(best_ind), data)
-            hard_names = {
-                "student_group_exclusivity",
-                "instructor_exclusivity",
-                "instructor_qualifications",
-                "room_suitability",
-                "room_exclusivity",
-                "instructor_time_availability",
-                "room_time_availability",
-                "course_completeness",
+            hard_bd = {k: v for k, v in breakdown.items() if k in hard_constraint_names}
+            soft_bd = {
+                k: v for k, v in breakdown.items() if k not in hard_constraint_names
             }
-            hard_bd = {k: v for k, v in breakdown.items() if k in hard_names}
-            soft_bd = {k: v for k, v in breakdown.items() if k not in hard_names}
             print_constraint_details(hard_bd, soft_bd, gen, logger=logger)
+            if stagnant:
+                logger.info(
+                    f"  Stagnant constraints: {stagnant[:3]} → forcing {forced_operator}"
+                )
             logger.debug(
                 f"Gen {gen}: min_hard={min(hard_vals)}, repairs={gen_repairs}, "
                 f"delta_hard={gen_delta_hard:.2f}, delta_soft={gen_delta_soft:.2f}"
@@ -325,11 +432,10 @@ def main() -> None:
             "mutpb": MUTPB,
             "fitness_weights": list(FITNESS_WEIGHTS),
             "repair_fraction": REPAIR_FRACTION,
-            "repair_policy": REPAIR_POLICY,
             "repair_budget_ms": REPAIR_BUDGET_MS,
             "repair_max_steps": REPAIR_MAX_STEPS,
             "repair_max_candidates": REPAIR_MAX_CANDIDATES,
-            "repair_epsilon": REPAIR_EPSILON,
+            "stagnation_lookback": STAGNATION_LOOKBACK,
         },
         "results": {
             "elapsed_time": stats.elapsed_time,
@@ -341,6 +447,7 @@ def main() -> None:
             ),
         },
         "constraint_breakdown": breakdown,
+        "violation_history": dict(violation_history),
         "repair_history": repair_history,
         "generation_times": stats.generation_times,
     }
