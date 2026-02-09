@@ -28,15 +28,7 @@ from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.domain.types import Individual, SchedulingContext
-from schedule_engine.io.data_loader import (
-    link_courses_and_groups,
-    link_courses_and_instructors,
-    load_courses,
-    load_groups,
-    load_instructors,
-    load_rooms,
-)
+from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.io.decoder import decode_individual
 from schedule_engine.io.time_system import QuantumTimeSystem
 
@@ -49,7 +41,6 @@ __all__ = [
     "load_data",
     "create_random_individual",
     "create_evaluator",
-    "create_detailed_evaluator",
     "course_aware_crossover",
     "smart_mutation",
     "setup_deap",
@@ -269,80 +260,27 @@ def load_data(
     """
     Load all scheduling data from JSON files.
 
-    Args:
-        data_dir: Path to data directory containing JSON files
-        opening_time: Day start time (HH:MM format)
-        closing_time: Day end time (HH:MM format)
-        closed_days: List of days when no classes occur
-
-    Returns:
-        NotebookData container with all loaded entities
+    Delegates to :class:`DataStore.from_json` and wraps the result in a
+    ``NotebookData`` for backward compatibility.
     """
-    data_dir = Path(data_dir)
-    closed_days = closed_days or ["Saturday"]
+    from schedule_engine.io.data_store import DataStore
 
-    # Create operating hours (same for all open days)
-    operating_hours: dict[str, tuple[str, str] | None] = {}
-    all_days = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
-    ]
-    for day in all_days:
-        if day in closed_days:
-            operating_hours[day] = None
-        else:
-            operating_hours[day] = (opening_time, closing_time)
-
-    # Initialize time system (quantum_minutes is a class constant)
-    qts = QuantumTimeSystem(
-        operating_hours=operating_hours,
+    store = DataStore.from_json(
+        data_dir,
+        opening_time=opening_time,
+        closing_time=closing_time,
+        closed_days=closed_days,
     )
 
-    # Load entities
-    instructors = load_instructors(str(data_dir / "Instructors.json"), qts)
-    courses = load_courses(str(data_dir / "Course.json"))  # No qts parameter
-    groups = load_groups(str(data_dir / "Groups.json"), qts)
-    rooms = load_rooms(str(data_dir / "Rooms.json"), qts)
-
-    # Link relationships
-    link_courses_and_groups(courses, groups)
-    link_courses_and_instructors(courses, instructors)
-
-    # CRITICAL FIX: Derive cohort pairs from Groups.json subgroup structure
-    from schedule_engine.io.data_loader import derive_cohort_pairs_from_groups
-
-    cohort_pairs = derive_cohort_pairs_from_groups(str(data_dir / "Groups.json"))
-
-    # Set cohort pairs on the global config so soft constraints can access them
-    # (paired_cohort_practical_alignment reads from cfg.cohort_pairs)
+    # Ensure a global Config exists so heuristics and other subsystems
+    # that read get_config_or_default() don't crash.
     from schedule_engine.config import Config, get_config_or_default, init_config
 
     cfg = get_config_or_default()
     if not cfg:
-        # No config initialized yet — create one with defaults for mode A-E runs
         cfg = Config(
             name="default",
             environment="test",
-            ga=dict(validate_population_integrity=False),
-            soft_constraints=dict(
-                student_schedule_compactness=dict(
-                    enabled=True, weight=1.0, gap_penalty_per_quantum=1
-                ),
-                instructor_schedule_compactness=dict(
-                    enabled=True, weight=1.0, gap_penalty_per_quantum=1
-                ),
-                student_lunch_break=dict(
-                    enabled=True, weight=1.0, distance_penalty_per_quantum=1
-                ),
-                session_continuity=dict(enabled=True, weight=1.0),
-                paired_cohort_practical_alignment=dict(enabled=True, weight=1.0),
-                soft_weight_factor=1.0,
-            ),
             heuristics=dict(master_enabled=True),
             repair=dict(
                 enabled=True,
@@ -350,26 +288,16 @@ def load_data(
                 heuristics={},
             ),
         )
-    cfg.cohort_pairs = cohort_pairs
-    init_config(cfg)  # Cache the config so constraint functions can access cohort_pairs
+        init_config(cfg)
 
-    # Create scheduling context
-    available_quanta = list(range(qts.total_quanta))
-    context = SchedulingContext(
-        courses=courses,
-        groups=groups,
-        instructors=instructors,
-        rooms=rooms,
-        available_quanta=available_quanta,
-        cohort_pairs=cohort_pairs,  # ADD COHORT PAIRS TO CONTEXT
-    )
+    context = store.to_context()
 
     return NotebookData(
-        courses=courses,
-        groups=groups,
-        instructors=instructors,
-        rooms=rooms,
-        qts=qts,
+        courses=store.courses,
+        groups=store.groups,
+        instructors=store.instructors,
+        rooms=store.rooms,
+        qts=store.qts,
         context=context,
     )
 
@@ -599,83 +527,12 @@ def create_evaluator(
     return evaluate
 
 
-def create_detailed_evaluator(
-    data: NotebookData,
-) -> Callable[
-    [list[SessionGene]], tuple[float, float, dict[str, float], dict[str, float]]
-]:
-    """
-    Create a detailed fitness evaluation function that returns individual constraint penalties.
-
-    All hard and soft constraints are always enabled.
-
-    Returns:
-        Function that returns (hard_total, soft_total, hard_breakdown, soft_breakdown)
-    """
-    from schedule_engine.constraints.all_constraints import (
-        HARD_CONSTRAINTS,
-        SOFT_CONSTRAINTS,
-    )
-    from schedule_engine.io.decoder import decode_individual
-
-    def evaluate_detailed(
-        individual: list[SessionGene],
-    ) -> tuple[float, float, dict[str, float], dict[str, float]]:
-        """Evaluate with full breakdown."""
-        sessions = decode_individual(
-            individual,
-            data.courses,
-            data.instructors,
-            data.groups,
-            data.rooms,
-        )
-
-        hard_breakdown: dict[str, float] = {}
-        soft_breakdown: dict[str, float] = {}
-
-        # Hard constraints
-        for c in HARD_CONSTRAINTS:
-            if c.needs_courses:
-                penalty = c.function(sessions, data.courses)
-            else:
-                penalty = c.function(sessions)
-            hard_breakdown[c.name] = float(penalty)
-
-        # Soft constraints
-        for c in SOFT_CONSTRAINTS:
-            if c.needs_courses:
-                penalty = c.function(sessions, data.courses)
-            else:
-                penalty = c.function(sessions)
-            soft_breakdown[c.name] = float(penalty)
-
-        hard_total = sum(hard_breakdown.values())
-        soft_total = sum(soft_breakdown.values())
-
-        return hard_total, soft_total, hard_breakdown, soft_breakdown
-
-    return evaluate_detailed
-
-
 def course_aware_crossover(
     ind1: list[SessionGene],
     ind2: list[SessionGene],
     cx_prob: float = 0.5,
 ) -> tuple[list[SessionGene], list[SessionGene]]:
-    """
-    Course-group aware crossover operator.
-
-    Swaps mutable attributes (instructor, room, time) between matching
-    course-group pairs while preserving structure.
-
-    Args:
-        ind1: First parent individual
-        ind2: Second parent individual
-        cx_prob: Probability of swapping each gene
-
-    Returns:
-        Tuple of (child1, child2)
-    """
+    """Course-group aware crossover. Delegates to operators/crossover.py."""
     from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 
     return crossover_course_group_aware(ind1, ind2, cx_prob=cx_prob)
@@ -686,21 +543,7 @@ def smart_mutation(
     data: NotebookData,
     gene_mut_prob: float = 0.2,
 ) -> list[SessionGene]:
-    """
-    Smart mutation operator with constraint awareness.
-
-    Mutates time, room, or instructor with some intelligence:
-    - Prefers qualified instructors
-    - Respects time bounds
-
-    Args:
-        individual: Individual to mutate (modified in-place)
-        data: NotebookData for context
-        gene_mut_prob: Probability of mutating each gene
-
-    Returns:
-        The mutated individual
-    """
+    """Mutation operator. Delegates to operators/mutation.py."""
     from schedule_engine.ga.operators.mutation import mutate_individual
 
     (mutated,) = mutate_individual(

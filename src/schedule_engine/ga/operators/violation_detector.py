@@ -9,10 +9,6 @@ Strategy:
 - Full detection: Comprehensive constraint checks via schedule building
 - Hybrid: Combines both for accuracy and speed
 
-Performance Impact:
-- Reduces repair workload from 100% to ~5-15% of genes
-- Expected 3-4* speedup in repair operations
-- Minimal detection overhead (~5ms per individual)
 
 Architecture:
 - Detection is decoupled from repair functions

@@ -20,12 +20,18 @@ from schedule_engine.io.data_loader import (
     load_instructors,
     load_rooms,
 )
+from schedule_engine.io.data_store import DataStore
 from schedule_engine.io.decoder import decode_individual
-from schedule_engine.io.feasibility import check_feasibility, generate_feasibility_report_file
+from schedule_engine.io.feasibility import (
+    check_feasibility,
+    generate_feasibility_report_file,
+)
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.io.validator import validate_input
 
 __all__ = [
+    # DataStore (preferred entry point)
+    "DataStore",
     # Data loading
     "load_courses",
     "load_groups",

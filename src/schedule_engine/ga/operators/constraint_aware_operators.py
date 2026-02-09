@@ -241,6 +241,7 @@ def crossover_constraint_aware(
     ind2: list[SessionGene],
     context: SchedulingContext,
     cx_prob: float = 0.5,
+    validate: bool = True,
 ) -> tuple[list[SessionGene], list[SessionGene]]:
     """
     Constraint-aware crossover that refuses to create group overlaps.
@@ -248,8 +249,6 @@ def crossover_constraint_aware(
     Before swapping time attributes, checks if the swap would create
     conflicts. Only proceeds if the swap is "safe".
     """
-    from schedule_engine.config import get_config_or_default
-
     family_map = _get_or_build_family_map(context)
 
     # Build lookup tables
@@ -257,8 +256,7 @@ def crossover_constraint_aware(
     gene_map2 = {(gene.course_id, tuple(sorted(gene.group_ids))): gene for gene in ind2}
 
     # Verify structure
-    cfg = get_config_or_default()
-    if cfg.ga.validate_population_integrity:
+    if validate:
         keys1 = set(gene_map1.keys())
         keys2 = set(gene_map2.keys())
         if keys1 != keys2:
@@ -268,7 +266,7 @@ def crossover_constraint_aware(
 
     keys_to_process = (
         gene_map1.keys()
-        if cfg.ga.validate_population_integrity
+        if validate
         else (set(gene_map1.keys()) & set(gene_map2.keys()))
     )
 

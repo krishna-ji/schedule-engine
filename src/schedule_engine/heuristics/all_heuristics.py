@@ -14,9 +14,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-# ---------------------------------------------------------------------------
 # Metadata
-# ---------------------------------------------------------------------------
+
 
 HeuristicFunc = Callable[..., Any]
 
@@ -35,10 +34,8 @@ class HeuristicInfo:
     modifies_individual: bool = False
 
 
-# ---------------------------------------------------------------------------
 # Lazy imports — each function lives in its own module already.
 # We import them here so the list is the single source of truth.
-# ---------------------------------------------------------------------------
 
 
 def _lazy_construction():
@@ -326,9 +323,8 @@ def _lazy_repair():
     ]
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
+
 
 # Module-level cache so lazy loaders run at most once.
 _cache: dict[str, list[HeuristicInfo]] | None = None

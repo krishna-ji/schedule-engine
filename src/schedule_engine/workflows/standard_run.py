@@ -7,7 +7,6 @@ Extracted from main.py for better testability and reusability.
 
 import os
 import random
-from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
@@ -23,15 +22,6 @@ from schedule_engine.config import Config
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.scheduler import GAConfig, GAScheduler
 from schedule_engine.io import validate_input
-from schedule_engine.io.data_loader import (
-    derive_cohort_pairs_from_groups,
-    link_courses_and_groups,
-    link_courses_and_instructors,
-    load_courses,
-    load_groups,
-    load_instructors,
-    load_rooms,
-)
 from schedule_engine.io.decoder import decode_individual
 from schedule_engine.io.feasibility import (
     check_feasibility,
@@ -271,22 +261,8 @@ def run_standard_workflow(
     # GA CONFIGURATION
     # ═══════════════════════════════════════════════════════════════
 
-    # Convert config to dict format for GA scheduler
-    repair_config = {
-        "enabled": config.repair.enabled,
-        "max_iterations": config.repair.max_iterations,
-        "apply_after_mutation": config.repair.apply_after_mutation,
-        "apply_after_crossover": config.repair.apply_after_crossover,
-        "memetic_mode": config.repair.memetic_mode,
-        "elite_percentage": config.repair.elite_percentage,
-        "memetic_iterations": config.repair.memetic_iterations,
-        "violation_threshold": config.repair.violation_threshold,
-        "selective_mode": config.repair.selective_mode,
-        "detection_strategy": config.repair.detection_strategy,
-        "recheck_after_repair": config.repair.recheck_after_repair,
-        "adaptive_repair": config.repair.adaptive_repair,
-        "heuristics": config.repair.heuristics,
-    }
+    # Convert repair config to dict for GA scheduler
+    repair_config = config.repair.to_dict() if hasattr(config.repair, "to_dict") else {}
 
     ga_config = GAConfig(
         pop_size=pop_size,
@@ -561,157 +537,34 @@ def load_input_data(
     data_dir: str,
     config: Config | None = None,
 ) -> tuple[QuantumTimeSystem, SchedulingContext]:
-    """
-    Load and link all input entities.
+    """Load and link all input entities via :class:`DataStore`.
 
-    PARALLELIZED: JSON files are loaded concurrently using ThreadPoolExecutor.
-    Expected speedup: 2-3x on I/O-bound operations.
-
-    Only includes courses that are enrolled by at least one group,
-    filtering out the rest of the university course database.
+    Only includes courses enrolled by at least one group.
 
     Args:
-        data_dir: Directory containing input JSON files
+        data_dir: Directory containing input JSON files.
+        config: Config object (cohort_pairs will be set on it).
 
     Returns:
-        Tuple of (QuantumTimeSystem, SchedulingContext)
+        Tuple of (QuantumTimeSystem, SchedulingContext).
     """
     import time
-    from concurrent.futures import ThreadPoolExecutor
+
+    from schedule_engine.io.data_store import DataStore
 
     start_time = time.time()
 
-    # Initialize time system (must be first, used by other loaders)
-    qts = QuantumTimeSystem()
-
-    # ========================================
-    # PARALLEL LOADING SECTION
-    # ========================================
-    # Load JSON files concurrently (I/O-bound operations)
-    import os
-
-    max_workers = get_cpu_count()  # Auto-detect all cores
-    groups_path = os.path.join(data_dir, "Groups.json")
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all loading tasks
-        future_groups = executor.submit(load_groups, groups_path, qts)
-        future_courses = executor.submit(
-            load_courses, os.path.join(data_dir, "Course.json")
-        )
-        future_instructors = executor.submit(
-            load_instructors, os.path.join(data_dir, "Instructors.json"), qts
-        )
-        future_rooms = executor.submit(
-            load_rooms, os.path.join(data_dir, "Rooms.json"), qts
-        )
-
-        # Collect results (blocks until all complete)
-        groups = future_groups.result()
-        all_courses = future_courses.result()
-        instructors = future_instructors.result()
-        rooms = future_rooms.result()
-
-    # ========================================
-    # SEQUENTIAL PROCESSING SECTION
-    # ========================================
-    # (Depends on loaded data, must be sequential)
-
-    # Step 2: Collect all enrolled course codes from groups
-    enrolled_course_codes = set()
-    for group in groups.values():
-        enrolled_course_codes.update(group.enrolled_courses)
-
-    print(
-        f"[!info] Found {len(enrolled_course_codes)} unique course codes enrolled by groups"
-    )
-
-    # Step 3: Filter to only keep courses whose course_code is enrolled
-    # Note: Dict keyed by (course_code, course_type) tuples
-    # A single course_code may have both theory and practical versions
-    courses = {}
-    for course_key, course in all_courses.items():
-        # course_key is (course_code, course_type)
-        course_code = course_key[0]
-        if course_code in enrolled_course_codes:
-            courses[course_key] = course
-
-    excluded_count = len(all_courses) - len(courses)
-    print(
-        f"[!info] Filtered {len(courses)} course objects from {len(all_courses)} total in database"
-    )
-    print(f"[!info] ({excluded_count} courses excluded - not enrolled by any group)")
-
-    # Step 4: Link relationships (only for enrolled courses)
-    link_courses_and_groups(courses, groups)
-    link_courses_and_instructors(courses, instructors)
+    extra_pairs = list(getattr(config, "cohort_pairs", [])) if config else []
+    store = DataStore.from_json(data_dir, extra_cohort_pairs=extra_pairs)
 
     elapsed = time.time() - start_time
-    print(f"[!info] Data loading completed in {elapsed:.2f}s (parallel)")
+    print(f"[!info] Filtered {len(store.courses)} courses, loading took {elapsed:.2f}s")
 
-    # Step 5: Auto-derive cohort pairs from group hierarchy and merge overrides
-    derived_pairs = derive_cohort_pairs_from_groups(groups_path)
     if config is None:
-        raise ValueError("Config must be provided to derive cohort pairs")
+        raise ValueError("Config must be provided")
 
-    configured_pairs = list(getattr(config, "cohort_pairs", []))
-    cohort_pairs = _merge_cohort_pairs(derived_pairs, configured_pairs)
-    config.cohort_pairs = cohort_pairs
+    context = store.to_context()
+    # Attach config to context for callers that expect it.
+    context.config = config
 
-    manual_override_count = max(0, len(cohort_pairs) - len(derived_pairs))
-    print(
-        "[!info] Cohort pairs → derived: "
-        f"{len(derived_pairs)} | manual overrides: {manual_override_count}"
-    )
-
-    # Create context with filtered courses
-    # Type assertion: config must be provided at this point
-    assert config is not None, "Config must be provided to load_input_data"
-
-    context = SchedulingContext(
-        courses=courses,
-        groups=groups,
-        instructors=instructors,
-        rooms=rooms,
-        available_quanta=list(qts.get_all_operating_quanta()),
-        config=config,
-        cohort_pairs=cohort_pairs,
-    )
-
-    return qts, context
-
-
-def _merge_cohort_pairs(
-    derived_pairs: Iterable[tuple[str, str]],
-    configured_pairs: Iterable[tuple[str, str]],
-) -> list[tuple[str, str]]:
-    """Merge auto-derived cohort pairs with manually configured overrides."""
-
-    merged: list[tuple[str, str]] = []
-    seen: set[tuple[str, str]] = set()
-
-    def _normalize(pair: tuple[str, str]) -> tuple[str, str] | None:
-        left, right = pair
-        left_clean = left.strip()
-        right_clean = right.strip()
-        if not left_clean or not right_clean:
-            return None
-        return left_clean, right_clean
-
-    for source in (derived_pairs, configured_pairs):
-        for pair in source:
-            normalized = _normalize(pair)
-            if normalized is None:
-                continue
-
-            canonical_parts: list[str] = sorted(
-                (normalized[0].lower(), normalized[1].lower())
-            )
-            canonical = (canonical_parts[0], canonical_parts[1])
-            if canonical in seen:
-                continue
-
-            seen.add(canonical)
-            merged.append(normalized)
-
-    return merged
+    return store.qts, context

@@ -14,7 +14,6 @@ from collections.abc import Iterable
 
 import numpy as np
 
-from schedule_engine.config import get_config_or_default
 from schedule_engine.domain.session import CourseSession
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.time_helpers import (
@@ -22,8 +21,35 @@ from schedule_engine.utils.time_helpers import (
     quantum_to_day_and_within_day,
 )
 
-# Global QuantumTimeSystem instance (initialized once)
-_QTS = QuantumTimeSystem()
+# QTS singleton — must be set by the data-loading entry point via set_qts().
+# Falls back to QuantumTimeSystem() (default hours) if never set.
+
+_QTS: QuantumTimeSystem | None = None
+
+
+def set_qts(qts: QuantumTimeSystem) -> None:
+    """Set the QTS instance used by all soft constraint functions."""
+    global _QTS
+    _QTS = qts
+
+
+def _get_qts() -> QuantumTimeSystem:
+    """Return the active QTS, lazily creating a default if none was set."""
+    global _QTS
+    if _QTS is None:
+        _QTS = QuantumTimeSystem()
+    return _QTS
+
+
+# Cohort pairs — set by the data-loading entry point via set_cohort_pairs().
+
+_COHORT_PAIRS: list[tuple[str, str]] = []
+
+
+def set_cohort_pairs(pairs: list[tuple[str, str]]) -> None:
+    """Set the cohort pairs used by paired_cohort_practical_alignment."""
+    global _COHORT_PAIRS
+    _COHORT_PAIRS = list(pairs)
 
 
 def student_schedule_compactness(sessions: list[CourseSession]) -> int:
@@ -39,14 +65,11 @@ def student_schedule_compactness(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty points for schedule gaps (excluding break time gaps).
     """
-    cfg = get_config_or_default()
-    gap_penalty = (
-        cfg.soft_constraints.student_schedule_compactness.gap_penalty_per_quantum or 1
-    )
     penalty = 0
 
     # Get midday break quanta for each day
-    break_quanta_by_day = get_midday_break_quanta(_QTS)
+    qts = _get_qts()
+    break_quanta_by_day = get_midday_break_quanta(qts)
 
     group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
         lambda: defaultdict(set)
@@ -55,7 +78,7 @@ def student_schedule_compactness(sessions: list[CourseSession]) -> int:
     for session in sessions:
         for group_id in session.group_ids:
             for q in session.session_quanta:
-                day, within_day = quantum_to_day_and_within_day(q, _QTS)
+                day, within_day = quantum_to_day_and_within_day(q, qts)
                 group_day_quanta[group_id][day].add(within_day)
 
     # Analyze gaps for each group on each day
@@ -79,7 +102,7 @@ def student_schedule_compactness(sessions: list[CourseSession]) -> int:
                         continue
                     else:
                         # Gap during non-break time - PENALIZE (idle/wasted time)
-                        penalty += gap_penalty
+                        penalty += 1
 
     return penalty
 
@@ -98,15 +121,11 @@ def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty points for schedule gaps (excluding break time gaps).
     """
-    cfg = get_config_or_default()
-    gap_penalty = (
-        cfg.soft_constraints.instructor_schedule_compactness.gap_penalty_per_quantum
-        or 1
-    )
     penalty = 0
 
     # Get midday break quanta for each day
-    break_quanta_by_day = get_midday_break_quanta(_QTS)
+    qts = _get_qts()
+    break_quanta_by_day = get_midday_break_quanta(qts)
 
     instructor_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
         lambda: defaultdict(set)
@@ -115,7 +134,7 @@ def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
     for session in sessions:
         iid = session.instructor_id
         for q in session.session_quanta:
-            day, within_day = quantum_to_day_and_within_day(q, _QTS)
+            day, within_day = quantum_to_day_and_within_day(q, qts)
             instructor_day_quanta[iid][day].add(within_day)
 
     # Analyze gaps for each instructor on each day
@@ -139,7 +158,7 @@ def instructor_schedule_compactness(sessions: list[CourseSession]) -> int:
                         continue
                     else:
                         # Gap during non-break time - PENALIZE (idle/wasted time)
-                        penalty += gap_penalty
+                        penalty += 1
 
     return penalty
 
@@ -158,14 +177,11 @@ def student_lunch_break(sessions: list[CourseSession]) -> int:
     Returns:
         Total lunch break violation penalty across all groups and days.
     """
-    cfg = get_config_or_default()
-    distance_penalty = (
-        cfg.soft_constraints.student_lunch_break.distance_penalty_per_quantum or 1
-    )
     penalty = 0
 
     # Get break quanta for each day (day_name -> set of within-day quanta)
-    break_quanta_by_day = get_midday_break_quanta(_QTS)
+    qts = _get_qts()
+    break_quanta_by_day = get_midday_break_quanta(qts)
 
     group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
         lambda: defaultdict(set)
@@ -174,7 +190,7 @@ def student_lunch_break(sessions: list[CourseSession]) -> int:
     for session in sessions:
         for gid in session.group_ids:
             for q in session.session_quanta:
-                day, within_day = quantum_to_day_and_within_day(q, _QTS)
+                day, within_day = quantum_to_day_and_within_day(q, qts)
                 group_day_quanta[gid][day].add(within_day)
 
     for days in group_day_quanta.values():
@@ -194,7 +210,7 @@ def student_lunch_break(sessions: list[CourseSession]) -> int:
                 # Broadcasting: compute all pairwise differences efficiently
                 diffs = np.abs(quanta_arr[:, np.newaxis] - break_arr)
                 nearest_dist = np.min(diffs)
-                penalty += nearest_dist * distance_penalty
+                penalty += nearest_dist
 
     return penalty
 
@@ -238,6 +254,7 @@ def session_continuity(sessions: list[CourseSession]) -> int:
         lambda: defaultdict(list)
     )
     course_type_map: dict[tuple[str, str], str] = {}  # Track course types
+    qts = _get_qts()
 
     for session in sessions:
         # Use course_id + course_type as unique identifier
@@ -245,7 +262,7 @@ def session_continuity(sessions: list[CourseSession]) -> int:
         course_type_map[course_key] = session.course_type
 
         for q in session.session_quanta:
-            day, within_day = quantum_to_day_and_within_day(q, _QTS)
+            day, within_day = quantum_to_day_and_within_day(q, qts)
             course_day_quanta[course_key][day].append(within_day)
 
     # Analyze block sizes for each course on each day
@@ -290,13 +307,13 @@ def session_continuity(sessions: list[CourseSession]) -> int:
                     if block_size == 1:
                         # Isolated single quantum - penalize for lack of clustering
                         isolated_count += 1
-                        if isolated_count > _QTS.theory_max_excused_isolated:
+                        if isolated_count > qts.theory_max_excused_isolated:
                             # Excused slots exceeded, penalize subsequent ones
-                            penalty += _QTS.theory_isolated_penalty
-                    elif block_size > _QTS.preferred_block_size_max:
+                            penalty += qts.theory_isolated_penalty
+                    elif block_size > qts.preferred_block_size_max:
                         # Oversized block - penalty per quantum beyond max
-                        excess = block_size - _QTS.preferred_block_size_max
-                        penalty += excess * _QTS.theory_oversized_penalty_per_quantum
+                        excess = block_size - qts.preferred_block_size_max
+                        penalty += excess * qts.theory_oversized_penalty_per_quantum
                     # Block sizes within preferred range (2-3) have no penalty
 
     return penalty
@@ -317,17 +334,7 @@ def paired_cohort_practical_alignment(
     A value of 0 means that for every practical course they share, both
     cohorts attend practicals in perfectly parallel time windows.
     """
-
-    cfg = get_config_or_default()
-    soft_cfg = getattr(cfg.soft_constraints, "paired_cohort_practical_alignment", None)
-    if soft_cfg is not None and getattr(soft_cfg, "enabled", True) is False:
-        return 0
-
-    # Get cohort pairs from config (set by standard_run workflow)
-    cohort_pairs: Iterable[tuple[str, str]] = getattr(cfg, "cohort_pairs", [])
-
-    # DEBUG MODE: Set to True to print detailed tracking
-    debug_sc5 = getattr(cfg, "debug_sc5", False)
+    cohort_pairs: Iterable[tuple[str, str]] = _COHORT_PAIRS
 
     penalty = 0
 
@@ -345,17 +352,8 @@ def paired_cohort_practical_alignment(
             key = (course_id, course_type, group_id)
             course_group_quanta[key].update(session.session_quanta)
 
-    if debug_sc5:
-        print(f"\n[SC5 DEBUG] Cohort pairs: {list(cohort_pairs)}")
-        print(
-            f"[SC5 DEBUG] Total practical course-group keys: {len(course_group_quanta)}"
-        )
-        for key, quanta in sorted(course_group_quanta.items()):
-            print(f"[SC5 DEBUG]   {key}: {sorted(quanta)}")
-
     # For each cohort pair, measure misalignment on shared practical courses
     for left_id, right_id in cohort_pairs:
-        # Find practical courses present for at least one side
         practical_courses: set[tuple[str, str]] = set()
 
         for course_id, course_type, group_id in course_group_quanta:
@@ -364,68 +362,24 @@ def paired_cohort_practical_alignment(
             if group_id in (left_id, right_id):
                 practical_courses.add((course_id, course_type))
 
-        if debug_sc5:
-            print(f"\n[SC5 DEBUG] Pair: {left_id} <-> {right_id}")
-            print(f"[SC5 DEBUG]   Practical courses found: {sorted(practical_courses)}")
-
         for course_id, course_type in practical_courses:
-            # Check that both sides actually attend this course
             key_left = (course_id, course_type, left_id)
             key_right = (course_id, course_type, right_id)
 
             left_present = key_left in course_group_quanta
             right_present = key_right in course_group_quanta
 
-            if debug_sc5:
-                print(f"\n[SC5 DEBUG]   Course: {course_id} ({course_type})")
-                print(f"[SC5 DEBUG]     {left_id} present: {left_present}")
-                print(f"[SC5 DEBUG]     {right_id} present: {right_present}")
-
             if not left_present and not right_present:
-                if debug_sc5:
-                    print(
-                        "[SC5 DEBUG]     → SKIP: Neither cohort has this course scheduled"
-                    )
                 continue
 
-            raw_quanta_left = course_group_quanta.get(key_left)
-            raw_quanta_right = course_group_quanta.get(key_right)
-            quanta_left = raw_quanta_left if raw_quanta_left is not None else set()
-            quanta_right = raw_quanta_right if raw_quanta_right is not None else set()
+            quanta_left = course_group_quanta.get(key_left) or set()
+            quanta_right = course_group_quanta.get(key_right) or set()
 
             if not quanta_left and not quanta_right:
-                if debug_sc5:
-                    print(
-                        "[SC5 DEBUG]     → SKIP: Both cohorts resolved to empty quanta sets"
-                    )
                 continue
 
-            # Symmetric difference size: quanta where exactly one cohort has the course
             diff = quanta_left.symmetric_difference(quanta_right)
-            course_penalty = len(diff)
-
-            if debug_sc5:
-                if not left_present or not right_present:
-                    missing = right_id if not right_present else left_id
-                    present = left_id if left_present else right_id
-                    print(
-                        f"[SC5 DEBUG]     → PENALIZE: {missing} missing while {present} has sessions"
-                    )
-                only_left = quanta_left - quanta_right
-                only_right = quanta_right - quanta_left
-                both = quanta_left & quanta_right
-                print(f"[SC5 DEBUG]     {left_id} quanta: {sorted(quanta_left)}")
-                print(f"[SC5 DEBUG]     {right_id} quanta: {sorted(quanta_right)}")
-                print(f"[SC5 DEBUG]     Only {left_id}: {sorted(only_left)}")
-                print(f"[SC5 DEBUG]     Only {right_id}: {sorted(only_right)}")
-                print(f"[SC5 DEBUG]     Both: {sorted(both)}")
-                print(f"[SC5 DEBUG]     Symmetric diff: {sorted(diff)}")
-                print(f"[SC5 DEBUG]     → Penalty: {course_penalty}")
-
-            penalty += course_penalty
-
-    if debug_sc5:
-        print(f"\n[SC5 DEBUG] TOTAL PENALTY: {penalty}\n")
+            penalty += len(diff)
 
     return penalty
 
@@ -507,7 +461,8 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
     """
     # CRITICAL FIX: Enable break placement by default for notebook compatibility
     # The legacy notebook system doesn't have proper config initialization
-    enforce_break_placement = _QTS.enforce_break_placement
+    qts = _get_qts()
+    enforce_break_placement = qts.enforce_break_placement
     if not enforce_break_placement:
         # Force enable if we have sessions to evaluate (notebook mode)
         if sessions:
@@ -516,13 +471,13 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
             return 0  # No sessions to evaluate
 
     violation_count = 0
-    min_free = _QTS.break_min_quanta
+    min_free = qts.break_min_quanta
 
     # Step 1: Get break window quanta for each day
-    break_windows = _get_break_window_quanta(_QTS)
+    break_windows = _get_break_window_quanta(qts)
 
     # Step 2: Build group schedules per day
-    group_schedules = _build_group_day_schedules(sessions, _QTS)
+    group_schedules = _build_group_day_schedules(sessions, qts)
 
     # Step 3: Check each group on each day - count 1 violation per group/day
     for (_group_id, day_name), occupied_quanta in group_schedules.items():

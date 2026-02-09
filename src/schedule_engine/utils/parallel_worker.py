@@ -15,23 +15,16 @@ _WORKER_CONTEXT: dict[str, Any] | None = None
 def init_worker(
     data_dir: str, seed: int, config_dict: dict[str, Any] | None = None
 ) -> None:
-    """
-    Initialize worker process by loading data from JSON files.
+    """Initialize worker process by loading data via :class:`DataStore`.
 
-    This function is called once when each worker process starts.
-    It sets up DEAP creator types and loads scheduling context from disk.
-
-    Args:
-        data_dir: Directory containing input JSON files
-        seed: Random seed for reproducibility
-        config_dict: Serialized config dict to reinitialize in worker
+    Called once when each worker process starts.  Sets up DEAP creator
+    types and loads scheduling context from disk.
     """
     global _WORKER_CONTEXT
 
-    # Set environment variable to indicate we're in a worker process
     os.environ["_GA_WORKER_PROCESS"] = "1"
 
-    # Suppress all print output from data loading (workers should be silent)
+    # Suppress print output from data loading (workers should be silent)
     old_stdout = sys.stdout
     sys.stdout = StringIO()
 
@@ -39,19 +32,9 @@ def init_worker(
         from deap import base, creator
 
         from schedule_engine.config import Config, init_config
-        from schedule_engine.domain.types import SchedulingContext
-        from schedule_engine.io.data_loader import (
-            derive_cohort_pairs_from_groups,
-            link_courses_and_groups,
-            link_courses_and_instructors,
-            load_courses,
-            load_groups,
-            load_instructors,
-            load_rooms,
-        )
-        from schedule_engine.io.time_system import QuantumTimeSystem
+        from schedule_engine.io.data_store import DataStore
 
-        # Initialize config in worker process (required for constraint evaluation)
+        # Initialize config in worker process
         if config_dict is not None:
             config_obj = (
                 Config.from_dict(config_dict)
@@ -66,92 +49,36 @@ def init_worker(
         if not hasattr(creator, "Individual"):
             creator.create("Individual", list, fitness=creator.FitnessMulti)
 
-        # Load data from JSON files
-        qts = QuantumTimeSystem()
-        groups_path = os.path.join(data_dir, "Groups.json")
-        groups = load_groups(groups_path, qts)
-        derived_pairs = derive_cohort_pairs_from_groups(groups_path)
-
-        # Get enrolled course codes
-        enrolled_course_codes = set()
-        for group in groups.values():
-            enrolled_course_codes.update(group.enrolled_courses)
-
-        # Load and filter courses
-        all_courses = load_courses(os.path.join(data_dir, "Course.json"))
-        courses = {
-            key: course
-            for key, course in all_courses.items()
-            if key[0] in enrolled_course_codes
-        }
-
-        instructors = load_instructors(os.path.join(data_dir, "Instructors.json"), qts)
-        rooms = load_rooms(os.path.join(data_dir, "Rooms.json"), qts)
-
-        # Link relationships
-        link_courses_and_groups(courses, groups)
-        link_courses_and_instructors(courses, instructors)
-
-        # Get cohort_pairs from config if available, otherwise fall back to derived pairs
-        cohort_pairs_list: list[tuple[str, str]] | None = None
+        # Load everything via DataStore (single source of truth)
+        extra_pairs: list[tuple[str, str]] = []
         if config_dict is not None:
             try:
-                cohort_pairs_list = config_dict.get("time", {}).get("cohort_pairs")
-            except (AttributeError, KeyError):
-                cohort_pairs_list = None
+                raw = config_dict.get("time", {}).get("cohort_pairs", [])
+                extra_pairs = [(str(a).strip(), str(b).strip()) for a, b in raw]
+            except (AttributeError, KeyError, TypeError, ValueError):
+                extra_pairs = []
 
-        if cohort_pairs_list:
-            normalized_pairs: list[tuple[str, str]] = []
-            for raw_pair in cohort_pairs_list:
-                try:
-                    left, right = raw_pair
-                except (TypeError, ValueError):
-                    continue
-                left_clean = str(left).strip()
-                right_clean = str(right).strip()
-                if not left_clean or not right_clean:
-                    continue
-                normalized_pairs.append((left_clean, right_clean))
-
-            cohort_pairs_list = normalized_pairs if normalized_pairs else derived_pairs
-        else:
-            cohort_pairs_list = derived_pairs
-
-        # Create context object (optional, but useful if code expects it)
-        # We don't have config here, but that's usually fine for workers
-        context = SchedulingContext(
-            courses=courses,
-            groups=groups,
-            instructors=instructors,
-            rooms=rooms,
-            available_quanta=list(qts.get_all_operating_quanta()),
-            config=None,
-            cohort_pairs=cohort_pairs_list,
-        )
+        store = DataStore.from_json(data_dir, extra_cohort_pairs=extra_pairs)
+        context = store.to_context()
 
     except Exception as e:
-        # Restore stdout to print error
         sys.stdout = old_stdout
         print(f"Worker initialization failed: {e}")
         raise
     finally:
-        # Restore stdout
         sys.stdout = old_stdout
 
-    # Store scheduling context in module-level variable
     _WORKER_CONTEXT = {
-        "courses": courses,
-        "instructors": instructors,
-        "groups": groups,
-        "rooms": rooms,
-        "qts": qts,
+        "courses": store.courses,
+        "instructors": store.instructors,
+        "groups": store.groups,
+        "rooms": store.rooms,
+        "qts": store.qts,
         "context": context,
     }
 
-    # Propagate random seed to worker
+    # Propagate random seed
     random.seed(seed)
-
-    # Also seed numpy if available
     try:
         import numpy as np
 
