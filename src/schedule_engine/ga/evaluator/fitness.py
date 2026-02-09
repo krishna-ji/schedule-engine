@@ -1,15 +1,36 @@
 # Constraint System (simplified - all constraints always enabled)
-from schedule_engine.constraints.all_constraints import (
-    constraint_needs_courses,
-    get_enabled_hard_constraints,
-    get_enabled_soft_constraints,
-)
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from schedule_engine.constraints.all_constraints import (constraint_needs_courses,
+                                                         get_enabled_hard_constraints,
+                                                         get_enabled_soft_constraints)
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
 from schedule_engine.io.decoder import decode_individual
+
+if TYPE_CHECKING:
+    from schedule_engine.domain.timetable import Timetable
+
+
+def evaluate_from_timetable(tt: Timetable) -> tuple[int, int]:
+    """Evaluate fitness using a pre-built Timetable.
+
+    This is the preferred entry point — avoids a redundant
+    ``decode_individual()`` call when the caller already has a Timetable.
+
+    The constraint functions still receive ``list[CourseSession]`` (via
+    ``tt.sessions``) until Phase 2 migrates them to accept ``Timetable``
+    directly.  The key win right now is that ``tt.sessions`` is computed
+    once and reused across all constraint evaluations for this individual.
+    """
+    sessions = tt.sessions
+    courses = tt.context.courses
+    return _evaluate_sessions(sessions, courses)
 
 
 def evaluate(
@@ -34,6 +55,14 @@ def evaluate(
         rooms = {}
 
     sessions = decode_individual(individual, courses, instructors, groups, rooms)
+    return _evaluate_sessions(sessions, courses)
+
+
+def _evaluate_sessions(
+    sessions: list,
+    courses: dict[tuple, Course],
+) -> tuple[int, int]:
+    """Shared implementation: evaluate decoded sessions against all constraints."""
 
     # Hard constraint penalty (using registry)
     hard_penalty = 0

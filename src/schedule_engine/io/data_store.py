@@ -160,6 +160,8 @@ class DataStore:
 
     def to_context(self) -> SchedulingContext:
         """Create a ``SchedulingContext`` for backward-compat callers."""
+        # Build family_map once here instead of caching in 3 globals
+        family_map = self._build_family_map()
         return SchedulingContext(
             courses=self.courses,
             groups=self.groups,
@@ -167,6 +169,7 @@ class DataStore:
             rooms=self.rooms,
             available_quanta=self.available_quanta,
             cohort_pairs=self.cohort_pairs,
+            family_map=family_map,
         )
 
     def summary(self) -> str:
@@ -177,6 +180,24 @@ class DataStore:
         )
 
     # Serialization  (for multiprocessing / pickling)
+
+    def _build_family_map(self) -> dict[str, set[str]]:
+        """Build a family map from the loaded groups.
+
+        Centralises the logic duplicated in repair.py, repair_engine.py,
+        and group_hierarchy.py.  If the hierarchy module isn't available,
+        returns an empty dict (each group only maps to itself).
+        """
+        try:
+            from schedule_engine.ga.group_hierarchy import (
+                analyze_group_hierarchy,
+                build_group_family_map,
+            )
+
+            hierarchy = analyze_group_hierarchy(self.groups)
+            return build_group_family_map(hierarchy)
+        except Exception:
+            return {}
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dict suitable for ``init_worker()``."""
