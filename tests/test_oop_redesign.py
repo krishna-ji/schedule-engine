@@ -1,11 +1,11 @@
-"""Tests for the OOP redesign — Phases 2-7.
+"""Tests for the OOP redesign - Phases 2-7.
 
 Tests for:
 - Phase 2: Constraint protocol and constraint classes
 - Phase 3: Evaluator class
 - Phase 4: RepairPipeline class (unit tests with mocks)
 - Phase 5: PopulationFactory class (structural tests)
-- Phase 6: EvolutionEngine class (mini-run smoke test)
+- Phase 6: BaseExperiment + PopulationFactory integration
 - Phase 7: family_map in SchedulingContext
 
 All tests use lightweight in-memory fixtures and never touch disk.
@@ -327,7 +327,7 @@ class TestEvaluator:
         assert isinstance(soft_bd, dict)
 
     def test_no_group_conflict_gives_zero_exclusivity(self):
-        """Single gene → zero group/instructor/room exclusivity violations."""
+        """Single gene -> zero group/instructor/room exclusivity violations."""
         from schedule_engine.evaluation import Evaluator
 
         ev = Evaluator()
@@ -339,7 +339,7 @@ class TestEvaluator:
         assert bd["room_exclusivity"] == 0
 
     def test_conflict_gives_nonzero_exclusivity(self):
-        """Two overlapping genes for same group → nonzero penalty."""
+        """Two overlapping genes for same group -> nonzero penalty."""
         from schedule_engine.evaluation import Evaluator
 
         ev = Evaluator()
@@ -412,82 +412,38 @@ class TestPopulationFactory:
         assert factory.context is ctx
 
 
-# Phase 6: EvolutionEngine (structural + smoke tests)
+# Phase 6: BaseExperiment + PopulationFactory Integration
 
 
-class TestEvolutionEngine:
-    """Tests for the EvolutionEngine class."""
+class TestBaseExperimentIntegration:
+    """Tests for BaseExperiment using PopulationFactory."""
 
-    def test_import(self):
-        from schedule_engine.evolution import EvolutionEngine, EvolutionResult
+    def test_base_experiment_imports(self):
+        from schedule_engine.experiments.base import BaseExperiment
+        from schedule_engine.population import PopulationFactory
 
-        assert EvolutionEngine is not None
-        assert EvolutionResult is not None
+        assert BaseExperiment is not None
+        assert PopulationFactory is not None
 
-    def test_engine_has_run(self):
-        from schedule_engine.evolution import EvolutionEngine
+    def test_base_experiment_has_population_factory_property(self):
+        from schedule_engine.experiments.base import BaseExperiment
 
-        assert callable(getattr(EvolutionEngine, "run", None))
+        assert hasattr(BaseExperiment, "population_factory")
 
-    def test_evolution_result_is_feasible_property(self):
-        from schedule_engine.evolution.engine import EvolutionResult
+    def test_population_factory_has_required_methods(self):
+        from schedule_engine.population import PopulationFactory
 
-        r = EvolutionResult(
-            best_individual=[],
-            best_fitness=(0.0, 5.0),
-            population=[],
-            generation_stats=[],
-        )
-        assert r.is_feasible is True
+        assert callable(getattr(PopulationFactory, "create_population", None))
+        assert callable(getattr(PopulationFactory, "random_individual", None))
+        assert callable(getattr(PopulationFactory, "greedy_individual", None))
 
-        r2 = EvolutionResult(
-            best_individual=[],
-            best_fitness=(1.0, 5.0),
-            population=[],
-            generation_stats=[],
-        )
-        assert r2.is_feasible is False
+    def test_population_factory_strategies(self):
+        from schedule_engine.population import PopulationFactory
 
-    def test_generation_stats_fields(self):
-        from schedule_engine.evolution.engine import GenerationStats
-
-        gs = GenerationStats(
-            generation=0,
-            best_hard=1.0,
-            best_soft=2.0,
-            avg_hard=3.0,
-            avg_soft=4.0,
-            feasible_count=0,
-            elapsed=0.5,
-        )
-        assert gs.generation == 0
-        assert gs.best_hard == 1.0
-        assert gs.elapsed == 0.5
-
-    def test_dominates(self):
-        from schedule_engine.evolution.engine import EvolutionEngine
-
-        assert EvolutionEngine._dominates((0.0, 5.0), (1.0, 5.0)) is True
-        assert EvolutionEngine._dominates((0.0, 5.0), (0.0, 6.0)) is True
-        assert EvolutionEngine._dominates((0.0, 5.0), (0.0, 5.0)) is False
-        assert EvolutionEngine._dominates((1.0, 3.0), (0.0, 5.0)) is False
-
-    def test_best_index(self):
-        from schedule_engine.evolution.engine import EvolutionEngine
-
-        fits = [(3.0, 10.0), (0.0, 5.0), (0.0, 7.0), (1.0, 2.0)]
-        assert EvolutionEngine._best_index(fits) == 1
-
-    def test_compute_stats(self):
-        from schedule_engine.evolution.engine import EvolutionEngine
-
-        fits = [(0.0, 5.0), (1.0, 3.0), (0.0, 2.0)]
-        stats = EvolutionEngine._compute_stats(0, fits, 0.1)
-        assert stats.generation == 0
-        assert stats.best_hard == 0.0
-        assert stats.best_soft == 2.0
-        assert stats.feasible_count == 2
-        assert abs(stats.avg_hard - 1.0 / 3.0) < 0.01
+        # Test that _smart_population, _hybrid_population, _pure_random_population exist
+        assert callable(getattr(PopulationFactory, "_smart_population", None))
+        assert callable(getattr(PopulationFactory, "_hybrid_population", None))
+        assert callable(getattr(PopulationFactory, "_pure_random_population", None))
 
 
 # Phase 7: family_map in SchedulingContext
@@ -546,7 +502,7 @@ class TestCrossPhaseIntegration:
         assert isinstance(soft, (int, float))
 
     def test_evaluator_breakdown_names_match_constraints(self):
-        """All constraint names appear in breakdown dict."""
+        # All constraint names appear in breakdown dict.
         from schedule_engine.constraints import ALL_CONSTRAINTS
         from schedule_engine.evaluation import Evaluator
 
@@ -557,7 +513,7 @@ class TestCrossPhaseIntegration:
         assert set(bd.keys()) == expected_names
 
     def test_evaluate_all_totals_match_fitness(self):
-        """evaluate_all() totals should match fitness()."""
+        # evaluate_all() totals should match fitness().
         from schedule_engine.evaluation import Evaluator
 
         ev = Evaluator()

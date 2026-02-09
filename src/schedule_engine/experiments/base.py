@@ -35,7 +35,6 @@ from schedule_engine.ga.run_helpers import (
     NotebookData,
     course_aware_crossover,
     create_evaluator,
-    create_random_individual,
     get_best_individual,
     get_constraint_breakdown,
     load_data,
@@ -46,6 +45,7 @@ from schedule_engine.ga.run_helpers import (
     track_nsga_metrics,
 )
 from schedule_engine.io.decoder import decode_individual
+from schedule_engine.population import PopulationFactory
 from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
 
 
@@ -142,6 +142,7 @@ class BaseExperiment(ABC):
         self._data: NotebookData | None = None
         self._evaluate: Callable[[list], tuple[float, float]] | None = None
         self._toolbox: base.Toolbox | None = None
+        self._population_factory: PopulationFactory | None = None
         self._final_pop: list[Any] | None = None
         self._stats: EvolutionStats | None = None
         self._best_individual: list | None = None
@@ -252,6 +253,20 @@ class BaseExperiment(ABC):
         """Create fitness evaluator."""
         self._evaluate = create_evaluator(self.data)
 
+    def _setup_population_factory(self) -> None:
+        """Setup PopulationFactory using SchedulingContext."""
+        self._population_factory = PopulationFactory(
+            context=self.data.to_context(),
+            parallel=False,  # DEAP handles parallelism
+        )
+
+    @property
+    def population_factory(self) -> PopulationFactory:
+        """Get PopulationFactory instance."""
+        if self._population_factory is None:
+            raise RuntimeError("PopulationFactory not created. Call run() first.")
+        return self._population_factory
+
     def _setup_toolbox(self) -> None:
         """Setup DEAP toolbox with operators."""
         setup_deap(self.fitness_weights)
@@ -259,7 +274,7 @@ class BaseExperiment(ABC):
         self._toolbox = base.Toolbox()
         self._toolbox.register(
             "individual",
-            lambda: creator.Individual(create_random_individual(self.data)),
+            lambda: creator.Individual(self.population_factory.random_individual()),
         )
         self._toolbox.register(
             "population", tools.initRepeat, list, self._toolbox.individual
@@ -445,6 +460,7 @@ class BaseExperiment(ABC):
         # Setup
         self._load_data()
         self._create_evaluator()
+        self._setup_population_factory()
         self._setup_toolbox()
 
         # Run mode-specific evolution
