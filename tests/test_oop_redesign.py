@@ -141,14 +141,14 @@ class TestConstraintProtocol:
     """Tests for constraint protocol compliance and registries."""
 
     def test_constraint_is_runtime_checkable(self):
-        from schedule_engine.constraints.constraint_protocol import Constraint
+        from schedule_engine.constraints import Constraint
 
         assert hasattr(Constraint, "__protocol_attrs__") or hasattr(
             Constraint, "_is_runtime_protocol"
         )
 
     def test_hard_constraints_have_correct_kind(self):
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             HARD_CONSTRAINT_CLASSES,
         )
 
@@ -156,7 +156,7 @@ class TestConstraintProtocol:
             assert c.kind == "hard", f"{c.name} has kind={c.kind}"
 
     def test_soft_constraints_have_correct_kind(self):
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             SOFT_CONSTRAINT_CLASSES,
         )
 
@@ -164,7 +164,7 @@ class TestConstraintProtocol:
             assert c.kind == "soft", f"{c.name} has kind={c.kind}"
 
     def test_all_constraints_is_union(self):
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             ALL_CONSTRAINTS,
             HARD_CONSTRAINT_CLASSES,
             SOFT_CONSTRAINT_CLASSES,
@@ -175,19 +175,19 @@ class TestConstraintProtocol:
         )
 
     def test_all_constraints_have_unique_names(self):
-        from schedule_engine.constraints.constraint_protocol import ALL_CONSTRAINTS
+        from schedule_engine.constraints import ALL_CONSTRAINTS
 
         names = [c.name for c in ALL_CONSTRAINTS]
         assert len(names) == len(set(names)), f"Duplicate names: {names}"
 
     def test_all_constraints_have_positive_weight(self):
-        from schedule_engine.constraints.constraint_protocol import ALL_CONSTRAINTS
+        from schedule_engine.constraints import ALL_CONSTRAINTS
 
         for c in ALL_CONSTRAINTS:
             assert c.weight > 0, f"{c.name} has weight={c.weight}"
 
     def test_all_constraints_have_evaluate(self):
-        from schedule_engine.constraints.constraint_protocol import ALL_CONSTRAINTS
+        from schedule_engine.constraints import ALL_CONSTRAINTS
 
         for c in ALL_CONSTRAINTS:
             assert callable(
@@ -196,7 +196,7 @@ class TestConstraintProtocol:
 
     def test_exclusivity_constraints_use_timetable_indexes(self):
         """The 3 exclusivity constraints should return 0 for non-overlapping genes."""
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             InstructorExclusivity,
             RoomExclusivity,
             StudentGroupExclusivity,
@@ -211,7 +211,7 @@ class TestConstraintProtocol:
         assert RoomExclusivity().evaluate(tt) == 0
 
     def test_exclusivity_detects_group_conflict(self):
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             StudentGroupExclusivity,
         )
 
@@ -225,14 +225,14 @@ class TestConstraintProtocol:
         assert StudentGroupExclusivity().evaluate(tt) > 0
 
     def test_known_hard_constraint_count(self):
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             HARD_CONSTRAINT_CLASSES,
         )
 
         assert len(HARD_CONSTRAINT_CLASSES) == 8
 
     def test_known_soft_constraint_count(self):
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             SOFT_CONSTRAINT_CLASSES,
         )
 
@@ -260,7 +260,7 @@ class TestEvaluator:
         assert len(ev.soft) == 6
 
     def test_evaluator_custom_constraints(self):
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             StudentGroupExclusivity,
         )
         from schedule_engine.evaluation import Evaluator
@@ -554,7 +554,7 @@ class TestCrossPhaseIntegration:
 
     def test_constraint_evaluates_via_timetable(self):
         """Phase 1 (Timetable) + Phase 2 (Constraint) integration."""
-        from schedule_engine.constraints.constraint_protocol import (
+        from schedule_engine.constraints import (
             StudentGroupExclusivity,
         )
 
@@ -577,7 +577,7 @@ class TestCrossPhaseIntegration:
 
     def test_evaluator_breakdown_names_match_constraints(self):
         """All constraint names appear in breakdown dict."""
-        from schedule_engine.constraints.constraint_protocol import ALL_CONSTRAINTS
+        from schedule_engine.constraints import ALL_CONSTRAINTS
         from schedule_engine.evaluation import Evaluator
 
         ev = Evaluator()

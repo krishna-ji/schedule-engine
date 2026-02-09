@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from schedule_engine.constraints.constraint_protocol import (
+from schedule_engine.constraints import (
     ALL_CONSTRAINTS,
     HARD_CONSTRAINT_CLASSES,
     SOFT_CONSTRAINT_CLASSES,

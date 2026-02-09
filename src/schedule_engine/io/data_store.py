@@ -106,10 +106,7 @@ class DataStore:
 
         qts = QuantumTimeSystem(operating_hours=operating_hours)
 
-        # Tell soft constraints about the real QTS immediately.
-        from schedule_engine.constraints.soft import set_qts
-
-        set_qts(qts)
+        # Note: QTS is now passed via Timetable context to constraints
 
         # ---- entities ----
         groups_path = str(data_dir / "Groups.json")
@@ -137,10 +134,7 @@ class DataStore:
             extra_cohort_pairs or [],
         )
 
-        # Tell soft constraints about cohort pairs.
-        from schedule_engine.constraints.soft import set_cohort_pairs
-
-        set_cohort_pairs(cohort_pairs)
+        # Note: Cohort pairs are now accessed via config or passed to build_constraints()
 
         return cls(
             courses=courses,

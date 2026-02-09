@@ -1,15 +1,13 @@
 # Constraint System (simplified - all constraints always enabled)
-from schedule_engine.constraints.all_constraints import (
-    constraint_needs_courses,
-    get_enabled_hard_constraints,
-    get_enabled_soft_constraints,
-)
+from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.io.decoder import decode_individual
+from schedule_engine.domain.timetable import Timetable
+from schedule_engine.domain.types import SchedulingContext
+from schedule_engine.io.time_system import QuantumTimeSystem
 
 
 def evaluate_detailed(
@@ -29,39 +27,27 @@ def evaluate_detailed(
     if rooms is None:
         rooms = {}
 
-    sessions = decode_individual(individual, courses, instructors, groups, rooms)
+    # Build Timetable
+    context = SchedulingContext(
+        courses=courses,
+        instructors=instructors,
+        groups=groups,
+        rooms=rooms,
+        qts=QuantumTimeSystem(),
+    )
+    tt = Timetable(genes=individual, context=context)
 
-    # Hard constraint penalties (individual breakdown using registry)
+    # Hard constraint penalties (individual breakdown)
     hard_details = {}
-    enabled_hard_constraints = get_enabled_hard_constraints()
+    for constraint in HARD_CONSTRAINT_CLASSES:
+        penalty = constraint.evaluate(tt)
+        hard_details[constraint.name] = int(constraint.weight * penalty)
 
-    for constraint_name, constraint_info in enabled_hard_constraints.items():
-        constraint_func = constraint_info["function"]
-        weight = constraint_info["weight"]
-
-        # Some hard constraints need courses parameter (centralized in metadata.py)
-        if constraint_needs_courses(constraint_name):
-            penalty = constraint_func(sessions, courses)
-        else:
-            penalty = constraint_func(sessions)
-
-        hard_details[constraint_name] = weight * penalty
-
-    # Soft constraint penalties (individual breakdown using registry)
+    # Soft constraint penalties (individual breakdown)
     soft_details = {}
-    enabled_soft_constraints = get_enabled_soft_constraints()
-
-    for constraint_name, constraint_info in enabled_soft_constraints.items():
-        constraint_func = constraint_info["function"]
-        weight = constraint_info["weight"]
-
-        # Check if soft constraint needs courses parameter
-        if constraint_needs_courses(constraint_name):
-            penalty = constraint_func(sessions, courses)
-        else:
-            penalty = constraint_func(sessions)
-
-        soft_details[constraint_name] = weight * penalty
+    for constraint in SOFT_CONSTRAINT_CLASSES:
+        penalty = constraint.evaluate(tt)
+        soft_details[constraint.name] = constraint.weight * penalty
 
     return hard_details, soft_details
 
@@ -77,4 +63,5 @@ def evaluate_from_detailed(
     """
     total_hard = sum(hard_details.values())
     total_soft = sum(soft_details.values())
-    return total_hard, total_soft
+    return int(total_hard), int(total_soft)
+

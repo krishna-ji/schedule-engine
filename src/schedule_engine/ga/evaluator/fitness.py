@@ -3,18 +3,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from schedule_engine.constraints.all_constraints import (constraint_needs_courses,
-                                                         get_enabled_hard_constraints,
-                                                         get_enabled_soft_constraints)
+from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
+from schedule_engine.domain.timetable import Timetable
 from schedule_engine.io.decoder import decode_individual
 
 if TYPE_CHECKING:
-    from schedule_engine.domain.timetable import Timetable
+    pass
 
 
 def evaluate_from_timetable(tt: Timetable) -> tuple[int, int]:
@@ -22,15 +21,10 @@ def evaluate_from_timetable(tt: Timetable) -> tuple[int, int]:
 
     This is the preferred entry point — avoids a redundant
     ``decode_individual()`` call when the caller already has a Timetable.
-
-    The constraint functions still receive ``list[CourseSession]`` (via
-    ``tt.sessions``) until Phase 2 migrates them to accept ``Timetable``
-    directly.  The key win right now is that ``tt.sessions`` is computed
-    once and reused across all constraint evaluations for this individual.
     """
-    sessions = tt.sessions
-    courses = tt.context.courses
-    return _evaluate_sessions(sessions, courses)
+    hard_penalty = sum(c.weight * c.evaluate(tt) for c in HARD_CONSTRAINT_CLASSES)
+    soft_penalty = sum(c.weight * c.evaluate(tt) for c in SOFT_CONSTRAINT_CLASSES)
+    return (int(hard_penalty), int(soft_penalty))
 
 
 def evaluate(
@@ -55,45 +49,17 @@ def evaluate(
         rooms = {}
 
     sessions = decode_individual(individual, courses, instructors, groups, rooms)
-    return _evaluate_sessions(sessions, courses)
+    # Build Timetable from decoded sessions
+    from schedule_engine.domain.types import SchedulingContext
+    from schedule_engine.io.time_system import QuantumTimeSystem
 
+    context = SchedulingContext(
+        courses=courses,
+        instructors=instructors,
+        groups=groups,
+        rooms=rooms,
+        qts=QuantumTimeSystem(),
+    )
+    tt = Timetable(genes=individual, context=context)
+    return evaluate_from_timetable(tt)
 
-def _evaluate_sessions(
-    sessions: list,
-    courses: dict[tuple, Course],
-) -> tuple[int, int]:
-    """Shared implementation: evaluate decoded sessions against all constraints."""
-
-    # Hard constraint penalty (using registry)
-    hard_penalty = 0
-    enabled_hard_constraints = get_enabled_hard_constraints()
-
-    for constraint_name, constraint_info in enabled_hard_constraints.items():
-        constraint_func = constraint_info["function"]
-        weight = constraint_info["weight"]
-
-        # Some hard constraints need courses parameter (centralized in metadata.py)
-        if constraint_needs_courses(constraint_name):
-            penalty = constraint_func(sessions, courses)
-        else:
-            penalty = constraint_func(sessions)
-
-        hard_penalty += weight * penalty
-
-    # Soft constraint penalty (using registry)
-    soft_penalty = 0
-    enabled_soft_constraints = get_enabled_soft_constraints()
-
-    for constraint_name, constraint_info in enabled_soft_constraints.items():
-        constraint_func = constraint_info["function"]
-        weight = constraint_info["weight"]
-
-        # Some soft constraints need courses parameter (e.g., paired_cohort_practical_alignment)
-        if constraint_needs_courses(constraint_name):
-            penalty = constraint_func(sessions, courses)
-        else:
-            penalty = constraint_func(sessions)
-
-        soft_penalty += weight * penalty
-
-    return (hard_penalty, soft_penalty)

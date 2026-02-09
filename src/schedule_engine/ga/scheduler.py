@@ -18,15 +18,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from deap import base, tools
 from rich.live import Live
-from rich.progress import (
-    BarColumn,
-    Progress,
-    ProgressColumn,
-    SpinnerColumn,
-    Task,
-    TextColumn,
-    TimeElapsedColumn,
-)
+from rich.progress import (BarColumn, Progress, ProgressColumn, SpinnerColumn, Task,
+                           TextColumn, TimeElapsedColumn)
 from rich.table import Table
 from rich.text import Text
 
@@ -34,10 +27,7 @@ if TYPE_CHECKING:
     from stable_baselines3.common.base_class import BaseAlgorithm
 
 from schedule_engine.config import get_config
-from schedule_engine.constraints.all_constraints import (
-    get_enabled_hard_constraints,
-    get_enabled_soft_constraints,
-)
+from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.evaluator.detailed_fitness import evaluate_detailed
 from schedule_engine.ga.evaluator.fitness import evaluate
@@ -45,10 +35,8 @@ from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.mutation import mutate_individual
 from schedule_engine.ga.population import generate_course_group_aware_population
 from schedule_engine.heuristics import get_heuristic_statistics_template
-from schedule_engine.heuristics.parallel_executor import (
-    ParallelHeuristicExecutor,
-    get_parallel_executor,
-)
+from schedule_engine.heuristics.parallel_executor import (ParallelHeuristicExecutor,
+                                                          get_parallel_executor)
 from schedule_engine.metrics.diversity import average_pairwise_diversity
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.parallel_worker import get_worker_context
@@ -425,8 +413,8 @@ class GAScheduler:
         self._cached_soft_details: dict[str, int] = {}
 
         # PERFORMANCE CACHE: Store enabled constraints (computed once, used frequently)
-        self._enabled_hard_constraints = get_enabled_hard_constraints()
-        self._enabled_soft_constraints = get_enabled_soft_constraints()
+        self._enabled_hard_constraints = HARD_CONSTRAINT_CLASSES
+        self._enabled_soft_constraints = SOFT_CONSTRAINT_CLASSES
 
         # RL INTEGRATION: Components for hyper-heuristic control
         self.rl_enabled = False
@@ -574,11 +562,9 @@ class GAScheduler:
             from schedule_engine.rl.deployment.model_loader import ModelLoader
             from schedule_engine.rl.gym_env.action_space import ActionMapper
             from schedule_engine.rl.gym_env.state_encoder import StateEncoder
-            from schedule_engine.rl.hybrid.hybrid_controller import (
-                FallbackStrategy,
-                HybridController,
-                HybridMode,
-            )
+            from schedule_engine.rl.hybrid.hybrid_controller import (FallbackStrategy,
+                                                                     HybridController,
+                                                                     HybridMode)
 
             console.print("[cyan]Initializing RL Components...[/cyan]")
 
@@ -1652,16 +1638,20 @@ class GAScheduler:
                 _constraint_format_start = time.time()
                 enabled_hc = (
                     self._enabled_hard_constraints
-                )  # Use cached dict (computed once in __init__)
+                )  # Use cached list (computed once in __init__)
                 enabled_sc = (
                     self._enabled_soft_constraints
-                )  # Use cached dict (computed once in __init__)
+                )  # Use cached list (computed once in __init__)
+
+                # Build constraint name -> weight lookup
+                hc_weights = {c.name: c.weight for c in enabled_hc}
+                sc_weights = {c.name: c.weight for c in enabled_sc}
 
                 hc_parts = []
                 for name in self.hard_constraint_names:
                     short_name = self.hard_constraint_codes.get(name, name[:4])
                     weighted_val = hard_details.get(name, 0)
-                    weight = enabled_hc.get(name, {}).get("weight", 1.0)
+                    weight = hc_weights.get(name, 1.0)
                     raw_val = int(weighted_val / weight) if weight > 0 else 0
                     hc_parts.append(f"{short_name}={raw_val}")
 
@@ -1674,7 +1664,7 @@ class GAScheduler:
                 for name in self.soft_constraint_names:
                     short_name = self.soft_constraint_codes.get(name, name[:4])
                     weighted_val = soft_details.get(name, 0.0)
-                    weight = enabled_sc.get(name, {}).get("weight", 1.0)
+                    weight = sc_weights.get(name, 1.0)
                     raw_val = weighted_val / weight if weight > 0 else 0
                     sc_parts.append(f"{short_name}={raw_val:.1f}")
 
@@ -2179,9 +2169,8 @@ class GAScheduler:
                     and not offspring[i].fitness.valid
                     and random.random() < igls_config.selective_repair.apply_probability
                 ):
-                    from schedule_engine.ga.operators.intensive_local_search import (
-                        apply_selective_probabilistic,
-                    )
+                    from schedule_engine.ga.operators.intensive_local_search import \
+                        apply_selective_probabilistic
 
                     offspring[i], was_repaired1 = apply_selective_probabilistic(
                         individual=offspring[i],
@@ -2227,9 +2216,8 @@ class GAScheduler:
                     not mutant.fitness.valid
                     and random.random() < igls_config.selective_repair.apply_probability
                 ):
-                    from schedule_engine.ga.operators.intensive_local_search import (
-                        apply_selective_probabilistic,
-                    )
+                    from schedule_engine.ga.operators.intensive_local_search import \
+                        apply_selective_probabilistic
 
                     mutant, was_repaired = apply_selective_probabilistic(
                         individual=mutant,
@@ -2528,19 +2516,13 @@ class GAScheduler:
             return
 
         # Import new metrics modules
-        from schedule_engine.metrics.convergence import (
-            calculate_constraint_satisfaction_rate,
-        )
+        from schedule_engine.metrics.convergence import \
+            calculate_constraint_satisfaction_rate
         from schedule_engine.metrics.hypervolume import (
-            calculate_hypervolume,
-            get_hypervolume_reference_point,
-        )
+            calculate_hypervolume, get_hypervolume_reference_point)
         from schedule_engine.metrics.pareto_metrics import (
-            calculate_inverted_generational_distance,
-            calculate_spacing,
-            calculate_spread,
-            get_pareto_front_size,
-        )
+            calculate_inverted_generational_distance, calculate_spacing,
+            calculate_spread, get_pareto_front_size)
 
         # Determine if this is a tracked generation for expensive metrics
         advanced_freq = 10  # advanced metrics every 10 generations
@@ -2707,9 +2689,8 @@ class GAScheduler:
 
         # ENHANCEMENT: Record violations to heatmap
         if self.violation_heatmap and gen >= 0:  # Skip initial pop
-            from schedule_engine.metrics.violation_recorder import (
-                record_violations_to_heatmap,
-            )
+            from schedule_engine.metrics.violation_recorder import \
+                record_violations_to_heatmap
 
             record_violations_to_heatmap(best, self.context, self.violation_heatmap)
             self.violation_heatmap.record_generation(gen)
