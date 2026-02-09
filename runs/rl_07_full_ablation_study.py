@@ -21,7 +21,7 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from schedule_engine.notebooks import run_ablation
+from schedule_engine.rl.helpers import run_ablation
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:

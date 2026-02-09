@@ -76,15 +76,68 @@ class QuantumTimeSystem:
     }
 
     def __init__(
-        self, operating_hours: dict[str, tuple[str, str] | None] | None = None
+        self,
+        operating_hours: dict[str, tuple[str, str] | None] | None = None,
+        *,
+        # Break / scheduling parameters (previously on TimeConfig)
+        midday_break_start: str = "12:00",
+        midday_break_end: str = "13:00",
+        break_window_start: str = "12:00",
+        break_window_end: str = "14:00",
+        enforce_break_placement: bool = True,
+        break_min_quanta: int = 1,
+        break_violation_penalty: int = 1,
+        # Theory block penalties
+        theory_isolated_penalty: int = 1,
+        theory_oversized_penalty_per_quantum: int = 1,
+        theory_max_excused_isolated: int = 1,
+        # Practical block penalties
+        practical_fragmentation_penalty: int = 1,
+        # Block sizing
+        preferred_block_size_min: int = 1,
+        preferred_block_size_max: int = 3,
+        max_session_coalescence: int = 3,
+        max_sessions_per_day: int = 4,
+        # Time preferences
+        earliest_preferred_time: str = "07:00",
+        latest_preferred_time: str = "21:00",
+        # Legacy
+        isolated_session_penalty: int = 1,
+        oversized_block_penalty_per_quantum: int = 1,
     ) -> None:
         """
         Initializes the QuantumTimeSystem with default operating hours.
         Precomputes continuous quantum mappings for each operational day.
 
+        All break/constraint parameters can be passed directly or will be
+        read from the global Config if available.
+
         Example:
             qts = QuantumTimeSystem()
+            qts = QuantumTimeSystem(midday_break_start="11:30", break_min_quanta=2)
         """
+        # Store break / scheduling parameters
+        self.midday_break_start = midday_break_start
+        self.midday_break_end = midday_break_end
+        self.break_window_start = break_window_start
+        self.break_window_end = break_window_end
+        self.enforce_break_placement = enforce_break_placement
+        self.break_min_quanta = break_min_quanta
+        self.break_violation_penalty = break_violation_penalty
+        self.theory_isolated_penalty = theory_isolated_penalty
+        self.theory_oversized_penalty_per_quantum = theory_oversized_penalty_per_quantum
+        self.theory_max_excused_isolated = theory_max_excused_isolated
+        self.practical_fragmentation_penalty = practical_fragmentation_penalty
+        self.preferred_block_size_min = preferred_block_size_min
+        self.preferred_block_size_max = preferred_block_size_max
+        self.max_session_coalescence = max_session_coalescence
+        self.max_sessions_per_day = max_sessions_per_day
+        self.earliest_preferred_time = earliest_preferred_time
+        self.latest_preferred_time = latest_preferred_time
+        self.isolated_session_penalty = isolated_session_penalty
+        self.oversized_block_penalty_per_quantum = oversized_block_penalty_per_quantum
+
+        # Resolve operating hours
         resolved_hours = (
             operating_hours
             or self._resolve_operating_hours_from_config()

@@ -231,8 +231,6 @@ def session_continuity(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty for non-preferred block configurations.
     """
-    cfg = get_config_or_default().time
-
     penalty = 0
 
     # Group sessions by (course_id, course_type, day) to find blocks
@@ -292,13 +290,13 @@ def session_continuity(sessions: list[CourseSession]) -> int:
                     if block_size == 1:
                         # Isolated single quantum - penalize for lack of clustering
                         isolated_count += 1
-                        if isolated_count > cfg.theory_max_excused_isolated:
+                        if isolated_count > _QTS.theory_max_excused_isolated:
                             # Excused slots exceeded, penalize subsequent ones
-                            penalty += cfg.theory_isolated_penalty
-                    elif block_size > cfg.preferred_block_size_max:
+                            penalty += _QTS.theory_isolated_penalty
+                    elif block_size > _QTS.preferred_block_size_max:
                         # Oversized block - penalty per quantum beyond max
-                        excess = block_size - cfg.preferred_block_size_max
-                        penalty += excess * cfg.theory_oversized_penalty_per_quantum
+                        excess = block_size - _QTS.preferred_block_size_max
+                        penalty += excess * _QTS.theory_oversized_penalty_per_quantum
                     # Block sizes within preferred range (2-3) have no penalty
 
     return penalty
@@ -326,9 +324,7 @@ def paired_cohort_practical_alignment(
         return 0
 
     # Get cohort pairs from config (set by standard_run workflow)
-    cohort_pairs: Iterable[tuple[str, str]] = getattr(
-        getattr(cfg, "time", cfg), "cohort_pairs", []
-    )
+    cohort_pairs: Iterable[tuple[str, str]] = getattr(cfg, "cohort_pairs", [])
 
     # DEBUG MODE: Set to True to print detailed tracking
     debug_sc5 = getattr(cfg, "debug_sc5", False)
@@ -448,7 +444,6 @@ def _get_break_window_quanta(
     Returns:
         Dict mapping day_name -> set of within-day quanta for break window
     """
-    cfg = get_config_or_default()
     break_windows: dict[str, set[int]] = {}
 
     for day in qts.DAY_NAMES:
@@ -456,8 +451,8 @@ def _get_break_window_quanta(
             continue
 
         try:
-            start_q = qts.time_to_quanta(day, cfg.time.break_window_start)
-            end_q = qts.time_to_quanta(day, cfg.time.break_window_end)
+            start_q = qts.time_to_quanta(day, qts.break_window_start)
+            end_q = qts.time_to_quanta(day, qts.break_window_end)
 
             day_offset = qts.day_quanta_offset[day]
             if day_offset is None:
@@ -510,11 +505,9 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
     Returns:
         Total penalty for break placement violations
     """
-    cfg = get_config_or_default()
-
     # CRITICAL FIX: Enable break placement by default for notebook compatibility
     # The legacy notebook system doesn't have proper config initialization
-    enforce_break_placement = getattr(cfg.time, "enforce_break_placement", False)
+    enforce_break_placement = _QTS.enforce_break_placement
     if not enforce_break_placement:
         # Force enable if we have sessions to evaluate (notebook mode)
         if sessions:
@@ -523,7 +516,7 @@ def break_placement_compliance(sessions: list[CourseSession]) -> int:
             return 0  # No sessions to evaluate
 
     violation_count = 0
-    min_free = getattr(cfg.time, "break_min_quanta", 1)
+    min_free = _QTS.break_min_quanta
 
     # Step 1: Get break window quanta for each day
     break_windows = _get_break_window_quanta(_QTS)

@@ -12,7 +12,6 @@ from rich.console import Console
 project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root / "src"))
 
-from schedule_engine.config import get_config
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.time_helpers import (
     get_midday_break_quanta,
@@ -66,21 +65,28 @@ def main():
     console.print("[bold cyan]TIME CONFIGURATION SETTINGS[/bold cyan]".center(110))
     console.print("[bold cyan]" + "═" * 60 + "[/bold cyan]\n")
 
-    config = get_config()
-    time_cfg = config.time
+    # All time settings now live on QuantumTimeSystem
+    qts = QuantumTimeSystem()
 
     # Basic quantum parameters
     console.print("[bold yellow]QUANTUM TIME SYSTEM PARAMETERS[/bold yellow]")
     console.print("[dim]" + "-" * 60 + "[/dim]")
     console.print(
-        f"  Quantum Duration:        [cyan]{time_cfg.quantum_minutes} minutes[/cyan]"
+        f"  Quantum Duration:        [cyan]{QuantumTimeSystem.QUANTUM_MINUTES} minutes[/cyan]"
     )
-    quanta_per_hour = max(1, 60 // time_cfg.quantum_minutes)
+    quanta_per_hour = max(1, 60 // QuantumTimeSystem.QUANTUM_MINUTES)
     console.print(f"  Quanta per Hour:         [cyan]{quanta_per_hour}[/cyan]")
-    console.print(
-        f"  Operating Window:        [cyan]{time_cfg.opening_time}-{time_cfg.closing_time}[/cyan]"
+    # Show operating hours from first operational day
+    sample_hours = next(
+        (h for h in qts.operating_hours.values() if h is not None), ("?", "?")
     )
-    closed_days = ", ".join(sorted(time_cfg.closed_days)) or "None"
+    console.print(
+        f"  Operating Window:        [cyan]{sample_hours[0]}-{sample_hours[1]}[/cyan]"
+    )
+    closed_days = (
+        ", ".join(sorted(d for d, h in qts.operating_hours.items() if h is None))
+        or "None"
+    )
     console.print(f"  Closed Days:             [cyan]{closed_days}[/cyan]")
     console.print()
 
@@ -88,14 +94,12 @@ def main():
     console.print("[bold yellow]SESSION PREFERENCES[/bold yellow]")
     console.print("[dim]" + "-" * 60 + "[/dim]")
     console.print(
-        f"  Max Session Coalescence: [cyan]{time_cfg.max_session_coalescence} quanta[/cyan]"
+        f"  Max Session Coalescence: [cyan]{qts.max_session_coalescence} quanta[/cyan]"
     )
-    console.print(
-        f"  Max Sessions per Day:    [cyan]{time_cfg.max_sessions_per_day}[/cyan]"
-    )
+    console.print(f"  Max Sessions per Day:    [cyan]{qts.max_sessions_per_day}[/cyan]")
     console.print(
         "  Preferred Block Size:     [cyan]"
-        f"{time_cfg.preferred_block_size_min}-{time_cfg.preferred_block_size_max} quanta"
+        f"{qts.preferred_block_size_min}-{qts.preferred_block_size_max} quanta"
         "[/cyan]"
     )
     console.print()
@@ -104,26 +108,19 @@ def main():
     console.print("[bold yellow]PREFERRED OPERATING HOURS (Wall-Clock)[/bold yellow]")
     console.print("[dim]" + "-" * 60 + "[/dim]")
     console.print(
-        f"  Earliest Preferred:      [cyan]{time_cfg.earliest_preferred_time}[/cyan]"
+        f"  Earliest Preferred:      [cyan]{qts.earliest_preferred_time}[/cyan]"
     )
     console.print(
-        f"  Latest Preferred:        [cyan]{time_cfg.latest_preferred_time}[/cyan]"
+        f"  Latest Preferred:        [cyan]{qts.latest_preferred_time}[/cyan]"
     )
     console.print()
 
     # Break settings
     console.print("[bold yellow]MIDDAY BREAK SETTINGS (Wall-Clock)[/bold yellow]")
     console.print("[dim]" + "-" * 60 + "[/dim]")
-    console.print(
-        f"  Break Start:             [cyan]{time_cfg.midday_break_start}[/cyan]"
-    )
-    console.print(
-        f"  Break End:               [cyan]{time_cfg.midday_break_end}[/cyan]"
-    )
+    console.print(f"  Break Start:             [cyan]{qts.midday_break_start}[/cyan]")
+    console.print(f"  Break End:               [cyan]{qts.midday_break_end}[/cyan]")
     console.print()
-
-    # Initialize QuantumTimeSystem
-    qts = QuantumTimeSystem()
 
     console.print("[bold cyan]" + "─" * 60 + "[/bold cyan]")
     console.print("[bold cyan]QUANTUM CONVERSIONS (Per Day)[/bold cyan]".center(110))
@@ -175,7 +172,7 @@ def main():
     )
     console.print("[dim]" + "-" * 60 + "[/dim]")
     earliest_quanta, latest_quanta = _get_preferred_time_range_quanta(
-        qts, time_cfg.earliest_preferred_time, time_cfg.latest_preferred_time
+        qts, qts.earliest_preferred_time, qts.latest_preferred_time
     )
     for day in qts.DAY_NAMES:
         if day in earliest_quanta and day in latest_quanta:
@@ -208,10 +205,10 @@ def main():
         f"[bold]Total Operational Quanta: [cyan]{qts.total_quanta}[/cyan][/bold]"
     )
     console.print("[bold cyan]" + "═" * 60 + "[/bold cyan]\n")
-    console.print("[dim]All time configurations aligned with QuantumTimeSystem[/dim]")
+    console.print("[dim]All time configurations live on QuantumTimeSystem[/dim]")
     console.print("[dim]No hardcoded QUANTA_PER_DAY or magic numbers[/dim]")
     console.print(
-        "[dim]To modify: Update defaults in src/schedule_engine/config/models.py or supply overrides via schedule_engine.config.loader.[/dim]\n"
+        "[dim]To modify: Pass params to QuantumTimeSystem() constructor.[/dim]\n"
     )
 
 

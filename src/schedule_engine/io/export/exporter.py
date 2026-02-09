@@ -11,8 +11,8 @@ from typing import Any
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-# Config values (used internally only)
-from schedule_engine.config.calendar_config import (
+# Calendar export constants
+from schedule_engine.config.models import (
     EXCAL_DEFAULT_OUTPUT_PDF,
     EXCAL_END_HOUR,
     EXCAL_QUANTUM_MINUTES,

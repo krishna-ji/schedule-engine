@@ -27,8 +27,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from schedule_engine.ga.operators.repair_engine import RepairEngine
-from schedule_engine.io.decoder import decode_individual
-from schedule_engine.notebooks.core import (
+from schedule_engine.ga.run_helpers import (
     EvolutionStats,
     course_aware_crossover,
     create_evaluator,
@@ -42,8 +41,9 @@ from schedule_engine.notebooks.core import (
     stats_to_ga_metrics,
     track_nsga_metrics,
 )
-from schedule_engine.notebooks.viz import print_summary
+from schedule_engine.io.decoder import decode_individual
 from schedule_engine.utils.json_utils import to_jsonable
+from schedule_engine.viz import print_summary
 from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
 from schedule_engine.workflows.reporting import generate_reports
 

@@ -20,8 +20,8 @@ from schedule_engine.constraints.soft import (
     break_placement_compliance,
     paired_cohort_practical_alignment,
 )
+from schedule_engine.ga.run_helpers import load_data
 from schedule_engine.io.decoder import decode_individual
-from schedule_engine.notebooks.core import load_data
 
 
 def main() -> None:
@@ -69,20 +69,19 @@ def main() -> None:
     # Since we're using the legacy load_data, check if break placement is configured
     # The legacy system might not have this configuration
     try:
-        from schedule_engine.config import get_config
+        from schedule_engine.io.time_system import QuantumTimeSystem
 
-        config = get_config()
-        print(f"   enforce_break_placement: {config.time.enforce_break_placement}")
-        print(f"   break_window_start: {config.time.break_window_start}")
-        print(f"   break_window_end: {config.time.break_window_end}")
-        print(f"   break_min_quanta: {config.time.break_min_quanta}")
-    except:
-        print("    CONFIG NOT AVAILABLE (using legacy load_data)")
-        print("   → This is likely the issue - no config means no break enforcement")
+        qts = QuantumTimeSystem()
+        print(f"   enforce_break_placement: {qts.enforce_break_placement}")
+        print(f"   break_window_start: {qts.break_window_start}")
+        print(f"   break_window_end: {qts.break_window_end}")
+        print(f"   break_min_quanta: {qts.break_min_quanta}")
+    except Exception as e:
+        print(f"    QTS NOT AVAILABLE: {e}")
 
     print("\n5. TEST CONSTRAINT FUNCTIONS:")
     # Create a test individual to see what happens
-    from schedule_engine.notebooks.core import create_random_individual
+    from schedule_engine.ga.run_helpers import create_random_individual
 
     test_individual = create_random_individual(data)
 

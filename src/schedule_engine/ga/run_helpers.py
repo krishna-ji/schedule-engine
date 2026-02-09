@@ -318,15 +318,12 @@ def load_data(
 
     cohort_pairs = derive_cohort_pairs_from_groups(str(data_dir / "Groups.json"))
 
-    # Also set cohort pairs on the global config so soft constraints can access them
-    # (paired_cohort_practical_alignment reads from cfg.time.cohort_pairs)
-    # IMPORTANT: Must use init_config to cache the config, otherwise get_config_or_default
-    # returns a fresh default each time when no config is cached
+    # Set cohort pairs on the global config so soft constraints can access them
+    # (paired_cohort_practical_alignment reads from cfg.cohort_pairs)
     from schedule_engine.config import get_config_or_default, init_config
-    from schedule_engine.config.loader import dict_to_pydantic
 
     cfg = get_config_or_default()
-    cfg.time.cohort_pairs = cohort_pairs
+    cfg.cohort_pairs = cohort_pairs
     init_config(cfg)  # Cache the config so constraint functions can access cohort_pairs
 
     # Create scheduling context

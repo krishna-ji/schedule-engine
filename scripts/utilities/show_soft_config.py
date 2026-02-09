@@ -12,7 +12,9 @@ sys.path.insert(0, str(project_root / "src"))
 from rich.console import Console
 
 from schedule_engine.config import get_config  # get_config().soft_constraints
-from schedule_engine.constraints.registry import get_enabled_soft_constraints
+from schedule_engine.constraints.all_constraints import (
+    get_all_soft_constraints as get_enabled_soft_constraints,
+)
 
 console = Console()
 

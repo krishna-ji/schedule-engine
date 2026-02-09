@@ -14,11 +14,10 @@ Main Features:
     - PDF calendar export and evolution plots
 
 Usage:
-    from schedule_engine.config import init_config
-    from schedule_engine.config.loader import dict_to_pydantic
+    from schedule_engine.config import Config, init_config
     from schedule_engine.workflows import run_standard_workflow
 
-    config = dict_to_pydantic({"experiment_name": "example"})
+    config = Config(name="example")
     init_config(config)
     result = run_standard_workflow(
         pop_size=config.ga.pop_size,

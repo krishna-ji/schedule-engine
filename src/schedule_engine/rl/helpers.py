@@ -7,18 +7,16 @@ thin and aligned with the main codebase.
 
 from __future__ import annotations
 
+import copy
 import random
 import time
 from dataclasses import dataclass
-import copy
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from schedule_engine.config import init_config
-from schedule_engine.config.loader import dict_to_pydantic
-from schedule_engine.config.models import Config
+from schedule_engine.config import Config, init_config
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.population import generate_course_group_aware_population
 from schedule_engine.rl.agents import RandomAgent, create_dqn_agent, create_ppo_agent
@@ -57,19 +55,25 @@ def build_notebook_config(
     Returns:
         Initialized Config instance.
     """
-    config_dict: dict[str, Any] = {
-        "experiment_name": "notebook-experiment",
-        "environment": "notebook",
+    from schedule_engine.config.models import GAConfig
+
+    ga_kwargs: dict[str, Any] = {
         "ngen": 50,
         "pop_size": 20,
         "cxpb": 0.7,
         "mutpb": 0.2,
-        "seed": seed,
     }
     if overrides:
-        config_dict.update(overrides)
+        # Apply GA-level overrides
+        for k in list(overrides):
+            if k in ("ngen", "pop_size", "cxpb", "mutpb"):
+                ga_kwargs[k] = overrides.pop(k)
 
-    config = dict_to_pydantic(config_dict)
+    config = Config(
+        name="notebook-experiment",
+        environment="test",
+        ga=GAConfig(**ga_kwargs),
+    )
     init_config(config)
     return config
 
@@ -237,7 +241,9 @@ def run_ablation(
     for trial in range(trials):
         trial_seed = seed + trial * 101
         set_global_seed(trial_seed)
-        config = build_notebook_config(seed=trial_seed, overrides={"pop_size": pop_size})
+        config = build_notebook_config(
+            seed=trial_seed, overrides={"pop_size": pop_size}
+        )
         _, context = load_context(data_dir, config)
         base_population = generate_course_group_aware_population(
             n=pop_size,

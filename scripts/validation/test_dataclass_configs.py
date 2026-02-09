@@ -1,38 +1,43 @@
 #!/usr/bin/env python3
 """
-Test script: Verify config loader creates valid Pydantic models.
+Test script: Verify dataclass Config constructs correctly.
 
-This script exercises schedule_engine.config.loader.dict_to_pydantic
-with a handful of profiles used in notebooks and scripts.
+Exercises schedule_engine.config.models.Config with several profiles.
 """
 
-from schedule_engine.config.loader import dict_to_pydantic
+from schedule_engine.config.models import Config, GAConfig, RLConfig
 
-print("CONFIG LOADER - VALIDATION TEST")
-
+print("CONFIG DATACLASS - VALIDATION TEST")
 print()
 
 profiles = [
     (
         "Baseline (test)",
-        {"experiment_name": "baseline-test", "ngen": 30, "pop_size": 10},
+        Config(name="baseline-test", ga=GAConfig(ngen=30, pop_size=10)),
     ),
     (
         "Baseline (prod)",
-        {"experiment_name": "baseline-prod", "ngen": 200, "pop_size": 50},
+        Config(name="baseline-prod", ga=GAConfig(ngen=200, pop_size=50)),
     ),
-    ("Memetic", {"experiment_name": "memetic", "heuristics_mode": "memetic"}),
-    ("Adaptive", {"experiment_name": "adaptive", "heuristics_mode": "adaptive"}),
-    ("RL-guided", {"experiment_name": "rl-guided", "rl_enabled": True}),
+    (
+        "Memetic",
+        Config(name="memetic"),
+    ),
+    (
+        "Adaptive",
+        Config(name="adaptive"),
+    ),
+    (
+        "RL-guided",
+        Config(name="rl-guided", rl=RLConfig(enabled=True)),
+    ),
 ]
 
-for name, profile in profiles:
-    config = dict_to_pydantic(profile)
-    print(f"Testing: {name}")
+for label, config in profiles:
+    print(f"Testing: {label}")
     print(f"  ✓ name={config.name}")
     print(f"  ✓ ngen={config.ga.ngen}, pop={config.ga.pop_size}")
     print(f"  ✓ lns_enabled={config.lns.enabled}, rl_enabled={config.rl.enabled}")
     print()
-
 
 print("✓ ALL TESTS PASSED")

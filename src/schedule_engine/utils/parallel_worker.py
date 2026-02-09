@@ -54,7 +54,11 @@ def init_worker(
 
         # Initialize config in worker process (required for constraint evaluation)
         if config_dict is not None:
-            config_obj = Config.model_validate(config_dict)
+            config_obj = (
+                Config.from_dict(config_dict)
+                if isinstance(config_dict, dict)
+                else config_dict
+            )
             init_config(config_obj=config_obj)
 
         # Set up DEAP creator types (required for Windows spawn)

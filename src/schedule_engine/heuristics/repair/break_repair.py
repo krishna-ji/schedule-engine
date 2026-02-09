@@ -9,10 +9,9 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from schedule_engine.config import get_config
 from schedule_engine.domain.types import Individual
-from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.heuristics.registry import repair_heuristic
+from schedule_engine.io.time_system import QuantumTimeSystem
 
 
 @repair_heuristic(
@@ -47,9 +46,9 @@ def repair_break_placement(
     Returns:
         Stats dict with repair counts
     """
-    cfg = get_config()
+    qts = QuantumTimeSystem()
 
-    if not cfg.time.enforce_break_placement:
+    if not qts.enforce_break_placement:
         return {"break_violations_repaired": 0}
 
     # Get entity dictionaries from kwargs (passed by repair framework)
@@ -75,7 +74,6 @@ def repair_break_placement(
     )
     from schedule_engine.io import decode_individual
 
-    qts = QuantumTimeSystem()
     repairs = 0
 
     for _iteration in range(max_iterations):
@@ -93,7 +91,7 @@ def repair_break_placement(
             occupied_in_break = occupied_quanta & break_quanta
             free_count = len(break_quanta) - len(occupied_in_break)
 
-            if free_count < cfg.time.break_min_quanta:
+            if free_count < qts.break_min_quanta:
                 violations_found = True
                 # Attempt repair: shift session out of break window
                 repair_result = _shift_session_out_of_break(

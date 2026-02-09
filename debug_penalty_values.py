@@ -15,8 +15,8 @@ from schedule_engine.constraints.soft import (
     break_placement_compliance,
     paired_cohort_practical_alignment,
 )
+from schedule_engine.ga.run_helpers import create_random_individual, load_data
 from schedule_engine.io.decoder import decode_individual
-from schedule_engine.notebooks.core import create_random_individual, load_data
 
 
 def main() -> None:
@@ -49,17 +49,6 @@ def main() -> None:
 
     print("\n1. BREAK PLACEMENT ANALYSIS:")
 
-    # Enable debug for break placement by temporarily modifying config
-    from schedule_engine.config import get_config_or_default
-
-    cfg = get_config_or_default()
-
-    break_penalty = getattr(cfg.time, "break_violation_penalty", 50)
-    min_free = getattr(cfg.time, "break_min_quanta", 1)
-
-    print(f"   Break penalty per violation: {break_penalty}")
-    print(f"   Min free quanta required: {min_free}")
-
     # Check how many groups and days we're evaluating
     from schedule_engine.constraints.soft import (
         _build_group_day_schedules,
@@ -68,6 +57,12 @@ def main() -> None:
     from schedule_engine.io.time_system import QuantumTimeSystem
 
     qts = QuantumTimeSystem()
+
+    break_penalty = qts.break_violation_penalty
+    min_free = qts.break_min_quanta
+
+    print(f"   Break penalty per violation: {break_penalty}")
+    print(f"   Min free quanta required: {min_free}")
     break_windows = _get_break_window_quanta(qts)
     group_schedules = _build_group_day_schedules(sessions, qts)
 

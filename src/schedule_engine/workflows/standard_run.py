@@ -224,14 +224,11 @@ def run_standard_workflow(
         context.courses, context.instructors, context.rooms, context.groups, qts
     )
 
-    # Generate feasibility report file if requested
-    if config.feasibility.generate_report and (
-        is_feasible or config.feasibility.save_report_on_success
-    ):
-        feasibility_report_path = os.path.join(output_dir, "log_feasibility.log")
-        generate_feasibility_report_file(feasibility_report, feasibility_report_path)
-        console.print(f"  [dim]saved:[/dim] {feasibility_report_path}")
-        console.print()
+    # Generate feasibility report file (always enabled)
+    feasibility_report_path = os.path.join(output_dir, "log_feasibility.log")
+    generate_feasibility_report_file(feasibility_report, feasibility_report_path)
+    console.print(f"  [dim]saved:[/dim] {feasibility_report_path}")
+    console.print()
 
     # If not feasible and FAIL_ON_INFEASIBILITY=True, check_feasibility already exited
     # If we're here, either it's feasible or FAIL_ON_INFEASIBILITY=False
@@ -258,7 +255,9 @@ def run_standard_workflow(
         # Create pool with worker initialization
         # Workers load data from JSON files (no pickling of complex objects!)
         # Also pass serialized config for constraint evaluation
-        config_dict = config.model_dump()
+        import dataclasses
+
+        config_dict = dataclasses.asdict(config)
         pool = multiprocessing.Pool(
             processes=num_workers,
             initializer=init_worker,
@@ -390,17 +389,12 @@ def run_standard_workflow(
 
     logger.start_run()  # Mark start time
 
-    # Initialize performance profiler if enabled
-    profiling_enabled = (
-        getattr(config.performance, "enable_profiling", False)
-        if hasattr(config, "performance")
-        else False
+    # Initialize performance profiler
+    profiling_enabled = True
+    init_profiler(enabled=True, console=console)
+    console.print(
+        "[dim]  performance profiling: [green]enabled[/green] (micro-breakdown per generation)[/dim]"
     )
-    if profiling_enabled:
-        init_profiler(enabled=True, console=console)
-        console.print(
-            "[dim]  performance profiling: [green]enabled[/green] (micro-breakdown per generation)[/dim]"
-        )
 
     scheduler = GAScheduler(
         ga_config,
@@ -417,11 +411,7 @@ def run_standard_workflow(
     scheduler.evolve()
 
     # Cleanup profiler and show summary
-    if (
-        profiling_enabled
-        and hasattr(config.performance, "show_summary_table")
-        and config.performance.show_summary_table
-    ):
+    if profiling_enabled:
         cleanup_profiler()
 
     # ═══════════════════════════════════════════════════════════════
@@ -666,9 +656,9 @@ def load_input_data(
     if config is None:
         raise ValueError("Config must be provided to derive cohort pairs")
 
-    configured_pairs = list(getattr(config.time, "cohort_pairs", []))
+    configured_pairs = list(getattr(config, "cohort_pairs", []))
     cohort_pairs = _merge_cohort_pairs(derived_pairs, configured_pairs)
-    config.time.cohort_pairs = cohort_pairs
+    config.cohort_pairs = cohort_pairs
 
     manual_override_count = max(0, len(cohort_pairs) - len(derived_pairs))
     print(

@@ -50,7 +50,7 @@ def memetic_repair(
 
     # Create a basic evaluator if none provided
     if evaluator is None:
-        from schedule_engine.constraints.registry import (
+        from schedule_engine.constraints.all_constraints import (
             evaluate_hard_constraints,
             evaluate_soft_constraints,
         )

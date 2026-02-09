@@ -20,7 +20,7 @@ from typing import Any, Callable
 import numpy as np
 
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.notebooks.core import NotebookData
+from schedule_engine.ga.run_helpers import NotebookData
 
 __all__ = [
     "local_search_individual",

@@ -21,13 +21,13 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from schedule_engine.notebooks import (
+from schedule_engine.rl.gym_env.reward_calculator import RewardCalculator
+from schedule_engine.rl.helpers import (
     build_notebook_config,
     create_env,
     load_context,
     set_global_seed,
 )
-from schedule_engine.rl.gym_env.reward_calculator import RewardCalculator
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:

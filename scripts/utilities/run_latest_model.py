@@ -125,7 +125,7 @@ def main() -> int:
 
     console.print("\n[yellow]Starting RL-guided GA run...[/yellow]\n")
 
-    from schedule_engine.config.loader import dict_to_pydantic
+    from schedule_engine.config.models import Config, GAConfig, RLAgentConfig, RLConfig
     from schedule_engine.workflows.standard_run import run_standard_workflow
 
     agent_type = "ppo"
@@ -146,17 +146,21 @@ def main() -> int:
     }
     settings = profile_settings.get(args.profile, profile_settings["test"])
 
-    config = dict_to_pydantic(
-        {
-            "experiment_name": args.name or f"rl-inference-{args.profile}",
-            "environment": "test" if args.profile == "test" else "prod",
-            "ngen": settings["ngen"],
-            "pop_size": settings["pop_size"],
-            "rl_enabled": True,
-            "rl_mode": "inference",
-            "rl_agent_path": str(latest_model),
-            "rl_agent_type": agent_type,
-        }
+    config = Config(
+        name=args.name or f"rl-inference-{args.profile}",
+        environment="test" if args.profile == "test" else "prod",
+        ga=GAConfig(
+            ngen=settings["ngen"],
+            pop_size=settings["pop_size"],
+        ),
+        rl=RLConfig(
+            enabled=True,
+            mode="inference",
+            agent=RLAgentConfig(
+                model_path=str(latest_model),
+                type=agent_type,
+            ),
+        ),
     )
 
     try:

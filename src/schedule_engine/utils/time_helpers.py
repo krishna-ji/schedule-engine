@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from schedule_engine.config import get_config_or_default
 from schedule_engine.io.time_system import QuantumTimeSystem
 
 
@@ -16,7 +15,6 @@ def get_midday_break_quanta(qts: QuantumTimeSystem) -> dict[str, set[int]]:
     Returns:
         Dict mapping day_name -> set of quantum indices (within-day) for break period
     """
-    cfg = get_config_or_default()
     break_quanta: dict[str, set[int]] = {}
 
     for day in qts.DAY_NAMES:
@@ -24,8 +22,8 @@ def get_midday_break_quanta(qts: QuantumTimeSystem) -> dict[str, set[int]]:
             continue
 
         try:
-            break_start_q = qts.time_to_quanta(day, cfg.time.midday_break_start)
-            break_end_q = qts.time_to_quanta(day, cfg.time.midday_break_end)
+            break_start_q = qts.time_to_quanta(day, qts.midday_break_start)
+            break_end_q = qts.time_to_quanta(day, qts.midday_break_end)
 
             day_offset = qts.day_quanta_offset[day]
             if day_offset is None:

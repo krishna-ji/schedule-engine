@@ -18,7 +18,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from schedule_engine.notebooks.core import EvolutionStats
+from schedule_engine.ga.run_helpers import EvolutionStats
 
 __all__ = [
     "plot_convergence",
