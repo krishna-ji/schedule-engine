@@ -93,9 +93,8 @@ def run_standard_workflow(
                 "Config not initialized. Call init_config() first or pass config parameter."
             )
 
-    # ═══════════════════════════════════════════════════════════════
     # INITIALIZATION
-    # ═══════════════════════════════════════════════════════════════
+
     console.print()
     console.print("[bold cyan]schedule engine[/bold cyan]")
     console.print()
@@ -147,9 +146,8 @@ def run_standard_workflow(
             "[dim]warning:[/] Unable to set runtime output_dir in config object"
         )
 
-    # ═══════════════════════════════════════════════════════════════
     # DATA LOADING
-    # ═══════════════════════════════════════════════════════════════
+
     console.print("[bold cyan]loading data[/bold cyan]")
     with Progress(
         SpinnerColumn(),
@@ -183,9 +181,8 @@ def run_standard_workflow(
     )
     console.print()
 
-    # ═══════════════════════════════════════════════════════════════
     # VALIDATION
-    # ═══════════════════════════════════════════════════════════════
+
     if validate:
         console.print("[bold cyan]validating input[/bold cyan]")
         with Progress(
@@ -207,9 +204,8 @@ def run_standard_workflow(
         console.print("  [green][!ok] validation passed[/green]")
         console.print()
 
-    # ═══════════════════════════════════════════════════════════════
     # FEASIBILITY ANALYSIS
-    # ═══════════════════════════════════════════════════════════════
+
     is_feasible, feasibility_report = check_feasibility(
         context.courses, context.instructors, context.rooms, context.groups, qts
     )
@@ -226,9 +222,8 @@ def run_standard_workflow(
         console.print("[yellow][!warn] proceeding despite infeasibility[/yellow]")
         console.print()
 
-    # ═══════════════════════════════════════════════════════════════
     # PARALLELIZATION SETUP
-    # ═══════════════════════════════════════════════════════════════
+
     pool = None
 
     if config.parallel.use_multiprocessing:
@@ -257,9 +252,7 @@ def run_standard_workflow(
         console.print("[yellow][!info] single-threaded mode[/yellow]")
         console.print()
 
-    # ═══════════════════════════════════════════════════════════════
     # GA CONFIGURATION
-    # ═══════════════════════════════════════════════════════════════
 
     # Convert repair config to dict for GA scheduler
     repair_config = config.repair.to_dict() if hasattr(config.repair, "to_dict") else {}
@@ -271,10 +264,7 @@ def run_standard_workflow(
         mutation_prob=mutation_prob,
         repair_config=repair_config,
     )
-
-    # ========================================
     # Get all constraint names (all constraints always enabled)
-    # ========================================
     from schedule_engine.constraints.all_constraints import (
         get_all_hard_constraints,
         get_all_soft_constraints,
@@ -287,11 +277,7 @@ def run_standard_workflow(
     # All constraints are enabled
     hard_names = list(all_hard_constraints.keys())
     soft_names = list(all_soft_constraints.keys())
-
-    # ========================================
     # Step 4.5: Initialize Logger
-    # ========================================
-
     logger_config = {
         "pop_size": pop_size,
         "generations": generations,
@@ -328,10 +314,7 @@ def run_standard_workflow(
     constraint_logger = ConstraintLogger(output_dir, hard_names, soft_names)
     console.print(f"  [dim]metrics csv:[/dim] {constraint_logger.get_log_path()}")
     console.print()
-
-    # ========================================
     # Step 5: Run GA
-    # ========================================
     console.print("[bold cyan]genetic algorithm[/bold cyan]")
     console.print(
         f"  [dim]population:[/dim] {ga_config.pop_size} | [dim]generations:[/dim] {ga_config.generations}"
@@ -388,9 +371,8 @@ def run_standard_workflow(
     if profiling_enabled:
         cleanup_profiler()
 
-    # ═══════════════════════════════════════════════════════════════
     # SOLUTION DECODING
-    # ═══════════════════════════════════════════════════════════════
+
     console.print()
     console.print("[bold cyan]solution[/bold cyan]")
 
@@ -442,9 +424,8 @@ def run_standard_workflow(
         final_schedule_sessions=len(decoded_schedule),
     )
 
-    # ═══════════════════════════════════════════════════════════════
     # RL VISUALIZATION (if RL was used)
-    # ═══════════════════════════════════════════════════════════════
+
     if hasattr(scheduler, "rl_enabled") and scheduler.rl_enabled:
         console.print("[bold cyan]generating rl training visualizations[/bold cyan]")
         try:
@@ -469,9 +450,8 @@ def run_standard_workflow(
         except Exception as e:
             console.print(f"  [yellow]warning:[/yellow] rl visualization failed: {e}")
 
-    # ═══════════════════════════════════════════════════════════════
     # REPORT GENERATION
-    # ═══════════════════════════════════════════════════════════════
+
     console.print("[bold cyan]generating reports[/bold cyan]")
     with Progress(
         SpinnerColumn(),
@@ -501,9 +481,8 @@ def run_standard_workflow(
     console.print(f"  [dim]saved:[/dim] {output_dir}")
     console.print()
 
-    # ═══════════════════════════════════════════════════════════════
     # COMPLETE
-    # ═══════════════════════════════════════════════════════════════
+
     console.print("[bold green]complete[/bold green]")
     console.print()
     console.print("[bold cyan]complete[/bold cyan]", style="cyan")

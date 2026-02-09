@@ -31,14 +31,11 @@ import copy
 import random
 from collections import defaultdict
 
-from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.types import SchedulingContext
 
-# ================
+
 # DISTANCE PRESERVING CROSSOVER
-# ================
-
-
 def distance_preserving_crossover(
     parent1: list[SessionGene],
     parent2: list[SessionGene],
@@ -104,11 +101,7 @@ def distance_preserving_crossover(
     return offspring1, offspring2
 
 
-# ================
 # CROWDING MUTATION
-# ================
-
-
 def crowding_mutation(
     individual: list[SessionGene],
     population: list[list[SessionGene]],
@@ -223,11 +216,7 @@ def crowding_mutation(
     return mutations
 
 
-# ================
 # NICHING SELECTION
-# ================
-
-
 def niching_selection(
     individual: list[SessionGene],
     population: list[list[SessionGene]],
@@ -305,11 +294,7 @@ def niching_selection(
     return individual
 
 
-# ================
 # ADAPTIVE DIVERSITY MAINTENANCE
-# ================
-
-
 def adaptive_diversity_maintenance(
     individual: list[SessionGene],
     population: list[list[SessionGene]],
@@ -348,11 +333,7 @@ def adaptive_diversity_maintenance(
     return individual
 
 
-# ================
 # HELPER FUNCTIONS
-# ================
-
-
 def _calculate_individual_distance(
     ind1: list[SessionGene], ind2: list[SessionGene]
 ) -> float:

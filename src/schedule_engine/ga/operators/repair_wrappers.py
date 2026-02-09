@@ -66,18 +66,11 @@ class RepairOperatorMetadata:
     enabled_by_default: bool = True
 
 
-# ================
 # GLOBAL REPAIR REGISTRY
-# ================
-
 _REPAIR_OPERATORS: dict[str, RepairOperatorMetadata] = {}
 
 
-# ================
 # DECORATOR FUNCTION
-# ================
-
-
 def repair_operator(
     name: str,
     description: str,
@@ -138,11 +131,7 @@ def repair_operator(
     return decorator
 
 
-# ================
 # REGISTRY ACCESS FUNCTIONS
-# ================
-
-
 def get_all_repair_operators() -> dict[str, RepairOperatorMetadata]:
     """
     Get all registered repair operators with their metadata.
@@ -263,11 +252,7 @@ def list_all_repair_operators() -> None:
     console.print(table)
 
 
-# ================
 # STATISTICS TRACKING
-# ================
-
-
 def get_repair_statistics_template() -> dict[str, int | float]:
     """
     Returns template for repair statistics tracking.

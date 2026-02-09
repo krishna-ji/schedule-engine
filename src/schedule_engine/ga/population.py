@@ -592,10 +592,7 @@ def create_session_gene_with_conflict_avoidance(
     """
     import logging
 
-    # =================================================================
     # ENHANCED: Try to find instructor-time pairs that respect availability
-    # =================================================================
-
     # Build set of quanta already used by THIS individual's instructors
     used_by_instructors: set[int] = set()
     for inst_id, inst_quanta in instructor_schedule.items():
@@ -629,11 +626,7 @@ def create_session_gene_with_conflict_avoidance(
         if available_starts:
             start_q = random.choice(available_starts)
             assigned_quanta = list(range(start_q, start_q + num_quanta))
-
-    # =================================================================
     # FALLBACK: Use original logic if availability-based selection fails
-    # =================================================================
-
     if instructor is None:
         # Find qualified instructors (may not be available)
         qualified_instructors = find_qualified_instructors(course_id, context)
@@ -675,11 +668,7 @@ def create_session_gene_with_conflict_avoidance(
         logging.warning(f"No rooms available for {course_id}, creating gene anyway")
 
     room = random.choice(suitable_rooms) if suitable_rooms else None
-
-    # =================================================================
     # If we didn't get assigned_quanta from availability check, use fallback
-    # =================================================================
-
     quanta_needed = num_quanta if num_quanta > 0 else 1
 
     if not assigned_quanta:

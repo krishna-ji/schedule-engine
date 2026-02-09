@@ -384,11 +384,7 @@ def paired_cohort_practical_alignment(
     return penalty
 
 
-# ==========================================
 # BREAK PLACEMENT COMPLIANCE
-# ==========================================
-
-
 def _get_break_window_quanta(
     qts: QuantumTimeSystem,
 ) -> dict[str, set[int]]:

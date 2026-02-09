@@ -40,6 +40,7 @@ Usage:
 from collections import defaultdict
 from collections.abc import Callable
 
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.types import SchedulingContext
 
 # Import original repair functions to reuse helper logic
@@ -49,15 +50,11 @@ from schedule_engine.ga.operators.repair import (
     _find_instructor_available_slot,
 )
 from schedule_engine.ga.operators.violation_detector import detect_violated_genes
-from schedule_engine.domain.gene import SessionGene
 
 SelectiveRepairFunc = Callable[[list[SessionGene], set[int], SchedulingContext], int]
 
-# ================
+
 # SELECTIVE REPAIR WRAPPER - Main Entry Point
-# ================
-
-
 def repair_individual_selective(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -198,11 +195,7 @@ def _get_selective_repair_function(repair_name: str) -> SelectiveRepairFunc | No
     return selective_repairs.get(repair_name)
 
 
-# ================
 # SELECTIVE REPAIR FUNCTIONS
-# ================
-
-
 def repair_instructor_availability_selective(
     individual: list[SessionGene],
     violated_indices: set[int],

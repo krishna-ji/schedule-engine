@@ -158,11 +158,7 @@ def calculate_improvement_percentage(initial_value: float, final_value: float) -
     return improvement
 
 
-# ================
 # Statistical Analysis for Multiple Runs
-# ================
-
-
 def calculate_run_statistics(
     runs_data: list[list[float]], generation: int = -1
 ) -> dict:

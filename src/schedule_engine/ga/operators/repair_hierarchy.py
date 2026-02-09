@@ -168,11 +168,7 @@ def _find_family_aware_conflict_free_slot(
     return None
 
 
-# ================
 # HIERARCHY-AWARE GROUP OVERLAP REPAIR (Priority 2.5)
-# ================
-
-
 @repair_operator(
     name="repair_group_overlaps_hierarchy",
     description="Fix group overlaps with parent-subgroup awareness (BME1A ⊂ BME1AB)",
@@ -247,11 +243,7 @@ def repair_group_overlaps_hierarchy(
     return fixes
 
 
-# ================
 # INSTRUCTOR AVAILABILITY WITH SWAP (Priority 1.5)
-# ================
-
-
 @repair_operator(
     name="repair_instructor_availability_with_swap",
     description="Fix instructor availability by time shift OR instructor swap",
@@ -357,11 +349,7 @@ def repair_instructor_availability_with_swap(
     return fixes
 
 
-# ================
 # CASCADE-AWARE REPAIR COORDINATOR
-# ================
-
-
 def repair_with_cascade_check(
     individual: list[SessionGene],
     context: SchedulingContext,

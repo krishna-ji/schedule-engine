@@ -65,11 +65,8 @@ from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.operators.repair_wrappers import repair_operator
 
-# ================
+
 # 1. INSTRUCTOR AVAILABILITY REPAIR (Priority 1)
-# ================
-
-
 @repair_operator(
     name="repair_instructor_availability",
     description="Fix instructor availability violations (shift sessions to instructor-available times)",
@@ -189,11 +186,7 @@ def _find_instructor_available_slot(
     return None  # No valid slot found
 
 
-# ================
 # 1.5 INSTRUCTOR AVAILABILITY REASSIGN (Priority 1.5)
-# ================
-
-
 @repair_operator(
     name="repair_instructor_availability_reassign",
     description="Reassign to available instructor when current is unavailable at scheduled time",
@@ -280,11 +273,7 @@ def repair_instructor_availability_reassign(
     return fixes
 
 
-# ================
 # 2. GROUP OVERLAP REPAIR (Priority 2)
-# ================
-
-
 @repair_operator(
     name="repair_group_overlaps",
     description="Fix group schedule overlaps (same group in multiple sessions)",
@@ -353,11 +342,7 @@ def repair_group_overlaps(
     return fixes
 
 
-# ================
 # 3. ROOM OVERLAP REASSIGNMENT (Priority 3)
-# ================
-
-
 @repair_operator(
     name="repair_room_overlap_reassign",
     description="Resolve room overlaps by moving sessions into idle rooms before shifting times",
@@ -395,11 +380,7 @@ def repair_room_overlap_reassign(
     return fixes
 
 
-# ================
 # 4. ROOM CONFLICT REPAIR (Priority 4)
-# ================
-
-
 @repair_operator(
     name="repair_room_conflicts",
     description="Fallback room conflict repair that shifts sessions when no alternate room exists",
@@ -442,11 +423,7 @@ def repair_room_conflicts(
     return fixes
 
 
-# ================
 # 5. INSTRUCTOR CONFLICT REPAIR (Priority 5)
-# ================
-
-
 @repair_operator(
     name="repair_instructor_conflicts",
     description="Resolve instructor double-bookings by shifting sessions or swapping instructors",
@@ -492,11 +469,7 @@ def repair_instructor_conflicts(
     return fixes
 
 
-# ================
 # 6. INSTRUCTOR QUALIFICATION REPAIR (Priority 6)
-# ================
-
-
 @repair_operator(
     name="repair_instructor_qualifications",
     description="Reassign sessions to qualified instructors",
@@ -528,11 +501,7 @@ def repair_instructor_qualifications(
     return fixes
 
 
-# ================
 # 7. ROOM TYPE MISMATCH REPAIR (Priority 7)
-# ================
-
-
 @repair_operator(
     name="repair_room_type_mismatches",
     description="Match course requirements with compatible room types",
@@ -752,11 +721,7 @@ def repair_paired_cohort_practicals(
     return fixes
 
 
-# ================
 # 9. STUDENT SCHEDULE COMPACTNESS REPAIR (Priority 9)
-# ================
-
-
 @repair_operator(
     name="repair_student_compactness",
     description="Reduce idle gaps in student schedules by clustering sessions",
@@ -852,11 +817,7 @@ def repair_student_compactness(
     return fixes
 
 
-# ================
 # 10. INSTRUCTOR SCHEDULE COMPACTNESS REPAIR (Priority 10)
-# ================
-
-
 @repair_operator(
     name="repair_instructor_compactness",
     description="Reduce idle gaps in instructor schedules by clustering sessions",
@@ -953,11 +914,7 @@ def repair_instructor_compactness(
     return fixes
 
 
-# ================
 # 11. STUDENT LUNCH BREAK REPAIR (Priority 11)
-# ================
-
-
 @repair_operator(
     name="repair_student_lunch_break",
     description="Free up lunch break time for student groups",
@@ -1058,11 +1015,7 @@ def repair_student_lunch_break(
     return fixes
 
 
-# ================
 # MOVE VALIDATION HELPER
-# ================
-
-
 def _is_move_valid(
     individual: list[SessionGene],
     gene: SessionGene,
@@ -1279,10 +1232,7 @@ def _find_compatible_room(
     return None
 
 
-# ================
 # HELPER FUNCTIONS
-# ================
-
 # Module-level cache for family map (hierarchy-aware group relationships)
 _CACHED_FAMILY_MAP: dict[str, set[str]] | None = None
 
@@ -1371,11 +1321,7 @@ def _has_room_conflict(
     return False
 
 
-# ================
 # ORCHESTRATION
-# ================
-
-
 def repair_individual_unified(
     individual: list[SessionGene],
     context: SchedulingContext,

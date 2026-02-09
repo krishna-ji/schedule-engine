@@ -83,11 +83,7 @@ def _worker_evaluate(individual: Any) -> tuple[float, float]:
     )
 
 
-# ================
 # Genetic Operators (Sequential to avoid GIL thrashing)
-# ================
-
-
 def _parallel_crossover(
     offspring: list[Any], cxpb: float, toolbox: Any, max_workers: int | None = None
 ) -> list[Any]:
@@ -1445,10 +1441,7 @@ class GAScheduler:
         """Internal evolution loop implementation."""
         gen_times = []
         profiler = get_profiler()
-
-        # ========================================
         # STARTUP CONFIGURATION BANNER
-        # ========================================
         self._print_startup_banner()
 
         # Create elapsed/remaining time bar (shows above progress bar)
@@ -2456,9 +2449,7 @@ class GAScheduler:
             + generation_repair_stats["memetic_repairs"]
         )
         generation_repair_stats["total_fixes"] = max(category_total, phase_total)
-        # ============
         # HEURISTIC TOOLBOX ARCHITECTURE (Nov 2025)
-        # ============
         # ALL repair/improvement operations are now unified heuristics:
         #   - igls_repair, lns_repair, selective_repair, exhaustive_search
         #   - Applied via round-robin rotation OR RL-guided selection
@@ -2471,8 +2462,6 @@ class GAScheduler:
         #    Stagnation-triggered repairs - migrate to heuristics (future)
         #
         # Enable via schedule_engine.config loader overrides (heuristics.repair.*)
-        # ============
-
         # Store generation repair stats
         self.metrics.repair_stats.append(generation_repair_stats)
 

@@ -31,11 +31,7 @@ __all__ = [
 ]
 
 
-# ===
 # MODE B: LOCAL SEARCH (Memetic)
-# ===
-
-
 def local_search_individual(
     individual: list[SessionGene],
     data: NotebookData,
@@ -107,11 +103,7 @@ def local_search_individual(
     return individual, total_improvement
 
 
-# ===
 # MODE C: ROUND-ROBIN HEURISTIC SELECTION
-# ===
-
-
 class RoundRobinSelector:
     """
     Round-robin heuristic selector.
@@ -193,11 +185,7 @@ class RoundRobinSelector:
         return 0
 
 
-# ===
 # MODE D: ADAPTIVE HEURISTIC SELECTION
-# ===
-
-
 class AdaptiveSelector:
     """
     Adaptive heuristic selector using roulette wheel selection.
@@ -355,11 +343,7 @@ class AdaptiveSelector:
         }
 
 
-# ===
 # MODE E: RL-GUIDED HEURISTIC SELECTION
-# ===
-
-
 class SimpleRLSelector:
     """
     Simple Q-learning based heuristic selector.

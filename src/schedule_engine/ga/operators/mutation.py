@@ -1,8 +1,8 @@
 import random
 
-from schedule_engine.domain.types import Individual, SchedulingContext
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.types import Individual, SchedulingContext
 
 
 def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
@@ -22,10 +22,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     # Look up using tuple key (course_id, course_type)
     course_key = (gene.course_id, gene.course_type)
     course = context.courses.get(course_key)
-
-    # ========================================
     # COURSE & GROUP: NEVER MUTATED
-    # ========================================
     # Keep course_id and group_ids exactly as they are
     new_course_id = gene.course_id
     new_group_ids = gene.group_ids
@@ -45,10 +42,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
         new_instructor = random.choice(
             qualified_instructors if qualified_instructors else [gene.instructor_id]
         )
-
-    # ========================================
     # ROOM: Mutate intelligently
-    # ========================================
     # Smart room selection with capacity and feature constraints
     # Use first group for room suitability check
     primary_group = gene.group_ids[0] if gene.group_ids else None
@@ -64,10 +58,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
         new_room = random.choice(
             suitable_rooms if suitable_rooms else list(context.rooms.keys())
         )
-
-    # ========================================
     # TIME: Mutate intelligently (preserve quanta count!)
-    # ========================================
     # CRITICAL: Keep the SAME number of quanta to preserve course requirements
     new_quanta = mutate_time_quanta(gene, course, context)
 

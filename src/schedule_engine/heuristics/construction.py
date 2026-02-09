@@ -30,21 +30,18 @@ Usage:
 import random
 from collections import defaultdict
 
-from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.domain.course import Course
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.types import SchedulingContext
+from schedule_engine.io.time_system import QuantumTimeSystem
 
 type AssignedTimes = dict[str, set[int]]
 type AssignedRooms = dict[str, set[int]]
 
-# ================
+
 # LARGEST DEGREE FIRST (Schedule most conflicting courses first)
-# ================
-
-
 def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most conflicting courses first.
@@ -173,11 +170,7 @@ def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
     return individual
 
 
-# ================
 # MOST CONSTRAINED FIRST (Schedule sessions with fewest options first)
-# ================
-
-
 def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most constrained sessions first.
@@ -315,11 +308,7 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
     return individual
 
 
-# ================
 # EARLIEST DEADLINE FIRST (Prioritize by scheduling urgency)
-# ================
-
-
 def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule prioritizing courses with higher session frequency.
@@ -443,11 +432,7 @@ def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
     return individual
 
 
-# ================
 # HELPER FUNCTIONS
-# ================
-
-
 def _calculate_conflict_degrees(context: SchedulingContext) -> dict[tuple, int]:
     """Calculate conflict degree for each course (for largest degree first)."""
     degrees = {}
@@ -660,11 +645,7 @@ def _select_qualified_instructor(
     )
 
 
-# ================
 # PAIR-BASED HELPER FUNCTIONS (Use course-group pairs)
-# ================
-
-
 def _calculate_pair_conflict_degrees(
     pair_tuples: list[tuple], context: SchedulingContext
 ) -> dict[tuple, int]:

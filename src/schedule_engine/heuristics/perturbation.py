@@ -32,8 +32,8 @@ Usage:
 import random
 from collections import defaultdict
 
-from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.heuristics.utils import (
     estimate_session_student_count,
     get_available_quanta,
@@ -44,11 +44,8 @@ from schedule_engine.heuristics.utils import (
     move_gene_to_time_if_valid,
 )
 
-# ================
+
 # RANDOM SWAP (Exchange time/room between two sessions)
-# ================
-
-
 def random_swap(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -129,11 +126,7 @@ def random_swap(
     return swaps_performed
 
 
-# ================
 # TEMPORAL SHIFT (Move session to different time slot)
-# ================
-
-
 def temporal_shift(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -185,11 +178,7 @@ def temporal_shift(
     return shifts_performed
 
 
-# ================
 # ROOM SHUFFLE (Reassign rooms to compatible sessions)
-# ================
-
-
 def room_shuffle(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -249,11 +238,7 @@ def room_shuffle(
     return reassignments
 
 
-# ================
 # INSTRUCTOR REASSIGN (Change instructor to qualified alternative)
-# ================
-
-
 def instructor_reassign(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -325,11 +310,7 @@ def instructor_reassign(
     return reassignments
 
 
-# ================
 # MULTI-PERTURBATION (Chain multiple perturbation operators)
-# ================
-
-
 def multi_perturbation(
     individual: list[SessionGene],
     context: SchedulingContext,

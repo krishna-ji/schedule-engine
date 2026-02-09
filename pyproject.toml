@@ -57,10 +57,7 @@ analysis = [
 ]
 
 [project.scripts]
-# ==================
 # UTILITIES ONLY (Notebooks are the primary workflow)
-# ==================
-
 # Interactive help
 run = "scripts.launcher:main_interactive"
 

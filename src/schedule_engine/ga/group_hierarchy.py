@@ -317,10 +317,7 @@ def groups_conflict(
     return False
 
 
-# ============================================================================
 # CACHED HIERARCHY LOADER
-# ============================================================================
-
 # Module-level cache for hierarchy and family_map
 _cached_hierarchy: (
     dict[str, list[str] | dict[str, list[str]] | dict[str, str]] | None

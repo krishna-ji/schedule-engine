@@ -30,17 +30,14 @@ Usage:
 import copy
 import random
 
-from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.types import SchedulingContext
 
 # Import other heuristic categories for orchestration
 from schedule_engine.heuristics import improvement, perturbation
 
-# ================
+
 # VARIABLE NEIGHBORHOOD DESCENT (Systematic neighborhood exploration)
-# ================
-
-
 def variable_neighborhood_descent(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -100,11 +97,7 @@ def variable_neighborhood_descent(
     return total_improvements
 
 
-# ================
 # ITERATED LOCAL SEARCH (Perturbation + local search cycles)
-# ================
-
-
 def iterated_local_search(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -172,11 +165,7 @@ def iterated_local_search(
     return improvements
 
 
-# ================
 # ADAPTIVE LARGE NEIGHBORHOOD SEARCH (Dynamic destroy-repair)
-# ================
-
-
 def adaptive_large_neighborhood(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -268,11 +257,7 @@ def adaptive_large_neighborhood(
     return improvements
 
 
-# ================
 # GUIDED LOCAL SEARCH (Penalty-based guidance)
-# ================
-
-
 def guided_local_search(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -349,11 +334,7 @@ def guided_local_search(
     return improvements
 
 
-# ================
 # HELPER FUNCTIONS
-# ================
-
-
 def _simple_fitness(individual: list[SessionGene], context: SchedulingContext) -> float:
     """Simple fitness approximation (lower is better)."""
     violations = 0

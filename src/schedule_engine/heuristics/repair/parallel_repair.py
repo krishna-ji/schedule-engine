@@ -209,11 +209,7 @@ def _find_conflict_free_time(
     return None
 
 
-# ================
 # FAST REPAIR OPERATORS (Single map build per iteration)
-# ================
-
-
 def repair_instructor_qualifications_fast(
     individual: list[SessionGene],
     context: SchedulingContext,

@@ -14,11 +14,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from schedule_engine.ga.scheduler import GAMetrics
-from schedule_engine.domain.types import Individual
-from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.session import CourseSession
+from schedule_engine.domain.types import Individual
+from schedule_engine.ga.heuristic_tracker import HeuristicTracker
+from schedule_engine.ga.scheduler import GAMetrics
+from schedule_engine.heuristics.repair.lns_operator import get_lns_stats
 from schedule_engine.io.export.exporter import export_everything
 from schedule_engine.io.export.plot_convergence import (
     plot_constraint_satisfaction_evolution,
@@ -30,14 +31,6 @@ from schedule_engine.io.export.plot_detailed_constraints import (
 
 # NEW: Import advanced evaluation metric plotting modules
 from schedule_engine.io.export.plot_hypervolume import plot_hypervolume_trend
-from schedule_engine.io.export.plot_spacing import (
-    plot_spacing_distribution,
-    plot_spacing_trend,
-)
-from schedule_engine.io.export.plotdiversity import plot_diversity_trend
-from schedule_engine.io.export.plothard import plot_hard_constraint_violation_over_generation
-from schedule_engine.io.export.plotpareto import plot_pareto_front
-from schedule_engine.io.export.plotsoft import plot_soft_constraint_violation_over_generation
 from schedule_engine.io.export.plot_population_summary import (
     plot_fitness_histograms_and_feasibility,
 )
@@ -46,9 +39,20 @@ from schedule_engine.io.export.plot_repair_analysis import (
     plot_repair_efficacy_over_generations,
     plot_repair_time_and_share,
 )
+from schedule_engine.io.export.plot_spacing import (
+    plot_spacing_distribution,
+    plot_spacing_trend,
+)
+from schedule_engine.io.export.plotdiversity import plot_diversity_trend
+from schedule_engine.io.export.plothard import (
+    plot_hard_constraint_violation_over_generation,
+)
+from schedule_engine.io.export.plotpareto import plot_pareto_front
+from schedule_engine.io.export.plotsoft import (
+    plot_soft_constraint_violation_over_generation,
+)
 from schedule_engine.io.export.violation_reporter import generate_violation_report
-from schedule_engine.ga.heuristic_tracker import HeuristicTracker
-from schedule_engine.heuristics.repair.lns_operator import get_lns_stats
+from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.system_info import get_cpu_count
 
 
@@ -160,10 +164,7 @@ def generate_reports(
         print("  [+] Generating violation report...")
         generate_violation_report(decoded_schedule, course_map, qts, output_dir)
         print("      [!ok] log_violations.log")
-
-    # ========================================
     # PARALLEL PLOTTING SECTION
-    # ========================================
     print("  [+] Generating plots in parallel...")
     start_time = time.time()
 

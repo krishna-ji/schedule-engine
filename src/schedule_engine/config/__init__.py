@@ -23,11 +23,7 @@ import copy
 from typing import Any
 
 
-# =============================================================================
 # UTILITIES
-# =============================================================================
-
-
 def _deep_merge(base: dict, overrides: dict) -> dict:
     """Recursively merge *overrides* into a copy of *base*."""
     merged = base.copy()
@@ -39,11 +35,7 @@ def _deep_merge(base: dict, overrides: dict) -> dict:
     return merged
 
 
-# =============================================================================
 # CONFIG CLASS
-# =============================================================================
-
-
 class Config:
     """Recursive namespace with dot-access over a dict tree.
 
@@ -96,10 +88,7 @@ class Config:
         return f"Config({items})"
 
 
-# =============================================================================
 # GLOBAL SINGLETON
-# =============================================================================
-
 _config: Config | None = None
 
 

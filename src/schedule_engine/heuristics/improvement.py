@@ -32,8 +32,8 @@ import copy
 import random
 from collections import defaultdict
 
-from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.heuristics.utils import (
     estimate_session_student_count,
     get_available_quanta,
@@ -43,11 +43,8 @@ from schedule_engine.heuristics.utils import (
     move_gene_to_time_if_valid,
 )
 
-# ================
+
 # KEMPE CHAIN (Graph coloring move for conflict resolution)
-# ================
-
-
 def kempe_chain(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -123,11 +120,7 @@ def kempe_chain(
     return improvements
 
 
-# ================
 # EJECTION CHAIN (Advanced local search with cascading moves)
-# ================
-
-
 def ejection_chain(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -202,11 +195,7 @@ def ejection_chain(
     return improvements
 
 
-# ================
 # VARIABLE DEPTH SEARCH (Multi-move lookahead optimization)
-# ================
-
-
 def variable_depth_search(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -305,11 +294,7 @@ def variable_depth_search(
     return improvements
 
 
-# ================
 # HELPER FUNCTIONS
-# ================
-
-
 def _find_conflict_pairs(
     individual: list[SessionGene], context: SchedulingContext
 ) -> list[tuple[int, int]]:

@@ -175,11 +175,7 @@ def evaluate_all(
     return hard_total, soft_total, hard_breakdown, soft_breakdown
 
 
-# =============================================================================
 # COMPATIBILITY FUNCTIONS (for old code migration)
-# =============================================================================
-
-
 def get_enabled_hard_constraints() -> dict[str, dict]:
     """
     Compatibility function for old registry interface.

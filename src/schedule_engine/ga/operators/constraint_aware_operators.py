@@ -159,10 +159,7 @@ def mutate_gene_constraint_aware(
     # Get course info
     course_key = (gene.course_id, gene.course_type)
     course = context.courses.get(course_key)
-
-    # ========================================
     # INSTRUCTOR: Mutate with qualification check
-    # ========================================
     qualified_instructors = [
         inst_id
         for inst_id, inst in context.instructors.items()
@@ -175,10 +172,7 @@ def mutate_gene_constraint_aware(
         new_instructor = random.choice(
             qualified_instructors if qualified_instructors else [gene.instructor_id]
         )
-
-    # ========================================
     # ROOM: Mutate with suitability check
-    # ========================================
     from schedule_engine.ga.operators.mutation import find_suitable_rooms_for_course
 
     primary_group = gene.group_ids[0] if gene.group_ids else ""
@@ -192,10 +186,7 @@ def mutate_gene_constraint_aware(
         new_room = random.choice(
             suitable_rooms if suitable_rooms else list(context.rooms.keys())
         )
-
-    # ========================================
     # TIME: Mutate ONLY if it doesn't create conflicts
-    # ========================================
     new_start = gene.start_quanta  # Default: keep current time
 
     if random.random() < 0.7:  # 70% chance to attempt time mutation
@@ -328,11 +319,7 @@ def crossover_constraint_aware(
     return ind1, ind2
 
 
-# ================
 # INTEGRATION HELPERS
-# ================
-
-
 def get_constraint_aware_mutation(context: SchedulingContext):
     """
     Factory function to create a constraint-aware mutation operator.
