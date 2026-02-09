@@ -744,13 +744,9 @@ def repair_student_compactness(
         Number of genes repositioned to reduce gaps.
     """
     from schedule_engine.io.time_system import QuantumTimeSystem
-    from schedule_engine.utils.time_helpers import (
-        get_midday_break_quanta,
-        quantum_to_day_and_within_day,
-    )
 
     qts = QuantumTimeSystem()
-    break_quanta_by_day = get_midday_break_quanta(qts)
+    break_quanta_by_day = qts.get_midday_break_quanta()
     fixes = 0
 
     # Build group -> day -> list of (gene_idx, gene, within_day_start)
@@ -760,7 +756,7 @@ def repair_student_compactness(
 
     for gene_idx, gene in enumerate(individual):
         for group_id in gene.group_ids:
-            day, within_day = quantum_to_day_and_within_day(gene.start_quanta, qts)
+            day, within_day = qts.quantum_to_day_and_within_day(gene.start_quanta)
             group_day_genes[group_id][day].append((gene_idx, gene, within_day))
 
     # Process each group-day combination
@@ -840,13 +836,9 @@ def repair_instructor_compactness(
         Number of genes repositioned to reduce gaps.
     """
     from schedule_engine.io.time_system import QuantumTimeSystem
-    from schedule_engine.utils.time_helpers import (
-        get_midday_break_quanta,
-        quantum_to_day_and_within_day,
-    )
 
     qts = QuantumTimeSystem()
-    break_quanta_by_day = get_midday_break_quanta(qts)
+    break_quanta_by_day = qts.get_midday_break_quanta()
     fixes = 0
 
     # Build instructor -> day -> list of (gene_idx, gene, within_day_start)
@@ -855,7 +847,7 @@ def repair_instructor_compactness(
     )
 
     for gene_idx, gene in enumerate(individual):
-        day, within_day = quantum_to_day_and_within_day(gene.start_quanta, qts)
+        day, within_day = qts.quantum_to_day_and_within_day(gene.start_quanta)
         instructor_day_genes[gene.instructor_id][day].append(
             (gene_idx, gene, within_day)
         )
@@ -937,13 +929,9 @@ def repair_student_lunch_break(
         Number of genes repositioned to free up lunch time.
     """
     from schedule_engine.io.time_system import QuantumTimeSystem
-    from schedule_engine.utils.time_helpers import (
-        get_midday_break_quanta,
-        quantum_to_day_and_within_day,
-    )
 
     qts = QuantumTimeSystem()
-    break_quanta_by_day = get_midday_break_quanta(qts)
+    break_quanta_by_day = qts.get_midday_break_quanta()
     fixes = 0
 
     # Build group -> day -> list of genes that overlap with lunch
@@ -952,7 +940,7 @@ def repair_student_lunch_break(
     )
 
     for gene_idx, gene in enumerate(individual):
-        day, _ = quantum_to_day_and_within_day(gene.start_quanta, qts)
+        day, _ = qts.quantum_to_day_and_within_day(gene.start_quanta)
         break_quanta = break_quanta_by_day.get(day, set())
 
         if not break_quanta:
@@ -961,7 +949,7 @@ def repair_student_lunch_break(
         # Check if gene overlaps with lunch break
         gene_within_day_quanta = set()
         for q in range(gene.start_quanta, gene.end_quanta):
-            _, within_day = quantum_to_day_and_within_day(q, qts)
+            _, within_day = qts.quantum_to_day_and_within_day(q)
             gene_within_day_quanta.add(within_day)
 
         if gene_within_day_quanta & break_quanta:

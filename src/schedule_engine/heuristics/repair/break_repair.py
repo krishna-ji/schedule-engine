@@ -60,17 +60,13 @@ def repair_break_placement(
     assert isinstance(rooms, dict)
 
     from schedule_engine.io import decode_individual
-    from schedule_engine.utils.time_helpers import (
-        build_group_day_schedules,
-        get_break_window_quanta,
-    )
 
     repairs = 0
 
     for _iteration in range(max_iterations):
         sessions = decode_individual(individual, courses, instructors, groups, rooms)  # type: ignore[arg-type]
-        break_windows = get_break_window_quanta(qts)
-        group_schedules = build_group_day_schedules(sessions, qts)
+        break_windows = qts.get_break_window_quanta()
+        group_schedules = qts.build_group_day_schedules(sessions)
 
         violations_found = False
 
@@ -129,7 +125,6 @@ def _shift_session_out_of_break(
         1 if repair successful, 0 otherwise
     """
     from schedule_engine.domain.gene import SessionGene
-    from schedule_engine.utils.time_helpers import quantum_to_day_and_within_day
 
     # Find genes that involve this group and overlap with break window
     candidate_genes: list[tuple[int, SessionGene]] = []
@@ -140,7 +135,7 @@ def _shift_session_out_of_break(
 
         # Check if any quanta overlap with break window on this day
         for quantum in gene.get_quanta_list():
-            day, within_day_q = quantum_to_day_and_within_day(quantum, qts)
+            day, within_day_q = qts.quantum_to_day_and_within_day(quantum)
             if day == day_name and within_day_q in occupied_in_break:
                 candidate_genes.append((gene_idx, gene))
                 break  # Found overlap, move to next gene

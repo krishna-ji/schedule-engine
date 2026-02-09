@@ -16,10 +16,6 @@ if TYPE_CHECKING:
     from schedule_engine.domain.timetable import Timetable
 
 from schedule_engine.io.time_system import QuantumTimeSystem
-from schedule_engine.utils.time_helpers import (
-    get_midday_break_quanta,
-    quantum_to_day_and_within_day,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +300,7 @@ class StudentScheduleCompactness:
         """Penalize gaps between first and last session per group per day."""
         penalty = 0
         qts = tt.qts or QuantumTimeSystem()
-        break_quanta_by_day = get_midday_break_quanta(qts)
+        break_quanta_by_day = qts.get_midday_break_quanta()
 
         # Build group daily schedules
         group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
@@ -314,7 +310,7 @@ class StudentScheduleCompactness:
         for gene in tt.genes:
             for group_id in gene.group_ids:
                 for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                    day, within_day = quantum_to_day_and_within_day(q, qts)
+                    day, within_day = qts.quantum_to_day_and_within_day(q)
                     group_day_quanta[group_id][day].add(within_day)
 
         # Analyze gaps
@@ -353,7 +349,7 @@ class InstructorScheduleCompactness:
         """Penalize gaps between first and last session per instructor per day."""
         penalty = 0
         qts = tt.qts or QuantumTimeSystem()
-        break_quanta_by_day = get_midday_break_quanta(qts)
+        break_quanta_by_day = qts.get_midday_break_quanta()
 
         # Build instructor daily schedules
         instructor_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
@@ -362,7 +358,7 @@ class InstructorScheduleCompactness:
 
         for gene in tt.genes:
             for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                day, within_day = quantum_to_day_and_within_day(q, qts)
+                day, within_day = qts.quantum_to_day_and_within_day(q)
                 instructor_day_quanta[gene.instructor_id][day].add(within_day)
 
         # Analyze gaps
@@ -402,7 +398,7 @@ class StudentLunchBreak:
         """Penalize groups without sufficient lunch break."""
         penalty = 0
         qts = tt.qts or QuantumTimeSystem()
-        break_quanta_by_day = get_midday_break_quanta(qts)
+        break_quanta_by_day = qts.get_midday_break_quanta()
 
         # Build group daily schedules
         group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
@@ -412,7 +408,7 @@ class StudentLunchBreak:
         for gene in tt.genes:
             for group_id in gene.group_ids:
                 for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                    day, within_day = quantum_to_day_and_within_day(q, qts)
+                    day, within_day = qts.quantum_to_day_and_within_day(q)
                     group_day_quanta[group_id][day].add(within_day)
 
         # Check each group on each day
@@ -464,7 +460,7 @@ class SessionContinuity:
             course_type_map[course_key] = gene.course_type
 
             for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                day, _ = quantum_to_day_and_within_day(q, qts)
+                day, _ = qts.quantum_to_day_and_within_day(q)
                 course_day_quanta[course_key][day].append(q)
 
         # Analyze block sizes for each course on each day
@@ -629,7 +625,7 @@ class BreakPlacementCompliance:
         for gene in tt.genes:
             for group_id in gene.group_ids:
                 for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                    day, within_day = quantum_to_day_and_within_day(q, qts)
+                    day, within_day = qts.quantum_to_day_and_within_day(q)
                     group_day_map[(group_id, day)].add(within_day)
 
         return dict(group_day_map)
