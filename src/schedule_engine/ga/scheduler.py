@@ -44,11 +44,11 @@ from schedule_engine.ga.evaluator.fitness import evaluate
 from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.mutation import mutate_individual
 from schedule_engine.ga.population import generate_course_group_aware_population
+from schedule_engine.heuristics import get_heuristic_statistics_template
 from schedule_engine.heuristics.parallel_executor import (
     ParallelHeuristicExecutor,
     get_parallel_executor,
 )
-from schedule_engine.heuristics import get_heuristic_statistics_template
 from schedule_engine.metrics.diversity import average_pairwise_diversity
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.parallel_worker import get_worker_context

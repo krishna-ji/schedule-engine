@@ -40,12 +40,14 @@ class HeuristicInfo:
 # We import them here so the list is the single source of truth.
 # ---------------------------------------------------------------------------
 
+
 def _lazy_construction():
     from schedule_engine.heuristics.construction import (
         earliest_deadline_first,
         largest_degree_first,
         most_constrained_first,
     )
+
     return [
         HeuristicInfo(
             name="largest_degree_first",
@@ -79,6 +81,7 @@ def _lazy_perturbation():
         room_shuffle,
         temporal_shift,
     )
+
     return [
         HeuristicInfo(
             name="random_swap",
@@ -130,6 +133,7 @@ def _lazy_improvement():
         kempe_chain,
         variable_depth_search,
     )
+
     return [
         HeuristicInfo(
             name="kempe_chain",
@@ -165,6 +169,7 @@ def _lazy_diversity():
         distance_preserving_crossover,
         niching_selection,
     )
+
     return [
         HeuristicInfo(
             name="distance_preserving_crossover",
@@ -211,6 +216,7 @@ def _lazy_meta():
         iterated_local_search,
         variable_neighborhood_descent,
     )
+
     return [
         HeuristicInfo(
             name="variable_neighborhood_descent",
@@ -256,6 +262,7 @@ def _lazy_repair():
     from schedule_engine.heuristics.repair.lns_repair import lns_repair
     from schedule_engine.heuristics.repair.memetic_repair import memetic_repair
     from schedule_engine.heuristics.repair.selective_repair import selective_repair
+
     return [
         HeuristicInfo(
             name="igls_repair",
@@ -326,7 +333,14 @@ def _lazy_repair():
 # Module-level cache so lazy loaders run at most once.
 _cache: dict[str, list[HeuristicInfo]] | None = None
 
-CATEGORIES = ("construction", "perturbation", "improvement", "diversity", "meta", "repair")
+CATEGORIES = (
+    "construction",
+    "perturbation",
+    "improvement",
+    "diversity",
+    "meta",
+    "repair",
+)
 
 
 def _ensure_loaded() -> dict[str, list[HeuristicInfo]]:
@@ -384,9 +398,7 @@ def get_enabled_heuristics(category: str | None = None) -> dict[str, HeuristicIn
 
     if not heuristics_config:
         # No config → use defaults
-        return {
-            h.name: h for h in candidates if h.enabled_by_default
-        }
+        return {h.name: h for h in candidates if h.enabled_by_default}
 
     # Master killswitch
     if not getattr(heuristics_config, "master_enabled", True):
@@ -413,6 +425,7 @@ def get_enabled_heuristics(category: str | None = None) -> dict[str, HeuristicIn
         if priority != h.priority:
             # Config overrode priority → create new info with updated priority
             from dataclasses import replace
+
             h = replace(h, priority=priority)
 
         enabled[h.name] = h
