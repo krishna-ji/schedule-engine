@@ -12,12 +12,10 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Calendar export constants
-from schedule_engine.config.models import (
-    EXCAL_DEFAULT_OUTPUT_PDF,
-    EXCAL_END_HOUR,
-    EXCAL_QUANTUM_MINUTES,
-    EXCAL_START_HOUR,
-)
+EXCAL_QUANTUM_MINUTES: int = 15
+EXCAL_START_HOUR: int = 7
+EXCAL_END_HOUR: int = 20
+EXCAL_DEFAULT_OUTPUT_PDF: str = "calendar.pdf"
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.session import CourseSession
 from schedule_engine.io.time_system import QuantumTimeSystem

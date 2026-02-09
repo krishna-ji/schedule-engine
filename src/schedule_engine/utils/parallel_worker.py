@@ -38,8 +38,7 @@ def init_worker(
     try:
         from deap import base, creator
 
-        from schedule_engine.config import init_config
-        from schedule_engine.config.models import Config
+        from schedule_engine.config import Config, init_config
         from schedule_engine.domain.types import SchedulingContext
         from schedule_engine.io.data_loader import (
             derive_cohort_pairs_from_groups,

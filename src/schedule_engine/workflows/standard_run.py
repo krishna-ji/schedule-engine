@@ -19,7 +19,7 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from schedule_engine.config.models import Config
+from schedule_engine.config import Config
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.scheduler import GAConfig, GAScheduler
 from schedule_engine.io import validate_input
@@ -80,7 +80,7 @@ def run_standard_workflow(
         output_dir: Output directory (auto-generated if None)
         seed: Random seed for reproducibility
         validate: Whether to validate input before running GA
-        config: Config object (from config.models.Config) - if None, loads from config module
+        config: Config object - if None, loads from config module
 
     Returns:
         Dict containing:
@@ -255,9 +255,7 @@ def run_standard_workflow(
         # Create pool with worker initialization
         # Workers load data from JSON files (no pickling of complex objects!)
         # Also pass serialized config for constraint evaluation
-        import dataclasses
-
-        config_dict = dataclasses.asdict(config)
+        config_dict = config.to_dict()
         pool = multiprocessing.Pool(
             processes=num_workers,
             initializer=init_worker,

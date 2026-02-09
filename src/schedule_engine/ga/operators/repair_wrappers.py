@@ -14,7 +14,7 @@ Registered Operators (7 base + 1 soft constraint):
   Priority 1-7: Hard constraint repairs (HC1-HC5, HC8, HC4)
   Priority 8: Soft constraint repair (SC4 - session_continuity)
 
-Default configuration (schedule_engine.config.models):
+Default configuration (schedule_engine.config):
   All hard constraint repairs enabled by default
   Soft constraint repair enabled in selective mode only
 

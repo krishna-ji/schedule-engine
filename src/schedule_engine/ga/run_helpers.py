@@ -320,9 +320,36 @@ def load_data(
 
     # Set cohort pairs on the global config so soft constraints can access them
     # (paired_cohort_practical_alignment reads from cfg.cohort_pairs)
-    from schedule_engine.config import get_config_or_default, init_config
+    from schedule_engine.config import Config, get_config_or_default, init_config
 
     cfg = get_config_or_default()
+    if not cfg:
+        # No config initialized yet — create one with defaults for mode A-E runs
+        cfg = Config(
+            name="default",
+            environment="test",
+            ga=dict(validate_population_integrity=False),
+            soft_constraints=dict(
+                student_schedule_compactness=dict(
+                    enabled=True, weight=1.0, gap_penalty_per_quantum=1
+                ),
+                instructor_schedule_compactness=dict(
+                    enabled=True, weight=1.0, gap_penalty_per_quantum=1
+                ),
+                student_lunch_break=dict(
+                    enabled=True, weight=1.0, distance_penalty_per_quantum=1
+                ),
+                session_continuity=dict(enabled=True, weight=1.0),
+                paired_cohort_practical_alignment=dict(enabled=True, weight=1.0),
+                soft_weight_factor=1.0,
+            ),
+            heuristics=dict(master_enabled=True),
+            repair=dict(
+                enabled=True,
+                detection_strategy="hybrid",
+                heuristics={},
+            ),
+        )
     cfg.cohort_pairs = cohort_pairs
     init_config(cfg)  # Cache the config so constraint functions can access cohort_pairs
 
