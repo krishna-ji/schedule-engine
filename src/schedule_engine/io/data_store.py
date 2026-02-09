@@ -218,6 +218,44 @@ class DataStore:
         )
 
 
+def load_input_data(
+    data_dir: str,
+    config: Any | None = None,
+) -> tuple["QuantumTimeSystem", "SchedulingContext"]:
+    """Load and link all input entities via :class:`DataStore`.
+
+    Only includes courses enrolled by at least one group.
+
+    Args:
+        data_dir: Directory containing input JSON files.
+        config: Config object (cohort_pairs will be read from it).
+
+    Returns:
+        Tuple of (QuantumTimeSystem, SchedulingContext).
+
+    Raises:
+        ValueError: If config is None.
+    """
+    import time
+
+    start_time = time.time()
+
+    extra_pairs = list(getattr(config, "cohort_pairs", [])) if config else []
+    store = DataStore.from_json(data_dir, extra_cohort_pairs=extra_pairs)
+
+    elapsed = time.time() - start_time
+    print(f"[!info] Filtered {len(store.courses)} courses, loading took {elapsed:.2f}s")
+
+    if config is None:
+        raise ValueError("Config must be provided")
+
+    context = store.to_context()
+    # Attach config to context for callers that expect it.
+    context.config = config
+
+    return store.qts, context
+
+
 # Helpers
 
 

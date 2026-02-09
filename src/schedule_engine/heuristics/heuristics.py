@@ -33,9 +33,7 @@ from typing import Any, Literal, Protocol, runtime_checkable
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.types import SchedulingContext
 
-# =============================================================================
 # PROTOCOL
-# =============================================================================
 
 
 @runtime_checkable
@@ -68,9 +66,7 @@ class Heuristic(Protocol):
         ...
 
 
-# =============================================================================
 # BASE CLASS
-# =============================================================================
 
 
 @dataclass
@@ -96,9 +92,7 @@ class HeuristicBase:
         raise NotImplementedError("Subclasses must implement apply()")
 
 
-# =============================================================================
 # FUNCTION ADAPTER
-# =============================================================================
 
 
 class FunctionHeuristic:
@@ -145,9 +139,7 @@ class FunctionHeuristic:
         return f"FunctionHeuristic({self.name!r}, category={self.category!r})"
 
 
-# =============================================================================
 # HEURISTIC FACTORIES
-# =============================================================================
 
 
 def _create_construction_heuristics(**params: Any) -> list[Heuristic]:
@@ -469,9 +461,7 @@ def _create_repair_heuristics(**params: Any) -> list[Heuristic]:
     ]
 
 
-# =============================================================================
 # FACTORY
-# =============================================================================
 
 
 def build_heuristics(
@@ -546,9 +536,7 @@ def build_heuristics(
     return heuristics
 
 
-# =============================================================================
 # DEFAULT REGISTRIES
-# =============================================================================
 
 
 # Default instances with standard parameters

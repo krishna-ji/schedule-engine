@@ -32,9 +32,7 @@ __all__ = [
 ]
 
 
-# =============================================================================
 # Protocol
-# =============================================================================
 
 
 @runtime_checkable
@@ -50,9 +48,7 @@ class Constraint(Protocol):
         ...
 
 
-# =============================================================================
 # HARD CONSTRAINTS
-# =============================================================================
 
 
 class StudentGroupExclusivity:
@@ -287,9 +283,7 @@ class CourseCompleteness:
         return violations
 
 
-# =============================================================================
 # SOFT CONSTRAINTS
-# =============================================================================
 
 
 class StudentScheduleCompactness:
@@ -641,9 +635,8 @@ class BreakPlacementCompliance:
         return dict(group_day_map)
 
 
-# =============================================================================
 # Registries
-# =============================================================================
+
 
 # Default constraint instances (all weights = 1.0, default params)
 HARD_CONSTRAINT_CLASSES: list[Constraint] = [
@@ -669,9 +662,7 @@ SOFT_CONSTRAINT_CLASSES: list[Constraint] = [
 ALL_CONSTRAINTS: list[Constraint] = HARD_CONSTRAINT_CLASSES + SOFT_CONSTRAINT_CLASSES
 
 
-# =============================================================================
 # Factory / Builder
-# =============================================================================
 
 
 def build_constraints(

@@ -19,9 +19,9 @@ import numpy as np
 from schedule_engine.config import Config, init_config
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.population import generate_course_group_aware_population
+from schedule_engine.io.data_store import load_input_data
 from schedule_engine.rl.agents import RandomAgent, create_dqn_agent, create_ppo_agent
 from schedule_engine.rl.gym_env.schedule_env import ScheduleEnv, create_schedule_env
-from schedule_engine.workflows.standard_run import load_input_data
 
 
 def set_global_seed(seed: int) -> None:

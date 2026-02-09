@@ -58,9 +58,7 @@ class Evaluator:
         self.soft = [c for c in constraints if c.kind == "soft"]
         self._all = self.hard + self.soft
 
-    # ------------------------------------------------------------------
     # Core: fitness
-    # ------------------------------------------------------------------
 
     def fitness(
         self,
@@ -78,9 +76,7 @@ class Evaluator:
         soft = sum(c.weight * c.evaluate(tt) for c in self.soft)
         return hard, soft
 
-    # ------------------------------------------------------------------
     # Core: breakdown
-    # ------------------------------------------------------------------
 
     def breakdown(
         self,
@@ -96,9 +92,7 @@ class Evaluator:
         """Per-constraint breakdown from an already-constructed Timetable."""
         return {c.name: c.evaluate(tt) for c in self._all}
 
-    # ------------------------------------------------------------------
     # Convenience: hard/soft breakdowns separately
-    # ------------------------------------------------------------------
 
     def hard_breakdown(self, tt: Timetable) -> dict[str, float]:
         """Hard constraint breakdown only."""
@@ -108,9 +102,7 @@ class Evaluator:
         """Soft constraint breakdown only."""
         return {c.name: c.evaluate(tt) for c in self.soft}
 
-    # ------------------------------------------------------------------
     # Convenience: evaluate with a summary like evaluate_all()
-    # ------------------------------------------------------------------
 
     def evaluate_all(
         self, tt: Timetable

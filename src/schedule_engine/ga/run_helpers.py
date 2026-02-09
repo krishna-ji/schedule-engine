@@ -70,6 +70,10 @@ class NotebookData:
             f"Quanta: {self.qts.total_quanta}"
         )
 
+    def to_context(self) -> SchedulingContext:
+        """Return the scheduling context."""
+        return self.context
+
 
 @dataclass
 class EvolutionConfig:

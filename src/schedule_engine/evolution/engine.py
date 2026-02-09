@@ -59,9 +59,9 @@ logger = logging.getLogger(__name__)
 __all__ = ["EvolutionEngine", "EvolutionResult", "GenerationStats"]
 
 
-# ---------------------------------------------------------------------------
 # Result types
-# ---------------------------------------------------------------------------
+
+
 @dataclass
 class GenerationStats:
     """Statistics for a single generation."""
@@ -91,17 +91,16 @@ class EvolutionResult:
         return self.best_fitness[0] == 0.0
 
 
-# ---------------------------------------------------------------------------
 # Hook protocol
-# ---------------------------------------------------------------------------
+
 OnGenerationCallback = Callable[
     [int, list[list["SessionGene"]], "GenerationStats"], None
 ]
 
 
-# ---------------------------------------------------------------------------
 # Engine
-# ---------------------------------------------------------------------------
+
+
 class EvolutionEngine:
     """Pure evolution loop — no UI, no logging, no config singletons.
 
@@ -159,9 +158,7 @@ class EvolutionEngine:
         self.on_generation = on_generation
         self._rng = random.Random(seed)
 
-    # ------------------------------------------------------------------
     # Public: run
-    # ------------------------------------------------------------------
 
     def run(self) -> EvolutionResult:
         """Run evolution and return the result.
@@ -232,17 +229,13 @@ class EvolutionEngine:
             generations_run=len(stats_history),
         )
 
-    # ------------------------------------------------------------------
     # Internal: evaluation
-    # ------------------------------------------------------------------
 
     def _evaluate(self, individual: list[SessionGene]) -> tuple[float, float]:
         """Evaluate a single individual."""
         return self.evaluator.fitness(individual, self.context, self.qts)
 
-    # ------------------------------------------------------------------
     # Internal: selection
-    # ------------------------------------------------------------------
 
     def _select(
         self,
@@ -261,9 +254,7 @@ class EvolutionEngine:
                 selected.append([g for g in population[j]])
         return selected
 
-    # ------------------------------------------------------------------
     # Internal: crossover
-    # ------------------------------------------------------------------
 
     def _crossover(
         self,
@@ -291,9 +282,7 @@ class EvolutionEngine:
             if self._rng.random() < 0.5:
                 ind1[k], ind2[k] = ind2[k], ind1[k]
 
-    # ------------------------------------------------------------------
     # Internal: mutation
-    # ------------------------------------------------------------------
 
     def _mutate(
         self,
@@ -321,9 +310,7 @@ class EvolutionEngine:
         new_start = self._rng.randint(0, max(0, max_q - gene.num_quanta))
         gene.start_quanta = new_start
 
-    # ------------------------------------------------------------------
     # Internal: NSGA-II selection
-    # ------------------------------------------------------------------
 
     def _nsga2_select(
         self,
@@ -351,9 +338,7 @@ class EvolutionEngine:
 
         return selected_pops, selected_fits
 
-    # ------------------------------------------------------------------
     # Internal: helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _dominates(fit_a: tuple[float, float], fit_b: tuple[float, float]) -> bool:

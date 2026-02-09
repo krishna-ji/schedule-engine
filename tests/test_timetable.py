@@ -20,9 +20,7 @@ from schedule_engine.domain.room import Room
 from schedule_engine.domain.timetable import ConflictPair, Timetable
 from schedule_engine.domain.types import SchedulingContext
 
-# =========================================================================
 # Fixtures
-# =========================================================================
 
 
 def _make_course(
@@ -125,9 +123,7 @@ def _make_context(
     )
 
 
-# =========================================================================
 # Tests: Construction & basic access
-# =========================================================================
 
 
 class TestTimetableConstruction:
@@ -157,9 +153,7 @@ class TestTimetableConstruction:
         assert tt.context is ctx
 
 
-# =========================================================================
 # Tests: Per-entity gene lists
-# =========================================================================
 
 
 class TestGenesByEntity:
@@ -212,9 +206,7 @@ class TestGenesByEntity:
         assert tt.genes_at_quantum(99) == []  # No gene active
 
 
-# =========================================================================
 # Tests: Occupancy indexes
-# =========================================================================
 
 
 class TestOccupancyIndexes:
@@ -264,9 +256,7 @@ class TestOccupancyIndexes:
         assert tt.group_occupancy[("G2", 0)] == [0]
 
 
-# =========================================================================
 # Tests: Conflict detection
-# =========================================================================
 
 
 class TestConflictDetection:
@@ -364,9 +354,7 @@ class TestConflictDetection:
         assert tt.count_room_violations() == 0
 
 
-# =========================================================================
 # Tests: Completeness map
-# =========================================================================
 
 
 class TestCompletenessMap:
@@ -414,9 +402,7 @@ class TestCompletenessMap:
         assert ("CS999", "theory", "G1") not in tt.course_group_quanta
 
 
-# =========================================================================
 # Tests: Practical quanta
-# =========================================================================
 
 
 class TestPracticalQuanta:
@@ -444,9 +430,7 @@ class TestPracticalQuanta:
         assert tt.practical_quanta[key] == {0, 1, 2}
 
 
-# =========================================================================
 # Tests: Lookup helpers
-# =========================================================================
 
 
 class TestLookupHelpers:
@@ -487,9 +471,7 @@ class TestLookupHelpers:
         assert result[1] is g2
 
 
-# =========================================================================
 # Tests: Daily indexes (without QTS — should be empty)
-# =========================================================================
 
 
 class TestDailyWithoutQTS:
@@ -511,9 +493,7 @@ class TestDailyWithoutQTS:
         assert tt.course_daily == {}
 
 
-# =========================================================================
 # Tests: Daily indexes (with QTS)
-# =========================================================================
 
 
 class TestDailyWithQTS:
@@ -553,9 +533,7 @@ class TestDailyWithQTS:
         assert total_entries == 2
 
 
-# =========================================================================
 # Tests: ConflictPair dataclass
-# =========================================================================
 
 
 class TestConflictPair:
@@ -581,9 +559,7 @@ class TestConflictPair:
         assert len(s) == 1
 
 
-# =========================================================================
 # Tests: Edge cases
-# =========================================================================
 
 
 class TestEdgeCases:

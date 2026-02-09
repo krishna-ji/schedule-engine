@@ -35,9 +35,9 @@ from schedule_engine.domain.types import SchedulingContext
 __all__ = ["ConflictPair", "Timetable"]
 
 
-# ---------------------------------------------------------------------------
 # Conflict pair type
-# ---------------------------------------------------------------------------
+
+
 @dataclass(frozen=True, slots=True)
 class ConflictPair:
     """Two genes that conflict on a shared resource at a specific quantum."""
@@ -88,9 +88,7 @@ class Timetable:
         indexes will not be built (they'll be empty dicts).
     """
 
-    # ------------------------------------------------------------------
     # Construction
-    # ------------------------------------------------------------------
 
     __slots__ = (
         "_genes",
@@ -130,9 +128,7 @@ class Timetable:
         self._sessions: list | None = None  # lazy
         self._build_indexes()
 
-    # ------------------------------------------------------------------
     # Public: Gene access
-    # ------------------------------------------------------------------
 
     @property
     def genes(self) -> list[SessionGene]:
@@ -175,9 +171,7 @@ class Timetable:
     def __iter__(self):
         return iter(self._genes)
 
-    # ------------------------------------------------------------------
     # Public: Per-entity gene lists
-    # ------------------------------------------------------------------
 
     def genes_for_group(self, group_id: str) -> list[int]:
         """Return gene indices for a given group."""
@@ -195,9 +189,7 @@ class Timetable:
         """Return gene indices active at a specific quantum."""
         return self._genes_at_quantum.get(quantum, [])
 
-    # ------------------------------------------------------------------
     # Public: Occupancy maps (used directly by hard constraints)
-    # ------------------------------------------------------------------
 
     @property
     def group_occupancy(self) -> dict[tuple[str, int], list[int]]:
@@ -214,9 +206,7 @@ class Timetable:
         """``(room_id, quantum) → [gene_idx, …]``."""
         return self._room_occ
 
-    # ------------------------------------------------------------------
     # Public: Daily schedule maps (used by soft constraints)
-    # ------------------------------------------------------------------
 
     @property
     def group_daily(self) -> dict[str, dict[str, set[int]]]:
@@ -228,9 +218,7 @@ class Timetable:
         """``instructor_id → day_name → {within_day_quantum, …}``."""
         return self._instructor_daily
 
-    # ------------------------------------------------------------------
     # Public: Completeness & continuity maps
-    # ------------------------------------------------------------------
 
     @property
     def course_group_quanta(self) -> dict[tuple[str, str, str], int]:
@@ -247,9 +235,7 @@ class Timetable:
         """``(course_id, course_type, group_id) → {quantum, …}`` for practicals."""
         return self._practical_quanta
 
-    # ------------------------------------------------------------------
     # Public: Conflict detection (high-level)
-    # ------------------------------------------------------------------
 
     def group_conflicts(self) -> list[ConflictPair]:
         """Find all (gene_a, gene_b) pairs with group-time overlap."""
@@ -283,9 +269,7 @@ class Timetable:
         """Number of (room, quantum) slots with >1 session."""
         return sum(len(idxs) - 1 for idxs in self._room_occ.values() if len(idxs) > 1)
 
-    # ------------------------------------------------------------------
     # Public: Lookup helpers for per-gene checks
-    # ------------------------------------------------------------------
 
     def course_for_gene(self, gene: SessionGene) -> Course:
         """Resolve the Course object for a gene."""
@@ -303,9 +287,7 @@ class Timetable:
         """Resolve Group objects for a gene."""
         return [self._context.groups[gid] for gid in gene.group_ids]
 
-    # ------------------------------------------------------------------
     # Public: Factory
-    # ------------------------------------------------------------------
 
     @classmethod
     def from_individual(
@@ -317,9 +299,7 @@ class Timetable:
         """Convenience alias — same as ``Timetable(individual, context, qts)``."""
         return cls(individual, context, qts)
 
-    # ------------------------------------------------------------------
     # Internal: Index building
-    # ------------------------------------------------------------------
 
     def _build_indexes(self) -> None:
         """Build all indexes in a single pass over the genes."""
@@ -414,9 +394,7 @@ class Timetable:
         self._course_daily = dict(course_daily)
         self._practical_quanta = dict(practical_quanta)
 
-    # ------------------------------------------------------------------
     # Internal: Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _quantum_to_day(quantum: int, qts: QuantumTimeSystem) -> tuple[str, int]:

@@ -22,6 +22,7 @@ EnvFactory = Callable[[], GymEnv[Any, Any]]
 from stable_baselines3.common.vec_env import VecEnv  # noqa: E402
 
 from schedule_engine.domain.types import SchedulingContext  # noqa: E402
+from schedule_engine.io.data_store import load_input_data
 from schedule_engine.rl.gym_env import ScheduleEnv  # noqa: E402
 from schedule_engine.rl.training import RLTrainer
 from schedule_engine.rl.training.config_loader import (
@@ -31,7 +32,6 @@ from schedule_engine.rl.training.config_loader import (
 )
 from schedule_engine.utils.structured_logger import StructuredLogger, setup_logging
 from schedule_engine.utils.system_info import get_cpu_count
-from schedule_engine.workflows.standard_run import load_input_data
 
 logger = StructuredLogger.get_logger(__name__)
 

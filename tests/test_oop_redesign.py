@@ -23,9 +23,7 @@ from schedule_engine.domain.room import Room
 from schedule_engine.domain.timetable import Timetable
 from schedule_engine.domain.types import SchedulingContext
 
-# =========================================================================
 # Shared fixtures
-# =========================================================================
 
 
 def _make_course(
@@ -132,9 +130,7 @@ def _conflict_context() -> SchedulingContext:
     )
 
 
-# =========================================================================
 # Phase 2: Constraint Protocol
-# =========================================================================
 
 
 class TestConstraintProtocol:
@@ -148,17 +144,13 @@ class TestConstraintProtocol:
         )
 
     def test_hard_constraints_have_correct_kind(self):
-        from schedule_engine.constraints import (
-            HARD_CONSTRAINT_CLASSES,
-        )
+        from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES
 
         for c in HARD_CONSTRAINT_CLASSES:
             assert c.kind == "hard", f"{c.name} has kind={c.kind}"
 
     def test_soft_constraints_have_correct_kind(self):
-        from schedule_engine.constraints import (
-            SOFT_CONSTRAINT_CLASSES,
-        )
+        from schedule_engine.constraints import SOFT_CONSTRAINT_CLASSES
 
         for c in SOFT_CONSTRAINT_CLASSES:
             assert c.kind == "soft", f"{c.name} has kind={c.kind}"
@@ -211,9 +203,7 @@ class TestConstraintProtocol:
         assert RoomExclusivity().evaluate(tt) == 0
 
     def test_exclusivity_detects_group_conflict(self):
-        from schedule_engine.constraints import (
-            StudentGroupExclusivity,
-        )
+        from schedule_engine.constraints import StudentGroupExclusivity
 
         ctx = _conflict_context()
         # Two genes for same group at same time
@@ -225,23 +215,17 @@ class TestConstraintProtocol:
         assert StudentGroupExclusivity().evaluate(tt) > 0
 
     def test_known_hard_constraint_count(self):
-        from schedule_engine.constraints import (
-            HARD_CONSTRAINT_CLASSES,
-        )
+        from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES
 
         assert len(HARD_CONSTRAINT_CLASSES) == 8
 
     def test_known_soft_constraint_count(self):
-        from schedule_engine.constraints import (
-            SOFT_CONSTRAINT_CLASSES,
-        )
+        from schedule_engine.constraints import SOFT_CONSTRAINT_CLASSES
 
         assert len(SOFT_CONSTRAINT_CLASSES) == 6
 
 
-# =========================================================================
 # Phase 3: Evaluator
-# =========================================================================
 
 
 class TestEvaluator:
@@ -260,9 +244,7 @@ class TestEvaluator:
         assert len(ev.soft) == 6
 
     def test_evaluator_custom_constraints(self):
-        from schedule_engine.constraints import (
-            StudentGroupExclusivity,
-        )
+        from schedule_engine.constraints import StudentGroupExclusivity
         from schedule_engine.evaluation import Evaluator
 
         ev = Evaluator(constraints=[StudentGroupExclusivity()])
@@ -382,9 +364,7 @@ class TestEvaluator:
         assert direct == from_tt
 
 
-# =========================================================================
 # Phase 4: RepairPipeline (structural / unit tests)
-# =========================================================================
 
 
 class TestRepairPipeline:
@@ -406,9 +386,7 @@ class TestRepairPipeline:
         assert callable(getattr(RepairPipeline, "default", None))
 
 
-# =========================================================================
 # Phase 5: PopulationFactory (structural tests)
-# =========================================================================
 
 
 class TestPopulationFactory:
@@ -434,9 +412,7 @@ class TestPopulationFactory:
         assert factory.context is ctx
 
 
-# =========================================================================
 # Phase 6: EvolutionEngine (structural + smoke tests)
-# =========================================================================
 
 
 class TestEvolutionEngine:
@@ -514,9 +490,7 @@ class TestEvolutionEngine:
         assert abs(stats.avg_hard - 1.0 / 3.0) < 0.01
 
 
-# =========================================================================
 # Phase 7: family_map in SchedulingContext
-# =========================================================================
 
 
 class TestFamilyMapInContext:
@@ -544,9 +518,7 @@ class TestFamilyMapInContext:
         assert "G2" in ctx.family_map["G1"]
 
 
-# =========================================================================
 # Cross-phase integration
-# =========================================================================
 
 
 class TestCrossPhaseIntegration:
@@ -554,9 +526,7 @@ class TestCrossPhaseIntegration:
 
     def test_constraint_evaluates_via_timetable(self):
         """Phase 1 (Timetable) + Phase 2 (Constraint) integration."""
-        from schedule_engine.constraints import (
-            StudentGroupExclusivity,
-        )
+        from schedule_engine.constraints import StudentGroupExclusivity
 
         ctx = _simple_context()
         genes = [_make_gene()]
