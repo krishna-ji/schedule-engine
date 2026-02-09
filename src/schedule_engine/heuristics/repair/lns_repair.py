@@ -7,20 +7,11 @@ This operator uses conflict detection and subproblem solving for repair.
 
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import repair_heuristic
 
 # Import the original LNS repair logic
 from schedule_engine.heuristics.repair.lns_operator import lns_igls_repair
 
 
-@repair_heuristic(
-    name="lns_repair",
-    description="Large Neighborhood Search repair with IGLS subproblem solving",
-    priority=4,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def lns_repair(
     individual: list[SessionGene],
     context: SchedulingContext,

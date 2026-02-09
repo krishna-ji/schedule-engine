@@ -8,17 +8,8 @@ violations without the overhead of exhaustive search.
 
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import repair_heuristic
 
 
-@repair_heuristic(
-    name="greedy_repair",
-    description="Fast greedy repair with first-improving moves",
-    priority=2,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def greedy_repair(
     individual: list[SessionGene],
     context: SchedulingContext,

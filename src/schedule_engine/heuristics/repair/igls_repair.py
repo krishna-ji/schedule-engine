@@ -16,17 +16,8 @@ from schedule_engine.domain.types import SchedulingContext
 # Import the original IGLS repair logic
 from schedule_engine.ga.operators.repair import repair_individual_unified
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import repair_heuristic
 
 
-@repair_heuristic(
-    name="igls_repair",
-    description="Iterative Greedy Local Search repair for constraint violations",
-    priority=1,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def igls_repair(
     individual: list[SessionGene],
     context: SchedulingContext,

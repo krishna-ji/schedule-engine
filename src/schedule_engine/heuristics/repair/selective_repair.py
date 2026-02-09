@@ -19,17 +19,8 @@ from schedule_engine.domain.types import SchedulingContext
 # Import the original selective repair logic
 from schedule_engine.ga.operators.repair_selective import repair_individual_selective
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import repair_heuristic
 
 
-@repair_heuristic(
-    name="selective_repair",
-    description="Selective repair targeting only violated genes for efficiency",
-    priority=3,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def selective_repair(
     individual: list[SessionGene],
     context: SchedulingContext,

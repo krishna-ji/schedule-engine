@@ -33,21 +33,12 @@ from collections import defaultdict
 
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import diversity_heuristic
 
 # ================
 # DISTANCE PRESERVING CROSSOVER
 # ================
 
 
-@diversity_heuristic(
-    name="distance_preserving_crossover",
-    description="Crossover operator that maintains phenotypic distance between parents",
-    priority=1,
-    enabled_by_default=True,
-    requires_population=True,
-    modifies_individual=False,
-)
 def distance_preserving_crossover(
     parent1: list[SessionGene],
     parent2: list[SessionGene],
@@ -118,14 +109,6 @@ def distance_preserving_crossover(
 # ================
 
 
-@diversity_heuristic(
-    name="crowding_mutation",
-    description="Mutation that favors less-explored regions of search space",
-    priority=2,
-    enabled_by_default=True,
-    requires_population=True,
-    modifies_individual=True,
-)
 def crowding_mutation(
     individual: list[SessionGene],
     population: list[list[SessionGene]],
@@ -245,14 +228,6 @@ def crowding_mutation(
 # ================
 
 
-@diversity_heuristic(
-    name="niching_selection",
-    description="Selection operator that promotes diverse individuals (fitness sharing)",
-    priority=3,
-    enabled_by_default=True,
-    requires_population=True,
-    modifies_individual=False,
-)
 def niching_selection(
     individual: list[SessionGene],
     population: list[list[SessionGene]],
@@ -335,14 +310,6 @@ def niching_selection(
 # ================
 
 
-@diversity_heuristic(
-    name="adaptive_diversity_maintenance",
-    description="Dynamically adjust diversity based on convergence state",
-    priority=4,
-    enabled_by_default=False,  # Advanced feature
-    requires_population=True,
-    modifies_individual=True,
-)
 def adaptive_diversity_maintenance(
     individual: list[SessionGene],
     population: list[list[SessionGene]],

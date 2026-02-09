@@ -36,7 +36,6 @@ from schedule_engine.domain.course import Course
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import construction_heuristic
 
 type AssignedTimes = dict[str, set[int]]
 type AssignedRooms = dict[str, set[int]]
@@ -46,14 +45,6 @@ type AssignedRooms = dict[str, set[int]]
 # ================
 
 
-@construction_heuristic(
-    name="largest_degree_first",
-    description="Schedule courses with most conflicts/constraints first (graph coloring heuristic)",
-    priority=1,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=False,
-)
 def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most conflicting courses first.
@@ -187,14 +178,6 @@ def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
 # ================
 
 
-@construction_heuristic(
-    name="most_constrained_first",
-    description="Schedule sessions with fewest valid time slots first (minimum remaining values)",
-    priority=2,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=False,
-)
 def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule by scheduling most constrained sessions first.
@@ -337,14 +320,6 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
 # ================
 
 
-@construction_heuristic(
-    name="earliest_deadline_first",
-    description="Schedule courses with more sessions per week first (higher frequency = higher priority)",
-    priority=3,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=False,
-)
 def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
     """
     Build schedule prioritizing courses with higher session frequency.

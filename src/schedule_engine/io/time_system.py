@@ -159,34 +159,9 @@ class QuantumTimeSystem:
             )
             return None
 
-        time_cfg = getattr(cfg, "time", None)
-        if time_cfg is None:
-            return None
-
-        base_start = getattr(time_cfg, "opening_time", None)
-        base_end = getattr(time_cfg, "closing_time", None)
-        if not base_start or not base_end:
-            return None
-
-        closed_days = {
-            day.capitalize() for day in (getattr(time_cfg, "closed_days", []) or [])
-        }
-        overrides = getattr(time_cfg, "day_overrides", {}) or {}
-
-        resolved: dict[str, tuple[str, str] | None] = {}
-        for day in self.DAY_NAMES:
-            if day in closed_days:
-                resolved[day] = None
-                continue
-
-            override = self._get_override_for_day(overrides, day)
-            if override is None:
-                resolved[day] = (base_start, base_end)
-                continue
-
-            resolved[day] = self._extract_override_hours(override)
-
-        return resolved
+        # TimeConfig was merged into QTS __init__ kwargs.
+        # No separate config.time section exists anymore.
+        return None
 
     @staticmethod
     def _get_override_for_day(overrides: dict[str, Any], day: str) -> Any:

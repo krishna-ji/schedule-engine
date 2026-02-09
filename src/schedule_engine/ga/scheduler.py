@@ -48,7 +48,7 @@ from schedule_engine.heuristics.parallel_executor import (
     ParallelHeuristicExecutor,
     get_parallel_executor,
 )
-from schedule_engine.heuristics.registry import get_heuristic_statistics_template
+from schedule_engine.heuristics import get_heuristic_statistics_template
 from schedule_engine.metrics.diversity import average_pairwise_diversity
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.parallel_worker import get_worker_context
@@ -922,11 +922,11 @@ class GAScheduler:
 
         # DEBUG: Log heuristic application
         logger.debug(
-            f" Applying heuristic: {heuristic_name} ({heuristic_meta.category.value})"
+            f" Applying heuristic: {heuristic_name} ({heuristic_meta.category})"
         )
 
         # Skip construction heuristics (they generate NEW individuals, not modify existing)
-        if heuristic_meta.category.value == "construction":
+        if heuristic_meta.category == "construction":
             return
 
         # Select target individual(s)
@@ -949,7 +949,7 @@ class GAScheduler:
         heuristic_start_time = time.time()
         console.print(
             f"[cyan]   -> Gen {gen}: Heuristic '{heuristic_name}' "
-            f"({heuristic_meta.category.value}) -> "
+            f"({heuristic_meta.category}) -> "
             f"{len(target_individuals)} ind(s)...[/cyan]"
         )
 
@@ -1037,7 +1037,7 @@ class GAScheduler:
                 self.heuristic_tracker.record_application(
                     generation=gen,
                     heuristic_name=heuristic_name,
-                    category=heuristic_meta.category.value,
+                    category=heuristic_meta.category,
                     fitness_before=before,
                     fitness_after=fitness_after,
                     execution_time=execution_time,
@@ -1073,7 +1073,7 @@ class GAScheduler:
                 self.heuristic_tracker.record_application(
                     generation=gen,
                     heuristic_name=heuristic_name,
-                    category=heuristic_meta.category.value,
+                    category=heuristic_meta.category,
                     fitness_before=before,
                     fitness_after=fitness_after,
                     execution_time=0.0,
@@ -1163,7 +1163,7 @@ class GAScheduler:
             self.heuristic_tracker.record_application(
                 generation=gen,
                 heuristic_name=heuristic_name,
-                category=heuristic_meta.category.value,
+                category=heuristic_meta.category,
                 fitness_before=before,
                 fitness_after=fitness_after,
                 execution_time=exec_time,
@@ -2554,8 +2554,7 @@ class GAScheduler:
         )
 
         # Determine if this is a tracked generation for expensive metrics
-        metrics_config = get_config().metrics
-        advanced_freq = metrics_config.advanced_metrics_frequency
+        advanced_freq = 10  # advanced metrics every 10 generations
         # Always track: gen 0, last gen, or every Nth generation
         is_tracked_gen = (
             gen == 0 or gen == self.config.generations - 1 or gen % advanced_freq == 0

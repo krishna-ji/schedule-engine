@@ -34,7 +34,6 @@ from collections import defaultdict
 
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import perturbation_heuristic
 from schedule_engine.heuristics.utils import (
     estimate_session_student_count,
     get_available_quanta,
@@ -50,14 +49,6 @@ from schedule_engine.heuristics.utils import (
 # ================
 
 
-@perturbation_heuristic(
-    name="random_swap",
-    description="Randomly swap time slots or rooms between two compatible sessions",
-    priority=1,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def random_swap(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -143,14 +134,6 @@ def random_swap(
 # ================
 
 
-@perturbation_heuristic(
-    name="temporal_shift",
-    description="Shift sessions forward or backward in time by delta quanta",
-    priority=2,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def temporal_shift(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -207,14 +190,6 @@ def temporal_shift(
 # ================
 
 
-@perturbation_heuristic(
-    name="room_shuffle",
-    description="Randomly reassign rooms to sessions while maintaining compatibility",
-    priority=3,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def room_shuffle(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -279,14 +254,6 @@ def room_shuffle(
 # ================
 
 
-@perturbation_heuristic(
-    name="instructor_reassign",
-    description="Reassign instructors to other qualified instructors for courses",
-    priority=4,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def instructor_reassign(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -363,14 +330,6 @@ def instructor_reassign(
 # ================
 
 
-@perturbation_heuristic(
-    name="multi_perturbation",
-    description="Apply multiple perturbation operators in sequence for stronger diversification",
-    priority=5,
-    enabled_by_default=False,  # Disabled by default (aggressive)
-    requires_population=False,
-    modifies_individual=True,
-)
 def multi_perturbation(
     individual: list[SessionGene],
     context: SchedulingContext,

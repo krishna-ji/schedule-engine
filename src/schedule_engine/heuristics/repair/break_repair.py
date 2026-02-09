@@ -10,18 +10,9 @@ import random
 from typing import Any
 
 from schedule_engine.domain.types import Individual
-from schedule_engine.heuristics.registry import repair_heuristic
 from schedule_engine.io.time_system import QuantumTimeSystem
 
 
-@repair_heuristic(
-    name="repair_break_placement",
-    description="Moves sessions to ensure break windows are respected",
-    priority=9,  # Lower priority (runs after core repairs)
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def repair_break_placement(
     individual: Individual,
     max_iterations: int = 5,

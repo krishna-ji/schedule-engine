@@ -78,7 +78,7 @@ class ActionMapper:
             heuristics = get_all_heuristics().values()
 
         # Sort by category then name for consistent ordering
-        heuristics_sorted = sorted(heuristics, key=lambda h: (h.category.value, h.name))
+        heuristics_sorted = sorted(heuristics, key=lambda h: (h.category, h.name))
 
         if self.use_config and self.action_id_map:
             self._build_action_space_with_mapping(heuristics_sorted)

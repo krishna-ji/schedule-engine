@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from schedule_engine.config import get_config_or_default
 from schedule_engine.io.feasibility import (
     FeasibilityReport,
     check_feasibility,
@@ -134,8 +133,10 @@ def run_feasibility_checks(
         expected_quanta,
     )
 
-    cfg = get_config_or_default().feasibility
-    original_fail = cfg.fail_on_infeasibility
+    # Feasibility defaults (FeasibilityConfig removed — values inlined)
+    _fail_on_infeasibility = True
+    _generate_report = True
+    _save_report_on_success = False
 
     is_feasible, report = check_feasibility(
         data.courses, data.instructors, data.rooms, data.groups, data.qts
@@ -147,7 +148,7 @@ def run_feasibility_checks(
     # Write report if forced, configured, or infeasible (always save issues)
     should_write = (
         force_report
-        or (cfg.generate_report and (is_feasible or cfg.save_report_on_success))
+        or (_generate_report and (is_feasible or _save_report_on_success))
         or not is_feasible
     )  # Always write when infeasible
 
@@ -176,7 +177,7 @@ def run_feasibility_checks(
             logger.warning("Unable to read feasibility report: %s", exc)
 
     if not is_feasible:
-        if original_fail:
+        if _fail_on_infeasibility:
             # Show error panel to console (same as was shown in check_feasibility)
             from rich import box
             from rich.panel import Panel
@@ -192,7 +193,7 @@ def run_feasibility_checks(
                     f"Found {critical_count} critical issue(s) that make this problem unsolvable.\n"
                     "Please review the detailed report above and fix the identified issues.\n\n"
                     f"[dim]Feasibility report saved to: {report_path}[/dim]\n"
-                    "[dim]Set get_config_or_default().feasibility.fail_on_infeasibility=False in config to continue anyway (not recommended).[/dim]",
+                    "[dim]Infeasibility detected. Review the report above and fix the identified issues.[/dim]",
                     border_style="red",
                     box=box.DOUBLE,
                 )

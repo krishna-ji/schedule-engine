@@ -102,7 +102,7 @@ def main() -> None:
     print("\n2. COHORT PAIRING ANALYSIS:")
 
     # Check cohort pairs access
-    cohort_pairs_in_config = getattr(getattr(cfg, "time", cfg), "cohort_pairs", [])
+    cohort_pairs_in_config = getattr(cfg, "cohort_pairs", [])
     print(f"   Cohort pairs in config: {len(cohort_pairs_in_config)}")
     print(f"   Cohort pairs in context: {len(context.cohort_pairs or [])}")
 

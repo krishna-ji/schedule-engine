@@ -35,21 +35,12 @@ from schedule_engine.domain.gene import SessionGene
 
 # Import other heuristic categories for orchestration
 from schedule_engine.heuristics import improvement, perturbation
-from schedule_engine.heuristics.registry import meta_heuristic
 
 # ================
 # VARIABLE NEIGHBORHOOD DESCENT (Systematic neighborhood exploration)
 # ================
 
 
-@meta_heuristic(
-    name="variable_neighborhood_descent",
-    description="Systematically explore multiple neighborhoods until local optimum",
-    priority=1,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def variable_neighborhood_descent(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -114,14 +105,6 @@ def variable_neighborhood_descent(
 # ================
 
 
-@meta_heuristic(
-    name="iterated_local_search",
-    description="Alternate between perturbation and local search for global optimization",
-    priority=2,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def iterated_local_search(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -194,14 +177,6 @@ def iterated_local_search(
 # ================
 
 
-@meta_heuristic(
-    name="adaptive_large_neighborhood",
-    description="Adaptive destroy-repair with dynamic neighborhood sizing",
-    priority=3,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def adaptive_large_neighborhood(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -298,14 +273,6 @@ def adaptive_large_neighborhood(
 # ================
 
 
-@meta_heuristic(
-    name="guided_local_search",
-    description="Local search guided by dynamic penalties on solution features",
-    priority=4,
-    enabled_by_default=False,  # Advanced feature
-    requires_population=False,
-    modifies_individual=True,
-)
 def guided_local_search(
     individual: list[SessionGene],
     context: SchedulingContext,

@@ -8,17 +8,8 @@ optima when other repair passes stall.
 
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import repair_heuristic
 
 
-@repair_heuristic(
-    name="exhaustive_repair",
-    description="Exhaustive steepest-descent repair (very intensive)",
-    priority=5,
-    enabled_by_default=False,
-    requires_population=False,
-    modifies_individual=True,
-)
 def exhaustive_repair(
     individual: list[SessionGene],
     context: SchedulingContext,

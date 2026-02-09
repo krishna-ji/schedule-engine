@@ -11,17 +11,8 @@ from typing import Callable
 
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.heuristics.registry import repair_heuristic
 
 
-@repair_heuristic(
-    name="memetic_repair",
-    description="Memetic repair (intensive IGLS on elite individuals)",
-    priority=6,
-    enabled_by_default=False,
-    requires_population=True,
-    modifies_individual=True,
-)
 def memetic_repair(
     individual: list[SessionGene],
     population: list[list[SessionGene]],

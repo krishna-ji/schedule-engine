@@ -34,7 +34,6 @@ from collections import defaultdict
 
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.heuristics.registry import improvement_heuristic
 from schedule_engine.heuristics.utils import (
     estimate_session_student_count,
     get_available_quanta,
@@ -49,14 +48,6 @@ from schedule_engine.heuristics.utils import (
 # ================
 
 
-@improvement_heuristic(
-    name="kempe_chain",
-    description="Apply Kempe chain moves to resolve time conflicts (graph coloring heuristic)",
-    priority=1,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def kempe_chain(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -137,14 +128,6 @@ def kempe_chain(
 # ================
 
 
-@improvement_heuristic(
-    name="ejection_chain",
-    description="Apply ejection chain moves with cascading reassignments",
-    priority=2,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def ejection_chain(
     individual: list[SessionGene],
     context: SchedulingContext,
@@ -224,14 +207,6 @@ def ejection_chain(
 # ================
 
 
-@improvement_heuristic(
-    name="variable_depth_search",
-    description="Multi-move lookahead search with backtracking",
-    priority=3,
-    enabled_by_default=True,
-    requires_population=False,
-    modifies_individual=True,
-)
 def variable_depth_search(
     individual: list[SessionGene],
     context: SchedulingContext,
