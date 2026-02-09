@@ -54,11 +54,21 @@ from schedule_engine.constraints.constraints import (  # Individual constraint c
     build_constraints,
 )
 
+# Backward-compatible name exports
+HARD_CONSTRAINTS = HARD_CONSTRAINT_CLASSES
+SOFT_CONSTRAINTS = SOFT_CONSTRAINT_CLASSES
+HARD_CONSTRAINT_NAMES = [c.name for c in HARD_CONSTRAINT_CLASSES]
+SOFT_CONSTRAINT_NAMES = [c.name for c in SOFT_CONSTRAINT_CLASSES]
+
 __all__ = [
     "Constraint",
     "ALL_CONSTRAINTS",
     "HARD_CONSTRAINT_CLASSES",
     "SOFT_CONSTRAINT_CLASSES",
+    "HARD_CONSTRAINTS",
+    "SOFT_CONSTRAINTS",
+    "HARD_CONSTRAINT_NAMES",
+    "SOFT_CONSTRAINT_NAMES",
     "build_constraints",
     # Individual classes (for custom configs)
     "StudentGroupExclusivity",

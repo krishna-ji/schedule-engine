@@ -115,10 +115,7 @@ def _init_detailed_metrics(stats: EvolutionStats) -> None:
     if stats.detailed_hard and stats.detailed_soft:
         return
 
-    from schedule_engine.constraints.all_constraints import (
-        HARD_CONSTRAINT_NAMES,
-        SOFT_CONSTRAINT_NAMES,
-    )
+    from schedule_engine.constraints import HARD_CONSTRAINT_NAMES, SOFT_CONSTRAINT_NAMES
 
     stats.detailed_hard = {name: [] for name in HARD_CONSTRAINT_NAMES}
     stats.detailed_soft = {name: [] for name in SOFT_CONSTRAINT_NAMES}
@@ -488,39 +485,25 @@ def create_evaluator(
     Returns:
         Function that takes an individual and returns (hard_violations, soft_penalty)
     """
-    from schedule_engine.constraints.all_constraints import (
-        HARD_CONSTRAINTS,
-        SOFT_CONSTRAINTS,
-    )
-    from schedule_engine.io.decoder import decode_individual
+    from schedule_engine.constraints import HARD_CONSTRAINTS, SOFT_CONSTRAINTS
+    from schedule_engine.domain.timetable import Timetable
+
+    # Build context once
+    context = data.to_context()
 
     def evaluate(individual: list[SessionGene]) -> tuple[float, float]:
         """Evaluate fitness: (hard violations, soft penalty)."""
-        sessions = decode_individual(
-            individual,
-            data.courses,
-            data.instructors,
-            data.groups,
-            data.rooms,
-        )
+        tt = Timetable(genes=individual, context=context)
 
         # Calculate hard constraint penalty
         hard_penalty = 0.0
         for c in HARD_CONSTRAINTS:
-            if c.needs_courses:
-                penalty = c.function(sessions, data.courses)
-            else:
-                penalty = c.function(sessions)
-            hard_penalty += c.weight * penalty
+            hard_penalty += c.weight * c.evaluate(tt)
 
         # Calculate soft constraint penalty
         soft_penalty = 0.0
         for c in SOFT_CONSTRAINTS:
-            if c.needs_courses:
-                penalty = c.function(sessions, data.courses)
-            else:
-                penalty = c.function(sessions)
-            soft_penalty += c.weight * penalty
+            soft_penalty += c.weight * c.evaluate(tt)
 
         return float(hard_penalty), float(soft_penalty)
 
@@ -599,32 +582,20 @@ def get_constraint_breakdown(
     Returns:
         Dict mapping constraint names to violation counts
     """
-    sessions = decode_individual(
-        individual,
-        data.courses,
-        data.instructors,
-        data.groups,
-        data.rooms,
-    )
+    from schedule_engine.constraints import HARD_CONSTRAINTS, SOFT_CONSTRAINTS
+    from schedule_engine.domain.timetable import Timetable
 
-    from schedule_engine.constraints.all_constraints import (
-        HARD_CONSTRAINTS,
-        SOFT_CONSTRAINTS,
-    )
+    # Build timetable from individual
+    context = data.to_context()
+    tt = Timetable(genes=individual, context=context)
 
     breakdown: dict[str, int | float] = {}
 
     for c in HARD_CONSTRAINTS:
-        if c.needs_courses:
-            breakdown[c.name] = c.function(sessions, data.courses)
-        else:
-            breakdown[c.name] = c.function(sessions)
+        breakdown[c.name] = c.evaluate(tt)
 
     for c in SOFT_CONSTRAINTS:
-        if c.needs_courses:
-            breakdown[c.name] = c.function(sessions, data.courses)
-        else:
-            breakdown[c.name] = c.function(sessions)
+        breakdown[c.name] = c.evaluate(tt)
 
     return breakdown
 
@@ -768,7 +739,7 @@ def run_nsga2(
             breakdown = get_constraint_breakdown(list(best_ind), data)
 
             # Split into hard and soft
-            from schedule_engine.constraints.all_constraints import (
+            from schedule_engine.constraints import (
                 HARD_CONSTRAINT_NAMES,
                 SOFT_CONSTRAINT_NAMES,
             )

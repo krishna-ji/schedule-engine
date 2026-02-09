@@ -10,23 +10,16 @@ import random
 from datetime import datetime
 from typing import Any
 
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
+from rich.progress import (BarColumn, Progress, SpinnerColumn, TextColumn,
+                           TimeElapsedColumn)
 
 from schedule_engine.config import Config
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.scheduler import GAConfig, GAScheduler
 from schedule_engine.io import validate_input
 from schedule_engine.io.decoder import decode_individual
-from schedule_engine.io.feasibility import (
-    check_feasibility,
-    generate_feasibility_report_file,
-)
+from schedule_engine.io.feasibility import (check_feasibility,
+                                            generate_feasibility_report_file)
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.constraint_logger import ConstraintLogger
@@ -265,18 +258,11 @@ def run_standard_workflow(
         repair_config=repair_config,
     )
     # Get all constraint names (all constraints always enabled)
-    from schedule_engine.constraints.all_constraints import (
-        get_all_hard_constraints,
-        get_all_soft_constraints,
-    )
-
-    # Build constraint lists - all constraints are always enabled now
-    all_hard_constraints = get_all_hard_constraints()
-    all_soft_constraints = get_all_soft_constraints()
+    from schedule_engine.constraints import HARD_CONSTRAINT_NAMES, SOFT_CONSTRAINT_NAMES
 
     # All constraints are enabled
-    hard_names = list(all_hard_constraints.keys())
-    soft_names = list(all_soft_constraints.keys())
+    hard_names = HARD_CONSTRAINT_NAMES
+    soft_names = SOFT_CONSTRAINT_NAMES
     # Step 4.5: Initialize Logger
     logger_config = {
         "pop_size": pop_size,

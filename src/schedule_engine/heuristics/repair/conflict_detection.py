@@ -9,10 +9,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
 
-from schedule_engine.constraints.all_constraints import (
-    constraint_needs_courses,
-    get_enabled_hard_constraints,
-)
+from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
@@ -80,25 +77,16 @@ def find_hard_conflict_sessions(
     violations: list[ViolationInfo] = []
 
     # Get enabled hard constraints
-    enabled_hard_constraints = get_enabled_hard_constraints()
-
     # Evaluate each hard constraint and identify conflicted sessions
-    for constraint_name, constraint_info in enabled_hard_constraints.items():
-        constraint_func = constraint_info["function"]
+    for constraint in HARD_CONSTRAINT_CLASSES:
+        constraint_name = constraint.name
 
-        # Determine if constraint needs courses parameter
-        if constraint_needs_courses(constraint_name):
-            affected_indices, violation_count, details = (
-                _evaluate_constraint_with_tracking(
-                    constraint_name, constraint_func, sessions, courses
-                )
+        # Determine affected sessions using tracking functions
+        affected_indices, violation_count, details = (
+            _evaluate_constraint_with_tracking(
+                constraint_name, None, sessions, courses
             )
-        else:
-            affected_indices, violation_count, details = (
-                _evaluate_constraint_with_tracking(
-                    constraint_name, constraint_func, sessions
-                )
-            )
+        )
 
         if violation_count > 0:
             conflicted_session_indices.update(affected_indices)

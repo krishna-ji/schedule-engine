@@ -67,3 +67,67 @@ def quantum_to_day_and_within_day(
             return day, within_day
 
     raise ValueError(f"Quantum {quantum} out of valid range")
+
+
+def get_break_window_quanta(qts: QuantumTimeSystem) -> dict[str, set[int]]:
+    """
+    Get break window quanta per day (within-day indices).
+
+    Args:
+        qts: QuantumTimeSystem instance
+
+    Returns:
+        Dict mapping day_name -> set of within-day quanta in break window
+    """
+    windows: dict[str, set[int]] = {}
+
+    for day in qts.DAY_NAMES:
+        if not qts.is_operational(day):
+            continue
+
+        try:
+            break_start_q = qts.time_to_quanta(day, qts.break_window_start)
+            break_end_q = qts.time_to_quanta(day, qts.break_window_end)
+
+            day_offset = qts.day_quanta_offset[day]
+            if day_offset is None:
+                continue
+
+            within_day_start = break_start_q - day_offset
+            within_day_end = break_end_q - day_offset
+
+            windows[day] = set(range(within_day_start, within_day_end))
+        except ValueError:
+            continue
+
+    return windows
+
+
+def build_group_day_schedules(
+    sessions: list,
+    qts: QuantumTimeSystem,
+) -> dict[tuple[str, str], set[int]]:
+    """
+    Build occupied quanta per group per day.
+
+    Args:
+        sessions: List of CourseSession objects
+        qts: QuantumTimeSystem instance
+
+    Returns:
+        Dict mapping (group_id, day_name) -> set of within-day quanta occupied
+    """
+    from collections import defaultdict
+
+    group_day_map: dict[tuple[str, str], set[int]] = defaultdict(set)
+
+    for session in sessions:
+        for group_id in session.group_ids:
+            for q in session.session_quanta:
+                try:
+                    day, within_day = quantum_to_day_and_within_day(q, qts)
+                    group_day_map[(group_id, day)].add(within_day)
+                except ValueError:
+                    continue
+
+    return dict(group_day_map)

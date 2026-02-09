@@ -41,14 +41,18 @@ def memetic_repair(
 
     # Create a basic evaluator if none provided
     if evaluator is None:
-        from schedule_engine.constraints.all_constraints import (
-            evaluate_hard_constraints,
-            evaluate_soft_constraints,
+        from schedule_engine.constraints import (
+            HARD_CONSTRAINT_CLASSES,
+            SOFT_CONSTRAINT_CLASSES,
         )
+        from schedule_engine.domain.timetable import Timetable
+        from schedule_engine.domain.types import SchedulingContext
+        from schedule_engine.io.time_system import QuantumTimeSystem
 
         def evaluator(ind: list[SessionGene]) -> tuple[float, float]:
-            hard = evaluate_hard_constraints(ind, context)
-            soft = evaluate_soft_constraints(ind, context)
+            tt = Timetable(genes=ind, context=context)
+            hard = sum(c.weight * c.evaluate(tt) for c in HARD_CONSTRAINT_CLASSES)
+            soft = sum(c.weight * c.evaluate(tt) for c in SOFT_CONSTRAINT_CLASSES)
             return (hard, soft)
 
     elite_count = max(1, int(len(population) * elite_percentage))

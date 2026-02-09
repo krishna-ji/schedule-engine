@@ -59,18 +59,18 @@ def repair_break_placement(
     assert isinstance(groups, dict)
     assert isinstance(rooms, dict)
 
-    from schedule_engine.constraints.soft import (
-        _build_group_day_schedules,
-        _get_break_window_quanta,
-    )
     from schedule_engine.io import decode_individual
+    from schedule_engine.utils.time_helpers import (
+        build_group_day_schedules,
+        get_break_window_quanta,
+    )
 
     repairs = 0
 
     for _iteration in range(max_iterations):
         sessions = decode_individual(individual, courses, instructors, groups, rooms)  # type: ignore[arg-type]
-        break_windows = _get_break_window_quanta(qts)
-        group_schedules = _build_group_day_schedules(sessions, qts)
+        break_windows = get_break_window_quanta(qts)
+        group_schedules = build_group_day_schedules(sessions, qts)
 
         violations_found = False
 

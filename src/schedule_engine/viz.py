@@ -230,7 +230,7 @@ def print_summary(
     # Constraint breakdown
     if breakdown:
         lines.append(f"\n Best Solution Constraint Breakdown:")
-        from schedule_engine.constraints.all_constraints import (
+        from schedule_engine.constraints import (
             HARD_CONSTRAINT_NAMES,
             HARD_CONSTRAINTS,
             SOFT_CONSTRAINT_NAMES,
