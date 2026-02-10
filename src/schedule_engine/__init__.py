@@ -13,6 +13,13 @@ Main Features:
     - Comprehensive feasibility analysis
     - PDF calendar export and evolution plots
 
+Package Structure:
+    - core/: Domain models, constraints, evaluation
+    - ga/: Genetic algorithm implementation
+    - rl/: Reinforcement learning agents
+    - output/: Unified export and visualization
+    - experiments/: Experiment modes and runners
+
 Usage:
     from schedule_engine.config import Config, init_config
 

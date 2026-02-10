@@ -21,13 +21,16 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.ga.group_hierarchy import (
+from schedule_engine.ga.operators.repair_wrappers import repair_operator
+from schedule_engine.ga.population import (
+    analyze_group_hierarchy,
     build_group_family_map,
     get_family_map_from_json,
-    get_hierarchy_from_json,
+    get_parent,
+    get_sibling_groups,
+    get_subgroups,
     groups_conflict,
 )
-from schedule_engine.ga.operators.repair_wrappers import repair_operator
 
 if TYPE_CHECKING:
     from schedule_engine.domain.types import SchedulingContext
@@ -49,8 +52,6 @@ def _get_or_build_family_map(context: SchedulingContext) -> dict[str, set[str]]:
         family_map = get_family_map_from_json("data/Groups.json")
     except FileNotFoundError:
         # Fallback: build from hierarchy if JSON not found
-        from schedule_engine.ga.group_hierarchy import analyze_group_hierarchy
-
         hierarchy = analyze_group_hierarchy(context.groups)
         family_map = build_group_family_map(hierarchy)
 

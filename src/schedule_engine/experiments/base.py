@@ -30,6 +30,8 @@ from typing import Any, Callable
 import numpy as np
 from deap import base, creator, tools
 
+from schedule_engine.experiments.checks import run_feasibility_checks
+from schedule_engine.ga import PopulationFactory
 from schedule_engine.ga.run_helpers import (
     EvolutionStats,
     NotebookData,
@@ -45,8 +47,6 @@ from schedule_engine.ga.run_helpers import (
     track_nsga_metrics,
 )
 from schedule_engine.io.decoder import decode_individual
-from schedule_engine.population import PopulationFactory
-from schedule_engine.workflows.feasibility_checks import run_feasibility_checks
 
 
 class BaseExperiment(ABC):

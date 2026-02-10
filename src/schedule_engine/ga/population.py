@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+import os
 import random
 from concurrent.futures import ProcessPoolExecutor
+from typing import Any
 
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.gene import SessionGene
@@ -9,8 +12,6 @@ from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
 from schedule_engine.domain.types import Individual, SchedulingContext
-from schedule_engine.ga.course_group_pairs import generate_course_group_pairs
-from schedule_engine.ga.group_hierarchy import analyze_group_hierarchy
 from schedule_engine.ga.individual import create_individual
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.parallel_worker import get_worker_context, init_worker
@@ -20,6 +21,337 @@ type CourseKey = tuple[str, str]
 type DetailedPair = tuple[CourseKey, list[str], str, int]
 type CourseGroupPair = tuple[CourseKey, list[str]]
 type ScheduleMap = dict[str, set[int]]
+type ResourceUsage = dict[tuple[str, int], bool]
+type HierarchyMap = dict[str, list[str] | dict[str, list[str]] | dict[str, str]]
+
+
+def analyze_group_hierarchy_from_json(json_path: str) -> HierarchyMap:
+    """
+    Analyze group hierarchy by reading explicit subgroups from Groups.json.
+
+    The JSON structure has parent groups with a "subgroups" array, e.g.:
+        {"group_id": "BME1AB", "subgroups": [{"id": "BME1A"}, {"id": "BME1B"}]}
+    """
+    with open(json_path) as handle:
+        raw_data = json.load(handle)
+
+    parents: set[str] = set()
+    subgroups_dict: dict[str, list[str]] = {}
+    parent_map: dict[str, str] = {}
+    all_group_ids: set[str] = set()
+
+    for item in raw_data:
+        group_id = item.get("group_id", "")
+        if group_id:
+            all_group_ids.add(group_id)
+
+        subgroups_raw = item.get("subgroups")
+        if subgroups_raw and len(subgroups_raw) >= 1:
+            parent_id = group_id
+            parents.add(parent_id)
+
+            subgroup_ids = _extract_subgroup_ids(subgroups_raw)
+            if subgroup_ids:
+                subgroups_dict[parent_id] = subgroup_ids
+                for sg_id in subgroup_ids:
+                    parent_map[sg_id] = parent_id
+                    all_group_ids.add(sg_id)
+
+    all_subgroups = set(parent_map.keys())
+    standalone = sorted(all_group_ids - parents - all_subgroups)
+
+    return {
+        "parents": sorted(parents),
+        "subgroups": subgroups_dict,
+        "parent_map": parent_map,
+        "standalone": standalone,
+    }
+
+
+def _extract_subgroup_ids(subgroups: list[Any]) -> list[str]:
+    """Normalize subgroup entries to clean string identifiers."""
+    normalized: list[str] = []
+    seen: set[str] = set()
+
+    for raw_entry in subgroups:
+        subgroup_id: str | None
+        if isinstance(raw_entry, dict):
+            subgroup_id = raw_entry.get("id")
+        else:
+            subgroup_id = str(raw_entry)
+
+        if subgroup_id is None:
+            continue
+
+        clean_id = subgroup_id.strip()
+        if not clean_id:
+            continue
+
+        canonical = clean_id.lower()
+        if canonical in seen:
+            continue
+
+        seen.add(canonical)
+        normalized.append(clean_id)
+
+    return normalized
+
+
+def analyze_group_hierarchy(groups: dict[str, Group]) -> HierarchyMap:
+    """
+    DEPRECATED: Use analyze_group_hierarchy_from_json instead.
+
+    Fallback uses pattern matching which may not work for all naming conventions.
+    """
+    parents: set[str] = set()
+    subgroups_dict: dict[str, list[str]] = {}
+    parent_map: dict[str, str] = {}
+    all_group_ids = set(groups.keys())
+
+    for group_id in all_group_ids:
+        if len(group_id) > 1 and group_id[-1].isalpha():
+            potential_parent = group_id[:-1]
+
+            if potential_parent in all_group_ids:
+                parents.add(potential_parent)
+                parent_map[group_id] = potential_parent
+
+                if potential_parent not in subgroups_dict:
+                    subgroups_dict[potential_parent] = []
+                subgroups_dict[potential_parent].append(group_id)
+
+    parents_list = sorted(parents)
+    all_subgroups = set(parent_map.keys())
+    standalone = sorted(all_group_ids - parents - all_subgroups)
+
+    return {
+        "parents": parents_list,
+        "subgroups": subgroups_dict,
+        "parent_map": parent_map,
+        "standalone": standalone,
+    }
+
+
+def is_parent_group(group_id: str, hierarchy: HierarchyMap) -> bool:
+    """Check if a group is a parent group."""
+    return group_id in hierarchy["parents"]
+
+
+def is_subgroup(group_id: str, hierarchy: HierarchyMap) -> bool:
+    """Check if a group is a subgroup."""
+    return group_id in hierarchy["parent_map"]
+
+
+def get_parent(group_id: str, hierarchy: HierarchyMap) -> str:
+    """Get parent group ID for a subgroup."""
+    parent_map: dict[str, str] = hierarchy["parent_map"]  # type: ignore[assignment]
+    result = parent_map.get(group_id)
+    return str(result) if result is not None else ""
+
+
+def get_subgroups(parent_id: str, hierarchy: HierarchyMap) -> list[str]:
+    """Get list of subgroup IDs for a parent."""
+    subgroups: dict[str, list[str]] = hierarchy["subgroups"]  # type: ignore[assignment]
+    result: list[str] = subgroups.get(parent_id, [])
+    return result
+
+
+def has_subgroups(group_id: str, hierarchy: HierarchyMap) -> bool:
+    """Check if a group has subgroups."""
+    return group_id in hierarchy["subgroups"]
+
+
+def get_sibling_groups(group_id: str, hierarchy: HierarchyMap) -> list[str]:
+    """
+    Get sibling groups (other subgroups of the same parent).
+    """
+    parent_id = get_parent(group_id, hierarchy)
+    if not parent_id:
+        return []
+
+    all_subgroups = get_subgroups(parent_id, hierarchy)
+    return [g for g in all_subgroups if g != group_id]
+
+
+def get_all_related_groups(group_id: str, hierarchy: HierarchyMap) -> set[str]:
+    """
+    Get all groups related to this one (parent, siblings, and self).
+    """
+    related = {group_id}
+
+    parent_id = get_parent(group_id, hierarchy)
+    if parent_id:
+        related.add(parent_id)
+        subgroups: dict[str, list[str]] = hierarchy["subgroups"]  # type: ignore[assignment]
+        related.update(subgroups.get(parent_id, []))
+
+    if has_subgroups(group_id, hierarchy):
+        subgroups_dict: dict[str, list[str]] = hierarchy["subgroups"]  # type: ignore[assignment]
+        related.update(subgroups_dict.get(group_id, []))
+
+    return related
+
+
+def build_group_family_map(hierarchy: HierarchyMap) -> dict[str, set[str]]:
+    """Pre-compute a map from each group_id to all related groups."""
+    all_groups: set[str] = set()
+
+    parents: list[str] = hierarchy["parents"]  # type: ignore[assignment]
+    parent_map: dict[str, str] = hierarchy["parent_map"]  # type: ignore[assignment]
+    standalone: list[str] = hierarchy["standalone"]  # type: ignore[assignment]
+
+    all_groups.update(parents)
+    all_groups.update(parent_map.keys())
+    all_groups.update(standalone)
+
+    family_map: dict[str, set[str]] = {}
+
+    for group_id in all_groups:
+        family_map[group_id] = get_all_related_groups(group_id, hierarchy)
+
+    return family_map
+
+
+def groups_conflict(
+    group_ids_a: list[str],
+    group_ids_b: list[str],
+    family_map: dict[str, set[str]],
+) -> bool:
+    """Check if two sets of groups have any family overlap (conflict)."""
+    a_family: set[str] = set()
+    for gid in group_ids_a:
+        a_family.update(family_map.get(gid, {gid}))
+
+    for gid in group_ids_b:
+        b_family = family_map.get(gid, {gid})
+        if a_family & b_family:
+            return True
+
+    return False
+
+
+_cached_hierarchy: HierarchyMap | None = None
+_cached_family_map: dict[str, set[str]] | None = None
+_cached_json_path: str | None = None
+
+
+def get_hierarchy_from_json(json_path: str = "data/Groups.json") -> HierarchyMap:
+    """Get the group hierarchy, loading from JSON and caching the result."""
+    global _cached_hierarchy, _cached_json_path
+
+    if _cached_hierarchy is None or _cached_json_path != json_path:
+        _cached_hierarchy = analyze_group_hierarchy_from_json(json_path)
+        _cached_json_path = json_path
+
+    return _cached_hierarchy
+
+
+def _get_family_map_from_json(
+    json_path: str = "data/Groups.json",
+) -> dict[str, set[str]]:
+    """Get the pre-computed family map, loading from JSON and caching."""
+    global _cached_family_map, _cached_json_path
+
+    hierarchy = get_hierarchy_from_json(json_path)
+
+    if _cached_family_map is None or _cached_json_path != json_path:
+        _cached_family_map = build_group_family_map(hierarchy)
+
+    return _cached_family_map
+
+
+def get_family_map_from_json(
+    json_path: str = "data/Groups.json",
+) -> dict[str, set[str]]:
+    """Backward-compatible alias for group family map loader."""
+    return _get_family_map_from_json(json_path)
+
+
+def clear_hierarchy_cache() -> None:
+    """Clear the cached hierarchy data (useful for testing or data reload)."""
+    global _cached_hierarchy, _cached_family_map, _cached_json_path
+    _cached_hierarchy = None
+    _cached_family_map = None
+    _cached_json_path = None
+
+
+def generate_course_group_pairs(
+    courses: dict[tuple[str, str], Course],
+    groups: dict[str, Group],
+    hierarchy: HierarchyMap,
+    silent: bool = False,
+) -> list[tuple[tuple[str, str], list[str], str, int]]:
+    """
+    Generate (course_id, group_ids, session_type, num_quanta) tuples.
+    """
+    pairs: list[tuple[tuple[str, str], list[str], str, int]] = []
+
+    from collections import defaultdict
+
+    parent_to_subgroups = defaultdict(list)
+
+    for group_id in groups:
+        if len(group_id) > 1 and group_id[-1].isalpha():
+            parent_prefix = group_id[:-1]
+            parent_to_subgroups[parent_prefix].append(group_id)
+        else:
+            if group_id not in parent_to_subgroups:
+                parent_to_subgroups[group_id] = [group_id]
+
+    for parent_prefix, sibling_ids in parent_to_subgroups.items():
+        first_sibling = groups[sibling_ids[0]]
+        enrolled_courses = first_sibling.enrolled_courses
+
+        for course_code in enrolled_courses:
+            theory_key = (course_code, "theory")
+            practical_key = (course_code, "practical")
+
+            matching_courses = []
+            if theory_key in courses:
+                matching_courses.append((theory_key, courses[theory_key]))
+            if practical_key in courses:
+                matching_courses.append((practical_key, courses[practical_key]))
+
+            if not matching_courses:
+                if not silent:
+                    print(
+                        f"[!] Warning: Course {course_code} not found for group {parent_prefix}"
+                    )
+                continue
+
+            for course_key, course in matching_courses:
+                if course.course_type == "theory":
+                    theory_quanta = course.quanta_per_week
+                    pairs.append(
+                        (course_key, sorted(sibling_ids), "theory", theory_quanta)
+                    )
+
+                elif course.course_type == "practical":
+                    practical_quanta = course.quanta_per_week
+                    for sibling_id in sibling_ids:
+                        pairs.append(
+                            (course_key, [sibling_id], "practical", practical_quanta)
+                        )
+
+    return pairs
+
+
+def count_total_genes(pairs: list[tuple[tuple[str, str], list[str], str, int]]) -> int:
+    """Count total number of genes that will be created."""
+    return sum(num_quanta for _, _, _, num_quanta in pairs)
+
+
+def group_pairs_by_course(
+    pairs: list[tuple[tuple[str, str], list[str], str, int]],
+) -> dict[tuple[str, str], list[tuple[tuple[str, str], list[str], str, int]]]:
+    """Group pairs by course for analysis."""
+    from collections import defaultdict
+
+    course_pairs = defaultdict(list)
+    for pair in pairs:
+        course_key = pair[0]
+        course_pairs[course_key].append(pair)
+    return dict(course_pairs)
 
 
 def get_subsession_durations(quanta_per_week: int, course_type: str) -> list[int]:
@@ -1363,3 +1695,161 @@ def generate_population(
         raise ValueError("Context must be provided for population generation")
 
     return generate_course_group_aware_population(n, context)
+
+
+def generate_hybrid_population(n: int, context: SchedulingContext) -> list[Individual]:
+    """
+    Generate population with hybrid initialization strategy.
+
+    Composition (default):
+    - 40% greedy
+    - 40% constraint-aware
+    - 20% random
+    """
+    population: list[Individual] = []
+
+    from schedule_engine.config import get_config
+    from schedule_engine.ga.heuristics.construction import (
+        earliest_deadline_first,
+        largest_degree_first,
+        most_constrained_first,
+    )
+
+    enhancement_cfg = get_config().enhancements
+    greedy_percent = (
+        enhancement_cfg.greedy_initialization_percent
+        if enhancement_cfg.master_enabled
+        else 0.25
+    )
+
+    greedy_count = int(n * greedy_percent)
+    random_count = max(1, int(n * 0.2))
+    smart_count = n - greedy_count - random_count
+
+    silent = os.environ.get("_GA_WORKER_PROCESS") == "1"
+    if not silent:
+        print(
+            f"Hybrid initialization: {greedy_count} greedy, {smart_count} smart, {random_count} random"
+        )
+
+    hierarchy = analyze_group_hierarchy(context.groups)
+    pair_tuples = generate_course_group_pairs(
+        context.courses, context.groups, hierarchy, silent=True
+    )
+
+    num_workers = get_cpu_count()
+    use_parallel = num_workers > 1 and n >= 10
+
+    construction_heuristics = [
+        largest_degree_first,
+        most_constrained_first,
+        earliest_deadline_first,
+    ]
+
+    for i in range(greedy_count):
+        heuristic = construction_heuristics[i % len(construction_heuristics)]
+        try:
+            genes = heuristic(context)
+            if genes:
+                population.append(create_individual(genes))
+        except Exception:
+            fallback = generate_course_group_aware_population(1, context)
+            if fallback:
+                population.append(fallback[0])
+
+    smart_population = generate_course_group_aware_population(smart_count, context)
+    population.extend(smart_population)
+
+    if use_parallel:
+        random_tasks = [(context, pair_tuples) for _ in range(random_count)]
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            results = list(executor.map(_random_construction_wrapper, random_tasks))
+        population.extend([ind for ind in results if ind is not None])
+    else:
+        for _i in range(random_count):
+            individual = _random_construction(context, pair_tuples)
+            if individual:
+                population.append(create_individual(individual))
+
+    while len(population) < n:
+        extra = generate_course_group_aware_population(1, context)
+        population.extend(extra)
+
+    return population[:n]
+
+
+def _random_construction_wrapper(
+    args: tuple[SchedulingContext, list[DetailedPair]],
+) -> Individual | None:
+    context, pair_tuples = args
+    individual = _random_construction(context, pair_tuples)
+    if individual:
+        return create_individual(individual)
+    return None
+
+
+def _random_construction(
+    context: SchedulingContext, pair_tuples: list[DetailedPair]
+) -> list[SessionGene]:
+    """Generate one individual using pure random assignment."""
+    genes: list[SessionGene] = []
+
+    for course_key, group_ids, _session_type, num_quanta in pair_tuples:
+        if num_quanta == 0:
+            continue
+
+        course = context.courses.get(course_key)
+        if not course:
+            continue
+
+        subsession_durations = get_subsession_durations(
+            course.quanta_per_week, course.course_type
+        )
+
+        for subsession_duration in subsession_durations:
+            gene = _random_gene(course_key, group_ids, subsession_duration, context)
+            if gene:
+                genes.append(gene)
+
+    return genes
+
+
+def _random_gene(
+    course_key: tuple[str, str],
+    group_ids: list[str],
+    num_quanta: int,
+    context: SchedulingContext,
+) -> SessionGene | None:
+    course = context.courses.get(course_key)
+    if not course:
+        return None
+
+    qualified = list(course.qualified_instructor_ids)
+    if not qualified:
+        return None
+
+    instructor_id = random.choice(qualified)
+
+    if not context.rooms:
+        return None
+    room_id = random.choice(list(context.rooms.keys()))
+
+    available_quanta = list(context.available_quanta)
+    if not available_quanta:
+        return None
+
+    max_start = len(available_quanta) - num_quanta
+    if max_start < 0:
+        return None
+    start_idx = random.randint(0, max_start)
+    start_quanta = available_quanta[start_idx]
+
+    return SessionGene(
+        course_id=course_key[0],
+        course_type=course_key[1],
+        group_ids=list(group_ids),
+        instructor_id=instructor_id,
+        room_id=room_id,
+        start_quanta=start_quanta,
+        num_quanta=num_quanta,
+    )

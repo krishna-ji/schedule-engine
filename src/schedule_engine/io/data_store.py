@@ -83,7 +83,7 @@ class DataStore:
             operating_hours: Full per-day override; takes precedence over
                              opening_time / closing_time / closed_days.
             extra_cohort_pairs: Manually configured pairs to merge with
-                                auto-derived ones.
+                from schedule_engine.ga.population import (
         """
         data_dir = Path(data_dir)
         closed_days = closed_days or ["Saturday"]
@@ -183,7 +183,7 @@ class DataStore:
         returns an empty dict (each group only maps to itself).
         """
         try:
-            from schedule_engine.ga.group_hierarchy import (
+            from schedule_engine.ga.population import (
                 analyze_group_hierarchy,
                 build_group_family_map,
             )

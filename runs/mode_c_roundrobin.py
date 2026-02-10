@@ -17,9 +17,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from schedule_engine.experiments import RoundRobinExperiment
 
-# =============================================================================
 # CONFIGURATION - All tunable parameters
-# =============================================================================
+
 
 # Reproducibility
 SEED = 42
@@ -53,8 +52,6 @@ REPAIR_MAX_STEPS = 3  # Max repair steps per individual
 REPAIR_BUDGET_MS = 120.0  # Time budget for repairs per generation (ms)
 REPAIR_MAX_CANDIDATES = 30  # Max candidate moves per step
 REPAIR_EPSILON = 0.1  # Exploration rate (unused in round_robin)
-
-# =============================================================================
 
 
 def main() -> None:

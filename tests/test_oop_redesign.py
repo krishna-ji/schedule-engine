@@ -232,12 +232,12 @@ class TestEvaluator:
     """Tests for the unified Evaluator class."""
 
     def test_import(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         assert Evaluator is not None
 
     def test_evaluator_default_constraints(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         assert len(ev.hard) == 8
@@ -245,14 +245,14 @@ class TestEvaluator:
 
     def test_evaluator_custom_constraints(self):
         from schedule_engine.constraints import StudentGroupExclusivity
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator(constraints=[StudentGroupExclusivity()])
         assert len(ev.hard) == 1
         assert len(ev.soft) == 0
 
     def test_fitness_returns_two_floats(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -264,7 +264,7 @@ class TestEvaluator:
         assert isinstance(result[1], (int, float))
 
     def test_fitness_from_timetable(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -274,7 +274,7 @@ class TestEvaluator:
         assert isinstance(result, tuple) and len(result) == 2
 
     def test_breakdown_returns_dict(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -284,7 +284,7 @@ class TestEvaluator:
         assert len(bd) == 14  # 8 hard + 6 soft
 
     def test_breakdown_from_timetable(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -294,7 +294,7 @@ class TestEvaluator:
         assert len(bd) == 14
 
     def test_hard_breakdown_only_hard(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -303,7 +303,7 @@ class TestEvaluator:
         assert len(hb) == 8
 
     def test_soft_breakdown_only_soft(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -312,7 +312,7 @@ class TestEvaluator:
         assert len(sb) == 6
 
     def test_evaluate_all_returns_four_elements(self):
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -328,7 +328,7 @@ class TestEvaluator:
 
     def test_no_group_conflict_gives_zero_exclusivity(self):
         """Single gene -> zero group/instructor/room exclusivity violations."""
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -340,7 +340,7 @@ class TestEvaluator:
 
     def test_conflict_gives_nonzero_exclusivity(self):
         """Two overlapping genes for same group -> nonzero penalty."""
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _conflict_context()
@@ -353,7 +353,7 @@ class TestEvaluator:
 
     def test_fitness_consistency(self):
         """fitness() == fitness_from_timetable() on same data."""
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -371,17 +371,17 @@ class TestRepairPipeline:
     """Structural tests for the RepairPipeline class."""
 
     def test_import(self):
-        from schedule_engine.operators import RepairPipeline
+        from schedule_engine.ga import RepairPipeline
 
         assert RepairPipeline is not None
 
     def test_pipeline_has_repair_method(self):
-        from schedule_engine.operators import RepairPipeline
+        from schedule_engine.ga import RepairPipeline
 
         assert callable(getattr(RepairPipeline, "repair", None))
 
     def test_pipeline_has_default_factory(self):
-        from schedule_engine.operators import RepairPipeline
+        from schedule_engine.ga import RepairPipeline
 
         assert callable(getattr(RepairPipeline, "default", None))
 
@@ -393,19 +393,19 @@ class TestPopulationFactory:
     """Structural tests for the PopulationFactory class."""
 
     def test_import(self):
-        from schedule_engine.population import PopulationFactory
+        from schedule_engine.ga import PopulationFactory
 
         assert PopulationFactory is not None
 
     def test_factory_has_methods(self):
-        from schedule_engine.population import PopulationFactory
+        from schedule_engine.ga import PopulationFactory
 
         assert callable(getattr(PopulationFactory, "create_population", None))
         assert callable(getattr(PopulationFactory, "random_individual", None))
         assert callable(getattr(PopulationFactory, "greedy_individual", None))
 
     def test_factory_stores_context(self):
-        from schedule_engine.population import PopulationFactory
+        from schedule_engine.ga import PopulationFactory
 
         ctx = _simple_context()
         factory = PopulationFactory(ctx)
@@ -420,7 +420,7 @@ class TestBaseExperimentIntegration:
 
     def test_base_experiment_imports(self):
         from schedule_engine.experiments.base import BaseExperiment
-        from schedule_engine.population import PopulationFactory
+        from schedule_engine.ga import PopulationFactory
 
         assert BaseExperiment is not None
         assert PopulationFactory is not None
@@ -431,14 +431,14 @@ class TestBaseExperimentIntegration:
         assert hasattr(BaseExperiment, "population_factory")
 
     def test_population_factory_has_required_methods(self):
-        from schedule_engine.population import PopulationFactory
+        from schedule_engine.ga import PopulationFactory
 
         assert callable(getattr(PopulationFactory, "create_population", None))
         assert callable(getattr(PopulationFactory, "random_individual", None))
         assert callable(getattr(PopulationFactory, "greedy_individual", None))
 
     def test_population_factory_strategies(self):
-        from schedule_engine.population import PopulationFactory
+        from schedule_engine.ga import PopulationFactory
 
         # Test that _smart_population, _hybrid_population, _pure_random_population exist
         assert callable(getattr(PopulationFactory, "_smart_population", None))
@@ -492,7 +492,7 @@ class TestCrossPhaseIntegration:
 
     def test_evaluator_uses_constraints_on_timetable(self):
         """Phase 1 + Phase 2 + Phase 3 integration."""
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -504,7 +504,7 @@ class TestCrossPhaseIntegration:
     def test_evaluator_breakdown_names_match_constraints(self):
         # All constraint names appear in breakdown dict.
         from schedule_engine.constraints import ALL_CONSTRAINTS
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -514,7 +514,7 @@ class TestCrossPhaseIntegration:
 
     def test_evaluate_all_totals_match_fitness(self):
         # evaluate_all() totals should match fitness().
-        from schedule_engine.evaluation import Evaluator
+        from schedule_engine.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()

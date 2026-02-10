@@ -17,9 +17,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from schedule_engine.experiments import AdaptiveExperiment
 
-# =============================================================================
 # CONFIGURATION - All tunable parameters
-# =============================================================================
+
 
 # Reproducibility
 SEED = 42
@@ -54,8 +53,6 @@ REPAIR_POLICY = "epsilon_greedy"  # Policy: "epsilon_greedy", "ucb", "softmax"
 REPAIR_BUDGET_MS = 120.0  # Time budget for repairs per generation (ms)
 REPAIR_MAX_CANDIDATES = 30  # Max candidate moves per step
 REPAIR_EPSILON = 0.1  # Exploration rate for epsilon-greedy
-
-# =============================================================================
 
 
 def main() -> None:

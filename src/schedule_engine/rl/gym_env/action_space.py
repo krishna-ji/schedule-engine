@@ -13,7 +13,7 @@ from types import FrameType
 from typing import Any
 
 from schedule_engine.domain.types import Individual, SchedulingContext
-from schedule_engine.heuristics import get_enabled_heuristics
+from schedule_engine.ga.heuristics import get_enabled_heuristics
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class ActionMapper:
         if self.use_config:
             heuristics = get_enabled_heuristics().values()
         else:
-            from schedule_engine.heuristics import get_all_heuristics
+            from schedule_engine.ga.heuristics import get_all_heuristics
 
             heuristics = get_all_heuristics().values()
 

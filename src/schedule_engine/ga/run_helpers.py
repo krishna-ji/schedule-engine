@@ -133,15 +133,15 @@ def track_nsga_metrics(
     """Track NSGA-II metrics for the current generation."""
     from deap import tools
 
-    from schedule_engine.metrics import average_pairwise_diversity
-    from schedule_engine.metrics.convergence import (
+    from schedule_engine.ga.metrics import average_pairwise_diversity
+    from schedule_engine.ga.metrics.convergence import (
         calculate_constraint_satisfaction_rate,
     )
-    from schedule_engine.metrics.hypervolume import (
+    from schedule_engine.ga.metrics.hypervolume import (
         calculate_hypervolume,
         get_hypervolume_reference_point,
     )
-    from schedule_engine.metrics.pareto_metrics import (
+    from schedule_engine.ga.metrics.pareto_metrics import (
         calculate_inverted_generational_distance,
         calculate_spacing,
         calculate_spread,
@@ -329,10 +329,10 @@ def create_random_individual(
     """
     from collections import defaultdict
 
-    from schedule_engine.ga.group_hierarchy import get_family_map_from_json
     from schedule_engine.ga.population import (
         analyze_group_hierarchy,
         generate_course_group_pairs,
+        get_family_map_from_json,
         get_subsession_durations,
     )
 

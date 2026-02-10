@@ -1,19 +1,17 @@
 """Clean OOP constraint system.
 
 Self-contained constraint classes with configurable weights and parameters.
-Zero backward compatibility with old function-based system.
 
 Public API:
 - ``Constraint`` protocol
+- ``Evaluator`` unified fitness evaluator
 - ``ALL_CONSTRAINTS`` registry (14 default instances)
 - ``HARD_CONSTRAINT_CLASSES`` registry (8 default instances)
 - ``SOFT_CONSTRAINT_CLASSES`` registry (6 default instances)
 - ``build_constraints()`` factory for custom configs
 
 Usage:
-    # Use defaults (all weights = 1.0)
-    from schedule_engine.constraints import ALL_CONSTRAINTS
-    from schedule_engine.evaluation import Evaluator
+    from schedule_engine.constraints import Evaluator, ALL_CONSTRAINTS
 
     evaluator = Evaluator(constraints=ALL_CONSTRAINTS)
     hard, soft = evaluator.fitness(genes, context, qts)
@@ -53,6 +51,7 @@ from schedule_engine.constraints.constraints import (  # Individual constraint c
     StudentScheduleCompactness,
     build_constraints,
 )
+from schedule_engine.constraints.evaluator import Evaluator
 
 # Backward-compatible name exports
 HARD_CONSTRAINTS = HARD_CONSTRAINT_CLASSES
@@ -62,6 +61,7 @@ SOFT_CONSTRAINT_NAMES = [c.name for c in SOFT_CONSTRAINT_CLASSES]
 
 __all__ = [
     "Constraint",
+    "Evaluator",
     "ALL_CONSTRAINTS",
     "HARD_CONSTRAINT_CLASSES",
     "SOFT_CONSTRAINT_CLASSES",

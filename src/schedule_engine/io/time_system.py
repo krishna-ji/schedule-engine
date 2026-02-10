@@ -563,9 +563,7 @@ class QuantumTimeSystem:
             raise ValueError(f"Day {day} has no operating hours")
         return operating_hours[1]
 
-    # =========================================================================
     # Time Helper Methods (formerly in utils/time_helpers.py)
-    # =========================================================================
 
     def get_midday_break_quanta(self) -> dict[str, set[int]]:
         """

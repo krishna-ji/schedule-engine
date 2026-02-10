@@ -18,8 +18,15 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from deap import base, tools
 from rich.live import Live
-from rich.progress import (BarColumn, Progress, ProgressColumn, SpinnerColumn, Task,
-                           TextColumn, TimeElapsedColumn)
+from rich.progress import (
+    BarColumn,
+    Progress,
+    ProgressColumn,
+    SpinnerColumn,
+    Task,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 from rich.text import Text
 
@@ -29,22 +36,23 @@ if TYPE_CHECKING:
 from schedule_engine.config import get_config
 from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
 from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.ga.evaluator.detailed_fitness import evaluate_detailed
-from schedule_engine.ga.evaluator.fitness import evaluate
+from schedule_engine.ga.evaluator import evaluate, evaluate_detailed
+from schedule_engine.ga.heuristics import get_heuristic_statistics_template
+from schedule_engine.ga.heuristics.parallel_executor import (
+    ParallelHeuristicExecutor,
+    get_parallel_executor,
+)
+from schedule_engine.ga.metrics.diversity import average_pairwise_diversity
 from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.mutation import mutate_individual
 from schedule_engine.ga.population import generate_course_group_aware_population
-from schedule_engine.heuristics import get_heuristic_statistics_template
-from schedule_engine.heuristics.parallel_executor import (ParallelHeuristicExecutor,
-                                                          get_parallel_executor)
-from schedule_engine.metrics.diversity import average_pairwise_diversity
 from schedule_engine.utils.console_service import get_console
+from schedule_engine.utils.logging_config import get_logger
 from schedule_engine.utils.parallel_worker import get_worker_context
 from schedule_engine.utils.performance_profiler import get_profiler
-from schedule_engine.utils.structured_logger import StructuredLogger
 
 console = get_console()
-logger = StructuredLogger.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 def _worker_evaluate(individual: Any) -> tuple[float, float]:
@@ -391,7 +399,7 @@ class GAScheduler:
         self.violation_heatmap = None
         enhancement_cfg = get_config().enhancements
         if enhancement_cfg.master_enabled and enhancement_cfg.violation_heatmap.enabled:
-            from schedule_engine.metrics.violation_heatmap import ViolationHeatmap
+            from schedule_engine.ga.metrics.violation_heatmap import ViolationHeatmap
 
             self.violation_heatmap = ViolationHeatmap()
             console.print("[dim]   Violation heatmap tracking: ENABLED[/dim]")
@@ -461,7 +469,7 @@ class GAScheduler:
         strategy = get_config().ga.population_strategy
 
         if strategy == "hybrid":
-            from schedule_engine.ga.hybrid_population import generate_hybrid_population
+            from schedule_engine.ga.population import generate_hybrid_population
 
             self.toolbox.register(
                 "population", generate_hybrid_population, context=self.context
@@ -562,9 +570,11 @@ class GAScheduler:
             from schedule_engine.rl.deployment.model_loader import ModelLoader
             from schedule_engine.rl.gym_env.action_space import ActionMapper
             from schedule_engine.rl.gym_env.state_encoder import StateEncoder
-            from schedule_engine.rl.hybrid.hybrid_controller import (FallbackStrategy,
-                                                                     HybridController,
-                                                                     HybridMode)
+            from schedule_engine.rl.hybrid.hybrid_controller import (
+                FallbackStrategy,
+                HybridController,
+                HybridMode,
+            )
 
             console.print("[cyan]Initializing RL Components...[/cyan]")
 
@@ -804,7 +814,7 @@ class GAScheduler:
         Builds ordered list based on priority and category.
         Includes REPAIR as a pseudo-heuristic ONLY if repair.enabled=true.
         """
-        from schedule_engine.heuristics import get_enabled_heuristics
+        from schedule_engine.ga.heuristics import get_enabled_heuristics
 
         # Get all enabled heuristics sorted by priority
         enabled = get_enabled_heuristics()
@@ -847,7 +857,7 @@ class GAScheduler:
 
         from deap import tools
 
-        from schedule_engine.heuristics import get_enabled_heuristics
+        from schedule_engine.ga.heuristics import get_enabled_heuristics
 
         # Check if any heuristics are enabled
         if not self.heuristic_tracker.heuristic_order:
@@ -1928,7 +1938,7 @@ class GAScheduler:
             progress: Optional rich.progress.Progress for UI updates
         """
         # Import EventTracker for event logging
-        from schedule_engine.utils.constraint_logger import EventTracker
+        from schedule_engine.utils.logging_config import EventTracker
 
         event_tracker = EventTracker()
 
@@ -2169,8 +2179,9 @@ class GAScheduler:
                     and not offspring[i].fitness.valid
                     and random.random() < igls_config.selective_repair.apply_probability
                 ):
-                    from schedule_engine.ga.operators.intensive_local_search import \
-                        apply_selective_probabilistic
+                    from schedule_engine.ga.operators.intensive_local_search import (
+                        apply_selective_probabilistic,
+                    )
 
                     offspring[i], was_repaired1 = apply_selective_probabilistic(
                         individual=offspring[i],
@@ -2216,8 +2227,9 @@ class GAScheduler:
                     not mutant.fitness.valid
                     and random.random() < igls_config.selective_repair.apply_probability
                 ):
-                    from schedule_engine.ga.operators.intensive_local_search import \
-                        apply_selective_probabilistic
+                    from schedule_engine.ga.operators.intensive_local_search import (
+                        apply_selective_probabilistic,
+                    )
 
                     mutant, was_repaired = apply_selective_probabilistic(
                         individual=mutant,
@@ -2516,13 +2528,19 @@ class GAScheduler:
             return
 
         # Import new metrics modules
-        from schedule_engine.metrics.convergence import \
-            calculate_constraint_satisfaction_rate
-        from schedule_engine.metrics.hypervolume import (
-            calculate_hypervolume, get_hypervolume_reference_point)
-        from schedule_engine.metrics.pareto_metrics import (
-            calculate_inverted_generational_distance, calculate_spacing,
-            calculate_spread, get_pareto_front_size)
+        from schedule_engine.ga.metrics.convergence import (
+            calculate_constraint_satisfaction_rate,
+        )
+        from schedule_engine.ga.metrics.hypervolume import (
+            calculate_hypervolume,
+            get_hypervolume_reference_point,
+        )
+        from schedule_engine.ga.metrics.pareto_metrics import (
+            calculate_inverted_generational_distance,
+            calculate_spacing,
+            calculate_spread,
+            get_pareto_front_size,
+        )
 
         # Determine if this is a tracked generation for expensive metrics
         advanced_freq = 10  # advanced metrics every 10 generations
@@ -2689,8 +2707,9 @@ class GAScheduler:
 
         # ENHANCEMENT: Record violations to heatmap
         if self.violation_heatmap and gen >= 0:  # Skip initial pop
-            from schedule_engine.metrics.violation_recorder import \
-                record_violations_to_heatmap
+            from schedule_engine.ga.metrics.violation_recorder import (
+                record_violations_to_heatmap,
+            )
 
             record_violations_to_heatmap(best, self.context, self.violation_heatmap)
             self.violation_heatmap.record_generation(gen)
@@ -2898,7 +2917,7 @@ class GAScheduler:
         self.population[:] = elite + new_individuals
 
         # Calculate diversity improvement
-        from schedule_engine.metrics.diversity import average_pairwise_diversity
+        from schedule_engine.ga.metrics.diversity import average_pairwise_diversity
 
         new_diversity = average_pairwise_diversity(self.population)
 

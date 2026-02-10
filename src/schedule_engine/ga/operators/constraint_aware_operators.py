@@ -18,7 +18,7 @@ import random
 from typing import TYPE_CHECKING
 
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.ga.group_hierarchy import (
+from schedule_engine.ga.population import (
     build_group_family_map,
     get_family_map_from_json,
 )
@@ -37,7 +37,7 @@ def _get_or_build_family_map(context: SchedulingContext) -> dict[str, set[str]]:
         family_map = get_family_map_from_json("data/Groups.json")
     except FileNotFoundError:
         # Fallback: build from hierarchy if JSON not found
-        from schedule_engine.ga.group_hierarchy import analyze_group_hierarchy
+        from schedule_engine.ga.population import analyze_group_hierarchy
 
         hierarchy = analyze_group_hierarchy(context.groups)
         family_map = build_group_family_map(hierarchy)

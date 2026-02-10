@@ -161,7 +161,7 @@ def _get_family_map() -> dict[str, set[str]]:
 
     if _CACHED_FAMILY_MAP is None:
         try:
-            from schedule_engine.ga.group_hierarchy import get_family_map_from_json
+            from schedule_engine.ga.population import get_family_map_from_json
 
             _CACHED_FAMILY_MAP = get_family_map_from_json("data/Groups.json")
         except Exception:

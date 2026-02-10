@@ -112,7 +112,7 @@ class RLGuidedExperiment(BaseExperiment):
 
         Uses SimpleRLSelector for heuristic selection with Q-learning.
         """
-        from schedule_engine.heuristics.strategies import SimpleRLSelector
+        from schedule_engine.ga.heuristics.strategies import SimpleRLSelector
 
         start_time = time.time()
 

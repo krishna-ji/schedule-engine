@@ -17,9 +17,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from schedule_engine.experiments import RLGuidedExperiment
 
-# =============================================================================
 # CONFIGURATION - All tunable parameters
-# =============================================================================
+
 
 # Reproducibility
 SEED = 42
@@ -53,8 +52,6 @@ LEARNING_RATE = 0.2  # Q-learning alpha (how fast to update Q-values)
 EPSILON_START = 1.0  # Initial exploration rate (1.0 = fully random)
 EPSILON_END = 0.1  # Final exploration rate (0.0 = fully greedy)
 EPSILON_DECAY = 0.995  # Multiplicative decay per generation
-
-# =============================================================================
 
 
 def main() -> None:

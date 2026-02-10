@@ -20,10 +20,10 @@ from schedule_engine.domain.types import Individual, SchedulingContext
 from schedule_engine.rl.gym_env.action_space import ActionMapper
 from schedule_engine.rl.gym_env.reward_calculator import RewardCalculator
 from schedule_engine.rl.gym_env.state_encoder import StateEncoder
+from schedule_engine.utils.logging_config import get_logger
 from schedule_engine.utils.performance_profiler import PerformanceProfiler
-from schedule_engine.utils.structured_logger import StructuredLogger
 
-logger = StructuredLogger.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class ScheduleEnv(gym.Env):
@@ -293,9 +293,7 @@ class ScheduleEnv(gym.Env):
         action_label = action_info.name if action_info else f"action_{action}"
 
         # Apply action to best individual
-        best_individual = min(
-            self.population, key=self._get_combined_fitness_value
-        )
+        best_individual = min(self.population, key=self._get_combined_fitness_value)
         prev_fitness = best_individual.fitness.values  # type: ignore[attr-defined]
         prev_individual = self._clone_individual(best_individual)
         working_individual = self._clone_individual(best_individual)
@@ -548,9 +546,9 @@ class ScheduleEnv(gym.Env):
             return True
 
         if self._fitness_evaluator is None:
-            from schedule_engine.ga.evaluator.fitness import (
-                evaluate as evaluate_fitness,  # type: ignore[attr-defined]
-            )
+            from schedule_engine.ga.evaluator import (
+                evaluate as evaluate_fitness,
+            )  # type: ignore[attr-defined]
 
             self._fitness_evaluator = evaluate_fitness
 

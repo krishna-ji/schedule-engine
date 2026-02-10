@@ -18,9 +18,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from schedule_engine.experiments import BaselineExperiment
 
-# =============================================================================
 # CONFIGURATION - All tunable parameters
-# =============================================================================
+
 
 # Reproducibility
 SEED = 42
@@ -47,8 +46,6 @@ EXPECTED_QUANTA = 42  # Expected quanta per week
 # Logging
 LOG_INTERVAL = 20  # Generations between detailed logs
 VERBOSE = True  # Enable console output
-
-# =============================================================================
 
 
 def main() -> None:
