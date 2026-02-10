@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mode D: Adaptive Heuristics
+Mode D: Adaptive Heuristics  (Production)
 
 NSGA-II + Adaptive Selection - Uses epsilon-greedy or UCB to learn best heuristics.
 
@@ -17,68 +17,60 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from schedule_engine.experiments import AdaptiveExperiment
 
-# CONFIGURATION - All tunable parameters
-
+# ── PRODUCTION CONFIGURATION ─────────────────────────────────────────
 
 # Reproducibility
 SEED = 42
 
 # GA Core Parameters
-POP_SIZE = 50  # Population size
-NGEN = 100  # Number of generations
+POP_SIZE = 100  # Population size
+NGEN = 1000  # Number of generations
 CXPB = 0.9  # Crossover probability
 MUTPB = 0.2  # Mutation probability
 FITNESS_WEIGHTS = (-1.0, -1.0)  # (hard, soft) - negative = minimize
 
 # Data Paths
 DATA_DIR = PROJECT_ROOT / "data"
-OUTPUT_DIR = None  # Auto-generated if None
+OUTPUT_DIR = None  # Auto-generated: output/mode_d_adaptive/<timestamp>
 
 # Time Configuration
-OPENING_TIME = "10:00"  # Day start time (HH:MM)
-CLOSING_TIME = "17:00"  # Day end time (HH:MM)
-CLOSED_DAYS = ["Saturday"]  # Days with no classes
+OPENING_TIME = "10:00"
+CLOSING_TIME = "17:00"
+CLOSED_DAYS = ["Saturday"]
 
 # Feasibility Check
-EXPECTED_QUANTA = 42  # Expected quanta per week
+EXPECTED_QUANTA = 42
 
 # Logging
-LOG_INTERVAL = 10  # Generations between detailed logs
-VERBOSE = True  # Enable console output
+LOG_INTERVAL = 25  # Generations between detailed logs
+VERBOSE = True
 
-# --- Mode D Specific: Adaptive Repair ---
+# ── Mode D Specific: Adaptive Repair ──────────────────────────────────
 REPAIR_PROB = 0.45  # Probability of applying repair to offspring
-REPAIR_MAX_STEPS = 3  # Max repair steps per individual
+REPAIR_MAX_STEPS = 5  # Max repair steps per individual
 REPAIR_POLICY = "epsilon_greedy"  # Policy: "epsilon_greedy", "ucb", "softmax"
-REPAIR_BUDGET_MS = 120.0  # Time budget for repairs per generation (ms)
-REPAIR_MAX_CANDIDATES = 30  # Max candidate moves per step
+REPAIR_BUDGET_MS = 200.0  # Time budget for repairs per generation (ms)
+REPAIR_MAX_CANDIDATES = 50  # Max candidate moves per step
 REPAIR_EPSILON = 0.1  # Exploration rate for epsilon-greedy
 
 
 def main() -> None:
     """Run Mode D: Adaptive Heuristics experiment."""
     exp = AdaptiveExperiment(
-        # Reproducibility
         seed=SEED,
-        # GA Core
         pop_size=POP_SIZE,
         ngen=NGEN,
         cxpb=CXPB,
         mutpb=MUTPB,
         fitness_weights=FITNESS_WEIGHTS,
-        # Paths
         data_dir=DATA_DIR,
         output_dir=OUTPUT_DIR,
-        # Time
         opening_time=OPENING_TIME,
         closing_time=CLOSING_TIME,
         closed_days=CLOSED_DAYS,
-        # Feasibility
         expected_quanta=EXPECTED_QUANTA,
-        # Logging
         log_interval=LOG_INTERVAL,
         verbose=VERBOSE,
-        # Mode D: Adaptive Repair
         repair_prob=REPAIR_PROB,
         repair_max_steps=REPAIR_MAX_STEPS,
         repair_policy=REPAIR_POLICY,

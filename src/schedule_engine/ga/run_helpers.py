@@ -214,42 +214,108 @@ def stats_to_ga_metrics(stats: EvolutionStats) -> "GAMetrics":
     )
 
 
+# Short display names for constraints (keeps output compact)
+_CONSTRAINT_SHORT_NAMES: dict[str, str] = {
+    "student_group_exclusivity": "grp_clash",
+    "instructor_exclusivity": "inst_clash",
+    "room_exclusivity": "room_clash",
+    "instructor_qualifications": "inst_qual",
+    "room_suitability": "room_suit",
+    "instructor_time_availability": "inst_avail",
+    "room_time_availability": "room_avail",
+    "course_completeness": "completeness",
+    "student_schedule_compactness": "stu_compact",
+    "instructor_schedule_compactness": "ins_compact",
+    "student_lunch_break": "lunch",
+    "session_continuity": "continuity",
+    "paired_cohort_practical_alignment": "paired_coh",
+    "break_placement_compliance": "break_place",
+}
+
+
+def _short_name(name: str) -> str:
+    """Get a short display name for a constraint."""
+    return _CONSTRAINT_SHORT_NAMES.get(name, name[:11])
+
+
 def print_constraint_details(
     hard_breakdown: dict[str, float],
     soft_breakdown: dict[str, float],
     gen: int | None = None,
     logger: logging.Logger | None = None,
+    ngen: int | None = None,
 ) -> None:
-    """Print detailed constraint penalties with fixed-width alignment."""
-    prefix = f"Gen {gen:3d}" if gen is not None else "Current"
+    """Print detailed constraint penalties with clean formatting.
+
+    Uses Rich console output for structured, readable display.
+    Falls back to plain text for logger-only output.
+    """
+    from schedule_engine.utils.console_service import get_console
+
+    console = get_console()
+    prefix = f"Gen {gen:4d}" if gen is not None else "Current"
 
     # Calculate totals
     hard_total = sum(hard_breakdown.values())
     soft_total = sum(soft_breakdown.values())
 
-    # Sort constraints alphabetically for consistent display
-    hard_items = sorted(hard_breakdown.items())
-    soft_items = sorted(soft_breakdown.items())
+    # Sort constraints by value descending (most violations first)
+    hard_items = sorted(hard_breakdown.items(), key=lambda x: -x[1])
+    soft_items = sorted(soft_breakdown.items(), key=lambda x: -x[1])
 
-    # Format ALL constraints with fixed width (show zeros too)
-    hard_parts = [f"{k[:13]:13s}={int(v):4d}" for k, v in hard_items]
-    soft_parts = [f"{k[:13]:13s}={int(v):4d}" for k, v in soft_items]
+    # Build compact hard/soft strings (non-zero first, then zeros)
+    hard_nonzero = [f"{_short_name(k)}={int(v)}" for k, v in hard_items if v > 0]
+    soft_nonzero = [f"{_short_name(k)}={int(v)}" for k, v in soft_items if v > 0]
+    hard_zero = [_short_name(k) for k, v in hard_items if v == 0]
+    soft_zero = [_short_name(k) for k, v in soft_items if v == 0]
 
-    # Join with | separator
-    hard_str = " | ".join(hard_parts) if hard_parts else "none"
-    soft_str = " | ".join(soft_parts) if soft_parts else "none"
+    # Color code the totals
+    hard_color = "green" if hard_total == 0 else "red" if hard_total > 500 else "yellow"
+    soft_color = "cyan"
 
-    lines = [
-        f"  {prefix}:  Hard={int(hard_total):4d}  Soft={int(soft_total):4d}",
-        f"         HARD: [{hard_str}]",
-        f"         SOFT: [{soft_str}]",
-    ]
-    if logger is None:
-        for line in lines:
-            print(line)
+    # Progress indicator
+    progress = ""
+    if gen is not None and ngen is not None and ngen > 0:
+        pct = (gen + 1) / ngen * 100
+        bar_len = 20
+        filled = int(bar_len * (gen + 1) / ngen)
+        bar = "█" * filled + "░" * (bar_len - filled)
+        progress = f" [{bar}] {pct:5.1f}%"
+
+    # Main summary line
+    console.print(
+        f"  [bold]{prefix}[/bold]{progress}  "
+        f"[{hard_color}]Hard={int(hard_total):>5}[/{hard_color}]  "
+        f"[{soft_color}]Soft={int(soft_total):>5}[/{soft_color}]"
+    )
+
+    # Hard breakdown (only show details if there are violations)
+    if hard_nonzero:
+        hard_str = "  ".join(hard_nonzero)
+        zero_str = f"  [dim]ok: {', '.join(hard_zero)}[/dim]" if hard_zero else ""
+        console.print(f"    [red]HARD[/red] {hard_str}{zero_str}")
     else:
-        for line in lines:
-            logger.info(line)
+        console.print(f"    [green]HARD[/green] [green bold]✓ all clear[/green bold]")
+
+    # Soft breakdown
+    if soft_nonzero:
+        soft_str = "  ".join(soft_nonzero)
+        console.print(f"    [cyan]SOFT[/cyan] {soft_str}")
+    else:
+        console.print(f"    [green]SOFT[/green] [green bold]✓ all clear[/green bold]")
+
+    # Also log to file (plain text, no Rich markup)
+    if logger is not None:
+        hard_parts = [f"{k}={int(v)}" for k, v in hard_items]
+        soft_parts = [f"{k}={int(v)}" for k, v in soft_items]
+        logger.debug(
+            "%s: Hard=%d [%s]  Soft=%d [%s]",
+            prefix.strip(),
+            int(hard_total),
+            ", ".join(hard_parts),
+            int(soft_total),
+            ", ".join(soft_parts),
+        )
 
 
 def load_data(
@@ -751,7 +817,9 @@ def run_nsga2(
             hard_bd = {k: v for k, v in breakdown.items() if k in HARD_CONSTRAINT_NAMES}
             soft_bd = {k: v for k, v in breakdown.items() if k in SOFT_CONSTRAINT_NAMES}
 
-            print_constraint_details(hard_bd, soft_bd, gen, logger=logger)
+            print_constraint_details(
+                hard_bd, soft_bd, gen, logger=logger, ngen=config.ngen
+            )
 
     stats.elapsed_time = time.time() - start_time
 

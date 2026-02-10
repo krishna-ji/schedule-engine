@@ -183,20 +183,27 @@ class BaseExperiment(ABC):
         return self._logger
 
     def _setup_logging(self) -> logging.Logger:
-        """Setup logging to file and console."""
+        """Setup logging to file and console.
+
+        File gets full timestamps + DEBUG level.
+        Console gets clean, compact output at INFO level.
+        """
         log_file = self.output_dir / f"{self._get_experiment_name()}.log"
 
-        formatter = logging.Formatter(
+        file_formatter = logging.Formatter(
             "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
 
+        # Clean console formatter: just level icon + message (no timestamps)
+        console_formatter = logging.Formatter("%(message)s")
+
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(file_formatter)
 
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO if self.verbose else logging.WARNING)
-        console_handler.setFormatter(formatter)
+        console_handler.setFormatter(console_formatter)
 
         logger = logging.getLogger(f"{self._get_experiment_name()}_{self.timestamp}")
         logger.handlers.clear()
@@ -373,7 +380,9 @@ class BaseExperiment(ABC):
         hard_bd = {k: v for k, v in breakdown.items() if k in HARD_CONSTRAINT_NAMES}
         soft_bd = {k: v for k, v in breakdown.items() if k in SOFT_CONSTRAINT_NAMES}
 
-        print_constraint_details(hard_bd, soft_bd, gen, logger=self.logger)
+        print_constraint_details(
+            hard_bd, soft_bd, gen, logger=self.logger, ngen=self.ngen
+        )
 
     # -------------------- Results --------------------
 
@@ -444,18 +453,39 @@ class BaseExperiment(ABC):
         Returns:
             Experiment metadata dictionary
         """
+        from schedule_engine.utils.console_service import get_console
+        from schedule_engine.utils.system_info import get_cpu_count
+
+        console = get_console()
+
         # Initialize
         self._init_seeds()
 
-        # Log header
-        self.logger.info("=" * 60)
-        self.logger.info(f"{self._get_experiment_name().upper().replace('_', ' ')}")
-        self.logger.info("=" * 60)
-        self.logger.info(
-            f"Config: pop={self.pop_size}, ngen={self.ngen}, "
-            f"cxpb={self.cxpb}, mutpb={self.mutpb}"
+        # Rich header
+        exp_title = self._get_experiment_name().upper().replace("_", " ")
+        console.print()
+        console.rule(f"[bold cyan]{exp_title}[/bold cyan]")
+        console.print(
+            f"  [dim]pop={self.pop_size}  ngen={self.ngen}  "
+            f"cxpb={self.cxpb}  mutpb={self.mutpb}  "
+            f"seed={self.seed}  cpus={get_cpu_count()}[/dim]"
         )
-        self.logger.info(f"Output: {self.output_dir}")
+        console.print(f"  [dim]output: {self.output_dir}[/dim]")
+        console.print()
+
+        # Log to file (full detail)
+        self.logger.debug("=" * 60)
+        self.logger.debug(exp_title)
+        self.logger.debug("=" * 60)
+        self.logger.debug(
+            "Config: pop=%d, ngen=%d, cxpb=%.2f, mutpb=%.2f, seed=%d",
+            self.pop_size,
+            self.ngen,
+            self.cxpb,
+            self.mutpb,
+            self.seed,
+        )
+        self.logger.debug("Output: %s", self.output_dir)
 
         # Setup
         self._load_data()
@@ -464,10 +494,19 @@ class BaseExperiment(ABC):
         self._setup_toolbox()
 
         # Run mode-specific evolution
-        self.logger.info(f"Starting {self._get_experiment_name()} evolution...")
+        console.print("[bold]Starting evolution...[/bold]")
+        console.print()
+        self.logger.debug("Starting %s evolution...", self._get_experiment_name())
         self._init_seeds()  # Reset seeds before evolution
         self._final_pop, self._stats = self._run_evolution()
-        self.logger.info(f"Evolution completed in {self._stats.elapsed_time:.1f}s")
+
+        # Completion summary
+        elapsed = self._stats.elapsed_time
+        mins, secs = divmod(elapsed, 60)
+        time_str = f"{int(mins)}m {secs:.0f}s" if mins > 0 else f"{secs:.1f}s"
+        console.print()
+        console.print(f"  [green bold]Evolution completed in {time_str}[/green bold]")
+        self.logger.debug("Evolution completed in %.1fs", elapsed)
 
         # Finalize
         self._finalize_results()
@@ -475,11 +514,12 @@ class BaseExperiment(ABC):
         # Export
         self._export_results()
 
-        # Log completion
-        self.logger.info("=" * 60)
-        self.logger.info(f"All files saved to: {self.output_dir}")
-        self.logger.info(f"{self._get_experiment_name().upper()} COMPLETE")
-        self.logger.info("=" * 60)
+        # Completion
+        console.print()
+        console.rule(f"[bold green]{exp_title} COMPLETE[/bold green]")
+        console.print(f"  [dim]All files saved to: {self.output_dir}[/dim]")
+        console.print()
+        self.logger.debug("All files saved to: %s", self.output_dir)
 
         return self._build_metadata()
 

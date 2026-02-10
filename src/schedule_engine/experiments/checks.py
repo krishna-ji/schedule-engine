@@ -167,15 +167,6 @@ def run_feasibility_checks(
 
     _log_capacity_warnings(report, logger)
 
-    if should_write:
-        try:
-            logger.info("Feasibility report (full):")
-            with report_path.open("r", encoding="utf-8") as handle:
-                for line in handle:
-                    logger.info(_safe_for_console(line.rstrip("\n")))
-        except OSError as exc:
-            logger.warning("Unable to read feasibility report: %s", exc)
-
     if not is_feasible:
         if _fail_on_infeasibility:
             # Show error panel to console (same as was shown in check_feasibility)
