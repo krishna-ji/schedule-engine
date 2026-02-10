@@ -169,71 +169,79 @@ class TestStudentLunchBreak:
     """Students should have free time during the lunch window."""
 
     def test_break_fully_free(self):
-        """G1 has classes at q=0,1 and q=4,5 but nothing at midday → check penalty.
-        With defaults: midday_break={2} (1 quantum), break_min_quanta=2.
-        free_quanta = {2} (len=1), need 2 → missing=1 → penalty = 1 * 5.0 = 5."""
-        c = StudentLunchBreak(break_min_quanta=2)
-        # Occupy q=0,1,4,5 on Sunday (nothing at q=2 or q=3)
+        """G1 has classes at q=0,1 and q=4,5 but nothing in break window (q=2,3).
+        Default break_min_quanta=1, penalty=1.0. Break window is {2,3}.
+        Both q=2 and q=3 are free → 2 free >= 1 required → no penalty."""
+        c = StudentLunchBreak()  # default: break_min_quanta=1
         g1 = make_gene(course_id="CS101", start=0, duration=2, group_ids=["G1"])
         g2 = make_gene(course_id="CS102", start=4, duration=2, group_ids=["G1"])
         ctx = make_context(
             courses=[make_course("CS101", quanta=2), make_course("CS102", quanta=2)],
         )
         tt = Timetable([g1, g2], ctx)
-        penalty = c.evaluate(tt)
-        # midday_break_quanta = {2} (just 1 quantum), but break_min=2
-        # free in break window = {2}, len=1 < 2 → missing=1 → penalty=5
-        assert penalty == 5.0
+        assert_constraint_zero(c, tt)
 
-    def test_known_bug_midday_break_mismatch(self):
-        """KNOWN BUG: get_midday_break_quanta() returns {2} (1 quantum per day)
-        but StudentLunchBreak defaults to break_min_quanta=2. This means every
-        group with classes on any day is always penalized (can never have 2 free
-        quanta in a 1-quantum break window)."""
-        c = StudentLunchBreak()  # Default: break_min_quanta=2
-        qts = QuantumTimeSystem()
-        midday = qts.get_midday_break_quanta()
-        # Verify the mismatch
-        for day, quanta in midday.items():
-            assert (
-                len(quanta) == 1
-            ), f"Midday break on {day} has {len(quanta)} quanta, expected 1"
-        assert c.break_min_quanta == 2, "Default requires 2 free quanta"
-
-        # Even with break COMPLETELY free, penalty > 0 because window is too small
-        g = make_gene(start=0, duration=1, group_ids=["G1"])  # Only q=0 occupied
+    def test_break_window_uses_2_quanta(self):
+        """StudentLunchBreak now uses break_window (12:00-14:00 = quanta {2,3})
+        instead of midday_break (12:00-13:00 = {2}). With break_min_quanta=2,
+        this is now satisfiable."""
+        c = StudentLunchBreak(break_min_quanta=2)
+        # Occupy q=0 only — q=2 and q=3 (break window) are free
+        g = make_gene(start=0, duration=1, group_ids=["G1"])
         ctx = make_context(courses=[make_course("CS101", quanta=1)])
         tt = Timetable([g], ctx)
-        penalty = c.evaluate(tt)
-        # Break q=2 is free, but need 2 free in {2} → only 1 → missing=1 → penalty=5
-        assert penalty == 5.0, "Bug: always penalized even with break free"
+        # 2 free quanta in {2,3} >= 2 required → no penalty
+        assert_constraint_zero(c, tt)
 
-    def test_break_min_quanta_1_works(self):
-        """With break_min_quanta=1, having the break free is sufficient."""
-        c = StudentLunchBreak(break_min_quanta=1)
-        # q=0 occupied, q=2 (break) free
+    def test_break_window_partially_occupied(self):
+        """One of two break quanta occupied, break_min_quanta=2 → penalized."""
+        c = StudentLunchBreak(break_min_quanta=2, penalty_per_missing_quantum=1.0)
+        # Occupy q=2 (one of break window {2,3}) and q=0
+        g1 = make_gene(course_id="CS101", start=0, duration=1, group_ids=["G1"])
+        g2 = make_gene(course_id="CS102", start=2, duration=1, group_ids=["G1"])
+        ctx = make_context(
+            courses=[make_course("CS101", quanta=1), make_course("CS102", quanta=1)],
+        )
+        tt = Timetable([g1, g2], ctx)
+        penalty = c.evaluate(tt)
+        # 1 free in {2,3} but need 2 → missing=1 → penalty=1
+        assert penalty == 1.0
+
+    def test_default_break_min_quanta_is_1(self):
+        """Default break_min_quanta=1, so having 1 break quantum free is sufficient."""
+        c = StudentLunchBreak()  # Default: break_min_quanta=1
+        # q=0 occupied, q=2,3 (break window) free
         g = make_gene(start=0, duration=1, group_ids=["G1"])
         ctx = make_context(courses=[make_course("CS101", quanta=1)])
         tt = Timetable([g], ctx)
         assert_constraint_zero(c, tt)
 
-    def test_break_occupied(self):
-        """G1 occupies the break quantum → definitely penalized."""
+    def test_both_break_quanta_occupied(self):
+        """G1 occupies both break quanta (q=2,3) → penalized."""
         c = StudentLunchBreak(break_min_quanta=1)
-        # Occupy q=2 (the break quantum on Sunday)
-        g = make_gene(start=2, duration=1, group_ids=["G1"])
-        ctx = make_context(courses=[make_course("CS101", quanta=1)])
+        # Occupy q=2 and q=3 (both break window quanta on Sunday)
+        g = make_gene(start=2, duration=2, group_ids=["G1"])
+        ctx = make_context(courses=[make_course("CS101", quanta=2)])
         tt = Timetable([g], ctx)
         assert_constraint_positive(c, tt)
 
-    def test_custom_penalty_rate(self):
-        """Custom penalty_per_missing_quantum scales the output."""
-        c = StudentLunchBreak(break_min_quanta=1, penalty_per_missing_quantum=10.0)
-        g = make_gene(start=2, duration=1, group_ids=["G1"])  # Occupy break
+    def test_one_break_quantum_occupied(self):
+        """G1 occupies one of two break quanta → still has 1 free, break_min=1 → ok."""
+        c = StudentLunchBreak(break_min_quanta=1)
+        g = make_gene(start=2, duration=1, group_ids=["G1"])  # q=2 occupied, q=3 free
         ctx = make_context(courses=[make_course("CS101", quanta=1)])
         tt = Timetable([g], ctx)
+        assert_constraint_zero(c, tt)
+
+    def test_custom_penalty_rate(self):
+        """Custom penalty_per_missing_quantum scales the output."""
+        c = StudentLunchBreak(break_min_quanta=2, penalty_per_missing_quantum=10.0)
+        # Occupy both q=2 and q=3 (all break window quanta)
+        g = make_gene(start=2, duration=2, group_ids=["G1"])
+        ctx = make_context(courses=[make_course("CS101", quanta=2)])
+        tt = Timetable([g], ctx)
         penalty = c.evaluate(tt)
-        assert penalty == 10.0
+        assert penalty == 20.0  # 2 missing × 10.0
 
     def test_no_classes_no_penalty(self):
         """Empty timetable → no group days → no penalty."""
@@ -589,20 +597,17 @@ class TestBuildConstraints:
             if c.name == "instructor_exclusivity":
                 assert c.weight == 5.0
 
-    def test_known_bug_weight_zero(self):
-        """KNOWN BUG: build_constraints() uses `specific_weight or global_weight`.
-        Since 0.0 is falsy in Python, `0.0 or 1.0` = 1.0. So setting a
-        constraint weight to 0.0 doesn't actually disable it."""
+    def test_weight_zero_works(self):
+        """Setting weight=0.0 now correctly disables a constraint (was a bug: `or` fallback)."""
         constraints = build_constraints(
             hard_weight=1.0,
             student_group_exclusivity_weight=0.0,
         )
         for c in constraints:
             if c.name == "student_group_exclusivity":
-                # BUG: should be 0.0 but `0.0 or 1.0` = 1.0
                 assert (
-                    c.weight == 1.0
-                ), "Expected bug: weight=0.0 should result in hard_weight (1.0) due to `or` fallback"
+                    c.weight == 0.0
+                ), "weight=0.0 should be respected (not fall back to hard_weight)"
 
     def test_custom_params_forwarded(self):
         constraints = build_constraints(

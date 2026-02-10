@@ -396,15 +396,15 @@ class InstructorScheduleCompactness:
 
 
 class StudentLunchBreak:
-    """Students should have free time during lunch window."""
+    """Students should have free time during lunch window (break_window_start to break_window_end)."""
 
     kind: Literal["soft"] = "soft"
 
     def __init__(
         self,
         weight: float = 1.0,
-        break_min_quanta: int = 2,
-        penalty_per_missing_quantum: float = 5.0,
+        break_min_quanta: int = 1,
+        penalty_per_missing_quantum: float = 1.0,
     ):
         self.name = "student_lunch_break"
         self.weight = weight
@@ -415,7 +415,7 @@ class StudentLunchBreak:
         """Penalize groups without sufficient lunch break."""
         penalty = 0.0
         qts = tt.qts or QuantumTimeSystem()
-        break_quanta_by_day = qts.get_midday_break_quanta()
+        break_quanta_by_day = self._get_break_windows(qts)
 
         # Re-use pre-built group_daily index (or compute fallback)
         for days in _group_daily_map(tt, qts).values():
@@ -429,6 +429,25 @@ class StudentLunchBreak:
                     penalty += missing * self.penalty_per_missing
 
         return penalty
+
+    def _get_break_windows(self, qts: QuantumTimeSystem) -> dict[str, set[int]]:
+        """Get break window quanta per day (uses break_window_start/end, not midday_break)."""
+        windows: dict[str, set[int]] = {}
+        for day in qts.DAY_NAMES:
+            if not qts.is_operational(day):
+                continue
+            try:
+                break_start_q = qts.time_to_quanta(day, qts.break_window_start)
+                break_end_q = qts.time_to_quanta(day, qts.break_window_end)
+                day_offset = qts.day_quanta_offset[day]
+                if day_offset is None:
+                    continue
+                within_day_start = break_start_q - day_offset
+                within_day_end = break_end_q - day_offset
+                windows[day] = set(range(within_day_start, within_day_end))
+            except ValueError:
+                continue
+        return windows
 
 
 class SessionContinuity:
@@ -563,7 +582,7 @@ class BreakPlacementCompliance:
     def __init__(
         self,
         weight: float = 1.0,
-        break_min_quanta: int = 2,
+        break_min_quanta: int = 1,
     ):
         self.name = "break_placement_compliance"
         self.weight = weight
@@ -668,8 +687,8 @@ def build_constraints(
     break_placement_compliance_weight: float | None = None,
     # Constraint-specific params
     gap_penalty_per_quantum: float = 1.0,
-    break_min_quanta: int = 2,
-    lunch_penalty_per_missing: float = 5.0,
+    break_min_quanta: int = 1,
+    lunch_penalty_per_missing: float = 1.0,
     isolated_slot_penalty: float = 10.0,
     preferred_block_sizes: tuple[int, int] = (2, 3),
 ) -> list[Constraint]:
@@ -713,42 +732,110 @@ def build_constraints(
     """
     return [
         # Hard constraints
-        StudentGroupExclusivity(weight=student_group_exclusivity_weight or hard_weight),
-        InstructorExclusivity(weight=instructor_exclusivity_weight or hard_weight),
-        RoomExclusivity(weight=room_exclusivity_weight or hard_weight),
+        StudentGroupExclusivity(
+            weight=(
+                student_group_exclusivity_weight
+                if student_group_exclusivity_weight is not None
+                else hard_weight
+            )
+        ),
+        InstructorExclusivity(
+            weight=(
+                instructor_exclusivity_weight
+                if instructor_exclusivity_weight is not None
+                else hard_weight
+            )
+        ),
+        RoomExclusivity(
+            weight=(
+                room_exclusivity_weight
+                if room_exclusivity_weight is not None
+                else hard_weight
+            )
+        ),
         InstructorQualifications(
-            weight=instructor_qualifications_weight or hard_weight
+            weight=(
+                instructor_qualifications_weight
+                if instructor_qualifications_weight is not None
+                else hard_weight
+            )
         ),
-        RoomSuitability(weight=room_suitability_weight or hard_weight),
+        RoomSuitability(
+            weight=(
+                room_suitability_weight
+                if room_suitability_weight is not None
+                else hard_weight
+            )
+        ),
         InstructorTimeAvailability(
-            weight=instructor_time_availability_weight or hard_weight
+            weight=(
+                instructor_time_availability_weight
+                if instructor_time_availability_weight is not None
+                else hard_weight
+            )
         ),
-        RoomTimeAvailability(weight=room_time_availability_weight or hard_weight),
-        CourseCompleteness(weight=course_completeness_weight or hard_weight),
+        RoomTimeAvailability(
+            weight=(
+                room_time_availability_weight
+                if room_time_availability_weight is not None
+                else hard_weight
+            )
+        ),
+        CourseCompleteness(
+            weight=(
+                course_completeness_weight
+                if course_completeness_weight is not None
+                else hard_weight
+            )
+        ),
         # Soft constraints
         StudentScheduleCompactness(
-            weight=student_schedule_compactness_weight or soft_weight,
+            weight=(
+                student_schedule_compactness_weight
+                if student_schedule_compactness_weight is not None
+                else soft_weight
+            ),
             gap_penalty_per_quantum=gap_penalty_per_quantum,
         ),
         InstructorScheduleCompactness(
-            weight=instructor_schedule_compactness_weight or soft_weight,
+            weight=(
+                instructor_schedule_compactness_weight
+                if instructor_schedule_compactness_weight is not None
+                else soft_weight
+            ),
             gap_penalty_per_quantum=gap_penalty_per_quantum,
         ),
         StudentLunchBreak(
-            weight=student_lunch_break_weight or soft_weight,
+            weight=(
+                student_lunch_break_weight
+                if student_lunch_break_weight is not None
+                else soft_weight
+            ),
             break_min_quanta=break_min_quanta,
             penalty_per_missing_quantum=lunch_penalty_per_missing,
         ),
         SessionContinuity(
-            weight=session_continuity_weight or soft_weight,
+            weight=(
+                session_continuity_weight
+                if session_continuity_weight is not None
+                else soft_weight
+            ),
             isolated_slot_penalty=isolated_slot_penalty,
             preferred_block_sizes=preferred_block_sizes,
         ),
         PairedCohortPracticalAlignment(
-            weight=paired_cohort_practical_alignment_weight or soft_weight
+            weight=(
+                paired_cohort_practical_alignment_weight
+                if paired_cohort_practical_alignment_weight is not None
+                else soft_weight
+            )
         ),
         BreakPlacementCompliance(
-            weight=break_placement_compliance_weight or soft_weight,
+            weight=(
+                break_placement_compliance_weight
+                if break_placement_compliance_weight is not None
+                else soft_weight
+            ),
             break_min_quanta=break_min_quanta,
         ),
     ]
