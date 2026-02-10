@@ -304,6 +304,9 @@ def print_constraint_details(
     else:
         console.print(f"    [green]SOFT[/green] [green bold]✓ all clear[/green bold]")
 
+    # Horizontal separator
+    console.print(f"  [dim]{'─' * 78}[/dim]")
+
     # Also log to file (plain text, no Rich markup)
     if logger is not None:
         hard_parts = [f"{k}={int(v)}" for k, v in hard_items]
