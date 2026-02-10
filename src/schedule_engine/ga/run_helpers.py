@@ -329,7 +329,7 @@ def create_random_individual(
     """
     from collections import defaultdict
 
-    from schedule_engine.ga.population import (
+    from schedule_engine.ga.core.population import (
         analyze_group_hierarchy,
         generate_course_group_pairs,
         get_family_map_from_json,

@@ -28,7 +28,7 @@ Detection Strategies:
 - hybrid: Fast detection + full verification on suspected violations
 
 Usage:
-    from schedule_engine.ga.operators.repair_selective import repair_individual_selective
+    from schedule_engine.ga.repair.selective import repair_individual_selective
 
     stats = repair_individual_selective(individual, context, max_iterations=2)
     # Automatically detects and repairs only violated genes
@@ -44,12 +44,12 @@ from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.types import SchedulingContext
 
 # Import original repair functions to reuse helper logic
-from schedule_engine.ga.operators.repair import (
+from schedule_engine.ga.repair.basic import (
     _find_available_slot,
     _find_compatible_room,
     _find_instructor_available_slot,
 )
-from schedule_engine.ga.operators.violation_detector import detect_violated_genes
+from schedule_engine.ga.repair.detector import detect_violated_genes
 
 SelectiveRepairFunc = Callable[[list[SessionGene], set[int], SchedulingContext], int]
 
@@ -91,7 +91,7 @@ def repair_individual_selective(
         >>> print(f"Repaired {stats['total_fixes']} violations")
         >>> print(f"Efficiency: {stats['efficiency']:.1f}% genes skipped")
     """
-    from schedule_engine.ga.operators.repair_wrappers import (
+    from schedule_engine.ga.repair.wrappers import (
         get_enabled_repair_operators,
         get_repair_statistics_template,
     )

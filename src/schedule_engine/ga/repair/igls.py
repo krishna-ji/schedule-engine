@@ -14,7 +14,7 @@ Application: Stagnation-triggered repair in Modes C-E (adaptive strategy)
 from schedule_engine.domain.types import SchedulingContext
 
 # Import the original IGLS repair logic
-from schedule_engine.ga.operators.repair import repair_individual_unified
+from schedule_engine.ga.repair.basic import repair_individual_unified
 from schedule_engine.domain.gene import SessionGene
 
 

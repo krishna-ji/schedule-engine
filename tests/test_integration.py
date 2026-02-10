@@ -32,7 +32,7 @@ from schedule_engine.domain.timetable import Timetable
 from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.fast_nsga2 import sel_nsga2_fast
 from schedule_engine.ga.operators.mutation import mutate_gene, mutate_individual
-from schedule_engine.ga.operators.repair import repair_individual_unified
+from schedule_engine.ga.repair.basic import repair_individual_unified
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
@@ -356,7 +356,7 @@ class TestRepairEngine:
     """Test OOP RepairEngine with policies."""
 
     def _make_engine(self, policy="round_robin"):
-        from schedule_engine.ga.operators.repair_engine import RepairEngine
+        from schedule_engine.ga.repair.engine import RepairEngine
 
         ctx = _make_medium_scenario()
         evaluator = Evaluator()

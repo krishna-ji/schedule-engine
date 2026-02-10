@@ -64,7 +64,7 @@ class PopulationFactory:
             strategy from ``population.py``.  If False, use pure random
             placement (faster but lower quality).
         """
-        from schedule_engine.ga.population import generate_course_group_aware_population
+        from schedule_engine.ga.core.population import generate_course_group_aware_population
 
         pop = generate_course_group_aware_population(
             n=1,
@@ -79,7 +79,7 @@ class PopulationFactory:
         Uses hybrid initialization from ``population.generate_hybrid_population``
         which places the hardest-to-schedule courses first.
         """
-        from schedule_engine.ga.population import generate_hybrid_population
+        from schedule_engine.ga.core.population import generate_hybrid_population
 
         # 1 hybrid = 1 greedy
         pop = generate_hybrid_population(n=1, context=self._context)
@@ -115,7 +115,7 @@ class PopulationFactory:
 
     def _smart_population(self, n: int) -> list[list[SessionGene]]:
         """Conflict-aware population (delegates to population.py)."""
-        from schedule_engine.ga.population import generate_course_group_aware_population
+        from schedule_engine.ga.core.population import generate_course_group_aware_population
 
         return generate_course_group_aware_population(
             n=n,
@@ -125,13 +125,13 @@ class PopulationFactory:
 
     def _hybrid_population(self, n: int) -> list[list[SessionGene]]:
         """Mix greedy + random (delegates to population.py)."""
-        from schedule_engine.ga.population import generate_hybrid_population
+        from schedule_engine.ga.core.population import generate_hybrid_population
 
         return generate_hybrid_population(n=n, context=self._context)
 
     def _pure_random_population(self, n: int) -> list[list[SessionGene]]:
         """Pure random population (delegates to population.py)."""
-        from schedule_engine.ga.population import generate_pure_random_population
+        from schedule_engine.ga.core.population import generate_pure_random_population
 
         return generate_pure_random_population(
             n=n,

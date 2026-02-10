@@ -33,7 +33,7 @@ class TestGAHeuristicsPackage:
     def test_ga_heuristics_available(self):
         """ga.heuristics provides all heuristic functions."""
         from schedule_engine.ga.heuristics import get_all_heuristics
-        from schedule_engine.ga.heuristics.repair import lns_repair
+        from schedule_engine.ga.repair.lns.repair import lns_repair
 
         assert callable(get_all_heuristics)
         assert callable(lns_repair)

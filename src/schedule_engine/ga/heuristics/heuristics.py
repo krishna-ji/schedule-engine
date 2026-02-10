@@ -380,13 +380,13 @@ def _create_meta_heuristics(**params: Any) -> list[Heuristic]:
 
 def _create_repair_heuristics(**params: Any) -> list[Heuristic]:
     """Create repair heuristics with optional parameters."""
-    from schedule_engine.ga.heuristics.repair.break_repair import repair_break_placement
-    from schedule_engine.ga.heuristics.repair.exhaustive_repair import exhaustive_repair
-    from schedule_engine.ga.heuristics.repair.greedy_repair import greedy_repair
-    from schedule_engine.ga.heuristics.repair.igls_repair import igls_repair
-    from schedule_engine.ga.heuristics.repair.lns_repair import lns_repair
-    from schedule_engine.ga.heuristics.repair.memetic_repair import memetic_repair
-    from schedule_engine.ga.heuristics.repair.selective_repair import selective_repair
+    from schedule_engine.ga.repair.break_repair import repair_break_placement
+    from schedule_engine.ga.repair.exhaustive import exhaustive_repair
+    from schedule_engine.ga.repair.greedy import greedy_repair
+    from schedule_engine.ga.repair.igls import igls_repair
+    from schedule_engine.ga.repair.lns.repair import lns_repair
+    from schedule_engine.ga.repair.memetic import memetic_repair
+    from schedule_engine.ga.repair.selective_heuristic import selective_repair
 
     # Extract configurable params
     igls_max_iterations = params.get("igls_max_iterations", 100)

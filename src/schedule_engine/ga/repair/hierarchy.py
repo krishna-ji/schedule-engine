@@ -21,8 +21,8 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.ga.operators.repair_wrappers import repair_operator
-from schedule_engine.ga.population import (
+from schedule_engine.ga.repair.wrappers import repair_operator
+from schedule_engine.ga.core.population import (
     analyze_group_hierarchy,
     build_group_family_map,
     get_family_map_from_json,

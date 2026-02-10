@@ -36,7 +36,8 @@ if TYPE_CHECKING:
 from schedule_engine.config import get_config
 from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
 from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.ga.evaluator import evaluate, evaluate_detailed
+from schedule_engine.ga.core.evaluator import evaluate, evaluate_detailed
+from schedule_engine.ga.core.metrics_collector import MetricsCollector
 from schedule_engine.ga.heuristics import get_heuristic_statistics_template
 from schedule_engine.ga.heuristics.parallel_executor import (
     ParallelHeuristicExecutor,
@@ -45,7 +46,7 @@ from schedule_engine.ga.heuristics.parallel_executor import (
 from schedule_engine.ga.metrics.diversity import average_pairwise_diversity
 from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.mutation import mutate_individual
-from schedule_engine.ga.population import generate_course_group_aware_population
+from schedule_engine.ga.core.population import generate_course_group_aware_population
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.logging_config import get_logger
 from schedule_engine.utils.parallel_worker import get_worker_context
@@ -240,6 +241,9 @@ class GAConfig:
                        (from ga_params.get_config().repair)
                        Includes selective_mode, adaptive_repair settings,
                        and enabled heuristics
+        full_config: Optional snapshot of the full configuration tree.
+                     When provided, eliminates all runtime ``get_config()``
+                     calls inside the scheduler.
     """
 
     pop_size: int
@@ -247,6 +251,7 @@ class GAConfig:
     crossover_prob: float
     mutation_prob: float
     repair_config: dict = field(default_factory=dict)
+    full_config: Any | None = None
 
 
 @dataclass
@@ -358,6 +363,8 @@ class GAScheduler:
         """
         self.config = config
         self.context = context
+        # Snapshot full config once — removes all runtime get_config() coupling
+        self._cfg = config.full_config if config.full_config is not None else get_config()
         self.hard_constraint_names = hard_constraint_names
         self.soft_constraint_names = soft_constraint_names
         self.pool = pool  # NEW: Store pool for parallel evaluation
@@ -397,7 +404,7 @@ class GAScheduler:
 
         # ENHANCEMENT: Violation heatmap for targeted repair
         self.violation_heatmap = None
-        enhancement_cfg = get_config().enhancements
+        enhancement_cfg = self._cfg.enhancements
         if enhancement_cfg.master_enabled and enhancement_cfg.violation_heatmap.enabled:
             from schedule_engine.ga.metrics.violation_heatmap import ViolationHeatmap
 
@@ -431,7 +438,7 @@ class GAScheduler:
         self.rl_action_mapper: Any | None = None  # ActionMapper (RL integration)
 
         # HEURISTIC TRACKING: Round-robin tracking and detailed statistics
-        from schedule_engine.ga.heuristic_tracker import HeuristicTracker
+        from schedule_engine.ga.heuristics.tracker import HeuristicTracker
 
         self.heuristic_tracker = HeuristicTracker()
         self.heuristic_stats = get_heuristic_statistics_template()
@@ -448,6 +455,17 @@ class GAScheduler:
             logger.warning(f"Parallel executor init failed: {e}")
             self.parallel_executor = None
 
+        # COMPOSITION: Metrics collection delegate (extracted ~250 LOC)
+        self._metrics_collector = MetricsCollector(
+            metrics=self.metrics,
+            context=self.context,
+            hard_constraint_names=self.hard_constraint_names,
+            soft_constraint_names=self.soft_constraint_names,
+            toolbox=self.toolbox,
+            violation_heatmap=self.violation_heatmap,
+            constraint_logger=self.constraint_logger,
+        )
+
     def setup_toolbox(self):
         """Initialize DEAP toolbox with operators."""
         self.toolbox = base.Toolbox()
@@ -458,7 +476,7 @@ class GAScheduler:
 
         # Selection operator
         # Use fast NSGA-II for large populations (5-10x faster)
-        if get_config().ga.pop_size >= 200:
+        if self._cfg.ga.pop_size >= 200:
             from schedule_engine.ga.operators.fast_nsga2 import sel_nsga2_fast
 
             self.toolbox.register("select", sel_nsga2_fast)
@@ -466,10 +484,10 @@ class GAScheduler:
             self.toolbox.register("select", tools.selNSGA2)
 
         # PHASE 3: Hybrid population initialization support
-        strategy = get_config().ga.population_strategy
+        strategy = self._cfg.ga.population_strategy
 
         if strategy == "hybrid":
-            from schedule_engine.ga.population import generate_hybrid_population
+            from schedule_engine.ga.core.population import generate_hybrid_population
 
             self.toolbox.register(
                 "population", generate_hybrid_population, context=self.context
@@ -483,7 +501,7 @@ class GAScheduler:
             )
         elif strategy == "random":
             # Pure random initialization (no heuristics, no conflict avoidance)
-            from schedule_engine.ga.population import generate_pure_random_population
+            from schedule_engine.ga.core.population import generate_pure_random_population
 
             self.toolbox.register(
                 "population",
@@ -525,7 +543,7 @@ class GAScheduler:
             context=self.context,
             mut_prob=self.config.mutation_prob,
             # Enable constraint-guided mutation
-            guided=get_config().ga.use_constraint_guided_mutation,
+            guided=self._cfg.ga.use_constraint_guided_mutation,
         )
 
     def _init_rl(self) -> bool:
@@ -535,7 +553,7 @@ class GAScheduler:
         Returns:
             True if RL initialized successfully, False otherwise
         """
-        rl_config = get_config().rl
+        rl_config = self._cfg.rl
 
         # Allow runtime overrides for RL mode/model selection (e.g., rl-inference)
         rl_mode = os.getenv("RL_MODE") or rl_config.mode
@@ -793,7 +811,7 @@ class GAScheduler:
                 self._record_heuristic_stat(action_info.name, False)
 
                 # Log action application (optional)
-                rl_config = get_config().rl
+                rl_config = self._cfg.rl
                 if rl_config.logging.log_heuristic_usage:
                     action_info = self.rl_action_mapper.get_action_info(action_id)
                     action_name = (
@@ -865,10 +883,7 @@ class GAScheduler:
 
         # ADAPTIVE PRIORITY ADJUSTMENT: Reorder heuristics based on recent effectiveness
         # Check if adaptive priority is enabled and it's time to reorder
-        full_config = (
-            get_config()
-        )  # Get full config (not just self.config which is GAConfig)
-        adaptive_config = full_config.heuristics.adaptive_priority
+        adaptive_config = self._cfg.heuristics.adaptive_priority
         if adaptive_config.get("enabled", False):
             reorder_interval = adaptive_config.get("reorder_interval", 10)
 
@@ -1343,7 +1358,7 @@ class GAScheduler:
         from rich.panel import Panel
         from rich.table import Table
 
-        config = get_config()
+        config = self._cfg
 
         # Build feature table - ONLY show enabled features
         feature_table = Table(show_header=False, box=None, padding=(0, 2))
@@ -1907,8 +1922,8 @@ class GAScheduler:
 
         # ENHANCEMENT: Save violation heatmap at end
         if self.violation_heatmap:
-            enhancement_cfg = get_config().enhancements
-            output_dir = get_config().io.output_dir
+            enhancement_cfg = self._cfg.enhancements
+            output_dir = self._cfg.io.output_dir
             heatmap_file = (
                 Path(output_dir) / enhancement_cfg.violation_heatmap.persistence_file
             )
@@ -1943,7 +1958,7 @@ class GAScheduler:
         event_tracker = EventTracker()
 
         repair_config = self.config.repair_config
-        igls_config = get_config().repair  # Get IGLS config early
+        igls_config = self._cfg.repair  # Get IGLS config early
 
         generation_repair_stats = {
             "instructor_availability_fixes": 0,
@@ -1968,7 +1983,7 @@ class GAScheduler:
         periodic_cfg = adaptive_config.get("periodic_trigger", {})
 
         # Get enhancement config once (used in multiple places)
-        enhancement_cfg = get_config().enhancements
+        enhancement_cfg = self._cfg.enhancements
 
         # Track current best HC for stagnation detection
         if self.population:
@@ -2107,7 +2122,7 @@ class GAScheduler:
             else:
                 # NO TRIGGER: Reset memetic mode to base config value
                 # This ensures memetic doesn't carry over from previous trigger
-                base_memetic = get_config().repair.memetic_mode
+                base_memetic = self._cfg.repair.memetic_mode
                 repair_config["memetic_mode"] = base_memetic
 
         # PHASE 1.3: Get adaptive probabilities based on search progress
@@ -2124,7 +2139,7 @@ class GAScheduler:
 
         # ENHANCEMENT: Override mutation probability if hypermutation active
         if self.hypermutation_active:
-            enhancement_cfg = get_config().enhancements
+            enhancement_cfg = self._cfg.enhancements
             mutpb = enhancement_cfg.hypermutation.mutation_rate
             event_tracker.add("hypermutation_active")
             self.hypermutation_countdown -= 1
@@ -2390,7 +2405,7 @@ class GAScheduler:
         if repair_config.get("enabled", False) and repair_config.get(
             "memetic_mode", False
         ):
-            from schedule_engine.ga.operators.repair import repair_individual_unified
+            from schedule_engine.ga.repair.basic import repair_individual_unified
 
             event_tracker.add("memetic_repair_applied")
 
@@ -2501,7 +2516,7 @@ class GAScheduler:
         elif progress < 0.7:
             # Mid phase: balanced (use config defaults)
             # Use explicit values from our config instead of potentially unset config object values
-            config = get_config()
+            config = self._cfg
             crossover_prob = config.ga.cxpb  # Use explicit ga.cxpb
             mutation_prob = config.ga.mutpb  # Use explicit ga.mutpb
         else:
@@ -2512,255 +2527,17 @@ class GAScheduler:
         return crossover_prob, mutation_prob
 
     def _track_metrics(self, gen: int, event_tracker=None, best_individual=None):
-        """
-        Record metrics for current generation.
-        OPTIMIZED: Skip expensive metrics on non-tracked generations.
-        CRITICAL FIX: Skip ALL metrics for initial population (gen=-1) to avoid 2-min startup delay.
-
-        Args:
-            gen: Generation number (-1 for initial population, 0+ for evolved generations)
-            event_tracker: Optional EventTracker with events from this generation
-            best_individual: Optional pre-selected best individual to cache detailed evaluation
-        """
-        # PERFORMANCE FIX: Skip initial population metrics entirely (gen=-1)
-        # These metrics are not useful for analysis and cause 2-min startup delay
-        if gen == -1:
-            return
-
-        # Import new metrics modules
-        from schedule_engine.ga.metrics.convergence import (
-            calculate_constraint_satisfaction_rate,
+        """Delegate to MetricsCollector; sync cached state back."""
+        self._metrics_collector.track(
+            gen,
+            self.population,
+            event_tracker=event_tracker,
+            best_individual=best_individual,
         )
-        from schedule_engine.ga.metrics.hypervolume import (
-            calculate_hypervolume,
-            get_hypervolume_reference_point,
-        )
-        from schedule_engine.ga.metrics.pareto_metrics import (
-            calculate_inverted_generational_distance,
-            calculate_spacing,
-            calculate_spread,
-            get_pareto_front_size,
-        )
-
-        # Determine if this is a tracked generation for expensive metrics
-        advanced_freq = 10  # advanced metrics every 10 generations
-        # Always track: gen 0, last gen, or every Nth generation
-        is_tracked_gen = (
-            gen == 0 or gen == self.config.generations - 1 or gen % advanced_freq == 0
-        )
-
-        # ALWAYS calculate basic metrics (fast, essential for progress tracking)
-        # Optimized with numpy for 2-10x speedup on large populations
-
-        # Validate all individuals have valid fitness before numpy conversion
-        for ind in self.population:
-            if (
-                not hasattr(ind.fitness, "values")
-                or not ind.fitness.valid
-                or len(ind.fitness.values) != 2
-            ):
-                # Re-evaluate invalid fitness (use direct evaluate function)
-                fitness = evaluate(
-                    ind,
-                    self.context.courses,
-                    self.context.instructors,
-                    self.context.groups,
-                    self.context.rooms,
-                )
-                ind.fitness.values = fitness
-
-        fitness_array = np.array([ind.fitness.values for ind in self.population])
-        self.metrics.hard_violations.append(float(fitness_array[:, 0].min()))
-        self.metrics.soft_penalties.append(float(fitness_array[:, 1].min()))
-        diversity = average_pairwise_diversity(self.population)
-        self.metrics.diversity.append(diversity)
-
-        # Initialize variables that will be used in constraint logging
-        hv = 0.0
-        spacing = 0.0
-        spread = 0.0
-
-        # CONDITIONAL: Calculate expensive multi-objective metrics
-        if is_tracked_gen:
-            # Phase 1: Essential multi-objective metrics
-            # Calculate hypervolume (use consistent reference point)
-            if gen == 0:
-                # First generation: establish reference point
-                self._hypervolume_ref_point = get_hypervolume_reference_point(
-                    self.population, margin=0.1
-                )
-
-            hv = calculate_hypervolume(self.population, self._hypervolume_ref_point)
-            self.metrics.hypervolume.append(hv)
-
-            # Calculate spacing (Pareto front uniformity)
-            spacing = calculate_spacing(self.population)
-            self.metrics.spacing.append(spacing)
-
-            # Count Pareto front size
-            pf_size = get_pareto_front_size(self.population)
-            self.metrics.pareto_front_size.append(pf_size)
-
-            # Calculate feasibility rate
-            feas_rate = calculate_constraint_satisfaction_rate(self.population)
-            self.metrics.feasibility_rate.append(feas_rate)
-
-            # Phase 2: Advanced metrics (IGD, Spread)
-            # IGD requires reference front - use initial population as reference
-            if gen == 0:
-                # Store initial Pareto front as reference
-                pareto_front = tools.sortNondominated(
-                    self.population, len(self.population), first_front_only=True
-                )[0]
-                self.metrics.reference_front = list(pareto_front)
-
-            # Calculate IGD if reference front exists
-            if self.metrics.reference_front:
-                igd = calculate_inverted_generational_distance(
-                    self.population, self.metrics.reference_front
-                )
-                self.metrics.igd.append(igd)
-            else:
-                self.metrics.igd.append(0.0)
-
-            # Calculate spread
-            spread = calculate_spread(self.population)
-            self.metrics.spread.append(spread)
-        else:
-            # Skip expensive metrics, use placeholder values (reuse last known value)
-            if self.metrics.hypervolume:
-                hv = self.metrics.hypervolume[-1]
-                self.metrics.hypervolume.append(hv)
-            else:
-                hv = 0.0
-                self.metrics.hypervolume.append(0.0)
-
-            if self.metrics.spacing:
-                spacing = self.metrics.spacing[-1]
-                self.metrics.spacing.append(spacing)
-            else:
-                spacing = 0.0
-                self.metrics.spacing.append(0.0)
-
-            if self.metrics.pareto_front_size:
-                self.metrics.pareto_front_size.append(
-                    self.metrics.pareto_front_size[-1]
-                )
-            else:
-                self.metrics.pareto_front_size.append(0)
-
-            if self.metrics.feasibility_rate:
-                self.metrics.feasibility_rate.append(self.metrics.feasibility_rate[-1])
-            else:
-                self.metrics.feasibility_rate.append(0.0)
-
-            if self.metrics.igd:
-                self.metrics.igd.append(self.metrics.igd[-1])
-            else:
-                self.metrics.igd.append(0.0)
-
-            if self.metrics.spread:
-                spread = self.metrics.spread[-1]
-                self.metrics.spread.append(spread)
-            else:
-                spread = 0.0
-                self.metrics.spread.append(0.0)
-
-        # Detailed constraint breakdown
-        # PERFORMANCE: Use cached best individual if provided to avoid re-evaluation
-        if best_individual is None:
-            best = tools.selBest(self.population, 1)[0]
-        else:
-            best = best_individual
-
-        hard_details, soft_details = evaluate_detailed(
-            best,
-            self.context.courses,
-            self.context.instructors,
-            self.context.groups,
-            self.context.rooms,
-        )
-
-        # Cache the detailed breakdown for display (avoid re-evaluation)
-        self._cached_hard_details = hard_details
-        self._cached_soft_details = soft_details
-
-        # Update all-time best individual
-        if (
-            self.all_time_best is None
-            or best.fitness.values[0] < self.all_time_best.fitness.values[0]
-        ):
-            # Better hard constraint score
-            self.all_time_best = self.toolbox.clone(best)
-        elif (
-            best.fitness.values[0] == self.all_time_best.fitness.values[0]
-            and best.fitness.values[1] < self.all_time_best.fitness.values[1]
-        ):
-            # Same hard constraint score, better soft constraint
-            self.all_time_best = self.toolbox.clone(best)
-
-        for name in self.hard_constraint_names:
-            self.metrics.detailed_hard[name].append(hard_details[name])
-
-        for name in self.soft_constraint_names:
-            self.metrics.detailed_soft[name].append(soft_details[name])
-
-        # ENHANCEMENT: Record violations to heatmap
-        if self.violation_heatmap and gen >= 0:  # Skip initial pop
-            from schedule_engine.ga.metrics.violation_recorder import (
-                record_violations_to_heatmap,
-            )
-
-            record_violations_to_heatmap(best, self.context, self.violation_heatmap)
-            self.violation_heatmap.record_generation(gen)
-
-        # Log to constraint logger if available
-        if self.constraint_logger:
-            # Get repair stats for this generation
-            repair_stats = {}
-            if gen >= 0 and gen < len(self.metrics.repair_stats):
-                repair_stats = self.metrics.repair_stats[gen]
-            elif gen == -1:  # Initial population
-                repair_stats = {}
-
-            # Get events from event tracker
-            events = []
-            if event_tracker and event_tracker.has_events():
-                events = event_tracker.get_events()
-
-            # Determine notes
-            notes = ""
-            if best.fitness.values[0] == 0:
-                notes = "Perfect solution"
-                if event_tracker and "perfect_solution" not in events:
-                    event_tracker.add("perfect_solution")
-                    events = event_tracker.get_events()  # Refresh events list
-
-            # Log to constraint CSV (crash-safe - flushes immediately)
-            self.constraint_logger.log_generation(
-                generation=gen,
-                hard_total=best.fitness.values[0],
-                soft_total=best.fitness.values[1],
-                hard_breakdown=hard_details,
-                soft_breakdown=soft_details,
-                diversity=diversity,
-                time_seconds=0.0,  # Will be updated by evolve() loop
-                hypervolume=hv,
-                spacing=spacing,
-                igd=self.metrics.igd[-1] if self.metrics.igd else 0.0,
-                spread=spread,
-                repair_stats=repair_stats,
-                events=events,
-                notes=notes,
-            )
-
-        # Detailed periodic logging disabled (user prefers compact gen-by-gen format)
-        # User requested removal of verbose GEN X Hard=... breakdown
-        # All info now shown in compact format: [!ok] gen x/y : hc=, sc=, t=Xs, hc1=, hc2=...
-        # if gen >= 0 and (
-        #     gen == 0 or (gen + 1) % 4 == 0 or gen == self.config.generations - 1
-        # ):
-        #     self._log_generation_details(gen, best, hard_details, soft_details)
+        # Sync cached state back so _run_evolution display code can use it
+        self._cached_hard_details = self._metrics_collector._cached_hard_details
+        self._cached_soft_details = self._metrics_collector._cached_soft_details
+        self.all_time_best = self._metrics_collector.all_time_best
 
     def _log_generation_details(
         self, gen: int, best, hard_details: dict, soft_details: dict
@@ -2876,7 +2653,7 @@ class GAScheduler:
         Args:
             gen: Current generation number (for logging)
         """
-        enhancement_cfg = get_config().enhancements
+        enhancement_cfg = self._cfg.enhancements
         restart_cfg = enhancement_cfg.population_restart
 
         if not restart_cfg.enabled:

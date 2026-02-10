@@ -9,7 +9,7 @@ from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.domain.gene import SessionGene
 
 # Import the original LNS repair logic
-from schedule_engine.ga.heuristics.repair.lns_operator import lns_igls_repair
+from schedule_engine.ga.repair.lns.operator import lns_igls_repair
 
 
 def lns_repair(

@@ -14,9 +14,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from schedule_engine.domain.gene import SessionGene
-from schedule_engine.ga.creator_registry import get_creator
-from schedule_engine.ga.population_factory import PopulationFactory
-from schedule_engine.ga.repair_pipeline import RepairPipeline
+from schedule_engine.ga.core.creator_registry import get_creator
+from schedule_engine.ga.core.population_factory import PopulationFactory
+from schedule_engine.ga.repair.pipeline import RepairPipeline
 from schedule_engine.ga.scheduler import GAConfig, GAMetrics, GAScheduler
 
 if TYPE_CHECKING:
@@ -37,6 +37,8 @@ __all__ = [
 def create_individual(gene_list: list[SessionGene]) -> Individual:
     """Lazy import wrapper to avoid circular dependency during package init."""
 
-    from schedule_engine.ga.individual import create_individual as _create_individual
+    from schedule_engine.ga.core.individual import (
+        create_individual as _create_individual,
+    )
 
     return _create_individual(gene_list)

@@ -21,7 +21,7 @@ Default configuration (schedule_engine.config):
 Architecture inspired by schedule_engine.constraints.registry for consistency.
 
 Usage:
-    from schedule_engine.ga.operators.repair_wrappers import repair_operator
+    from schedule_engine.ga.repair.wrappers import repair_operator
 
     @repair_operator(
         name="repair_group_overlaps",
@@ -34,7 +34,7 @@ Usage:
         return fixes_count
 
     # Get enabled repairs from config
-    from schedule_engine.ga.operators.repair_wrappers import get_enabled_repair_operators
+    from schedule_engine.ga.repair.wrappers import get_enabled_repair_operators
     enabled = get_enabled_repair_operators()  # Returns priority-sorted dict
 """
 

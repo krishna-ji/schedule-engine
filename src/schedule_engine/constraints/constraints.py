@@ -19,6 +19,68 @@ from schedule_engine.io.time_system import QuantumTimeSystem
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Shared helpers (DRY for schedule-compactness & lunch-break constraints)
+# ---------------------------------------------------------------------------
+
+
+def _compute_gap_penalty(
+    daily_map: dict[str, dict[str, set[int]]],
+    break_quanta_by_day: dict[str, set[int]],
+    gap_penalty: float,
+) -> float:
+    """Sum gap penalties across all entities/days, excluding break quanta.
+
+    Parameters
+    ----------
+    daily_map:
+        ``{entity_id: {day_name: set[within_day_quantum]}}``
+        — works for both group_daily and instructor_daily.
+    break_quanta_by_day:
+        ``{day_name: set[within_day_quantum]}`` from ``qts.get_midday_break_quanta()``.
+    gap_penalty:
+        Penalty added per non-break gap quantum.
+    """
+    penalty = 0.0
+    for days in daily_map.values():
+        for day_name, quanta in days.items():
+            if len(quanta) < 2:
+                continue
+            sorted_q = sorted(quanta)
+            min_q, max_q = sorted_q[0], sorted_q[-1]
+            break_q = break_quanta_by_day.get(day_name, set())
+            for q in range(min_q, max_q + 1):
+                if q not in quanta and q not in break_q:
+                    penalty += gap_penalty
+    return penalty
+
+
+def _group_daily_map(tt: Timetable, qts: QuantumTimeSystem) -> dict[str, dict[str, set[int]]]:
+    """Return group daily map — prefer Timetable's pre-built index, else compute."""
+    if tt.group_daily:
+        return tt.group_daily
+    # Fallback: build on the fly (happens when Timetable was created without QTS)
+    result: dict[str, dict[str, set[int]]] = defaultdict(lambda: defaultdict(set))
+    for gene in tt.genes:
+        for group_id in gene.group_ids:
+            for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
+                day, within_day = qts.quantum_to_day_and_within_day(q)
+                result[group_id][day].add(within_day)
+    return dict(result)
+
+
+def _instructor_daily_map(tt: Timetable, qts: QuantumTimeSystem) -> dict[str, dict[str, set[int]]]:
+    """Return instructor daily map — prefer Timetable's pre-built index, else compute."""
+    if tt.instructor_daily:
+        return tt.instructor_daily
+    result: dict[str, dict[str, set[int]]] = defaultdict(lambda: defaultdict(set))
+    for gene in tt.genes:
+        for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
+            day, within_day = qts.quantum_to_day_and_within_day(q)
+            result[gene.instructor_id][day].add(within_day)
+    return dict(result)
+
 __all__ = [
     "Constraint",
     "ALL_CONSTRAINTS",
@@ -298,37 +360,9 @@ class StudentScheduleCompactness:
 
     def evaluate(self, tt: Timetable) -> float:
         """Penalize gaps between first and last session per group per day."""
-        penalty = 0
         qts = tt.qts or QuantumTimeSystem()
         break_quanta_by_day = qts.get_midday_break_quanta()
-
-        # Build group daily schedules
-        group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
-            lambda: defaultdict(set)
-        )
-
-        for gene in tt.genes:
-            for group_id in gene.group_ids:
-                for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                    day, within_day = qts.quantum_to_day_and_within_day(q)
-                    group_day_quanta[group_id][day].add(within_day)
-
-        # Analyze gaps
-        for days in group_day_quanta.values():
-            for day_name, quanta in days.items():
-                if len(quanta) < 2:
-                    continue
-
-                sorted_quanta = sorted(quanta)
-                min_q, max_q = sorted_quanta[0], sorted_quanta[-1]
-                break_quanta = break_quanta_by_day.get(day_name, set())
-
-                # Count gaps (excluding break time)
-                for q in range(min_q, max_q + 1):
-                    if q not in sorted_quanta and q not in break_quanta:
-                        penalty += self.gap_penalty
-
-        return penalty
+        return _compute_gap_penalty(_group_daily_map(tt, qts), break_quanta_by_day, self.gap_penalty)
 
 
 class InstructorScheduleCompactness:
@@ -347,35 +381,9 @@ class InstructorScheduleCompactness:
 
     def evaluate(self, tt: Timetable) -> float:
         """Penalize gaps between first and last session per instructor per day."""
-        penalty = 0
         qts = tt.qts or QuantumTimeSystem()
         break_quanta_by_day = qts.get_midday_break_quanta()
-
-        # Build instructor daily schedules
-        instructor_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
-            lambda: defaultdict(set)
-        )
-
-        for gene in tt.genes:
-            for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                day, within_day = qts.quantum_to_day_and_within_day(q)
-                instructor_day_quanta[gene.instructor_id][day].add(within_day)
-
-        # Analyze gaps
-        for days in instructor_day_quanta.values():
-            for day_name, quanta in days.items():
-                if len(quanta) < 2:
-                    continue
-
-                sorted_quanta = sorted(quanta)
-                min_q, max_q = sorted_quanta[0], sorted_quanta[-1]
-                break_quanta = break_quanta_by_day.get(day_name, set())
-
-                for q in range(min_q, max_q + 1):
-                    if q not in sorted_quanta and q not in break_quanta:
-                        penalty += self.gap_penalty
-
-        return penalty
+        return _compute_gap_penalty(_instructor_daily_map(tt, qts), break_quanta_by_day, self.gap_penalty)
 
 
 class StudentLunchBreak:
@@ -396,30 +404,17 @@ class StudentLunchBreak:
 
     def evaluate(self, tt: Timetable) -> float:
         """Penalize groups without sufficient lunch break."""
-        penalty = 0
+        penalty = 0.0
         qts = tt.qts or QuantumTimeSystem()
         break_quanta_by_day = qts.get_midday_break_quanta()
 
-        # Build group daily schedules
-        group_day_quanta: dict[str, dict[str, set[int]]] = defaultdict(
-            lambda: defaultdict(set)
-        )
-
-        for gene in tt.genes:
-            for group_id in gene.group_ids:
-                for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                    day, within_day = qts.quantum_to_day_and_within_day(q)
-                    group_day_quanta[group_id][day].add(within_day)
-
-        # Check each group on each day
-        for days in group_day_quanta.values():
+        # Re-use pre-built group_daily index (or compute fallback)
+        for days in _group_daily_map(tt, qts).values():
             for day_name, occupied_quanta in days.items():
                 if day_name not in break_quanta_by_day:
                     continue
-
                 lunch_quanta = break_quanta_by_day[day_name]
                 free_quanta = lunch_quanta - occupied_quanta
-
                 if len(free_quanta) < self.break_min_quanta:
                     missing = self.break_min_quanta - len(free_quanta)
                     penalty += missing * self.penalty_per_missing
@@ -576,19 +571,15 @@ class BreakPlacementCompliance:
         violation_count = 0
         break_windows = self._get_break_windows(qts)
 
-        # Build group schedules per day
-        group_schedules = self._build_group_schedules(tt, qts)
-
-        # Check each group on each day
-        for (group_id, day_name), occupied_quanta in group_schedules.items():
-            if day_name not in break_windows:
-                continue
-
-            break_quanta = break_windows[day_name]
-            free_in_window = break_quanta - occupied_quanta
-
-            if len(free_in_window) < self.break_min_quanta:
-                violation_count += 1
+        # Re-use pre-built group_daily index (or compute fallback)
+        for group_id, days in _group_daily_map(tt, qts).items():
+            for day_name, occupied_quanta in days.items():
+                if day_name not in break_windows:
+                    continue
+                break_quanta = break_windows[day_name]
+                free_in_window = break_quanta - occupied_quanta
+                if len(free_in_window) < self.break_min_quanta:
+                    violation_count += 1
 
         return violation_count
 
@@ -615,20 +606,6 @@ class BreakPlacementCompliance:
                 continue
 
         return windows
-
-    def _build_group_schedules(
-        self, tt: Timetable, qts: QuantumTimeSystem
-    ) -> dict[tuple[str, str], set[int]]:
-        """Build occupied quanta per group per day."""
-        group_day_map: dict[tuple[str, str], set[int]] = defaultdict(set)
-
-        for gene in tt.genes:
-            for group_id in gene.group_ids:
-                for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                    day, within_day = qts.quantum_to_day_and_within_day(q)
-                    group_day_map[(group_id, day)].add(within_day)
-
-        return dict(group_day_map)
 
 
 # Registries

@@ -34,7 +34,7 @@ def memetic_repair(
     Returns:
         Total number of fixes applied across all elite individuals
     """
-    from schedule_engine.ga.operators.repair_engine import RepairEngine
+    from schedule_engine.ga.repair.engine import RepairEngine
 
     if not population:
         return 0

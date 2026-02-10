@@ -63,7 +63,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     new_quanta = mutate_time_quanta(gene, course, context)
 
     # Convert quanta list to contiguous representation
-    from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
+    from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
 
     start_q, num_q = quanta_list_to_contiguous(new_quanta)
 

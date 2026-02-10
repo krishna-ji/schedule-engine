@@ -29,7 +29,7 @@ from schedule_engine.constraints.constraints import (
     StudentGroupExclusivity,
 )
 from schedule_engine.domain.timetable import Timetable
-from schedule_engine.ga.operators.repair import (
+from schedule_engine.ga.repair.basic import (
     repair_group_overlaps,
     repair_individual_unified,
     repair_instructor_availability,

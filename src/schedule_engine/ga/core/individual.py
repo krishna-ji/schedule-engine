@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, cast
 
 from schedule_engine.domain.types import Individual
-from schedule_engine.ga.creator_registry import get_creator
+from schedule_engine.ga.core.creator_registry import get_creator
 from schedule_engine.domain.gene import SessionGene
 
 # Get centralized creator instance

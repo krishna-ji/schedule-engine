@@ -47,7 +47,7 @@ Repair Modes:
 - Selective: Only repairs violated genes (3-4x faster, recommended)
 
 Usage:
-    from schedule_engine.ga.operators.repair import repair_individual_unified
+    from schedule_engine.ga.repair.basic import repair_individual_unified
 
     # Recommended: Use selective mode
     stats = repair_individual_unified(individual, context, selective=True)
@@ -63,7 +63,7 @@ from collections.abc import Iterable
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.ga.operators.repair_wrappers import repair_operator
+from schedule_engine.ga.repair.wrappers import repair_operator
 
 
 # 1. INSTRUCTOR AVAILABILITY REPAIR (Priority 1)
@@ -1240,7 +1240,7 @@ def _get_family_map() -> dict[str, set[str]]:
 
     if _CACHED_FAMILY_MAP is None:
         try:
-            from schedule_engine.ga.population import get_family_map_from_json
+            from schedule_engine.ga.core.population import get_family_map_from_json
 
             _CACHED_FAMILY_MAP = get_family_map_from_json("data/Groups.json")
         except Exception:
@@ -1335,7 +1335,7 @@ def repair_individual_unified(
     if selective:
         try:
             from schedule_engine.config import get_config
-            from schedule_engine.ga.operators.repair_selective import (
+            from schedule_engine.ga.repair.selective import (
                 repair_individual_selective,
             )
 
@@ -1352,7 +1352,7 @@ def repair_individual_unified(
         except Exception:  # pragma: no cover - fallback to full scan
             pass
 
-    from schedule_engine.ga.operators.repair_wrappers import (
+    from schedule_engine.ga.repair.wrappers import (
         get_enabled_repair_operators,
     )
 

@@ -7,7 +7,7 @@ fitness function definitions across the codebase.
 
 Usage:
     Import this module before using any creator types:
-    >>> from schedule_engine.ga.creator_registry import get_creator
+    >>> from schedule_engine.ga.core.creator_registry import get_creator
     >>> creator = get_creator()
     >>> individual = creator.Individual([gene1, gene2, ...])
 """
@@ -47,7 +47,7 @@ def get_creator() -> type[creator]:  # type: ignore[name-defined,no-any-return]
         creator: DEAP creator with registered types (FitnessMulti, Individual)
 
     Example:
-        >>> from schedule_engine.ga.creator_registry import get_creator
+        >>> from schedule_engine.ga.core.creator_registry import get_creator
         >>> creator = get_creator()
         >>> ind = creator.Individual()
     """
