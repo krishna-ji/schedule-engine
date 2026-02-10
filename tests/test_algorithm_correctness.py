@@ -21,9 +21,7 @@ from schedule_engine.ga.operators.fast_nsga2 import (
     sel_nsga2_fast,
 )
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Helper
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class FakeFitness:
@@ -38,9 +36,7 @@ class FakeIndividual:
         self.fitness = FakeFitness(values)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # NSGA-II Algorithmic Properties
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestNSGA2Properties:
@@ -165,9 +161,7 @@ class TestNSGA2Properties:
         assert front0_selected >= 3
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Strategy Selector Properties
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRoundRobinSelector:
@@ -352,9 +346,7 @@ class TestAdaptiveSelector:
                 ), f"{name} probability {prob} dropped far below min_prob {min_prob}"
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Constraint Weight Algebra
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestConstraintAlgebra:
@@ -458,9 +450,7 @@ class TestConstraintAlgebra:
             assert v1 == v2, f"{c.name} non-deterministic: {v1} != {v2}"
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # QuantumTimeSystem Properties
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestQuantumTimeSystem:

@@ -40,17 +40,44 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
     assert_constraint_positive,
     assert_constraint_zero,
+    count_hard_violations,
     make_context,
     make_course,
     make_gene,
     make_group,
     make_instructor,
     make_room,
+    make_violation_free_timetable,
 )
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Cross-constraint sanity check
+
+
+class TestHardConstraintSanity:
+    """Verify the shared test infrastructure produces correct results across all constraints."""
+
+    def test_violation_free_timetable_zero_all_hard(self):
+        """make_violation_free_timetable() must have 0 penalty for EVERY hard constraint.
+        This catches infrastructure bugs (e.g., rooms with wrong default availability).
+        """
+        from schedule_engine.constraints.constraints import HARD_CONSTRAINT_CLASSES
+
+        tt, _ctx = make_violation_free_timetable()
+        for c in HARD_CONSTRAINT_CLASSES:
+            penalty = c.evaluate(tt)
+            assert penalty == 0, (
+                f"{c.name} returned {penalty} on violation-free timetable! "
+                "Likely a conftest.py infrastructure bug."
+            )
+
+    def test_aggregate_hard_count_is_zero(self):
+        """count_hard_violations() must return 0 for the violation-free timetable."""
+        tt, _ = make_violation_free_timetable()
+        total = count_hard_violations(tt)
+        assert total == 0, f"Expected 0, got {total}"
+
+
 # HC1: StudentGroupExclusivity
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestStudentGroupExclusivity:
@@ -160,9 +187,7 @@ class TestStudentGroupExclusivity:
         assert penalty == 2, "Penalty should equal the number of conflicting quanta"
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # HC2: InstructorExclusivity
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestInstructorExclusivity:
@@ -214,9 +239,7 @@ class TestInstructorExclusivity:
         assert_constraint_zero(self.constraint, tt)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # HC3: RoomExclusivity
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRoomExclusivity:
@@ -268,9 +291,7 @@ class TestRoomExclusivity:
         assert_constraint_positive(self.constraint, tt, expected=2)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # HC4: InstructorQualifications
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestInstructorQualifications:
@@ -316,9 +337,7 @@ class TestInstructorQualifications:
         course = make_course("CS101", instructors=[])
         ctx = make_context(courses=[course])
         tt = Timetable([gene], ctx)
-        penalty = c.evaluate(tt)
-        # NOTE: Current impl returns 1 (empty list = violation) — verify:
-        assert penalty >= 0  # At minimum, document current behavior
+        assert_constraint_positive(c, tt, expected=1)
 
     def test_multiple_violations(self):
         """3 genes with unqualified instructors → penalty = 3."""
@@ -381,10 +400,36 @@ class TestInstructorQualifications:
         tt = Timetable([gene], ctx)
         assert_constraint_positive(c, tt, expected=1)
 
+    def test_course_type_mismatch_same_course_id(self):
+        """I1 qualified for CS101-theory but gene is CS101-practical → violation.
+        This verifies the lookup is by (course_id, course_type) not just course_id."""
+        c = self._make_constraint()
+        # Only CS101-theory is defined with I1 qualified
+        course_theory = make_course("CS101", course_type="theory", instructors=["I1"])
+        # Gene is CS101-practical → course_key=("CS101","practical") not in context
+        gene = make_gene(course_id="CS101", course_type="practical", instructor_id="I1")
+        ctx = make_context(courses=[course_theory])
+        tt = Timetable([gene], ctx)
+        # Missing course definition = violation (not just checking instructor)
+        assert_constraint_positive(c, tt, expected=1)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    def test_qualified_for_wrong_course_type(self):
+        """I1 qualified for CS101-theory but NOT for CS101-practical.
+        Both course types exist — verifies per-type qualification."""
+        c = self._make_constraint()
+        c_theory = make_course("CS101", course_type="theory", instructors=["I1"])
+        c_prac = make_course("CS101", course_type="practical", instructors=["I2"])
+        gene = make_gene(course_id="CS101", course_type="practical", instructor_id="I1")
+        ctx = make_context(
+            courses=[c_theory, c_prac],
+            instructors=[make_instructor("I1"), make_instructor("I2")],
+        )
+        tt = Timetable([gene], ctx)
+        # I1 is NOT in CS101-practical's qualified list ["I2"]
+        assert_constraint_positive(c, tt, expected=1)
+
+
 # HC5: RoomSuitability
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRoomSuitability:
@@ -474,10 +519,49 @@ class TestRoomSuitability:
         penalty = self.constraint.evaluate(tt)
         assert penalty > 0, "Theory class in a laboratory must be caught"
 
+    def test_constraint_uses_course_required_features_not_gene_type(self):
+        """Verify the constraint checks course.required_room_features,
+        not gene.course_type. A practical course requiring 'lab' room in a
+        lecture room must be caught."""
+        gene = make_gene(course_id="CS101", course_type="practical", room_id="R1")
+        course = make_course("CS101", course_type="practical", room_feat="practical")
+        room = make_room("R1", features="lecture")
+        ctx = make_context(courses=[course], rooms=[room])
+        tt = Timetable([gene], ctx)
+        assert_constraint_positive(self.constraint, tt, expected=1)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    def test_multiple_genes_mixed_compatibility(self):
+        """2 compatible + 1 incompatible → exactly 1 violation."""
+        genes = [
+            make_gene(room_id="R1", start=0, duration=1),
+            make_gene(course_id="CS102", room_id="R2", start=0, duration=1),
+            make_gene(
+                course_id="CS103",
+                course_type="practical",
+                room_id="R1",
+                start=2,
+                duration=1,
+            ),
+        ]
+        courses = [
+            make_course("CS101", room_feat="lecture", quanta=1),
+            make_course("CS102", room_feat="lecture", quanta=1),
+            make_course(
+                "CS103", course_type="practical", room_feat="practical", quanta=1
+            ),
+        ]
+        rooms = [
+            make_room("R1", features="lecture"),
+            make_room("R2", features="lecture"),
+        ]
+        ctx = make_context(courses=courses, rooms=rooms)
+        tt = Timetable(genes, ctx)
+        # CS101 in lecture room → ok, CS102 in lecture room → ok
+        # CS103(practical) in lecture room → violation
+        assert_constraint_positive(self.constraint, tt, expected=1)
+
+
 # HC6: InstructorTimeAvailability
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestInstructorTimeAvailability:
@@ -541,10 +625,25 @@ class TestInstructorTimeAvailability:
         # 5 quanta (0-4), only q=0 available → 4 violations (q=1,2,3,4)
         assert_constraint_positive(self.constraint, tt, expected=4)
 
+    def test_part_time_empty_available_quanta_rejected(self):
+        """Part-time with empty available_quanta → Instructor model rejects it.
+        This edge case is prevented at the data model level, not the constraint."""
+        with pytest.raises(ValueError, match="must have available time slots"):
+            make_instructor("I1", is_full_time=False, available_quanta=set())
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    def test_boundary_exactly_at_available_edge(self):
+        """Gene spans q=2-4, available={2,3} → q=4 is the only violation."""
+        inst = make_instructor("I1", is_full_time=False, available_quanta={2, 3})
+        gene = make_gene(instructor_id="I1", start=2, duration=3)
+        ctx = make_context(
+            courses=[make_course("CS101", quanta=3)],
+            instructors=[inst],
+        )
+        tt = Timetable([gene], ctx)
+        assert_constraint_positive(self.constraint, tt, expected=1)
+
+
 # HC7: RoomTimeAvailability
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRoomTimeAvailability:
@@ -585,18 +684,36 @@ class TestRoomTimeAvailability:
             self.constraint.evaluate(tt)
 
     def test_empty_available_quanta(self):
-        """Room with empty available_quanta set — check behavior."""
+        """Room with empty available_quanta set → every quantum is unavailable.
+        NOTE: The constraint treats empty set as 'never available', not 'always available'.
+        This documents the current behavior — see Room model for design discussion."""
         room = make_room("R1", available_quanta=set())
         gene = make_gene(room_id="R1", start=0, duration=2)
         ctx = make_context(rooms=[room])
         tt = Timetable([gene], ctx)
-        # Empty set means every quantum is unavailable
         assert_constraint_positive(self.constraint, tt, expected=2)
 
+    def test_boundary_exactly_at_available_edge(self):
+        """Gene spans q=2-4, room available at {2,3} → q=4 is the only violation."""
+        room = make_room("R1", available_quanta={2, 3})
+        gene = make_gene(room_id="R1", start=2, duration=3)
+        ctx = make_context(
+            courses=[make_course("CS101", quanta=3)],
+            rooms=[room],
+        )
+        tt = Timetable([gene], ctx)
+        assert_constraint_positive(self.constraint, tt, expected=1)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    def test_full_availability_no_violations(self):
+        """Room available for all quanta → 0 violations (sanity check)."""
+        room = make_room("R1", available_quanta=set(range(42)))
+        gene = make_gene(room_id="R1", start=0, duration=2)
+        ctx = make_context(rooms=[room])
+        tt = Timetable([gene], ctx)
+        assert_constraint_zero(self.constraint, tt)
+
+
 # HC8: CourseCompleteness
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestCourseCompleteness:
@@ -680,3 +797,38 @@ class TestCourseCompleteness:
         ctx = make_context(courses=[c1, c2])
         tt = Timetable(genes, ctx)
         assert_constraint_zero(self.constraint, tt, msg="Both courses fully scheduled")
+
+    def test_theory_and_practical_tracked_independently(self):
+        """CS101-theory (2q) and CS101-practical (3q) are independent.
+        Verifies course_key is (course_id, course_type) not just course_id."""
+        c_theory = make_course("CS101", course_type="theory", quanta=2, groups=["G1"])
+        c_prac = make_course("CS101", course_type="practical", quanta=3, groups=["G1"])
+        genes = [
+            make_gene(
+                "CS101", course_type="theory", start=0, duration=2, group_ids=["G1"]
+            ),
+            make_gene(
+                "CS101", course_type="practical", start=7, duration=3, group_ids=["G1"]
+            ),
+        ]
+        ctx = make_context(courses=[c_theory, c_prac])
+        tt = Timetable(genes, ctx)
+        # Both satisfied independently
+        assert_constraint_zero(self.constraint, tt)
+
+    def test_theory_satisfied_practical_missing(self):
+        """CS101-theory met but CS101-practical under-scheduled → 1 violation."""
+        c_theory = make_course("CS101", course_type="theory", quanta=2, groups=["G1"])
+        c_prac = make_course("CS101", course_type="practical", quanta=3, groups=["G1"])
+        genes = [
+            make_gene(
+                "CS101", course_type="theory", start=0, duration=2, group_ids=["G1"]
+            ),
+            make_gene(
+                "CS101", course_type="practical", start=7, duration=1, group_ids=["G1"]
+            ),
+        ]
+        ctx = make_context(courses=[c_theory, c_prac])
+        tt = Timetable(genes, ctx)
+        # theory: 2/2 = ok, practical: 1/3 = violation
+        assert_constraint_positive(self.constraint, tt, expected=1)

@@ -46,8 +46,8 @@ def make_course(
         name=f"Course {course_id}",
         quanta_per_week=quanta,
         required_room_features=room_feat,
-        enrolled_group_ids=groups or ["G1"],
-        qualified_instructor_ids=instructors or ["I1"],
+        enrolled_group_ids=groups if groups is not None else ["G1"],
+        qualified_instructor_ids=instructors if instructors is not None else ["I1"],
         course_type=course_type,
     )
 
@@ -78,7 +78,7 @@ def make_group(
         group_id=group_id,
         name=f"Group {group_id}",
         student_count=students,
-        enrolled_courses=courses or ["CS101"],
+        enrolled_courses=courses if courses is not None else ["CS101"],
     )
 
 
@@ -88,13 +88,19 @@ def make_room(
     features: str = "lecture",
     available_quanta: set[int] | None = None,
 ) -> Room:
-    """Create a Room with optional availability constraints."""
+    """Create a Room with optional availability constraints.
+
+    Default: available at all 42 quanta (no restrictions).
+    Pass available_quanta=set() to test rooms with no availability.
+    """
     return Room(
         room_id=room_id,
         name=f"Room {room_id}",
         capacity=capacity,
         room_features=features,
-        available_quanta=available_quanta or set(),
+        available_quanta=(
+            available_quanta if available_quanta is not None else set(range(42))
+        ),
     )
 
 

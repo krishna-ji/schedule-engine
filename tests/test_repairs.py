@@ -52,9 +52,7 @@ from conftest import (
     structural_fields_preserved,
 )
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # R1: repair_instructor_availability — fix HC6
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairInstructorAvailability:
@@ -129,9 +127,7 @@ class TestRepairInstructorAvailability:
         assert fixes == 0
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # R3: repair_group_overlaps — fix HC1
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairGroupOverlaps:
@@ -186,9 +182,7 @@ class TestRepairGroupOverlaps:
         assert StudentGroupExclusivity().evaluate(tt) == 0
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # R4: repair_room_overlap_reassign — fix HC3
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairRoomOverlapReassign:
@@ -260,9 +254,7 @@ class TestRepairRoomOverlapReassign:
             assert structural_fields_preserved(b, a)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # R5: repair_room_conflicts — fix HC3 (fallback)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairRoomConflicts:
@@ -286,9 +278,7 @@ class TestRepairRoomConflicts:
             assert RoomExclusivity().evaluate(tt) == 0
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # R6: repair_instructor_conflicts — fix HC2
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairInstructorConflicts:
@@ -335,9 +325,7 @@ class TestRepairInstructorConflicts:
             assert structural_fields_preserved(b, a)
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # R7: repair_instructor_qualifications — fix HC4
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairInstructorQualifications:
@@ -393,9 +381,7 @@ class TestRepairInstructorQualifications:
         assert fixes >= 0
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # R8: repair_room_type_mismatches — fix HC5
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairRoomTypeMismatches:
@@ -436,9 +422,7 @@ class TestRepairRoomTypeMismatches:
         assert structural_fields_preserved(before, individual[0])
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Orchestration: repair_individual_unified
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 class TestRepairIndividualUnified:
