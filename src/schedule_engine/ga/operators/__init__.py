@@ -10,8 +10,9 @@ from schedule_engine.ga.operators.mutation import mutate_gene, mutate_individual
 
 # Re-export repair symbols for backward compatibility
 from schedule_engine.ga.repair.basic import repair_individual, repair_individual_unified
-from schedule_engine.ga.repair.selective import repair_individual_selective
+from schedule_engine.ga.repair.detector import detect_violated_genes
 from schedule_engine.ga.repair.engine import RepairEngine
+from schedule_engine.ga.repair.selective import repair_individual_selective
 from schedule_engine.ga.repair.wrappers import (
     get_all_repair_operators,
     get_enabled_repair_operators,
@@ -20,7 +21,6 @@ from schedule_engine.ga.repair.wrappers import (
     get_repair_statistics_template,
     repair_operator,
 )
-from schedule_engine.ga.repair.detector import detect_violated_genes
 
 __all__ = [
     # Mutation operators

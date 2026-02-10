@@ -298,7 +298,9 @@ class TestRepairHeuristicsImports:
         assert callable(repair_break_placement)
 
     def test_conflict_detection_import(self):
-        from schedule_engine.ga.repair.conflict_detection import find_hard_conflict_sessions
+        from schedule_engine.ga.repair.conflict_detection import (
+            find_hard_conflict_sessions,
+        )
 
         assert callable(find_hard_conflict_sessions)
 

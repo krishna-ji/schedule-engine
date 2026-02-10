@@ -12,10 +12,7 @@ Provides:
 
 from __future__ import annotations
 
-from schedule_engine.ga.repair.basic import (
-    repair_individual,
-    repair_individual_unified,
-)
+from schedule_engine.ga.repair.basic import repair_individual, repair_individual_unified
 from schedule_engine.ga.repair.detector import detect_violated_genes
 from schedule_engine.ga.repair.engine import RepairEngine
 from schedule_engine.ga.repair.pipeline import RepairPipeline

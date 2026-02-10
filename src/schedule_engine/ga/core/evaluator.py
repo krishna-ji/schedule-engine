@@ -1,7 +1,9 @@
 """GA evaluator functions for fitness evaluation.
 
-Provides functional APIs for evaluating timetable fitness using the constraint system.
-For the OOP API, prefer ``schedule_engine.constraints.Evaluator``.
+Thin wrappers around ``schedule_engine.constraints.Evaluator`` that preserve
+the functional API used throughout the GA pipeline.
+
+For the OOP API, prefer ``schedule_engine.constraints.Evaluator`` directly.
 
 Functions:
     evaluate: Full individual evaluation (decode → build Timetable → score)
@@ -12,7 +14,7 @@ Functions:
 
 from __future__ import annotations
 
-from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
+from schedule_engine.constraints.evaluator import Evaluator
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
@@ -22,6 +24,17 @@ from schedule_engine.domain.timetable import Timetable
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.io.decoder import decode_individual
 from schedule_engine.io.time_system import QuantumTimeSystem
+
+# Module-level default evaluator (lazy singleton)
+_default_evaluator: Evaluator | None = None
+
+
+def _get_evaluator() -> Evaluator:
+    """Return the shared default Evaluator instance."""
+    global _default_evaluator
+    if _default_evaluator is None:
+        _default_evaluator = Evaluator()
+    return _default_evaluator
 
 
 # ---------------------------------------------------------------------------
@@ -35,9 +48,9 @@ def evaluate_from_timetable(tt: Timetable) -> tuple[int, int]:
     This is the preferred entry point — avoids a redundant
     ``decode_individual()`` call when the caller already has a Timetable.
     """
-    hard_penalty = sum(c.weight * c.evaluate(tt) for c in HARD_CONSTRAINT_CLASSES)
-    soft_penalty = sum(c.weight * c.evaluate(tt) for c in SOFT_CONSTRAINT_CLASSES)
-    return (int(hard_penalty), int(soft_penalty))
+    ev = _get_evaluator()
+    hard, soft = ev.fitness_from_timetable(tt)
+    return (int(hard), int(soft))
 
 
 def evaluate(
@@ -101,16 +114,13 @@ def evaluate_detailed(
     )
     tt = Timetable(genes=individual, context=context)
 
-    hard_details = {}
-    for constraint in HARD_CONSTRAINT_CLASSES:
-        penalty = constraint.evaluate(tt)
-        hard_details[constraint.name] = int(constraint.weight * penalty)
-
-    soft_details = {}
-    for constraint in SOFT_CONSTRAINT_CLASSES:
-        penalty = constraint.evaluate(tt)
-        soft_details[constraint.name] = constraint.weight * penalty
-
+    ev = _get_evaluator()
+    hard_details = {
+        c.name: int(c.weight * c.evaluate(tt)) for c in ev.hard
+    }
+    soft_details = {
+        c.name: c.weight * c.evaluate(tt) for c in ev.soft
+    }
     return hard_details, soft_details
 
 

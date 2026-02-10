@@ -37,6 +37,8 @@ __all__ = [
 def create_individual(gene_list: list[SessionGene]) -> Individual:
     """Lazy import wrapper to avoid circular dependency during package init."""
 
-    from schedule_engine.ga.core.individual import create_individual as _create_individual
+    from schedule_engine.ga.core.individual import (
+        create_individual as _create_individual,
+    )
 
     return _create_individual(gene_list)
