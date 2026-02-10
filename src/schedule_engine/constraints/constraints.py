@@ -56,7 +56,9 @@ def _compute_gap_penalty(
     return penalty
 
 
-def _group_daily_map(tt: Timetable, qts: QuantumTimeSystem) -> dict[str, dict[str, set[int]]]:
+def _group_daily_map(
+    tt: Timetable, qts: QuantumTimeSystem
+) -> dict[str, dict[str, set[int]]]:
     """Return group daily map — prefer Timetable's pre-built index, else compute."""
     if tt.group_daily:
         return tt.group_daily
@@ -70,7 +72,9 @@ def _group_daily_map(tt: Timetable, qts: QuantumTimeSystem) -> dict[str, dict[st
     return dict(result)
 
 
-def _instructor_daily_map(tt: Timetable, qts: QuantumTimeSystem) -> dict[str, dict[str, set[int]]]:
+def _instructor_daily_map(
+    tt: Timetable, qts: QuantumTimeSystem
+) -> dict[str, dict[str, set[int]]]:
     """Return instructor daily map — prefer Timetable's pre-built index, else compute."""
     if tt.instructor_daily:
         return tt.instructor_daily
@@ -80,6 +84,7 @@ def _instructor_daily_map(tt: Timetable, qts: QuantumTimeSystem) -> dict[str, di
             day, within_day = qts.quantum_to_day_and_within_day(q)
             result[gene.instructor_id][day].add(within_day)
     return dict(result)
+
 
 __all__ = [
     "Constraint",
@@ -362,7 +367,9 @@ class StudentScheduleCompactness:
         """Penalize gaps between first and last session per group per day."""
         qts = tt.qts or QuantumTimeSystem()
         break_quanta_by_day = qts.get_midday_break_quanta()
-        return _compute_gap_penalty(_group_daily_map(tt, qts), break_quanta_by_day, self.gap_penalty)
+        return _compute_gap_penalty(
+            _group_daily_map(tt, qts), break_quanta_by_day, self.gap_penalty
+        )
 
 
 class InstructorScheduleCompactness:
@@ -383,7 +390,9 @@ class InstructorScheduleCompactness:
         """Penalize gaps between first and last session per instructor per day."""
         qts = tt.qts or QuantumTimeSystem()
         break_quanta_by_day = qts.get_midday_break_quanta()
-        return _compute_gap_penalty(_instructor_daily_map(tt, qts), break_quanta_by_day, self.gap_penalty)
+        return _compute_gap_penalty(
+            _instructor_daily_map(tt, qts), break_quanta_by_day, self.gap_penalty
+        )
 
 
 class StudentLunchBreak:

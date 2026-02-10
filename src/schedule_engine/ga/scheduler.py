@@ -38,6 +38,7 @@ from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT
 from schedule_engine.domain.types import SchedulingContext
 from schedule_engine.ga.core.evaluator import evaluate, evaluate_detailed
 from schedule_engine.ga.core.metrics_collector import MetricsCollector
+from schedule_engine.ga.core.population import generate_course_group_aware_population
 from schedule_engine.ga.heuristics import get_heuristic_statistics_template
 from schedule_engine.ga.heuristics.parallel_executor import (
     ParallelHeuristicExecutor,
@@ -46,7 +47,6 @@ from schedule_engine.ga.heuristics.parallel_executor import (
 from schedule_engine.ga.metrics.diversity import average_pairwise_diversity
 from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.mutation import mutate_individual
-from schedule_engine.ga.core.population import generate_course_group_aware_population
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.logging_config import get_logger
 from schedule_engine.utils.parallel_worker import get_worker_context
@@ -364,7 +364,9 @@ class GAScheduler:
         self.config = config
         self.context = context
         # Snapshot full config once — removes all runtime get_config() coupling
-        self._cfg = config.full_config if config.full_config is not None else get_config()
+        self._cfg = (
+            config.full_config if config.full_config is not None else get_config()
+        )
         self.hard_constraint_names = hard_constraint_names
         self.soft_constraint_names = soft_constraint_names
         self.pool = pool  # NEW: Store pool for parallel evaluation
@@ -501,7 +503,9 @@ class GAScheduler:
             )
         elif strategy == "random":
             # Pure random initialization (no heuristics, no conflict avoidance)
-            from schedule_engine.ga.core.population import generate_pure_random_population
+            from schedule_engine.ga.core.population import (
+                generate_pure_random_population,
+            )
 
             self.toolbox.register(
                 "population",

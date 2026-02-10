@@ -115,12 +115,8 @@ def evaluate_detailed(
     tt = Timetable(genes=individual, context=context)
 
     ev = _get_evaluator()
-    hard_details = {
-        c.name: int(c.weight * c.evaluate(tt)) for c in ev.hard
-    }
-    soft_details = {
-        c.name: c.weight * c.evaluate(tt) for c in ev.soft
-    }
+    hard_details = {c.name: int(c.weight * c.evaluate(tt)) for c in ev.hard}
+    soft_details = {c.name: c.weight * c.evaluate(tt) for c in ev.soft}
     return hard_details, soft_details
 
 
