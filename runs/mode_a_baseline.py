@@ -12,9 +12,9 @@ Usage:
 import sys
 from pathlib import Path
 
-# Add project root to path
+# Add src/ to path so schedule_engine is importable without pip install
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from schedule_engine.experiments import BaselineExperiment
 
