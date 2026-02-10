@@ -108,7 +108,7 @@ class MemeticExperiment(BaseExperiment):
 
         Standard NSGA-II with local search applied to selected offspring.
         """
-        from schedule_engine.ga.operators.repair_engine import RepairEngine
+        from schedule_engine.ga.repair.engine import RepairEngine
 
         start_time = time.time()
 

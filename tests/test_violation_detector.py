@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-from schedule_engine.ga.operators.violation_detector import (
+from schedule_engine.ga.repair.detector import (
     _detect_fast,
     _detect_full,
     detect_violated_genes,

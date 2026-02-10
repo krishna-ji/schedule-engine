@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from schedule_engine.domain.gene import SessionGene
     from schedule_engine.domain.types import SchedulingContext
 
-from schedule_engine.ga.operators.repair_engine import (
+from schedule_engine.ga.repair.engine import (
     EpsilonGreedyPolicy,
     RepairCandidate,
     RepairOperator,
@@ -217,7 +217,7 @@ class RepairPipeline:
         Imports and instantiates operators from ``repair_engine.py``.
         """
         try:
-            from schedule_engine.ga.operators.repair_engine import (
+            from schedule_engine.ga.repair.engine import (
                 InstructorSwapOperator,
                 RoomSwapOperator,
                 TimeSlotOperator,

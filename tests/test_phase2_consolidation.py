@@ -263,47 +263,47 @@ class TestRepairHeuristicsImports:
     """Test repair heuristics can be imported."""
 
     def test_igls_repair_import(self):
-        from schedule_engine.ga.heuristics.repair import igls_repair
+        from schedule_engine.ga.repair.igls import igls_repair
 
         assert callable(igls_repair)
 
     def test_greedy_repair_import(self):
-        from schedule_engine.ga.heuristics.repair import greedy_repair
+        from schedule_engine.ga.repair.greedy import greedy_repair
 
         assert callable(greedy_repair)
 
     def test_selective_repair_import(self):
-        from schedule_engine.ga.heuristics.repair import selective_repair
+        from schedule_engine.ga.repair.selective_heuristic import selective_repair
 
         assert callable(selective_repair)
 
     def test_lns_repair_import(self):
-        from schedule_engine.ga.heuristics.repair import lns_repair
+        from schedule_engine.ga.repair.lns.repair import lns_repair
 
         assert callable(lns_repair)
 
     def test_exhaustive_repair_import(self):
-        from schedule_engine.ga.heuristics.repair import exhaustive_repair
+        from schedule_engine.ga.repair.exhaustive import exhaustive_repair
 
         assert callable(exhaustive_repair)
 
     def test_memetic_repair_import(self):
-        from schedule_engine.ga.heuristics.repair import memetic_repair
+        from schedule_engine.ga.repair.memetic import memetic_repair
 
         assert callable(memetic_repair)
 
     def test_break_repair_import(self):
-        from schedule_engine.ga.heuristics.repair import repair_break_placement
+        from schedule_engine.ga.repair.break_repair import repair_break_placement
 
         assert callable(repair_break_placement)
 
     def test_conflict_detection_import(self):
-        from schedule_engine.ga.heuristics.repair import find_hard_conflict_sessions
+        from schedule_engine.ga.repair.conflict_detection import find_hard_conflict_sessions
 
         assert callable(find_hard_conflict_sessions)
 
     def test_lns_igls_import(self):
-        from schedule_engine.ga.heuristics.repair import lns_igls_repair
+        from schedule_engine.ga.repair.lns.operator import lns_igls_repair
 
         assert callable(lns_igls_repair)
 
@@ -398,12 +398,12 @@ class TestEvaluatorImports:
     """Test evaluator subpackage imports."""
 
     def test_fitness_import(self):
-        from schedule_engine.ga.evaluator import evaluate
+        from schedule_engine.ga.core.evaluator import evaluate
 
         assert callable(evaluate)
 
     def test_detailed_fitness_import(self):
-        from schedule_engine.ga.evaluator import evaluate_detailed
+        from schedule_engine.ga.core.evaluator import evaluate_detailed
 
         assert callable(evaluate_detailed)
 

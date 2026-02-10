@@ -546,7 +546,7 @@ class ScheduleEnv(gym.Env):
             return True
 
         if self._fitness_evaluator is None:
-            from schedule_engine.ga.evaluator import (
+            from schedule_engine.ga.core.evaluator import (
                 evaluate as evaluate_fitness,
             )  # type: ignore[attr-defined]
 

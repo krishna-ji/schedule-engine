@@ -12,7 +12,7 @@ from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
 from schedule_engine.domain.types import Individual, SchedulingContext
-from schedule_engine.ga.individual import create_individual
+from schedule_engine.ga.core.individual import create_individual
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.parallel_worker import get_worker_context, init_worker
 from schedule_engine.utils.system_info import get_cpu_count
@@ -1053,7 +1053,7 @@ def create_session_gene_with_conflict_avoidance(
     )
 
     # Convert quanta list to contiguous representation
-    from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
+    from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
 
     instructor_id = instructor.instructor_id
     start_q, num_q = quanta_list_to_contiguous(assigned_quanta)
@@ -1181,7 +1181,7 @@ def create_component_session_with_conflict_avoidance(
     actual_course_type = component_type
 
     # Convert quanta list to contiguous representation
-    from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
+    from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
 
     instructor_id = instructor.instructor_id
     start_q, num_q = quanta_list_to_contiguous(assigned_quanta)
@@ -1377,7 +1377,7 @@ def create_component_session(
     actual_course_type = component_type
 
     # Convert quanta list to contiguous representation
-    from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
+    from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
 
     start_q, num_q = quanta_list_to_contiguous(assigned_quanta)
 
@@ -1669,7 +1669,7 @@ def generate_random_gene(
     quanta = random.sample(list(available_quanta), num_quanta)
 
     # Convert quanta list to contiguous representation
-    from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
+    from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
 
     start_q, num_q = quanta_list_to_contiguous(quanta)
 

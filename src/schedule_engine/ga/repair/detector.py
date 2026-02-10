@@ -16,7 +16,7 @@ Architecture:
 - No modifications to SessionGene structure
 
 Usage:
-    from schedule_engine.ga.operators.violation_detector import detect_violated_genes
+    from schedule_engine.ga.repair.detector import detect_violated_genes
 
     violations = detect_violated_genes(individual, context, strategy="hybrid")
     # Returns: {12: ["group_overlap"], 45: ["instructor_qualifications"]}

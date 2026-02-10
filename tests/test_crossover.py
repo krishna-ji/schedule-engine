@@ -73,12 +73,12 @@ class TestCrossoverValidation:
 
 
 class TestConstraintAwareCrossoverNoConfig:
-    """Verify constraint_aware_operators.py has no get_config_or_default."""
+    """Verify constraint_aware.py has no get_config_or_default."""
 
     def test_no_get_config_import(self):
         import inspect
 
-        import schedule_engine.ga.operators.constraint_aware_operators as cao_mod
+        import schedule_engine.ga.operators.constraint_aware as cao_mod
 
         source = inspect.getsource(cao_mod)
         assert "get_config_or_default" not in source

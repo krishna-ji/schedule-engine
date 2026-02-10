@@ -17,7 +17,7 @@ Application: Default repair mode in Modes B-E (recommended for speed)
 from schedule_engine.domain.types import SchedulingContext
 
 # Import the original selective repair logic
-from schedule_engine.ga.operators.repair_selective import repair_individual_selective
+from schedule_engine.ga.repair.selective import repair_individual_selective
 from schedule_engine.domain.gene import SessionGene
 
 

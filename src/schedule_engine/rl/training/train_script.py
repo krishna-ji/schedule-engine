@@ -322,8 +322,8 @@ def create_environment(
 
     logger.info(f"[ENV {env_rank}] Creating environment (this takes 30-60s per env)...")
 
-    from schedule_engine.ga.evaluator import evaluate as evaluate_fitness
-    from schedule_engine.ga.population import generate_course_group_aware_population
+    from schedule_engine.ga.core.evaluator import evaluate as evaluate_fitness
+    from schedule_engine.ga.core.population import generate_course_group_aware_population
 
     # CRITICAL: Inside SubprocVecEnv worker processes, we CANNOT use nested multiprocessing
     # This function runs inside each of the 16 parallel RL environments (daemon processes)

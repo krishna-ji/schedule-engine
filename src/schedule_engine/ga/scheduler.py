@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 from schedule_engine.config import get_config
 from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
 from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.ga.evaluator import evaluate, evaluate_detailed
+from schedule_engine.ga.core.evaluator import evaluate, evaluate_detailed
 from schedule_engine.ga.heuristics import get_heuristic_statistics_template
 from schedule_engine.ga.heuristics.parallel_executor import (
     ParallelHeuristicExecutor,
@@ -45,7 +45,7 @@ from schedule_engine.ga.heuristics.parallel_executor import (
 from schedule_engine.ga.metrics.diversity import average_pairwise_diversity
 from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 from schedule_engine.ga.operators.mutation import mutate_individual
-from schedule_engine.ga.population import generate_course_group_aware_population
+from schedule_engine.ga.core.population import generate_course_group_aware_population
 from schedule_engine.utils.console_service import get_console
 from schedule_engine.utils.logging_config import get_logger
 from schedule_engine.utils.parallel_worker import get_worker_context
@@ -431,7 +431,7 @@ class GAScheduler:
         self.rl_action_mapper: Any | None = None  # ActionMapper (RL integration)
 
         # HEURISTIC TRACKING: Round-robin tracking and detailed statistics
-        from schedule_engine.ga.heuristic_tracker import HeuristicTracker
+        from schedule_engine.ga.heuristics.tracker import HeuristicTracker
 
         self.heuristic_tracker = HeuristicTracker()
         self.heuristic_stats = get_heuristic_statistics_template()
@@ -469,7 +469,7 @@ class GAScheduler:
         strategy = get_config().ga.population_strategy
 
         if strategy == "hybrid":
-            from schedule_engine.ga.population import generate_hybrid_population
+            from schedule_engine.ga.core.population import generate_hybrid_population
 
             self.toolbox.register(
                 "population", generate_hybrid_population, context=self.context
@@ -483,7 +483,7 @@ class GAScheduler:
             )
         elif strategy == "random":
             # Pure random initialization (no heuristics, no conflict avoidance)
-            from schedule_engine.ga.population import generate_pure_random_population
+            from schedule_engine.ga.core.population import generate_pure_random_population
 
             self.toolbox.register(
                 "population",
@@ -2390,7 +2390,7 @@ class GAScheduler:
         if repair_config.get("enabled", False) and repair_config.get(
             "memetic_mode", False
         ):
-            from schedule_engine.ga.operators.repair import repair_individual_unified
+            from schedule_engine.ga.repair.basic import repair_individual_unified
 
             event_tracker.add("memetic_repair_applied")
 

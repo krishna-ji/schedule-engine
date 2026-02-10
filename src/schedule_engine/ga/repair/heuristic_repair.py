@@ -13,7 +13,7 @@ from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.ga.evaluator import evaluate
+from schedule_engine.ga.core.evaluator import evaluate
 
 logger = logging.getLogger(__name__)
 

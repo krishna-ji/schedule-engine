@@ -13,13 +13,13 @@ from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.ga.individual import create_individual
-from schedule_engine.ga.heuristics.repair.conflict_detection import (
+from schedule_engine.ga.core.individual import create_individual
+from schedule_engine.ga.repair.conflict_detection import (
     find_hard_conflict_sessions,
     select_worst_conflicts,
 )
-from schedule_engine.ga.heuristics.repair.heuristic_repair import repair_with_heuristic
-from schedule_engine.ga.heuristics.repair.lns_diagnostics import (
+from schedule_engine.ga.repair.heuristic_repair import repair_with_heuristic
+from schedule_engine.ga.repair.lns.diagnostics import (
     SubproblemDiagnostics,
     build_conflict_graph,
     expand_neighborhood_bfs,

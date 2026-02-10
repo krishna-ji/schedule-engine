@@ -251,7 +251,7 @@ def _generate_time_neighbors(
             continue
 
         # Create time neighbor (same room, instructor)
-        from schedule_engine.ga.quanta_converter import quanta_list_to_contiguous
+        from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
 
         start_q, num_q = quanta_list_to_contiguous(new_quanta)
 

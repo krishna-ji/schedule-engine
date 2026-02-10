@@ -69,7 +69,7 @@ def largest_degree_first(context: SchedulingContext) -> list[SessionGene]:
         List[SessionGene] representing a complete schedule
     """
     # Import subsession breaker and course-group pair generator
-    from schedule_engine.ga.population import (
+    from schedule_engine.ga.core.population import (
         analyze_group_hierarchy,
         generate_course_group_pairs,
         get_subsession_durations,
@@ -200,7 +200,7 @@ def most_constrained_first(context: SchedulingContext) -> list[SessionGene]:
         List[SessionGene] representing a complete schedule
     """
     # Import utilities for course-group pairs
-    from schedule_engine.ga.population import (
+    from schedule_engine.ga.core.population import (
         analyze_group_hierarchy,
         generate_course_group_pairs,
         get_subsession_durations,
@@ -340,7 +340,7 @@ def earliest_deadline_first(context: SchedulingContext) -> list[SessionGene]:
         List[SessionGene] representing a complete schedule
     """
     # Import utilities for course-group pairs
-    from schedule_engine.ga.population import (
+    from schedule_engine.ga.core.population import (
         analyze_group_hierarchy,
         generate_course_group_pairs,
         get_subsession_durations,
