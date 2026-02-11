@@ -63,6 +63,7 @@ from collections.abc import Iterable
 from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.types import SchedulingContext
+from schedule_engine.ga.core.schedule_index import ScheduleIndex
 from schedule_engine.ga.repair.wrappers import repair_operator
 
 
