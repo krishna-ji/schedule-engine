@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-RL Experiment 05: Reward Shaping
+RL Compare Rewards: Reward Function Analysis
 
-Compare scalar vs hypervolume reward calculations for RL training.
+Compare different reward formulations:
+  - Scalar: weighted sum of hard/soft violations
+  - Hypervolume: Pareto-based multi-objective reward
 
 Usage:
-    python runs/rl_05_reward_shaping.py
+    python runs/rl_05_compare_rewards.py
 """
 from __future__ import annotations
 
@@ -32,7 +34,7 @@ from schedule_engine.rl.helpers import (
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_05_reward_shaping.log"
+    log_file = output_dir / "rl_05_compare_rewards.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -46,7 +48,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_05_reward_shaping")
+    logger = logging.getLogger("rl_05_compare_rewards")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -68,7 +70,7 @@ def main() -> None:
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_05_reward_shaping" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_05_compare_rewards" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
@@ -172,7 +174,7 @@ def main() -> None:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_05_reward_shaping",
+        "experiment": "rl_05_compare_rewards",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,

@@ -55,4 +55,4 @@ class RoundRobinExperiment(MemeticExperiment):
 
     def _get_experiment_name(self) -> str:
         """Return experiment name."""
-        return "mode_c_roundrobin"
+        return "ga_03_repair_sequential"

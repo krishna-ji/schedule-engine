@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Mode A: Baseline Pure NSGA-II  (Production)
+GA Baseline: Pure NSGA-II (No Repair)
 
 Pure NSGA-II baseline - No enhancements, no repair heuristics, no RL guidance.
-This script is the foundation for comparing all other modes (B, C, D, E).
+This script is the foundation for comparing all other modes.
+
+WARNING: Random mutation is 100% destructive on good solutions.
+         This mode cannot improve beyond what initialization provides.
+         Use ga_memetic or ga_repair_* modes for actual optimization.
 
 Usage:
-    python runs/mode_a_baseline.py
+    python runs/ga_01_baseline.py
 """
 
 import sys
@@ -32,7 +36,7 @@ FITNESS_WEIGHTS = (-1.0, -1.0)  # (hard, soft) - negative = minimize
 
 # Data Paths
 DATA_DIR = PROJECT_ROOT / "data"
-OUTPUT_DIR = None  # Auto-generated: output/mode_a_baseline/<timestamp>
+OUTPUT_DIR = None  # Auto-generated: output/ga_01_baseline/<timestamp>
 
 # Time Configuration
 OPENING_TIME = "10:00"
@@ -48,7 +52,7 @@ VERBOSE = True
 
 
 def main() -> None:
-    """Run Mode A: Baseline Pure NSGA-II experiment."""
+    """Run GA Baseline: Pure NSGA-II (no repair)."""
     exp = BaselineExperiment(
         seed=SEED,
         pop_size=POP_SIZE,

@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-RL Experiment 07: Full Ablation Study
+RL Ablation: Systematic Method Comparison
 
-Systematic comparison across RL methods (Random, PPO, DQN).
+Compare repair selection strategies:
+  - Random (baseline)
+  - PPO (policy gradient)
+  - DQN (value-based)
 
 Usage:
-    python runs/rl_07_full_ablation_study.py
+    python runs/rl_07_ablation.py
 """
 from __future__ import annotations
 
@@ -26,7 +29,7 @@ from schedule_engine.rl.helpers import run_ablation
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_07_full_ablation_study.log"
+    log_file = output_dir / "rl_07_ablation.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -40,7 +43,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_07_full_ablation_study")
+    logger = logging.getLogger("rl_07_ablation")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -70,7 +73,7 @@ def main() -> None:
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_07_full_ablation_study" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_07_ablation" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
@@ -135,7 +138,7 @@ def main() -> None:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_07_full_ablation_study",
+        "experiment": "rl_07_ablation",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,

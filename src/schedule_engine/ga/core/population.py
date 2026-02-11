@@ -689,8 +689,10 @@ def generate_course_group_aware_population(
 
                 # Create one SessionGene per subsession
                 for _subsession_idx, num_quanta in enumerate(subsession_durations):
+                    # BUG FIX: Pass full course_id tuple for qualified instructor lookup
+                    # course_id is already the tuple (course_code, course_type) from course_group_pairs
                     session_gene = create_session_gene_with_conflict_avoidance(
-                        course_id[0] if isinstance(course_id, tuple) else course_id,
+                        course_id,  # Pass full tuple for instructor qualification matching
                         group_ids,
                         session_type,
                         num_quanta,
@@ -1708,19 +1710,20 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> list[Indiv
     """
     population: list[Individual] = []
 
-    from schedule_engine.config import get_config
+    from schedule_engine.config import get_config_or_default
     from schedule_engine.ga.heuristics.construction import (
         earliest_deadline_first,
         largest_degree_first,
         most_constrained_first,
     )
 
-    enhancement_cfg = get_config().enhancements
-    greedy_percent = (
-        enhancement_cfg.greedy_initialization_percent
-        if enhancement_cfg.master_enabled
-        else 0.25
-    )
+    # Gracefully handle missing config (use defaults)
+    cfg = get_config_or_default()
+    enhancement_cfg = getattr(cfg, 'enhancements', None)
+    if enhancement_cfg and getattr(enhancement_cfg, 'master_enabled', False):
+        greedy_percent = getattr(enhancement_cfg, 'greedy_initialization_percent', 0.4)
+    else:
+        greedy_percent = 0.4  # Default: 40% greedy
 
     greedy_count = int(n * greedy_percent)
     random_count = max(1, int(n * 0.2))

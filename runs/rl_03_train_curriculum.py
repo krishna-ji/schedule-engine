@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-RL Experiment 03: Curriculum Learning
+RL Train Curriculum: Staged Difficulty Training
 
-Train PPO with curriculum learning - staged phases with increasing difficulty.
+Train PPO with curriculum learning - progressive phases:
+  Phase 1: Easy (few constraints)
+  Phase 2: Medium (more constraints)
+  Phase 3: Full (all constraints)
 
 Usage:
-    python runs/rl_03_curriculum_learning.py
+    python runs/rl_03_train_curriculum.py
 """
 from __future__ import annotations
 
@@ -32,7 +35,7 @@ from schedule_engine.rl.helpers import (
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_03_curriculum_learning.log"
+    log_file = output_dir / "rl_03_train_curriculum.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -46,7 +49,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_03_curriculum_learning")
+    logger = logging.getLogger("rl_03_train_curriculum")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -72,7 +75,7 @@ def main() -> None:
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_03_curriculum_learning" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_03_train_curriculum" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
@@ -161,7 +164,7 @@ def main() -> None:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_03_curriculum_learning",
+        "experiment": "rl_03_train_curriculum",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,

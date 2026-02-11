@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-RL Experiment 02: DQN Baseline
+RL Train PPO: Proximal Policy Optimization Agent
 
-Train and evaluate DQN agent on ScheduleEnv to compare against PPO baseline.
+Train PPO agent on ScheduleEnv for repair heuristic selection.
+Establishes baseline RL performance.
 
 Usage:
-    python runs/rl_02_dqn_baseline.py
+    python runs/rl_01_train_ppo.py
 """
 from __future__ import annotations
 
@@ -31,7 +32,7 @@ from schedule_engine.rl.helpers import (
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_02_dqn_baseline.log"
+    log_file = output_dir / "rl_01_train_ppo.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -45,7 +46,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_02_dqn_baseline")
+    logger = logging.getLogger("rl_01_train_ppo")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -54,7 +55,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 
 
 def main() -> None:
-    """Run RL Experiment 02: DQN Baseline."""
+    """Run RL Experiment 01: PPO Baseline."""
 
     # CONFIGURATION
 
@@ -62,18 +63,18 @@ def main() -> None:
     POP_SIZE = 20
     MAX_GENERATIONS = 50
     MAX_STEPS = 20
-    TIMESTEPS = 5000  # Training timesteps for DQN
+    TIMESTEPS = 5000  # Training timesteps for PPO
 
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_02_dqn_baseline" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_01_train_ppo" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
     logger = setup_logging(OUTPUT_DIR)
     logger.info("=" * 60)
-    logger.info("RL EXPERIMENT 02: DQN BASELINE")
+    logger.info("RL EXPERIMENT 01: PPO BASELINE")
     logger.info("=" * 60)
     logger.info(
         f"Config: pop={POP_SIZE}, ngen={MAX_GENERATIONS}, steps={MAX_STEPS}, timesteps={TIMESTEPS}"
@@ -99,16 +100,16 @@ def main() -> None:
         f"Environment created: obs_space={env.observation_space.shape}, action_space={env.action_space.n}"
     )
 
-    # TRAIN DQN AGENT
+    # TRAIN PPO AGENT
 
-    logger.info("Training DQN agent...")
+    logger.info("Training PPO agent...")
     agent, train_time = train_agent(
-        agent_type="dqn",
+        agent_type="ppo",
         env=env,
         timesteps=TIMESTEPS,
         seed=SEED,
     )
-    logger.info(f"DQN agent trained in {train_time:.2f}s")
+    logger.info(f"PPO agent trained in {train_time:.2f}s")
 
     # EVALUATE AGENT
 
@@ -116,7 +117,7 @@ def main() -> None:
     result = evaluate_agent(agent, env, max_generations=MAX_GENERATIONS)
 
     logger.info("=" * 50)
-    logger.info("RL EXPERIMENT 02: DQN BASELINE RESULTS")
+    logger.info("RL EXPERIMENT 01: PPO BASELINE RESULTS")
     logger.info("=" * 50)
     logger.info(f"Training time: {train_time:.2f}s")
     logger.info(f"Best fitness:  {result.best_fitness}")
@@ -127,7 +128,7 @@ def main() -> None:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_02_dqn_baseline",
+        "experiment": "rl_01_train_ppo",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,
@@ -135,7 +136,7 @@ def main() -> None:
             "max_generations": MAX_GENERATIONS,
             "max_steps": MAX_STEPS,
             "timesteps": TIMESTEPS,
-            "agent_type": "dqn",
+            "agent_type": "ppo",
         },
         "results": {
             "train_time_seconds": train_time,
@@ -150,7 +151,7 @@ def main() -> None:
 
     logger.info(f"Results saved to: {results_path}")
     logger.info("=" * 60)
-    logger.info("RL EXPERIMENT 02 COMPLETE")
+    logger.info("RL EXPERIMENT 01 COMPLETE")
     logger.info("=" * 60)
 
 

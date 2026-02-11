@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
-RL Experiment 10: Summary & Component Status
+RL Verify: Component Status Check
 
-Verify all RL components are properly configured and summarize experiment status.
+Verify all RL components are properly configured:
+  - Environment setup
+  - Agent initialization
+  - Reward calculation
+  - Training loop
 
 Usage:
-    python runs/rl_10_summary.py
+    python runs/rl_10_verify.py
 """
 from __future__ import annotations
 
@@ -24,7 +28,7 @@ from schedule_engine.rl.helpers import build_notebook_config
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_10_summary.log"
+    log_file = output_dir / "rl_10_verify.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -38,7 +42,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_10_summary")
+    logger = logging.getLogger("rl_10_verify")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -52,7 +56,7 @@ def main() -> None:
     # CONFIGURATION
 
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_10_summary" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_10_verify" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
@@ -166,7 +170,7 @@ All scripts are now STANDALONE with:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_10_summary",
+        "experiment": "rl_10_verify",
         "timestamp": TIMESTAMP,
         "config": {
             "rl_enabled": config.rl.enabled,

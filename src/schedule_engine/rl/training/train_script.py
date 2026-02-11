@@ -581,7 +581,7 @@ def main() -> None:
         )
 
         output_dir = (
-            Path("output") / "mode_e_rl_guided" / f"{timestamp_str}_{experiment_name}"
+            Path("output") / "ga_05_repair_qlearning" / f"{timestamp_str}_{experiment_name}"
         )
         output_dir.mkdir(parents=True, exist_ok=True)
 

@@ -10,8 +10,8 @@ uv sync --frozen
 uv run run
 ```
 
-Open a notebook from `notebooks/` (e.g., `mode_e_rl_guided.ipynb`) and run the
-cells in order.
+Open `runs/ga_05_repair_qlearning.py` for RL-guided experiments, or any script
+from `runs/` and run directly.
 
 ## Key configuration knobs
 

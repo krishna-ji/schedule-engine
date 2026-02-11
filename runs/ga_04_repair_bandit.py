@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Mode E: RL-Guided NSGA-II  (Production)
+GA Repair Bandit: NSGA-II + Multi-Armed Bandit Selection
 
-Full deployment with RL-guided heuristic selection using Q-learning.
+Applies repair heuristics using bandit algorithms (epsilon-greedy or UCB).
+Learns which repairs work best for the current problem online.
 
 Usage:
-    python runs/mode_e_rl_guided.py
+    python runs/ga_04_repair_bandit.py
 """
 
 import sys
@@ -15,7 +16,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.experiments import RLGuidedExperiment
+from schedule_engine.experiments import AdaptiveExperiment
 
 # ── PRODUCTION CONFIGURATION ─────────────────────────────────────────
 
@@ -31,7 +32,7 @@ FITNESS_WEIGHTS = (-1.0, -1.0)  # (hard, soft) - negative = minimize
 
 # Data Paths
 DATA_DIR = PROJECT_ROOT / "data"
-OUTPUT_DIR = None  # Auto-generated: output/mode_e_rl_guided/<timestamp>
+OUTPUT_DIR = None  # Auto-generated: output/ga_04_repair_bandit/<timestamp>
 
 # Time Configuration
 OPENING_TIME = "10:00"
@@ -42,17 +43,18 @@ CLOSED_DAYS = ["Saturday"]
 LOG_INTERVAL = 25  # Generations between detailed logs
 VERBOSE = True
 
-# ── Mode E Specific: RL-Guided Repair ─────────────────────────────────
-REPAIR_PROB = 0.3  # Probability of applying repair to offspring
-LEARNING_RATE = 0.2  # Q-learning alpha (how fast to update Q-values)
-EPSILON_START = 1.0  # Initial exploration rate (1.0 = fully random)
-EPSILON_END = 0.1  # Final exploration rate (0.0 = fully greedy)
-EPSILON_DECAY = 0.997  # Multiplicative decay per generation (slower for 1000 gens)
+# ── Mode D Specific: Adaptive Repair ──────────────────────────────────
+REPAIR_PROB = 0.45  # Probability of applying repair to offspring
+REPAIR_MAX_STEPS = 5  # Max repair steps per individual
+REPAIR_POLICY = "epsilon_greedy"  # Policy: "epsilon_greedy", "ucb", "softmax"
+REPAIR_BUDGET_MS = 200.0  # Time budget for repairs per generation (ms)
+REPAIR_MAX_CANDIDATES = 50  # Max candidate moves per step
+REPAIR_EPSILON = 0.1  # Exploration rate for epsilon-greedy
 
 
 def main() -> None:
-    """Run Mode E: RL-Guided NSGA-II experiment."""
-    exp = RLGuidedExperiment(
+    """Run Mode D: Adaptive Heuristics experiment."""
+    exp = AdaptiveExperiment(
         seed=SEED,
         pop_size=POP_SIZE,
         ngen=NGEN,
@@ -67,10 +69,11 @@ def main() -> None:
         log_interval=LOG_INTERVAL,
         verbose=VERBOSE,
         repair_prob=REPAIR_PROB,
-        learning_rate=LEARNING_RATE,
-        epsilon_start=EPSILON_START,
-        epsilon_end=EPSILON_END,
-        epsilon_decay=EPSILON_DECAY,
+        repair_max_steps=REPAIR_MAX_STEPS,
+        repair_policy=REPAIR_POLICY,
+        repair_budget_ms=REPAIR_BUDGET_MS,
+        repair_max_candidates=REPAIR_MAX_CANDIDATES,
+        repair_epsilon=REPAIR_EPSILON,
     )
     exp.run()
 

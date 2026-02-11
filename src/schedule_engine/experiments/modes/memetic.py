@@ -83,7 +83,7 @@ class MemeticExperiment(BaseExperiment):
 
     def _get_experiment_name(self) -> str:
         """Return experiment name."""
-        return "mode_b_memetic"
+        return "ga_02_memetic"
 
     def _get_extra_config(self) -> dict[str, Any]:
         """Return memetic-specific configuration."""

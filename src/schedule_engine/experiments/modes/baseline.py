@@ -37,7 +37,7 @@ class BaselineExperiment(BaseExperiment):
 
     def _get_experiment_name(self) -> str:
         """Return experiment name."""
-        return "mode_a_baseline"
+        return "ga_01_baseline"
 
     def _run_evolution(self) -> tuple[list[Any], EvolutionStats]:
         """

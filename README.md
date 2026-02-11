@@ -21,17 +21,17 @@ University course scheduling engine that combines NSGA-II genetic algorithms wit
 uv sync --frozen          # Install dependencies
 ```
 
-Then open a notebook in `notebooks/`:
+Run experiments from `runs/`:
 
-| Notebook | Description |
-|----------|-------------|
-| `mode_a_baseline.ipynb` | **Pure NSGA-II** - baseline without enhancements |
-| `mode_b_memetic.ipynb` | **+ Memetic search** - with IGLS repair |
-| `mode_c_roundrobin.ipynb` | **+ Round-robin** - cycling heuristics |
-| `mode_d_adaptive.ipynb` | **+ Adaptive** - performance-based selection |
-| `mode_e_rl_guided.ipynb` | **+ RL-guided** - Q-learning heuristic selection |
+| Script | Description |
+|--------|-------------|
+| `ga_01_baseline.py` | **Pure NSGA-II** - baseline without enhancements |
+| `ga_02_memetic.py` | **+ Local Search** - with greedy repair |
+| `ga_03_repair_sequential.py` | **+ Round-Robin** - repairs in fixed order |
+| `ga_04_repair_bandit.py` | **+ Multi-Armed Bandit** - UCB/ε-greedy selection |
+| `ga_05_repair_qlearning.py` | **+ Q-Learning** - tabular RL repair selection |
 
-Each notebook has inline configuration - just tweak the parameters and run!
+Each script has inline configuration - just tweak the parameters and run!
 
 ## Notebook Helper Module
 

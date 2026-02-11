@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Mode D: Adaptive Heuristics  (Production)
+GA Repair Sequential: NSGA-II + Round-Robin Repairs
 
-NSGA-II + Adaptive Selection - Uses epsilon-greedy or UCB to learn best heuristics.
+Applies repair heuristics in fixed cyclic order (HC1 → HC2 → ... → HC8 → repeat).
+Deterministic selection - no learning, predictable behavior.
 
 Usage:
-    python runs/mode_d_adaptive.py
+    python runs/ga_03_repair_sequential.py
 """
 
 import sys
@@ -15,7 +16,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.experiments import AdaptiveExperiment
+from schedule_engine.experiments import RoundRobinExperiment
 
 # ── PRODUCTION CONFIGURATION ─────────────────────────────────────────
 
@@ -31,7 +32,7 @@ FITNESS_WEIGHTS = (-1.0, -1.0)  # (hard, soft) - negative = minimize
 
 # Data Paths
 DATA_DIR = PROJECT_ROOT / "data"
-OUTPUT_DIR = None  # Auto-generated: output/mode_d_adaptive/<timestamp>
+OUTPUT_DIR = None  # Auto-generated: output/ga_03_repair_sequential/<timestamp>
 
 # Time Configuration
 OPENING_TIME = "10:00"
@@ -42,18 +43,17 @@ CLOSED_DAYS = ["Saturday"]
 LOG_INTERVAL = 25  # Generations between detailed logs
 VERBOSE = True
 
-# ── Mode D Specific: Adaptive Repair ──────────────────────────────────
-REPAIR_PROB = 0.45  # Probability of applying repair to offspring
+# ── Mode C Specific: Round-Robin Repair ───────────────────────────────
+REPAIR_PROB = 0.3  # Probability of applying repair to offspring
 REPAIR_MAX_STEPS = 5  # Max repair steps per individual
-REPAIR_POLICY = "epsilon_greedy"  # Policy: "epsilon_greedy", "ucb", "softmax"
 REPAIR_BUDGET_MS = 200.0  # Time budget for repairs per generation (ms)
 REPAIR_MAX_CANDIDATES = 50  # Max candidate moves per step
-REPAIR_EPSILON = 0.1  # Exploration rate for epsilon-greedy
+REPAIR_EPSILON = 0.1  # Exploration rate (unused in round_robin)
 
 
 def main() -> None:
-    """Run Mode D: Adaptive Heuristics experiment."""
-    exp = AdaptiveExperiment(
+    """Run Mode C: Round-Robin NSGA-II experiment."""
+    exp = RoundRobinExperiment(
         seed=SEED,
         pop_size=POP_SIZE,
         ngen=NGEN,
@@ -69,7 +69,6 @@ def main() -> None:
         verbose=VERBOSE,
         repair_prob=REPAIR_PROB,
         repair_max_steps=REPAIR_MAX_STEPS,
-        repair_policy=REPAIR_POLICY,
         repair_budget_ms=REPAIR_BUDGET_MS,
         repair_max_candidates=REPAIR_MAX_CANDIDATES,
         repair_epsilon=REPAIR_EPSILON,

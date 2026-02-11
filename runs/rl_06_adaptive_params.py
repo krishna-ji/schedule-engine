@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """
-RL Experiment 06: Adaptive Probabilities
+RL Adaptive Params: Learn GA Parameters via RL
 
-Demonstrate adaptive GA probability configuration (fixed vs adaptive).
+Use RL to dynamically adjust GA parameters:
+  - Crossover probability
+  - Mutation probability
+  - Selection pressure
+
+Compares fixed vs adaptive configuration.
 
 Usage:
-    python runs/rl_06_adaptive_probabilities.py
+    python runs/rl_06_adaptive_params.py
 """
 from __future__ import annotations
 
@@ -24,7 +29,7 @@ from schedule_engine.rl.helpers import build_notebook_config
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_06_adaptive_probabilities.log"
+    log_file = output_dir / "rl_06_adaptive_params.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -38,7 +43,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_06_adaptive_probabilities")
+    logger = logging.getLogger("rl_06_adaptive_params")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -55,7 +60,7 @@ def main() -> None:
 
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_06_adaptive_probabilities" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_06_adaptive_params" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
@@ -122,7 +127,7 @@ When adaptive_probabilities=True:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_06_adaptive_probabilities",
+        "experiment": "rl_06_adaptive_params",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,

@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-RL Experiment 09: Multi-Agent Systems
+RL Multi-Agent: Agent Coordination Analysis
 
-Analyze agent selection dynamics across multiple episodes with multi-agent coordinator.
+Analyze multi-agent coordinator dynamics:
+  - Which specialist gets selected when
+  - State-action correlation
+  - Agent switching patterns
 
 Usage:
-    python runs/rl_09_multi_agent_systems.py
+    python runs/rl_09_multi_agent.py
 """
 from __future__ import annotations
 
@@ -31,7 +34,7 @@ from schedule_engine.rl.multi_agent.agent_coordinator import AgentCoordinator
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_09_multi_agent_systems.log"
+    log_file = output_dir / "rl_09_multi_agent.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -45,7 +48,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_09_multi_agent_systems")
+    logger = logging.getLogger("rl_09_multi_agent")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -67,7 +70,7 @@ def main() -> None:
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_09_multi_agent_systems" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_09_multi_agent" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
@@ -177,7 +180,7 @@ def main() -> None:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_09_multi_agent_systems",
+        "experiment": "rl_09_multi_agent",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,

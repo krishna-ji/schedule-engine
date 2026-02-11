@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-RL Experiment 04: Specialist Agents
+RL Train Specialist: Multi-Agent with Specialists
 
-Demonstrate state-based agent selection with multi-agent coordinator.
+Train specialized agents for different constraint types:
+  - Hard constraint specialist
+  - Soft constraint specialist
+  - Coordinator selects appropriate agent based on state
 
 Usage:
-    python runs/rl_04_specialist_agents.py
+    python runs/rl_04_train_specialist.py
 """
 from __future__ import annotations
 
@@ -31,7 +34,7 @@ from schedule_engine.rl.multi_agent.agent_coordinator import AgentCoordinator
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_04_specialist_agents.log"
+    log_file = output_dir / "rl_04_train_specialist.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -45,7 +48,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_04_specialist_agents")
+    logger = logging.getLogger("rl_04_train_specialist")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -67,7 +70,7 @@ def main() -> None:
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
-    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_04_specialist_agents" / TIMESTAMP
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_04_train_specialist" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging
@@ -156,7 +159,7 @@ def main() -> None:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_04_specialist_agents",
+        "experiment": "rl_04_train_specialist",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,

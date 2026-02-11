@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
-RL Experiment 08: Hyperparameter Sensitivity
+RL Hyperparameter Sweep: Learning Rate Sensitivity
 
-Analyze sensitivity to learning rate hyperparameter for PPO.
+Test PPO performance across different learning rates:
+  - 1e-5 (very conservative)
+  - 1e-4 (conservative)
+  - 3e-4 (default)
+  - 1e-3 (aggressive)
 
 Usage:
-    python runs/rl_08_hyperparameter_sensitivity.py
+    python runs/rl_08_hyperparam_sweep.py
 """
 from __future__ import annotations
 
@@ -32,7 +36,7 @@ from schedule_engine.rl.helpers import (
 
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Setup logging to file and console."""
-    log_file = output_dir / "rl_08_hyperparameter_sensitivity.log"
+    log_file = output_dir / "rl_08_hyperparam_sweep.log"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
@@ -46,7 +50,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
 
-    logger = logging.getLogger("rl_08_hyperparameter_sensitivity")
+    logger = logging.getLogger("rl_08_hyperparam_sweep")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
@@ -72,7 +76,7 @@ def main() -> None:
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
     OUTPUT_DIR = (
-        PROJECT_ROOT / "output" / "rl_08_hyperparameter_sensitivity" / TIMESTAMP
+        PROJECT_ROOT / "output" / "rl_08_hyperparam_sweep" / TIMESTAMP
     )
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -163,7 +167,7 @@ def main() -> None:
 
     logger.info("Saving results...")
     results_data = {
-        "experiment": "rl_08_hyperparameter_sensitivity",
+        "experiment": "rl_08_hyperparam_sweep",
         "timestamp": TIMESTAMP,
         "config": {
             "seed": SEED,

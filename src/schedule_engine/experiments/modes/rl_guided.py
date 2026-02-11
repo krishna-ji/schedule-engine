@@ -84,7 +84,7 @@ class RLGuidedExperiment(BaseExperiment):
 
     def _get_experiment_name(self) -> str:
         """Return experiment name."""
-        return "mode_e_rl_guided"
+        return "ga_05_repair_qlearning"
 
     def _get_extra_config(self) -> dict[str, Any]:
         """Return RL-specific configuration."""

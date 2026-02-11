@@ -62,4 +62,4 @@ class AdaptiveExperiment(MemeticExperiment):
 
     def _get_experiment_name(self) -> str:
         """Return experiment name."""
-        return "mode_d_adaptive"
+        return "ga_04_repair_bandit"
