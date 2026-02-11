@@ -39,8 +39,8 @@ OPENING_TIME = "10:00"
 CLOSING_TIME = "17:00"
 CLOSED_DAYS = ["Saturday"]
 
-# Feasibility Check
-EXPECTED_QUANTA = 42
+# Population Initialization
+INIT_STRATEGY = "smart"  # Options: "smart", "hybrid", "random"
 
 # Logging
 LOG_INTERVAL = 50  # Generations between detailed logs
@@ -61,7 +61,7 @@ def main() -> None:
         opening_time=OPENING_TIME,
         closing_time=CLOSING_TIME,
         closed_days=CLOSED_DAYS,
-        expected_quanta=EXPECTED_QUANTA,
+        init_strategy=INIT_STRATEGY,
         log_interval=LOG_INTERVAL,
         verbose=VERBOSE,
     )

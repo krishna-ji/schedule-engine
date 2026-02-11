@@ -84,8 +84,14 @@ class BaseExperiment(ABC):
         Day end time in "HH:MM" format
     closed_days : list[str]
         List of closed days (e.g., ["Saturday"])
-    expected_quanta : int
-        Expected quanta per week for feasibility check
+    expected_quanta : int | None
+        Expected quanta per week for feasibility check.
+        If None (default), auto-calculated from opening_time, closing_time, closed_days.
+    init_strategy : str
+        Population initialization strategy:
+        - "smart": Conflict-aware random (default, best quality)
+        - "hybrid": Mix of greedy + smart + random (good diversity)
+        - "random": Pure random (fastest, lowest quality)
     log_interval : int
         Generations between detailed log output
     verbose : bool
@@ -109,7 +115,9 @@ class BaseExperiment(ABC):
         opening_time: str = "10:00",
         closing_time: str = "17:00",
         closed_days: list[str] | None = None,
-        expected_quanta: int = 42,
+        expected_quanta: int | None = None,
+        # Population initialization
+        init_strategy: str = "smart",
         # Logging
         log_interval: int = 10,
         verbose: bool = True,
@@ -127,6 +135,7 @@ class BaseExperiment(ABC):
         self.closing_time = closing_time
         self.closed_days = closed_days or ["Saturday"]
         self.expected_quanta = expected_quanta
+        self.init_strategy = init_strategy
         self.log_interval = log_interval
         self.verbose = verbose
 
@@ -248,6 +257,14 @@ class BaseExperiment(ABC):
         )
         self.logger.info(f"Data loaded: {self._data.summary()}")
 
+        # Auto-calculate expected_quanta if not provided
+        actual_quanta = len(self._data.qts.get_all_operating_quanta())
+        if self.expected_quanta is None:
+            self.expected_quanta = actual_quanta
+            self.logger.debug(
+                "Auto-calculated expected_quanta=%d from time config", actual_quanta
+            )
+
         # Run feasibility checks
         run_feasibility_checks(
             self._data,
@@ -281,10 +298,11 @@ class BaseExperiment(ABC):
         self._toolbox = base.Toolbox()
         self._toolbox.register(
             "individual",
-            lambda: creator.Individual(self.population_factory.random_individual()),
+            lambda: creator.Individual(self._create_individual_by_strategy()),
         )
         self._toolbox.register(
-            "population", tools.initRepeat, list, self._toolbox.individual
+            "population",
+            self._create_population_by_strategy,
         )
         self._toolbox.register("evaluate", self.evaluate)
         self._toolbox.register("mate", course_aware_crossover)
@@ -295,6 +313,30 @@ class BaseExperiment(ABC):
         """Initialize random seeds for reproducibility."""
         random.seed(self.seed)
         np.random.seed(self.seed)
+
+    def _create_individual_by_strategy(self) -> list:
+        """Create single individual using configured strategy."""
+        if self.init_strategy == "hybrid":
+            return self.population_factory.greedy_individual()
+        elif self.init_strategy == "random":
+            return self.population_factory.random_individual(conflict_aware=False)
+        else:  # "smart" (default)
+            return self.population_factory.random_individual(conflict_aware=True)
+
+    def _create_population_by_strategy(self, n: int) -> list[Any]:
+        """Create population using configured strategy."""
+        if self.init_strategy == "hybrid":
+            # Hybrid: Mix of greedy + smart + random
+            raw_pop = self.population_factory.create_population(n, strategy="hybrid")
+        elif self.init_strategy == "random":
+            # Pure random
+            raw_pop = self.population_factory.create_population(n, strategy="random")
+        else:  # "smart" (default)
+            # Conflict-aware random
+            raw_pop = self.population_factory.create_population(n, strategy="smart")
+
+        # Wrap in DEAP Individual
+        return [creator.Individual(ind) for ind in raw_pop]
 
     # -------------------- Evolution Helpers --------------------
 
@@ -411,6 +453,7 @@ class BaseExperiment(ABC):
                 "cxpb": self.cxpb,
                 "mutpb": self.mutpb,
                 "fitness_weights": list(self.fitness_weights),
+                "init_strategy": self.init_strategy,
                 **self._get_extra_config(),
             },
             "results": {
@@ -468,7 +511,7 @@ class BaseExperiment(ABC):
         console.print(
             f"  [dim]pop={self.pop_size}  ngen={self.ngen}  "
             f"cxpb={self.cxpb}  mutpb={self.mutpb}  "
-            f"seed={self.seed}  cpus={get_cpu_count()}[/dim]"
+            f"seed={self.seed}  init={self.init_strategy}  cpus={get_cpu_count()}[/dim]"
         )
         console.print(f"  [dim]output: {self.output_dir}[/dim]")
         console.print()
@@ -478,12 +521,13 @@ class BaseExperiment(ABC):
         self.logger.debug(exp_title)
         self.logger.debug("=" * 60)
         self.logger.debug(
-            "Config: pop=%d, ngen=%d, cxpb=%.2f, mutpb=%.2f, seed=%d",
+            "Config: pop=%d, ngen=%d, cxpb=%.2f, mutpb=%.2f, seed=%d, init=%s",
             self.pop_size,
             self.ngen,
             self.cxpb,
             self.mutpb,
             self.seed,
+            self.init_strategy,
         )
         self.logger.debug("Output: %s", self.output_dir)
 

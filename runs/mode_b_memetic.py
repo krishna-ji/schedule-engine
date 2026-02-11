@@ -38,9 +38,6 @@ OPENING_TIME = "10:00"
 CLOSING_TIME = "17:00"
 CLOSED_DAYS = ["Saturday"]
 
-# Feasibility Check
-EXPECTED_QUANTA = 42
-
 # Logging
 LOG_INTERVAL = 25  # Generations between detailed logs
 VERBOSE = True
@@ -68,7 +65,6 @@ def main() -> None:
         opening_time=OPENING_TIME,
         closing_time=CLOSING_TIME,
         closed_days=CLOSED_DAYS,
-        expected_quanta=EXPECTED_QUANTA,
         log_interval=LOG_INTERVAL,
         verbose=VERBOSE,
         local_search_prob=LOCAL_SEARCH_PROB,
