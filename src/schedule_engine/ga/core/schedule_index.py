@@ -412,7 +412,12 @@ class ScheduleIndex:
             for quantum in schedule.keys():
                 result['instructors'][quantum].add(instructor_id)
         
-        return dict(result)
+        # Convert inner defaultdicts to regular dicts for consistent behavior
+        return {
+            'groups': dict(result['groups']),
+            'rooms': dict(result['rooms']),
+            'instructors': dict(result['instructors'])
+        }
 
 
 def create_schedule_index(individual: List[SessionGene]) -> ScheduleIndex:
