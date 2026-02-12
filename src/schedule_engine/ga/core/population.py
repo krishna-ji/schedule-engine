@@ -1006,15 +1006,29 @@ def create_session_gene_with_conflict_avoidance(
     quanta_needed = num_quanta if num_quanta > 0 else 1
 
     if not assigned_quanta:
-        # Find available quanta that don't conflict
-        available_quanta = [q for q in context.available_quanta if q not in used_quanta]
+        # FIX: Use PER-RESOURCE conflict tracking instead of global used_quanta.
+        # A quantum is only blocked for THIS gene if the gene's groups or
+        # instructor already have a session at that time.
+        gene_blocked: set[int] = set()
+        for gid in group_ids:
+            gene_blocked.update(group_schedule.get(gid, set()))
+        if instructor is not None:
+            gene_blocked.update(
+                instructor_schedule.get(instructor.instructor_id, set())
+            )
+
+        # Find quanta not blocked for this specific gene
+        available_quanta = [
+            q for q in context.available_quanta if q not in gene_blocked
+        ]
 
         if len(available_quanta) < quanta_needed:
+            # Not enough conflict-free quanta — use all quanta
             available_quanta = list(context.available_quanta)
 
-        # Assign time quanta
+        # Assign time quanta (use per-gene blocked set, not global)
         assigned_quanta = assign_conflict_free_quanta(
-            quanta_needed, available_quanta, used_quanta
+            quanta_needed, available_quanta, gene_blocked
         )
 
         if assigned_quanta and len(assigned_quanta) != quanta_needed:
@@ -1022,7 +1036,7 @@ def create_session_gene_with_conflict_avoidance(
                 f"{course_id}: assign_conflict_free_quanta returned {len(assigned_quanta)} but needed {quanta_needed}"
             )
 
-        # CRITICAL: If assignment fails, wrap around
+        # CRITICAL: If assignment fails, pick a random start (not always 0)
         if not assigned_quanta:
             if len(context.available_quanta) >= quanta_needed:
                 start_idx = random.randint(
@@ -1719,9 +1733,9 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> list[Indiv
 
     # Gracefully handle missing config (use defaults)
     cfg = get_config_or_default()
-    enhancement_cfg = getattr(cfg, 'enhancements', None)
-    if enhancement_cfg and getattr(enhancement_cfg, 'master_enabled', False):
-        greedy_percent = getattr(enhancement_cfg, 'greedy_initialization_percent', 0.4)
+    enhancement_cfg = getattr(cfg, "enhancements", None)
+    if enhancement_cfg and getattr(enhancement_cfg, "master_enabled", False):
+        greedy_percent = getattr(enhancement_cfg, "greedy_initialization_percent", 0.4)
     else:
         greedy_percent = 0.4  # Default: 40% greedy
 

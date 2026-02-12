@@ -60,7 +60,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
         )
     # TIME: Mutate intelligently (preserve quanta count!)
     # CRITICAL: Keep the SAME number of quanta to preserve course requirements
-    new_quanta = mutate_time_quanta(gene, course, context)
+    new_quanta = mutate_time_quanta(gene, course, context, individual=None)
 
     # Convert quanta list to contiguous representation
     from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
@@ -79,57 +79,73 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
 
 
 def mutate_time_quanta(
-    gene: SessionGene, course: Course | None, context: SchedulingContext
+    gene: SessionGene,
+    course: Course | None,
+    context: SchedulingContext,
+    individual: list[SessionGene] | None = None,
 ) -> list[int]:
     """
-    Intelligently mutate time quanta while PRESERVING quanta count.
+    Conflict-aware time mutation that PRESERVES quanta count.
 
     CRITICAL: Number of quanta MUST stay the same to maintain course requirements!
     Duration (num_quanta) is fixed by course.quanta_per_week and should never change.
 
     Only changes WHEN the session happens, not HOW LONG it is.
 
+    When `individual` is provided, avoids quanta already occupied by the gene's
+    groups and instructor (conflict-aware).  Otherwise falls back to random.
+
     Returns:
         List[int]: New quanta list with EXACT same length as gene.num_quanta
-
-    Note: Uses SessionGene's contiguous representation (start_quanta + num_quanta)
-          introduced in Nov 2025 architecture update.
     """
-    # CRITICAL: Preserve the exact number of quanta (NEVER modify)
-    # num_quanta equals course.quanta_per_week (e.g., L+T for theory, P for practical)
-    # Theory sessions: Full session with all enrolled subgroups (e.g., 4-6 quanta)
-    # Practical sessions: Full session per subgroup (e.g., 1-3 quanta)
-    # course_completeness constraint validates quanta match course requirements
     num_quanta = gene.num_quanta
 
     # 30% chance to keep current time slots completely unchanged
     if random.random() < 0.3:
         return gene.get_quanta_list()
 
-    # Try to assign consecutive quanta for better scheduling
     available_quanta = list(context.available_quanta)
 
-    # CRITICAL: If not enough available quanta, keep original time slots
-    # DO NOT reduce num_quanta - this would violate course completeness!
     if len(available_quanta) < num_quanta:
-        return gene.get_quanta_list()  # Keep original
+        return gene.get_quanta_list()
 
-    # Attempt to find consecutive slots
-    for _attempt in range(5):  # Try 5 times to find consecutive slots
-        start_idx = random.randint(0, len(available_quanta) - num_quanta)
-        consecutive_quanta = available_quanta[start_idx : start_idx + num_quanta]
+    # --- Conflict-aware: build set of quanta blocked for THIS gene ---
+    blocked: set[int] = set()
+    if individual is not None:
+        gene_groups = set(gene.group_ids)
+        for other in individual:
+            if other is gene:
+                continue
+            # Same group? Block those quanta.
+            if gene_groups & set(other.group_ids):
+                for q in range(
+                    other.start_quanta, other.start_quanta + other.num_quanta
+                ):
+                    blocked.add(q)
+            # Same instructor? Block those quanta.
+            if other.instructor_id == gene.instructor_id:
+                for q in range(
+                    other.start_quanta, other.start_quanta + other.num_quanta
+                ):
+                    blocked.add(q)
 
-        # Verify we got EXACTLY the right number of quanta
-        # Check if quanta are somewhat consecutive (simplified check)
+    # Prefer conflict-free quanta
+    free_quanta = [q for q in available_quanta if q not in blocked]
+    pool = free_quanta if len(free_quanta) >= num_quanta else available_quanta
+
+    # Attempt to find consecutive slots in the preferred pool
+    for _attempt in range(10):
+        start_idx = random.randint(0, len(pool) - num_quanta)
+        consecutive_quanta = pool[start_idx : start_idx + num_quanta]
+
         if len(consecutive_quanta) == num_quanta and (
             num_quanta == 1
             or (max(consecutive_quanta) - min(consecutive_quanta)) < num_quanta * 2
         ):
             return consecutive_quanta
 
-    # Fallback to random selection - but MUST return exactly num_quanta items
-    # Use random.sample which guarantees exact count
-    return random.sample(available_quanta, num_quanta)
+    # Fallback to random selection from the pool
+    return random.sample(pool, num_quanta)
 
 
 def find_suitable_rooms_for_course(
@@ -208,9 +224,63 @@ def mutate_individual(
         modified_individual, stats = constraint_guided_mutation(individual, context)
         return (modified_individual,)
     else:
-        # Traditional random mutation (original behavior)
-        logger.debug(" Using random mutation (pure NSGA-II)")
+        # Traditional random mutation — now conflict-aware
+        logger.debug(" Using random mutation (conflict-aware)")
         for i in range(len(individual)):
             if random.random() < mut_prob:
-                individual[i] = mutate_gene(individual[i], context)
+                gene = individual[i]
+                course_key = (gene.course_id, gene.course_type)
+                course = context.courses.get(course_key)
+                # Conflict-aware time mutation using full individual context
+                new_quanta = mutate_time_quanta(
+                    gene, course, context, individual=individual
+                )
+                from schedule_engine.ga.core.quanta_converter import (
+                    quanta_list_to_contiguous,
+                )
+
+                start_q, num_q = quanta_list_to_contiguous(new_quanta)
+
+                # Instructor: qualified-aware
+                qualified_instructors = [
+                    inst_id
+                    for inst_id, inst in context.instructors.items()
+                    if course_key in getattr(inst, "qualified_courses", [])
+                ]
+                if (
+                    gene.instructor_id in qualified_instructors
+                    and random.random() < 0.5
+                ):
+                    new_instructor = gene.instructor_id
+                else:
+                    new_instructor = random.choice(
+                        qualified_instructors
+                        if qualified_instructors
+                        else [gene.instructor_id]
+                    )
+
+                # Room: type-aware
+                primary_group = gene.group_ids[0] if gene.group_ids else None
+                suitable_rooms = find_suitable_rooms_for_course(
+                    gene.course_id,
+                    gene.course_type,
+                    primary_group if primary_group else "",
+                    context,
+                )
+                if gene.room_id in suitable_rooms and random.random() < 0.3:
+                    new_room = gene.room_id
+                else:
+                    new_room = random.choice(
+                        suitable_rooms if suitable_rooms else list(context.rooms.keys())
+                    )
+
+                individual[i] = SessionGene(
+                    course_id=gene.course_id,
+                    course_type=gene.course_type,
+                    instructor_id=new_instructor,
+                    group_ids=gene.group_ids,
+                    room_id=new_room,
+                    start_quanta=start_q,
+                    num_quanta=num_q,
+                )
         return (individual,)

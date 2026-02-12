@@ -586,9 +586,15 @@ def create_evaluator(
 def course_aware_crossover(
     ind1: list[SessionGene],
     ind2: list[SessionGene],
-    cx_prob: float = 0.5,
+    cx_prob: float = 0.15,
 ) -> tuple[list[SessionGene], list[SessionGene]]:
-    """Course-group aware crossover. Delegates to operators/crossover.py."""
+    """Course-group aware crossover. Delegates to operators/crossover.py.
+
+    cx_prob controls the per-gene swap probability. Lower values (0.10-0.20)
+    preserve more conflict-free assignments from smart init / guided mutation.
+    The old default of 0.5 was too destructive, causing stagnation by undoing
+    conflict-aware placements faster than mutation could repair them.
+    """
     from schedule_engine.ga.operators.crossover import crossover_course_group_aware
 
     return crossover_course_group_aware(ind1, ind2, cx_prob=cx_prob)
@@ -606,7 +612,7 @@ def smart_mutation(
         individual,
         data.context,
         mut_prob=gene_mut_prob,
-        guided=False,
+        guided=True,
     )
     return list(mutated)
 
