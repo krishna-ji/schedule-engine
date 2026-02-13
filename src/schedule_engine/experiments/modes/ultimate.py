@@ -12,14 +12,10 @@ possible:
 
   Phase 2: Iterated Local Search (ILS)
            Perturb → Repair → Gene-LS → RepairEngine → Accept if improved.
-           Three perturbation strategies rotate automatically:
-             (a) Smart gene-level perturbation (group/instructor-aware)
-             (b) Group-cluster scatter (reschedules all sessions of the most
-                 conflicted group simultaneously)
-             (c) Constraint-focused perturbation (targets the dominant hard
-                 constraint type)
-           Simulated annealing acceptance allows escaping local optima.
-           Diversification restart triggers after prolonged stagnation.
+           Greedy acceptance (only accept strict improvements).
+           Periodic group & instructor rescheduling (ruin-and-recreate) on
+           stagnation every 10 non-improving iterations.
+           Warm + fresh diversification restart on prolonged stagnation.
 
 Repair arsenal used:
   • ``repair_individual_unified`` — 11 registered deterministic operators
@@ -27,6 +23,8 @@ Repair arsenal used:
     time + room + instructor + combined neighbourhoods
   • ``RepairEngine`` — evaluation-guided MoveTime / SwapRoom /
     ReassignInstructor with epsilon-greedy policy
+  • ``group_reschedule_pass`` — ruin-and-recreate for worst conflicted groups
+  • ``instructor_reschedule_pass`` — ruin-and-recreate for worst instructors
 
 Usage::
 
@@ -86,10 +84,6 @@ class UltimateExperiment(BaseExperiment):
         Max iterations for deterministic repair pass (default 2).
     ls_max_iters : int
         Max greedy iterations per gene in local search (default 10).
-    sa_start_temp : float
-        Starting simulated annealing temperature (default 8.0).
-    sa_end_temp : float
-        Final SA temperature (default 0.3).
     stagnation_restart : int
         Trigger diversification restart after this many iterations without
         improvement (default 50).
@@ -102,24 +96,21 @@ class UltimateExperiment(BaseExperiment):
         n_starts: int = 5,
         repair_ls_rounds: int = 5,
         # ILS
-        ils_iterations: int = 200,
+        ils_iterations: int = 300,
         perturb_frac: float = 0.15,
         perturb_min: int = 10,
         # RepairEngine
         engine_max_steps: int = 20,
         engine_budget_ms: float = 500.0,
-        engine_max_candidates: int = 40,
+        engine_max_candidates: int = 50,
         engine_policy: str = "epsilon_greedy",
         engine_epsilon: float = 0.15,
         # Deterministic repair
-        deterministic_max_iters: int = 2,
+        deterministic_max_iters: int = 3,
         # Gene-level local search
-        ls_max_iters: int = 10,
-        # Simulated Annealing
-        sa_start_temp: float = 8.0,
-        sa_end_temp: float = 0.3,
+        ls_max_iters: int = 12,
         # Diversification
-        stagnation_restart: int = 50,
+        stagnation_restart: int = 30,
         # Parent
         **kwargs: Any,
     ) -> None:
@@ -136,16 +127,31 @@ class UltimateExperiment(BaseExperiment):
         self.engine_epsilon = engine_epsilon
         self.deterministic_max_iters = deterministic_max_iters
         self.ls_max_iters = ls_max_iters
-        self.sa_start_temp = sa_start_temp
-        self.sa_end_temp = sa_end_temp
         self.stagnation_restart = stagnation_restart
 
-        # Tracking
+        # Tracking — aggregates
         self._total_deterministic_fixes: int = 0
         self._total_engine_fixes: int = 0
         self._total_ls_fixes: int = 0
         self._ils_improvements: int = 0
         self._restarts: int = 0
+
+        # Tracking — per-iteration (for ILS plots)
+        self._iter_ids: list[int] = []
+        self._iter_best_hard: list[float] = []
+        self._iter_best_soft: list[float] = []
+        self._iter_cand_hard: list[float] = []
+        self._iter_det_fixes: list[int] = []
+        self._iter_ls_delta: list[int] = []
+        self._iter_engine_steps: list[int] = []
+        self._iter_times: list[float] = []
+        self._iter_perturb_sizes: list[int] = []
+        self._iter_constraint_history: dict[str, list[float]] = {}
+        self._improvement_iters: list[int] = []
+        self._restart_iters: list[int] = []
+        self._reschedule_events: list[dict[str, Any]] = []
+        self._improvement_events: list[dict[str, Any]] = []
+        self._phase1_hard: float = 0.0
 
     def _get_experiment_name(self) -> str:
         return "ga_06_ultimate"
@@ -164,8 +170,6 @@ class UltimateExperiment(BaseExperiment):
             "engine_epsilon": self.engine_epsilon,
             "deterministic_max_iters": self.deterministic_max_iters,
             "ls_max_iters": self.ls_max_iters,
-            "sa_start_temp": self.sa_start_temp,
-            "sa_end_temp": self.sa_end_temp,
             "stagnation_restart": self.stagnation_restart,
         }
 
@@ -176,6 +180,37 @@ class UltimateExperiment(BaseExperiment):
             "total_ls_fixes": self._total_ls_fixes,
             "ils_improvements": self._ils_improvements,
             "restarts": self._restarts,
+        }
+
+    def _create_exporter(self) -> Any:
+        """Override to use ILS-aware exporter that generates ILS plots."""
+        from schedule_engine.experiments.output.ils import ILSExporter
+
+        return ILSExporter(
+            output_dir=self.output_dir,
+            data=self.data,
+            logger=self.logger,
+            ils_data=self._get_ils_plot_data(),
+        )
+
+    def _get_ils_plot_data(self) -> dict[str, Any]:
+        """Collect all ILS tracking data for the exporter."""
+        return {
+            "iterations": self._iter_ids,
+            "best_hard": self._iter_best_hard,
+            "best_soft": self._iter_best_soft,
+            "candidate_hard": self._iter_cand_hard,
+            "det_fixes": self._iter_det_fixes,
+            "ls_delta": self._iter_ls_delta,
+            "engine_steps": self._iter_engine_steps,
+            "iter_times": self._iter_times,
+            "perturb_sizes": self._iter_perturb_sizes,
+            "constraint_history": self._iter_constraint_history,
+            "improvement_iters": self._improvement_iters,
+            "restart_iters": self._restart_iters,
+            "reschedule_events": self._reschedule_events,
+            "improvement_events": self._improvement_events,
+            "phase1_hard": self._phase1_hard,
         }
 
     # ------------------------------------------------------------------
@@ -713,15 +748,6 @@ class UltimateExperiment(BaseExperiment):
                 ls_delta = gene_ls_pass(ind)
                 self._total_ls_fixes += ls_delta
 
-            # Apply rescheduling passes + final repair on init
-            group_reschedule_pass(ind, n_groups=5)
-            instructor_reschedule_pass(ind, n_instr=5)
-            repair_individual_unified(
-                ind, self.data.context, selective=True,
-                max_iterations=self.deterministic_max_iters,
-            )
-            gene_ls_pass(ind)
-
             h, s = self.evaluate(ind)
             self.logger.info(
                 "Start %d/%d: Hard=%.0f Soft=%.0f (%.1fs)",
@@ -742,6 +768,7 @@ class UltimateExperiment(BaseExperiment):
             best_s,
             time.time() - start_time,
         )
+        self._phase1_hard = best_h
 
         # Log initial constraint breakdown
         breakdown = self._get_hard_breakdown(best_ind)
@@ -802,6 +829,7 @@ class UltimateExperiment(BaseExperiment):
             # ── greedy acceptance ─────────────────────────────────────
             ch, cs = self.evaluate(candidate)
             improved_tag = ""
+            _prev_best_h = best_h
 
             if (ch, cs) < (best_h, best_s):
                 best_h, best_s = ch, cs
@@ -809,18 +837,27 @@ class UltimateExperiment(BaseExperiment):
                 self._ils_improvements += 1
                 no_improve_count = 0
                 improved_tag = " *IMPROVED*"
+                self._improvement_iters.append(ils_iter + 1)
+                self._improvement_events.append({
+                    "iter": ils_iter + 1,
+                    "delta": _prev_best_h - best_h,
+                    "source": "perturb+repair",
+                })
             else:
                 no_improve_count += 1
 
             # ── periodic rescheduling on best (every 10 stagnant) ──────
             if no_improve_count > 0 and no_improve_count % 10 == 0:
                 trial = copy.deepcopy(best_ind)
+                resc_before_h = best_h
                 # Alternate: group(10,30,...) vs instructor(20,40,...)
                 if (no_improve_count // 10) % 2 == 1:
                     n_gr = 3 if no_improve_count < 20 else 5
                     group_reschedule_pass(trial, n_groups=n_gr)
+                    resc_type = "group"
                 else:
                     instructor_reschedule_pass(trial, n_instr=5)
+                    resc_type = "instructor"
                 # Full repair chain after rescheduling
                 repair_individual_unified(
                     trial,
@@ -833,16 +870,30 @@ class UltimateExperiment(BaseExperiment):
                     trial, budget_ms=self.engine_budget_ms * 3
                 )
                 new_h, new_s = self.evaluate(trial)
+                self._reschedule_events.append({
+                    "iter": ils_iter + 1,
+                    "type": resc_type,
+                    "before": resc_before_h,
+                    "after": new_h,
+                })
                 if (new_h, new_s) < (best_h, best_s):
                     best_h, best_s = new_h, new_s
                     best_ind = trial
                     self._ils_improvements += 1
                     no_improve_count = 0
+                    self._improvement_iters.append(ils_iter + 1)
+                    self._improvement_events.append({
+                        "iter": ils_iter + 1,
+                        "delta": resc_before_h - best_h,
+                        "source": "rescheduling",
+                    })
                     self.logger.info("  rescheduling improved to Hard=%d", best_h)
 
             # ── diversification restart ───────────────────────────────
             if no_improve_count >= self.stagnation_restart:
                 self._restarts += 1
+                self._restart_iters.append(ils_iter + 1)
+                restart_before_h = best_h
                 self.logger.info(
                     "Diversification restart #%d at ILS %d (stagnation=%d)",
                     self._restarts,
@@ -888,7 +939,35 @@ class UltimateExperiment(BaseExperiment):
                     best_h, best_s = restart_h, restart_s
                     best_ind = copy.deepcopy(restart_ind)
                     self._ils_improvements += 1
+                    self._improvement_iters.append(ils_iter + 1)
+                    self._improvement_events.append({
+                        "iter": ils_iter + 1,
+                        "delta": restart_before_h - best_h,
+                        "source": "restart",
+                    })
                 no_improve_count = 0
+
+            # ── per-iteration tracking (for ILS plots) ────────────────
+            iter_elapsed = time.time() - iter_start
+            self._iter_ids.append(ils_iter + 1)
+            self._iter_best_hard.append(float(best_h))
+            self._iter_best_soft.append(float(best_s))
+            self._iter_cand_hard.append(float(ch))
+            self._iter_det_fixes.append(int(fixes))
+            self._iter_ls_delta.append(int(ls_delta))
+            self._iter_engine_steps.append(int(r_stats.applied_steps))
+            self._iter_times.append(iter_elapsed)
+            self._iter_perturb_sizes.append(n_perturb)
+
+            # Per-constraint breakdown for this iteration
+            if ils_iter == 0 or (ils_iter + 1) % max(1, self.log_interval) == 0 or improved_tag:
+                bd = self._get_hard_breakdown(best_ind)
+                for cname, cnt in bd.items():
+                    if cname not in self._iter_constraint_history:
+                        self._iter_constraint_history[cname] = []
+                    self._iter_constraint_history[cname].append(float(cnt))
+                # Ensure consistent length — use iteration index as alignment key
+                self._iter_constraint_history.setdefault("_sample_iters", []).append(ils_iter + 1)
 
             # ── logging ───────────────────────────────────────────────
             elapsed = time.time() - start_time
