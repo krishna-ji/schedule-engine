@@ -82,10 +82,8 @@ def find_hard_conflict_sessions(
         constraint_name = constraint.name
 
         # Determine affected sessions using tracking functions
-        affected_indices, violation_count, details = (
-            _evaluate_constraint_with_tracking(
-                constraint_name, None, sessions, courses
-            )
+        affected_indices, violation_count, details = _evaluate_constraint_with_tracking(
+            constraint_name, None, sessions, courses
         )
 
         if violation_count > 0:
@@ -136,16 +134,21 @@ def _evaluate_constraint_with_tracking(
         if courses is None:
             return set(), 0, {}
         return _track_qualification_violations(sessions, courses)
-    elif constraint_name == "room_capacity":
+    elif constraint_name in ("room_capacity", "room_suitability"):
         return _track_room_capacity_violations(sessions)
     elif constraint_name == "room_features":
         return _track_room_feature_violations(sessions)
-    elif constraint_name == "instructor_availability":
+    elif constraint_name in ("instructor_availability", "instructor_time_availability"):
         return _track_instructor_availability_violations(sessions)
-    elif constraint_name == "group_availability":
+    elif constraint_name in ("group_availability", "room_time_availability"):
         return _track_group_availability_violations(sessions)
+    elif constraint_name == "course_completeness":
+        # Course completeness is a global constraint, not per-session trackable
+        return set(), 0, {}
     else:
-        # Generic fallback: evaluate constraint and assume all sessions may be involved
+        # Generic fallback: skip if no constraint function provided
+        if constraint_func is None:
+            return set(), 0, {}
         if courses:
             violation_count = constraint_func(sessions, courses)
         else:

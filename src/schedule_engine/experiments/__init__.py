@@ -29,6 +29,7 @@ from schedule_engine.experiments.modes.baseline import BaselineExperiment
 from schedule_engine.experiments.modes.memetic import MemeticExperiment
 from schedule_engine.experiments.modes.rl_guided import RLGuidedExperiment
 from schedule_engine.experiments.modes.roundrobin import RoundRobinExperiment
+from schedule_engine.experiments.modes.ultimate import UltimateExperiment
 from schedule_engine.experiments.output.base import BaseExporter
 from schedule_engine.experiments.output.repair_exporter import RepairExporter
 from schedule_engine.experiments.output.rl_exporter import RLExporter
@@ -43,4 +44,5 @@ __all__ = [
     "RoundRobinExperiment",
     "AdaptiveExperiment",
     "RLGuidedExperiment",
+    "UltimateExperiment",
 ]

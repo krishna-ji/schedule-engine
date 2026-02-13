@@ -81,7 +81,7 @@ def optimize_gene_greedy(
         iterations += 1
 
         # Generate neighborhood samples (random subset for speed)
-        neighbors = _generate_neighborhood(current_gene, context, max_samples=20)
+        neighbors = _generate_neighborhood(current_gene, context, max_samples=30)
 
         # Shuffle for random exploration
         random.shuffle(neighbors)
@@ -193,9 +193,10 @@ def _generate_neighborhood(
     Generate neighborhood of alternative gene assignments.
 
     Neighborhood types:
-    1. Time neighbors: Different time slots (same room)
-    2. Room neighbors: Different rooms (same time)
-    3. Combined: Different time AND room
+    1. Time neighbors: Different time slots (same room/instructor)
+    2. Room neighbors: Different rooms (same time/instructor)
+    3. Instructor neighbors: Different instructors (same time/room)
+    4. Time+Instructor combined: New time AND new instructor
 
     Args:
         gene: Current gene
@@ -224,7 +225,15 @@ def _generate_neighborhood(
     room_neighbors = _generate_room_neighbors(gene, course, context)
     neighbors.extend(room_neighbors)
 
-    # 3. Sample if too many neighbors
+    # 3. Generate INSTRUCTOR neighbors (change instructor, same time/room)
+    instructor_neighbors = _generate_instructor_neighbors(gene, context)
+    neighbors.extend(instructor_neighbors)
+
+    # 4. Generate TIME+INSTRUCTOR combined neighbors (for instructor_time_availability)
+    combined_neighbors = _generate_time_instructor_neighbors(gene, duration, context)
+    neighbors.extend(combined_neighbors)
+
+    # 5. Sample if too many neighbors
     if max_samples and len(neighbors) > max_samples:
         neighbors = random.sample(neighbors, max_samples)
 
@@ -298,6 +307,120 @@ def _generate_room_neighbors(
             num_quanta=gene.num_quanta,
         )
         neighbors.append(neighbor)
+
+    return neighbors
+
+
+def _generate_instructor_neighbors(
+    gene: SessionGene,
+    context: SchedulingContext,
+) -> list[SessionGene]:
+    """Generate neighbors by changing instructor (same time/room).
+
+    Targets instructor_time_availability and instructor_exclusivity violations.
+    """
+    neighbors = []
+    course_key = (gene.course_id, gene.course_type)
+
+    for instructor in context.instructors.values():
+        if instructor.instructor_id == gene.instructor_id:
+            continue
+        # Must be qualified
+        qualified = getattr(instructor, "qualified_courses", set())
+        if course_key not in qualified and gene.course_id not in qualified:
+            continue
+        # Must be available at current time
+        if not instructor.is_full_time:
+            if not all(
+                q in instructor.available_quanta
+                for q in range(gene.start_quanta, gene.end_quanta)
+            ):
+                continue
+        neighbor = SessionGene(
+            course_id=gene.course_id,
+            course_type=gene.course_type,
+            group_ids=gene.group_ids,
+            instructor_id=instructor.instructor_id,
+            room_id=gene.room_id,
+            start_quanta=gene.start_quanta,
+            num_quanta=gene.num_quanta,
+        )
+        neighbors.append(neighbor)
+
+    return neighbors
+
+
+def _generate_time_instructor_neighbors(
+    gene: SessionGene,
+    duration: int,
+    context: SchedulingContext,
+    max_combined: int = 15,
+) -> list[SessionGene]:
+    """Generate combined time+instructor neighbors.
+
+    For genes where the current instructor is unavailable at the current time,
+    this finds new (time, instructor) pairs. Sampled to keep neighborhood bounded.
+    """
+    from schedule_engine.ga.core.quanta_converter import quanta_list_to_contiguous
+
+    neighbors = []
+    course_key = (gene.course_id, gene.course_type)
+    available_quanta = sorted(context.available_quanta)
+
+    # Find qualified instructors (different from current)
+    qualified_instructors = []
+    for instructor in context.instructors.values():
+        if instructor.instructor_id == gene.instructor_id:
+            continue
+        q_courses = getattr(instructor, "qualified_courses", set())
+        if course_key in q_courses or gene.course_id in q_courses:
+            qualified_instructors.append(instructor)
+
+    if not qualified_instructors:
+        return neighbors
+
+    # Sample some time slots
+    possible_starts = []
+    for start_idx in range(len(available_quanta) - duration + 1):
+        start_q = available_quanta[start_idx]
+        end_q = start_q + duration
+        if any(q not in context.available_quanta for q in range(start_q, end_q)):
+            continue
+        if start_q == gene.start_quanta:
+            continue
+        possible_starts.append(start_q)
+
+    # Sample to limit combinatorial explosion
+    sampled_starts = (
+        random.sample(possible_starts, min(5, len(possible_starts)))
+        if possible_starts
+        else []
+    )
+    sampled_instructors = random.sample(
+        qualified_instructors, min(3, len(qualified_instructors))
+    )
+
+    for start_q in sampled_starts:
+        end_q = start_q + duration
+        for instructor in sampled_instructors:
+            # Must be available at this new time
+            if not instructor.is_full_time:
+                if not all(
+                    q in instructor.available_quanta for q in range(start_q, end_q)
+                ):
+                    continue
+            neighbor = SessionGene(
+                course_id=gene.course_id,
+                course_type=gene.course_type,
+                group_ids=gene.group_ids,
+                instructor_id=instructor.instructor_id,
+                room_id=gene.room_id,
+                start_quanta=start_q,
+                num_quanta=duration,
+            )
+            neighbors.append(neighbor)
+            if len(neighbors) >= max_combined:
+                return neighbors
 
     return neighbors
 

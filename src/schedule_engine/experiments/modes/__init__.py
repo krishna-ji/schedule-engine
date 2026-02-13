@@ -14,6 +14,7 @@ from schedule_engine.experiments.modes.baseline import BaselineExperiment
 from schedule_engine.experiments.modes.memetic import MemeticExperiment
 from schedule_engine.experiments.modes.rl_guided import RLGuidedExperiment
 from schedule_engine.experiments.modes.roundrobin import RoundRobinExperiment
+from schedule_engine.experiments.modes.ultimate import UltimateExperiment
 
 __all__ = [
     "BaselineExperiment",
@@ -21,4 +22,5 @@ __all__ = [
     "RoundRobinExperiment",
     "AdaptiveExperiment",
     "RLGuidedExperiment",
+    "UltimateExperiment",
 ]
