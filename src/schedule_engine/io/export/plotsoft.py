@@ -18,7 +18,7 @@ def plot_soft_constraint_violation_over_generation(
     soft_trend: list[float], output_dir: str
 ) -> None:
     """
-    Plots the trend of soft constraint penalties over generations.
+    Plots the trend of total soft constraint penalties over generations.
 
     Args:
         soft_trend (List[int]): List of soft constraint penalty counts per generation.
@@ -42,12 +42,14 @@ def plot_soft_constraint_violation_over_generation(
 
     format_axis(
         ax,
-        xlabel="Generation (0 = Initial Population)",
+        xlabel="Generation",
         ylabel="Penalty",
-        title="Soft Constraint Penalties Over Generations",
+        title="Total Soft Constraint Penalty Over Generations",
         legend=True,
     )
 
     plt.tight_layout()
     plot_dir = get_nsga_plot_dir(output_dir)
-    save_figure(fig, plot_dir / "soft_constraint_trend.pdf")
+    save_figure(
+        fig, plot_dir / "total_soft_constraint_penalty_over_generations.pdf"
+    )

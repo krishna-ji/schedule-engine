@@ -43,7 +43,7 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
         output_dir: Directory to save plots
 
     Saves:
-        - plots/nsga/hypervolume_trend.pdf: Main trend plot
+        - plots/nsga/hypervolume_indicator_over_generations.pdf: Main trend plot
 
     Note:
         CSV data available in csv/constraint_metrics.csv (hypervolume column)
@@ -125,7 +125,9 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
     ax.grid(True, alpha=0.3, linestyle="--")
 
     # Save figure
-    output_path = os.path.join(plot_dir, "hypervolume_trend.pdf")
+    output_path = os.path.join(
+        plot_dir, "hypervolume_indicator_over_generations.pdf"
+    )
     save_figure(fig, output_path)
     plt.close(fig)
 

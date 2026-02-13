@@ -13,18 +13,18 @@ Main Features:
     - Comprehensive feasibility analysis
     - PDF calendar export and evolution plots
 
-Usage:
-    from schedule_engine.config import init_config
-    from schedule_engine.config.loader import dict_to_pydantic
-    from schedule_engine.workflows import run_standard_workflow
+Package Structure:
+    - core/: Domain models, constraints, evaluation
+    - ga/: Genetic algorithm implementation
+    - rl/: Reinforcement learning agents
+    - output/: Unified export and visualization
+    - experiments/: Experiment modes and runners
 
-    config = dict_to_pydantic({"experiment_name": "example"})
+Usage:
+    from schedule_engine.config import Config, init_config
+
+    config = Config(ga=dict(ngen=100, pop_size=50), name="example")
     init_config(config)
-    result = run_standard_workflow(
-        pop_size=config.ga.pop_size,
-        generations=config.ga.ngen,
-        config=config,
-    )
 
 Authors:
     Krishna Acharya, Dinanath Padhya, Bipul Dahal

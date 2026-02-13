@@ -517,7 +517,7 @@ def generate_visualizations(
         export_csv_data(data, viz_dir)
 
         logger.info("=" * 60)
-        logger.info(f"✓ Visualizations saved to: {viz_dir}")
+        logger.info(f"[OK] Visualizations saved to: {viz_dir}")
         logger.info("=" * 60)
 
     except Exception as e:

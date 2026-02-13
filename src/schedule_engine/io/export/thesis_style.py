@@ -17,35 +17,24 @@ matplotlib.use("Agg")  # Non-interactive backend for file generation
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Seaborn-inspired color palette
+# Colorblind-safe palette (Seaborn "colorblind")
+_COLORBLIND = sns.color_palette("colorblind", 10).as_hex()
+
 COLORS = {
-    "blue": "#4C72B0",  # Primary blue
-    "orange": "#DD8452",  # Orange
-    "green": "#55A868",  # Green
-    "red": "#C44E52",  # Red
-    "purple": "#8172B3",  # Purple
-    "brown": "#937860",  # Brown
-    "pink": "#DA8BC3",  # Pink
-    "gray": "#8C8C8C",  # Gray
-    "yellow": "#CCB974",  # Yellow
-    "cyan": "#64B5CD",  # Cyan
+    "blue": _COLORBLIND[0],
+    "orange": _COLORBLIND[1],
+    "green": _COLORBLIND[2],
+    "red": _COLORBLIND[3],
+    "purple": _COLORBLIND[4],
+    "brown": _COLORBLIND[5],
+    "pink": _COLORBLIND[6],
+    "gray": _COLORBLIND[7],
+    "yellow": _COLORBLIND[8],
+    "cyan": _COLORBLIND[9],
 }
 
 # Extended palette for multiple lines
-PALETTE = [
-    "#4C72B0",
-    "#DD8452",
-    "#55A868",
-    "#C44E52",
-    "#8172B3",
-    "#937860",
-    "#DA8BC3",
-    "#8C8C8C",
-    "#CCB974",
-    "#64B5CD",
-    "#4C72B0",
-    "#DD8452",  # Repeat for more lines
-]
+PALETTE = _COLORBLIND + _COLORBLIND
 
 # Line styles for distinguishability
 LINE_STYLES = ["-", "--", "-.", ":", "-", "--", "-.", ":", "-", "--", "-.", ":"]
@@ -67,6 +56,7 @@ def apply_thesis_style() -> None:
             "axes.linewidth": 1.25,
         },
     )
+    sns.set_palette(PALETTE)
     sns.set_context(
         "paper",
         font_scale=1.4,
@@ -207,6 +197,7 @@ def format_axis(
     ylabel: str | None = None,
     title: str | None = None,
     legend: bool = True,
+    y_from_zero: bool = True,
 ) -> None:
     """
     Apply consistent formatting to an axis.
@@ -231,6 +222,8 @@ def format_axis(
     ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.8)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
+    if y_from_zero:
+        ax.set_ylim(bottom=0)
 
 
 # Initialize styling when module is imported

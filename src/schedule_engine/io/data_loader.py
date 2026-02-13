@@ -139,10 +139,21 @@ def load_instructors(path: str, qts: QuantumTimeSystem) -> dict[str, Instructor]
     instructors = {}
     for item in data:
         availability = item.get("availability", {})
-        is_full_time = not bool(availability)
         available_quanta = (
             encode_availability(availability, qts) if availability else set()
         )
+
+        # Determine full-time status:
+        # - No availability specified = full-time (available all operating hours)
+        # - Availability specified but encodes to empty = treat as full-time
+        #   (happens when specified hours are outside operating hours, e.g., 7:00-8:30 vs 10:00-17:00)
+        # - Availability specified and has valid quanta = part-time
+        is_full_time = not bool(availability) or not available_quanta
+        if not available_quanta:
+            # Full-time instructors are available during all operating hours
+            available_quanta = (
+                set()
+            )  # Will be filled by caller or treated as "always available"
 
         # Parse courses - support both old flat list and new object format
         courses_data = item.get("courses", [])
@@ -204,6 +215,15 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         lec = item.get("L", 0)
         tut = item.get("T", 0)
         prac = item.get("P", 0)
+
+        # Skip non-schedulable courses (zero credits OR zero L/T/P hours)
+        # Rationale: These are typically non-classroom activities:
+        # - Survey Camp, Industrial Attachment, Group Work (0 credits)
+        # - Self-study, project work (0 L/T/P hours)
+        # This filtering is intentional to focus on schedulable classroom sessions.
+        # Skipped courses are logged below for transparency.
+        if credits == 0 or (lec == 0 and tut == 0 and prac == 0):
+            continue
 
         practical_features = item.get("PracticalRoomFeatures", "").strip()
         practical_features = [
@@ -462,6 +482,7 @@ def link_courses_and_groups(
 
     # Link groups to ALL courses with matching course_code (theory AND practical)
     for group_id, group in groups.items():
+        valid_courses: list[str] = []
         for course_code in group.enrolled_courses:
             # Check for both theory and practical versions
             theory_key = (course_code, "theory")
@@ -480,6 +501,11 @@ def link_courses_and_groups(
 
             if not found_any:
                 missing_courses.append((course_code, group_id))
+            else:
+                valid_courses.append(course_code)
+
+        # Remove non-schedulable/missing courses from group enrollments
+        group.enrolled_courses = valid_courses
 
     # Display missing courses in a table if any found
     if missing_courses:
@@ -488,7 +514,7 @@ def link_courses_and_groups(
         console = Console()
 
         console.print()
-        console.print("[yellow][!warn] groups enrolled but courses missing[/yellow]")
+        console.print("[yellow]Non-schedulable or missing courses skipped[/yellow]")
 
         # Group by course code for compact display
         from collections import defaultdict
@@ -500,10 +526,12 @@ def link_courses_and_groups(
         for course_code, group_ids in sorted(courses_by_code.items()):
             groups_str = ", ".join(sorted(group_ids))
             console.print(
-                f"  [dim]{course_code}:[/dim] {groups_str} [dim](ltp null)[/dim]"
+                f"  [dim]{course_code}:[/dim] {groups_str} [dim](non-schedulable)[/dim]"
             )
 
-        console.print(f"  [dim]{len(missing_courses)} course enrollments skipped[/dim]")
+        console.print(
+            f"  [dim]{len(missing_courses)} enrollments skipped (Survey Camp, Industrial Attachment, etc.)[/dim]"
+        )
         console.print()
 
     # Note: We no longer warn about unassigned courses here since filtering

@@ -15,14 +15,15 @@ import numpy as np
 from gymnasium import spaces
 from numpy.typing import NDArray
 
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.types import Individual, SchedulingContext
 from schedule_engine.rl.gym_env.action_space import ActionMapper
 from schedule_engine.rl.gym_env.reward_calculator import RewardCalculator
 from schedule_engine.rl.gym_env.state_encoder import StateEncoder
+from schedule_engine.utils.logging_config import get_logger
 from schedule_engine.utils.performance_profiler import PerformanceProfiler
-from schedule_engine.utils.structured_logger import StructuredLogger
 
-logger = StructuredLogger.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class ScheduleEnv(gym.Env):
@@ -292,9 +293,7 @@ class ScheduleEnv(gym.Env):
         action_label = action_info.name if action_info else f"action_{action}"
 
         # Apply action to best individual
-        best_individual = min(
-            self.population, key=self._get_combined_fitness_value
-        )
+        best_individual = min(self.population, key=self._get_combined_fitness_value)
         prev_fitness = best_individual.fitness.values  # type: ignore[attr-defined]
         prev_individual = self._clone_individual(best_individual)
         working_individual = self._clone_individual(best_individual)
@@ -547,9 +546,9 @@ class ScheduleEnv(gym.Env):
             return True
 
         if self._fitness_evaluator is None:
-            from schedule_engine.ga.evaluator.fitness import (
-                evaluate as evaluate_fitness,  # type: ignore[attr-defined]
-            )
+            from schedule_engine.ga.core.evaluator import (
+                evaluate as evaluate_fitness,
+            )  # type: ignore[attr-defined]
 
             self._fitness_evaluator = evaluate_fitness
 
@@ -576,18 +575,29 @@ class ScheduleEnv(gym.Env):
         """
         Return a copy so mutations don't alias population references.
 
-        Uses shallow copy + manual list copy for 10-50x speedup vs deepcopy.
-        Safe because SessionGene objects are immutable after creation.
+        Uses shallow copy for DEAP metadata and deep-copies genes to avoid
+        cross-episode or cross-env mutation leakage.
         """
         # Shallow copy the individual (copies DEAP metadata)
         cloned = copy.copy(individual)
 
-        # Manually copy the chromosome list (list of SessionGene objects)
-        # SessionGene objects themselves don't need deep copy - they're effectively immutable
-        cloned[:] = individual[:]
+        # Copy the chromosome list and its genes (SessionGene is mutable)
+        cloned[:] = [
+            SessionGene(
+                course_id=gene.course_id,
+                course_type=gene.course_type,
+                instructor_id=gene.instructor_id,
+                group_ids=list(gene.group_ids),
+                room_id=gene.room_id,
+                start_quanta=gene.start_quanta,
+                num_quanta=gene.num_quanta,
+            )
+            for gene in individual
+        ]
 
-        # Copy fitness (shallow copy is sufficient - tuples are immutable)
+        # Copy fitness so mutations don't alias original individuals
         if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
+            cloned.fitness = copy.copy(individual.fitness)  # type: ignore[attr-defined]
             cloned.fitness.values = individual.fitness.values  # type: ignore[attr-defined]
 
         return cloned

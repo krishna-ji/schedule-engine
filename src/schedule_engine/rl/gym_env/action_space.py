@@ -13,7 +13,7 @@ from types import FrameType
 from typing import Any
 
 from schedule_engine.domain.types import Individual, SchedulingContext
-from schedule_engine.heuristics import get_enabled_heuristics
+from schedule_engine.ga.heuristics import get_enabled_heuristics
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +73,12 @@ class ActionMapper:
         if self.use_config:
             heuristics = get_enabled_heuristics().values()
         else:
-            from schedule_engine.heuristics import get_all_heuristics
+            from schedule_engine.ga.heuristics import get_all_heuristics
 
             heuristics = get_all_heuristics().values()
 
         # Sort by category then name for consistent ordering
-        heuristics_sorted = sorted(heuristics, key=lambda h: (h.category.value, h.name))
+        heuristics_sorted = sorted(heuristics, key=lambda h: (h.category, h.name))
 
         if self.use_config and self.action_id_map:
             self._build_action_space_with_mapping(heuristics_sorted)

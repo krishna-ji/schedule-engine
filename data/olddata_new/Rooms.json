@@ -1,0 +1,646 @@
+[
+    {
+        "room_id": "A997",
+        "name": "Automobile Workshop [A Block]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Automobile Lab",
+            "IC Engine Lab",
+            "Manufacturing Workshop"
+        ]
+    },
+    {
+        "room_id": "B204",
+        "name": "Chemistry Lab [B -204]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Chemistry Lab"
+        ]
+    },
+    {
+        "room_id": "D101",
+        "name": "Computer Lab #1 [D 101]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Digital Architecture Lab",
+            "General Programming Lab"
+        ]
+    },
+    {
+        "room_id": "D102",
+        "name": "Computer Lab #2 [D-102]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Advanced Computation Lab",
+            "General Programming Lab"
+        ]
+    },
+    {
+        "room_id": "D104",
+        "name": "Computer Lab #3 [D-104]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "General Programming Lab",
+            "Networking Lab"
+        ]
+    },
+    {
+        "room_id": "D105",
+        "name": "Computer Lab #4 [D-105]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "General Programming Lab",
+            "Signal Processing Lab"
+        ]
+    },
+    {
+        "room_id": "D106",
+        "name": "Computer Lab #5 [D-106]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Advanced Computation Lab",
+            "Networking Lab",
+            "Communication Systems Lab",
+            "RF Engineering Lab"
+        ]
+    },
+    {
+        "room_id": "D111",
+        "name": "Drawing Room #1 [D-111]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Drawing Hall"
+        ]
+    },
+    {
+        "room_id": "D112",
+        "name": "Drawing Room #2 [D-112]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Drawing Hall"
+        ]
+    },
+    {
+        "room_id": "D107",
+        "name": "Electrical Lab [D-107]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Circuits Lab",
+            "Electronics Lab"
+        ]
+    },
+    {
+        "room_id": "D108",
+        "name": "Electronics Lab #1 [D-108]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Electronics Lab",
+            "RF Engineering Lab",
+            "Microwave Engineering Lab",
+            "Control Systems Lab"
+        ]
+    },
+    {
+        "room_id": "D110",
+        "name": "Electronics Lab #2 [D-110]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Control Systems Lab",
+            "RF Engineering Lab"
+        ]
+    },
+    {
+        "room_id": "E201",
+        "name": "Electronics Lab #3 [E-201]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Digital Logic Lab",
+            "Control Systems Lab",
+            "Microprocessor Lab"
+        ]
+    },
+    {
+        "room_id": "A102",
+        "name": "Fluid Engineering Lab [A-102]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Fluid Science Lab",
+            "Water Resources Lab",
+            "Hydrology Lab"
+        ]
+    },
+    {
+        "room_id": "A201",
+        "name": "Lecture Room [A-201]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "A303",
+        "name": "Lecture Room [A-303]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B102",
+        "name": "Lecture Room [B-102]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B103",
+        "name": "Lecture Room [B-103]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B104",
+        "name": "Lecture Room [B-104]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B202",
+        "name": "Lecture Room [B-202]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Language and Communication Lab"
+        ]
+    },
+    {
+        "room_id": "B205",
+        "name": "Lecture Room [B-205]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B206",
+        "name": "Lecture Room [B-206]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B207",
+        "name": "Lecture Room [B-207]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Design Studio",
+            "Seminar Room"
+        ]
+    },
+    {
+        "room_id": "B304",
+        "name": "Lecture Room [B-304]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B308",
+        "name": "Lecture Room [B-308]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Metrology Lab",
+            "Production Workshop"
+        ]
+    },
+    {
+        "room_id": "B309",
+        "name": "Lecture Room [B-309]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B310",
+        "name": "Lecture Room [B-310]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Production Workshop",
+            "Seminar Room"
+        ]
+    },
+    {
+        "room_id": "B311",
+        "name": "Lecture Room [B-311]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B312",
+        "name": "Lecture Room [B-312]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B402",
+        "name": "Lecture Room [B-402]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B403",
+        "name": "Lecture Room [B-403]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "B407",
+        "name": "Lecture Room [B-407]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E2",
+        "name": "Lecture Room [E-002]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E3",
+        "name": "Lecture Room [E-003]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E101",
+        "name": "Lecture Room [E-101]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E102",
+        "name": "Lecture Room [E-102]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E203",
+        "name": "Lecture Room [E-203]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E204",
+        "name": "Lecture Room [E-204]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E205",
+        "name": "Lecture Room [E-205]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E302",
+        "name": "Lecture Room [E-302]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E303",
+        "name": "Lecture Room [E-303]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E304",
+        "name": "Lecture Room [E-304]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E305",
+        "name": "Lecture Room [E-305]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E402",
+        "name": "Lecture Room [E-402]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E403",
+        "name": "Lecture Room [E-403]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "E404",
+        "name": "Lecture Room [E-404]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "F101",
+        "name": "Lecture Room [F-101]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "F102",
+        "name": "Lecture Room [F-102]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "F207",
+        "name": "Classroom F-207",
+        "type": "Lecture",
+        "capacity": 24,
+        "features": [
+            "Construction Yard",
+            "Materials Lab (Architecture)"
+        ]
+    },
+    {
+        "room_id": "F207x",
+        "name": "Classroom F-207",
+        "type": "Lecture",
+        "capacity": 24,
+        "features": [
+            "Architectural Conservation Lab",
+            "Seminar Room"
+        ]
+    },
+    {
+        "room_id": "A103",
+        "name": "Material Science Lab [A-103]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Material Science Lab (Mechanical)",
+            "Solid Mechanics Lab"
+        ]
+    },
+    {
+        "room_id": "Z998",
+        "name": "Material Testing Laboratory",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Material Testing Lab (Civil)",
+            "Geotechnical Lab",
+            "Foundation Engineering Lab",
+            "Structural Engineering Lab"
+        ]
+    },
+    {
+        "room_id": "Z996",
+        "name": "Mechanical Workshop [A-Block]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "General Workshop",
+            "Manufacturing Workshop"
+        ]
+    },
+    {
+        "room_id": "A101",
+        "name": "Mechanics of Machinery Lab [A-101]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Solid Mechanics Lab",
+            "Machine Dynamics Lab"
+        ]
+    },
+    {
+        "room_id": "B203",
+        "name": "Physics Lab [B-203]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Physics Lab"
+        ]
+    },
+    {
+        "room_id": "B101",
+        "name": "Seminar Hall [B-101]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Seminar Room",
+            "Design Studio"
+        ]
+    },
+    {
+        "room_id": "B303",
+        "name": "Seminar Hall [B-303]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Seminar Room"
+        ]
+    },
+    {
+        "room_id": "E104",
+        "name": "Seminar Hall [E-104]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Seminar Room"
+        ]
+    },
+    {
+        "room_id": "E405",
+        "name": "Seminar Hall [E-405]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Seminar Room"
+        ]
+    },
+    {
+        "room_id": "E004",
+        "name": "Structure, Geology Lab [E-004]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Structural Engineering Lab",
+            "Geotechnical Lab",
+            "Transportation Lab"
+        ]
+    },
+    {
+        "room_id": "A202",
+        "name": "Studio Room [A-202]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Design Studio",
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "A203",
+        "name": "Studio Room [A-203]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Design Studio",
+            "Graphics Studio",
+            "Architectural Conservation Lab"
+        ]
+    },
+    {
+        "room_id": "A301",
+        "name": "Studio Room [A-301]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Design Studio",
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "A302",
+        "name": "Studio Room [A-302]",
+        "capacity": 48,
+        "type": "Lecture",
+        "features": [
+            "Design Studio",
+            "Lecture Hall"
+        ]
+    },
+    {
+        "room_id": "A305",
+        "name": "Studio Room [A-305]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Design Studio",
+            "Landscape Planning Studio",
+            "Sketching Studio",
+            "Graphics Studio",
+            "Urban Planning Studio"
+        ]
+    },
+    {
+        "room_id": "Z999",
+        "name": "Survey Lab [Kirtipur]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Surveying Lab"
+        ]
+    },
+    {
+        "room_id": "A104",
+        "name": "Thermal Science Lab [A-104]",
+        "capacity": 24,
+        "type": "Practical",
+        "features": [
+            "Thermal Science Lab"
+        ]
+    }
+]

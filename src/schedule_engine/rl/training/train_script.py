@@ -22,6 +22,7 @@ EnvFactory = Callable[[], GymEnv[Any, Any]]
 from stable_baselines3.common.vec_env import VecEnv  # noqa: E402
 
 from schedule_engine.domain.types import SchedulingContext  # noqa: E402
+from schedule_engine.io.data_store import load_input_data
 from schedule_engine.rl.gym_env import ScheduleEnv  # noqa: E402
 from schedule_engine.rl.training import RLTrainer
 from schedule_engine.rl.training.config_loader import (
@@ -29,11 +30,10 @@ from schedule_engine.rl.training.config_loader import (
     list_training_profiles,
     load_training_config,
 )
-from schedule_engine.utils.structured_logger import StructuredLogger, setup_logging
+from schedule_engine.utils.logging_config import get_logger, setup_logging
 from schedule_engine.utils.system_info import get_cpu_count
-from schedule_engine.workflows.standard_run import load_input_data
 
-logger = StructuredLogger.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class _FitnessVector(Protocol):
@@ -322,8 +322,8 @@ def create_environment(
 
     logger.info(f"[ENV {env_rank}] Creating environment (this takes 30-60s per env)...")
 
-    from schedule_engine.ga.evaluator.fitness import evaluate as evaluate_fitness
-    from schedule_engine.ga.population import generate_course_group_aware_population
+    from schedule_engine.ga.core.evaluator import evaluate as evaluate_fitness
+    from schedule_engine.ga.core.population import generate_course_group_aware_population
 
     # CRITICAL: Inside SubprocVecEnv worker processes, we CANNOT use nested multiprocessing
     # This function runs inside each of the 16 parallel RL environments (daemon processes)
@@ -508,15 +508,8 @@ def main() -> None:
 
     args = parse_args()
 
-    # Initialize structured logging (console only - training runs tracked via output/)
-    console_level = "DEBUG"
-    setup_logging(
-        log_file=None,
-        console_level=console_level,
-        file_level="DEBUG",
-        show_time=True,
-        show_path=False,
-    )
+    # Initialize logging (console only - training runs tracked via output/)
+    setup_logging(level="DEBUG")
 
     if args.list_profiles:
         available = sorted(list_training_profiles())
@@ -578,19 +571,19 @@ def main() -> None:
         logger.info("STEP 1: Setup Output Directory")
         logger.info("=" * 60)
 
-        # Create timestamped output directory via ExperimentManager
-        from schedule_engine.workflows.experiment_manager import ExperimentManager
-
-        exp_manager = ExperimentManager()
+        # Create timestamped output directory
+        from pathlib import Path
 
         timestamp = datetime.now()
+        timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
         experiment_name = (
             f"rl_training_{args.loaded_profile}_{args.agent_type}_{args.timesteps}"
         )
 
-        output_dir = exp_manager.create_output_dir(
-            runtime_mode="e5", experiment_name=experiment_name, timestamp=timestamp
+        output_dir = (
+            Path("output") / "ga_05_repair_qlearning" / f"{timestamp_str}_{experiment_name}"
         )
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Output directory: {output_dir}")
         logger.info("Models will be saved to: models/rl_agents/")

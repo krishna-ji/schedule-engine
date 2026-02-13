@@ -1,4 +1,5 @@
 import csv
+import math
 import os
 
 import matplotlib.pyplot as plt
@@ -61,258 +62,9 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
         for idx, (h, s) in enumerate(zip(pareto_hard, pareto_soft, strict=False)):
             writer.writerow([idx, h, s])
 
-    # Create comprehensive plots showing all data
     plot_dir = get_nsga_plot_dir(output_dir)
-    fig, ((ax1, ax2), (ax3, ax4)) = create_thesis_figure(2, 2, figsize=(14, 11))
 
-    # Plot 1: All population points with jitter to show overlapping points
-    unique_points: dict[tuple[int, int], int] = {}
-    jittered_hard = []
-    jittered_soft = []
-
-    for h, s in zip(hard_vals, soft_vals, strict=False):
-        key = (h, s)
-        if key in unique_points:
-            unique_points[key] += 1
-            # Add small jitter to overlapping points
-            jitter_strength = 0.1 * unique_points[key]
-            jittered_hard.append(h + np.random.normal(0, jitter_strength))
-            jittered_soft.append(s + np.random.normal(0, jitter_strength))
-        else:
-            unique_points[key] = 1
-            jittered_hard.append(h)
-            jittered_soft.append(s)
-
-    ax1.scatter(
-        jittered_hard,
-        jittered_soft,
-        color=PALETTE[1],
-        alpha=0.5,
-        s=30,
-        edgecolors="white",
-        linewidth=0.5,
-    )
-    format_axis(
-        ax1,
-        xlabel="Hard Constraint Violations",
-        ylabel="Soft Constraint Penalty",
-        title=f"All Population Points with Jitter\n({len(population)} individuals)",
-        legend=False,
-    )
-
-    # Plot 2: Original view with population and Pareto front
-    ax2.scatter(
-        hard_vals,
-        soft_vals,
-        color=PALETTE[1],
-        alpha=0.35,
-        s=25,
-        label="Population",
-        edgecolors="none",
-    )
-
-    # Use the Pareto front data already calculated above
-    ax2.scatter(
-        pareto_hard,
-        pareto_soft,
-        color=get_color("red"),
-        alpha=0.85,
-        s=80,
-        label=f"Pareto Front ({len(pareto_front)} solutions)",
-        edgecolors="black",
-        linewidth=1.5,
-        zorder=5,
-    )
-
-    # Show count for overlapping points
-    for (h, s), count in unique_points.items():
-        if count > 1:
-            ax2.annotate(
-                f"{count}",
-                (h, s),
-                xytext=(5, 5),
-                textcoords="offset points",
-                fontsize=8,
-                alpha=0.7,
-            )
-
-    format_axis(
-        ax2,
-        xlabel="Hard Constraint Violations",
-        ylabel="Soft Constraint Penalty",
-        title=f"Population with Pareto Front\n({len(unique_points)} unique solutions)",
-        legend=True,
-    )
-
-    # Plot 3: Heatmap of point density
-    try:
-        from scipy.stats import gaussian_kde
-
-        # Check if data has sufficient variance for KDE
-        hard_std = np.std(hard_vals)
-        soft_std = np.std(soft_vals)
-        has_sufficient_variance = (
-            len(np.unique(hard_vals)) > 1
-            and len(np.unique(soft_vals)) > 1
-            and hard_std > 1e-6
-            and soft_std > 1e-6
-        )
-
-        if has_sufficient_variance:
-            # Create density heatmap
-            hard_range = np.linspace(min(hard_vals), max(hard_vals), 50)
-            soft_range = np.linspace(min(soft_vals), max(soft_vals), 50)
-            h_grid, s_grid = np.meshgrid(hard_range, soft_range)
-            positions = np.vstack([h_grid.ravel(), s_grid.ravel()])
-            values = np.vstack([hard_vals, soft_vals])
-
-            try:
-                kernel = gaussian_kde(values)
-                density = np.reshape(kernel(positions).T, h_grid.shape)
-            except np.linalg.LinAlgError:
-                # Data is too degenerate for KDE, fall back to histogram
-                has_sufficient_variance = False
-
-        if has_sufficient_variance:
-            # Successfully created KDE, plot it
-            im = ax3.contourf(
-                h_grid, s_grid, density, levels=20, cmap="Blues", alpha=0.6
-            )
-            ax3.scatter(
-                hard_vals,
-                soft_vals,
-                color=get_color("blue"),
-                alpha=0.4,
-                s=12,
-                edgecolors="none",
-            )
-            ax3.scatter(
-                pareto_hard,
-                pareto_soft,
-                color=get_color("red"),
-                s=50,
-                alpha=0.9,
-                edgecolors="black",
-                linewidth=1.5,
-                zorder=5,
-            )
-            fig.colorbar(im, ax=ax3, label="Density")
-        else:
-            # Fallback: use 2D histogram for low-variance data
-            # Create histogram
-            try:
-                hist, xedges, yedges = np.histogram2d(
-                    hard_vals,
-                    soft_vals,
-                    bins=[
-                        min(20, len(np.unique(hard_vals))),
-                        min(20, len(np.unique(soft_vals))),
-                    ],
-                )
-                # Plot histogram as heatmap
-                extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-                im = ax3.imshow(
-                    hist.T,
-                    extent=extent,
-                    origin="lower",
-                    cmap="Blues",
-                    alpha=0.6,
-                    aspect="auto",
-                )
-                plt.colorbar(im, ax=ax3, label="Count")
-            except (ValueError, RuntimeError):
-                # Ultimate fallback: just scatter if heatmap fails
-                pass
-
-            ax3.scatter(
-                hard_vals,
-                soft_vals,
-                color=PALETTE[1],
-                alpha=0.5,
-                s=30,
-                edgecolors="white",
-                linewidth=0.5,
-            )
-            ax3.scatter(
-                pareto_hard,
-                pareto_soft,
-                color=get_color("red"),
-                s=70,
-                alpha=0.9,
-                edgecolors="black",
-                linewidth=1.5,
-                zorder=5,
-            )
-    except (ImportError, Exception):
-        # Fallback without scipy or on any other error
-        ax3.scatter(
-            hard_vals,
-            soft_vals,
-            color=PALETTE[1],
-            alpha=0.5,
-            s=30,
-            edgecolors="white",
-            linewidth=0.5,
-        )
-        ax3.scatter(
-            pareto_hard,
-            pareto_soft,
-            color=get_color("red"),
-            s=70,
-            alpha=0.9,
-            edgecolors="black",
-            linewidth=1.5,
-            zorder=5,
-        )
-
-    format_axis(
-        ax3,
-        xlabel="Hard Constraint Violations",
-        ylabel="Soft Constraint Penalty",
-        title="Population Density with Pareto Front",
-        legend=False,
-    )
-
-    # Plot 4: Size-coded points showing frequency
-    sizes = [
-        unique_points.get((h, s), 1) * 25
-        for h, s in zip(hard_vals, soft_vals, strict=False)
-    ]
-    scatter = ax4.scatter(
-        hard_vals,
-        soft_vals,
-        c=sizes,
-        s=sizes,
-        alpha=0.55,
-        cmap="YlOrRd",
-        edgecolors="black",
-        linewidth=0.5,
-    )
-    ax4.scatter(
-        pareto_hard,
-        pareto_soft,
-        color=get_color("red"),
-        s=120,
-        alpha=0.95,
-        edgecolors="white",
-        linewidth=2.5,
-        label="Pareto Front",
-        zorder=5,
-    )
-
-    fig.colorbar(scatter, ax=ax4, label="Point Frequency")
-    format_axis(
-        ax4,
-        xlabel="Hard Constraint Violations",
-        ylabel="Soft Constraint Penalty",
-        title="Frequency-Coded Population",
-        legend=True,
-    )
-
-    plt.tight_layout()
-    save_figure(fig, plot_dir / "pareto_front_comprehensive.pdf")
-
-    # Create the original single plot for backward compatibility
+    # Create the single Pareto front plot
     fig, ax = create_thesis_figure(1, 1, figsize=(9, 7))
     ax.scatter(
         hard_vals,
@@ -335,70 +87,71 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
         zorder=5,
     )
 
-    # Show count for overlapping points
-    for (h, s), count in unique_points.items():
-        if count > 1:
-            ax.annotate(
-                f"{count}",
-                (h, s),
-                xytext=(5, 5),
-                textcoords="offset points",
-                fontsize=8,
-                alpha=0.7,
+    # Annotate knee point (max distance from line between extremes)
+    knee_point: tuple[float, float] | None = None
+    if len(pareto_front) >= 3:
+        sorted_points = sorted(
+            zip(pareto_hard, pareto_soft, strict=False), key=lambda p: (p[0], p[1])
+        )
+        h_vals = np.array([p[0] for p in sorted_points], dtype=float)
+        s_vals = np.array([p[1] for p in sorted_points], dtype=float)
+        h_min, h_max = float(np.min(h_vals)), float(np.max(h_vals))
+        s_min, s_max = float(np.min(s_vals)), float(np.max(s_vals))
+        h_range = h_max - h_min if h_max > h_min else 1.0
+        s_range = s_max - s_min if s_max > s_min else 1.0
+        h_norm = (h_vals - h_min) / h_range
+        s_norm = (s_vals - s_min) / s_range
+        x1, y1 = h_norm[0], s_norm[0]
+        x2, y2 = h_norm[-1], s_norm[-1]
+        denom = math.hypot(y2 - y1, x2 - x1)
+        if denom > 0:
+            distances = (
+                np.abs((y2 - y1) * h_norm - (x2 - x1) * s_norm + x2 * y1 - y2 * x1)
+                / denom
             )
+            knee_idx = int(np.argmax(distances))
+            knee_point = (h_vals[knee_idx], s_vals[knee_idx])
+
+    if knee_point is not None:
+        ax.scatter(
+            [knee_point[0]],
+            [knee_point[1]],
+            color=get_color("purple"),
+            s=160,
+            marker="*",
+            edgecolors="black",
+            linewidth=1.0,
+            label="Knee Point",
+            zorder=6,
+        )
+
+    # Annotate best feasible tradeoff (hard == 0, lowest soft)
+    feasible_points = [
+        (h, s) for h, s in zip(pareto_hard, pareto_soft, strict=False) if h == 0
+    ]
+    if feasible_points:
+        best_feasible = min(feasible_points, key=lambda p: p[1])
+        ax.scatter(
+            [best_feasible[0]],
+            [best_feasible[1]],
+            color=get_color("green"),
+            s=120,
+            marker="D",
+            edgecolors="black",
+            linewidth=1.0,
+            label="Best Feasible Tradeoff",
+            zorder=6,
+        )
 
     format_axis(
         ax,
         xlabel="Hard Constraint Violations",
         ylabel="Soft Constraint Penalty",
         title=f"Final Population Fitness Distribution\n({len(population)} individuals, "
-        f"{len(unique_points)} unique solutions)",
+        f"{len({(h, s) for h, s in zip(hard_vals, soft_vals, strict=False)})} unique solutions)",
         legend=True,
     )
+    ax.set_xlim(left=0)
 
     plt.tight_layout()
-    save_figure(fig, plot_dir / "pareto_front.pdf")
-
-    # Create a separate plot focusing only on the Pareto front
-    if len(pareto_front) > 1:
-        fig, ax = create_thesis_figure(1, 1, figsize=(8, 6))
-        ax.scatter(
-            pareto_hard,
-            pareto_soft,
-            color=get_color("red"),
-            s=120,
-            alpha=0.9,
-            edgecolors="black",
-            linewidth=1.5,
-            zorder=5,
-        )
-        ax.plot(
-            pareto_hard,
-            pareto_soft,
-            color=get_color("red"),
-            linestyle="--",
-            alpha=0.4,
-            linewidth=1.5,
-        )
-
-        # Annotate each point with its index
-        for i, (h, s) in enumerate(zip(pareto_hard, pareto_soft, strict=False)):
-            ax.annotate(
-                f"{i + 1}",
-                (h, s),
-                xytext=(6, 6),
-                textcoords="offset points",
-                fontsize=9,
-                fontweight="bold",
-            )
-
-        format_axis(
-            ax,
-            xlabel="Hard Constraint Violations",
-            ylabel="Soft Constraint Penalty",
-            title=f"Pareto Front Detail ({len(pareto_front)} non-dominated solutions)",
-            legend=False,
-        )
-
-        plt.tight_layout()
-        save_figure(fig, plot_dir / "pareto_front_detail.pdf")
+    save_figure(fig, plot_dir / "pareto_front_population_and_nondominated.pdf")

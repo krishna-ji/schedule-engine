@@ -33,7 +33,8 @@ from rich import box
 from rich.panel import Panel
 from rich.table import Table
 
-from schedule_engine.config import get_config
+# Feasibility defaults (previously on FeasibilityConfig)
+_TOLERANCE_MARGIN = 0.02
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
@@ -97,7 +98,7 @@ def check_feasibility(
         Tuple of (is_feasible, FeasibilityReport)
         is_feasible is True only if all critical checks pass
     """
-    if not get_config().feasibility.enable_checks:
+    if False:  # All checks always enabled
         console.print("[yellow]Feasibility checks are disabled in config[/yellow]")
         return True, FeasibilityReport(
             is_feasible=True,
@@ -105,7 +106,7 @@ def check_feasibility(
             summary={"status": "skipped", "reason": "disabled in config"},
         )
 
-    if get_config().feasibility.show_console_output:
+    if True:  # Always show console output
         console.print()
         console.print("[bold cyan]feasibility analysis[/bold cyan]")
         console.print()
@@ -117,7 +118,7 @@ def check_feasibility(
     # Build list of checks to run - each check has different function signature
     checks_to_run: list[tuple[str, Any, tuple[Any, ...]]] = []
 
-    if get_config().feasibility.checks["instructor_workload"]["enabled"]:
+    if True:  # All checks enabled
         checks_to_run.append(
             (
                 "instructor_workload",
@@ -126,9 +127,7 @@ def check_feasibility(
             )
         )
 
-    if get_config().feasibility.checks["instructor_qualification_bottleneck"][
-        "enabled"
-    ]:
+    if True:  # All checks enabled
         checks_to_run.append(
             (
                 "qualification_bottleneck",
@@ -137,21 +136,12 @@ def check_feasibility(
             )
         )
 
-    if get_config().feasibility.checks["room_capacity_bottleneck"]["enabled"]:
-        checks_to_run.append(
-            (
-                "room_capacity",
-                _check_room_capacity_bottleneck,
-                (courses, rooms, groups, qts),
-            )
-        )
-
-    if get_config().feasibility.checks["room_feature_bottleneck"]["enabled"]:
+    if True:  # All checks enabled
         checks_to_run.append(
             ("room_feature", _check_room_feature_bottleneck, (courses, rooms, qts))
         )
 
-    if get_config().feasibility.checks["group_pigeonhole"]["enabled"]:
+    if True:  # All checks enabled
         checks_to_run.append(
             (
                 "group_pigeonhole",
@@ -174,7 +164,7 @@ def check_feasibility(
             try:
                 result = future.result()
                 results.append(result)
-                if get_config().feasibility.show_console_output:
+                if True:  # Always show console output
                     _print_check_result(result)
             except Exception as e:
                 check_name = future_to_check[future]
@@ -209,28 +199,11 @@ def check_feasibility(
         is_feasible=is_feasible, results=results, summary=summary
     )
 
-    if get_config().feasibility.show_console_output:
+    if True:  # Always show console output
         _print_summary(report)
 
-    # Handle infeasibility
-    if not is_feasible and get_config().feasibility.fail_on_infeasibility:
-        console.print()
-        console.print(
-            Panel(
-                "[bold red][!ERR] PROBLEM IS INFEASIBLE[/bold red]\n\n"
-                f"Found {len(critical_failures)} critical issue(s) that make this problem unsolvable.\n"
-                "Please review the detailed report above and fix the identified issues.\n\n"
-                "[dim]Set get_config().feasibility.fail_on_infeasibility=False in config to continue anyway (not recommended).[/dim]",
-                border_style="red",
-                box=box.DOUBLE,
-            )
-        )
-        console.print()
-        console.print("[bold red] Exiting program...[/bold red]\n")
-
-        # Gracefully exit without traceback
-        sys.exit(1)
-
+    # Note: We do NOT call sys.exit here - caller handles that after saving reports
+    # This allows the caller to save the feasibility report before exiting
     return is_feasible, report
 
 
@@ -247,8 +220,12 @@ def _check_instructor_workload(
 
     Note: courses dict is keyed by (course_code, course_type) tuples
     """
-    # Calculate total demand (in quanta)
-    total_demand = sum(course.quanta_per_week for course in courses.values())
+    # Calculate total demand (in quanta) - only for courses with enrolled groups
+    total_demand = sum(
+        course.quanta_per_week
+        for course in courses.values()
+        if course.enrolled_group_ids
+    )
 
     # Calculate total supply (in quanta)
     all_operating_quanta = qts.get_all_operating_quanta()
@@ -263,7 +240,9 @@ def _check_instructor_workload(
             total_supply += len(instructor.available_quanta)
 
     # Apply tolerance margin
-    adjusted_supply = total_supply * (1 + get_config().feasibility.tolerance_margin)
+    adjusted_supply = total_supply * (
+        1 + _TOLERANCE_MARGIN
+    )
 
     passed = total_demand <= adjusted_supply
     utilization_rate = (
@@ -296,7 +275,7 @@ def _check_instructor_workload(
     return FeasibilityResult(
         check_name="Instructor Workload vs Availability",
         passed=passed,
-        severity=get_config().feasibility.checks["instructor_workload"]["severity"],
+        severity="critical",
         message=message,
         details={
             "total_demand_quanta": total_demand,
@@ -334,6 +313,10 @@ def _check_instructor_qualification_bottleneck(
     problematic_courses = 0
 
     for course_key, course in courses.items():
+        # Skip courses with no enrolled groups (not being scheduled)
+        if not course.enrolled_group_ids:
+            continue
+
         demand = course.quanta_per_week
 
         # Find all qualified instructors and sum their availability
@@ -353,7 +336,9 @@ def _check_instructor_qualification_bottleneck(
                 supply += len(instructor.available_quanta)
 
         # Check if supply meets demand
-        adjusted_supply = supply * (1 + get_config().feasibility.tolerance_margin)
+        adjusted_supply = supply * (
+            1 + _TOLERANCE_MARGIN
+        )
 
         if demand > adjusted_supply:
             shortage = demand - supply
@@ -417,9 +402,7 @@ def _check_instructor_qualification_bottleneck(
     return FeasibilityResult(
         check_name="Instructor Qualification Bottleneck",
         passed=passed,
-        severity=get_config().feasibility.checks["instructor_qualification_bottleneck"][
-            "severity"
-        ],
+        severity="critical",
         message=message,
         details={
             "total_courses": total_courses,
@@ -488,7 +471,9 @@ def _check_room_capacity_bottleneck(
         largest_room_capacity = max(largest_room_capacity, room.capacity)
 
     # Apply tolerance
-    adjusted_supply = total_seat_hours * (1 + get_config().feasibility.tolerance_margin)
+    adjusted_supply = total_seat_hours * (
+        1 + _TOLERANCE_MARGIN
+    )
 
     # Check 1: Global capacity
     global_passed = total_student_hours <= adjusted_supply
@@ -551,9 +536,7 @@ def _check_room_capacity_bottleneck(
     return FeasibilityResult(
         check_name="Room Capacity Bottleneck",
         passed=passed,
-        severity=get_config().feasibility.checks["room_capacity_bottleneck"][
-            "severity"
-        ],
+        severity="critical",
         message=message,
         details={
             "total_student_hours": total_student_hours,
@@ -596,6 +579,9 @@ def _check_room_feature_bottleneck(
     # Group courses by required feature
     feature_demand: dict[str, int] = defaultdict(int)
     for course in courses.values():
+        # Skip courses with no enrolled groups (not being scheduled)
+        if not course.enrolled_group_ids:
+            continue
         feature_demand[course.required_room_features] += course.quanta_per_week
 
     # Calculate supply for each feature
@@ -612,7 +598,9 @@ def _check_room_feature_bottleneck(
     bottlenecks: list[dict[str, Any]] = []
     for feature, demand in feature_demand.items():
         supply = feature_supply.get(feature, 0)
-        adjusted_supply = supply * (1 + get_config().feasibility.tolerance_margin)
+        adjusted_supply = supply * (
+            1 + _TOLERANCE_MARGIN
+        )
 
         if demand > adjusted_supply:
             shortage = demand - supply
@@ -665,7 +653,7 @@ def _check_room_feature_bottleneck(
     return FeasibilityResult(
         check_name="Room Feature Bottleneck",
         passed=passed,
-        severity=get_config().feasibility.checks["room_feature_bottleneck"]["severity"],
+        severity="critical",
         message=message,
         details={
             "total_features": len(feature_demand),
@@ -716,7 +704,9 @@ def _check_group_pigeonhole(
             available = total_operating_quanta
 
         # Apply tolerance
-        adjusted_available = available * (1 + get_config().feasibility.tolerance_margin)
+        adjusted_available = available * (
+            1 + _TOLERANCE_MARGIN
+        )
 
         utilization = (
             (total_demand / available * 100) if available > 0 else float("inf")
@@ -775,7 +765,7 @@ def _check_group_pigeonhole(
     return FeasibilityResult(
         check_name="Group Pigeonhole Problem",
         passed=passed,
-        severity=get_config().feasibility.checks["group_pigeonhole"]["severity"],
+        severity="critical",
         message=message,
         details={
             "total_groups": len(groups),

@@ -17,10 +17,10 @@ Expected Impact: 20-30% faster convergence to zero violations.
 
 import random
 
+from schedule_engine.domain.gene import SessionGene
+from schedule_engine.domain.session import CourseSession
 from schedule_engine.domain.types import Individual, SchedulingContext
 from schedule_engine.io.decoder import decode_individual
-from schedule_engine.domain.session import CourseSession
-from schedule_engine.domain.gene import SessionGene
 
 
 def constraint_guided_mutation(
@@ -49,18 +49,32 @@ def constraint_guided_mutation(
     # Find sessions with violations
     violating_indices = _find_violating_sessions(decoded, context)
 
-    # Decide whether to target violation or mutate randomly
-    if violating_indices and random.random() < 0.8:
-        # Target violation (80% of the time)
-        target_idx = random.choice(violating_indices)
-        _mutate_session(individual[target_idx], context)
-        return individual, {"targeted_mutations": 1, "random_mutations": 0}
+    # Repair multiple violating genes per call (not just 1)
+    # This makes mutation strong enough to overcome crossover disruption
+    max_repairs = min(len(violating_indices), max(3, len(violating_indices) // 5))
+    targeted = 0
+    rand_mut = 0
+
+    if violating_indices:
+        # Shuffle to avoid always fixing the same genes first
+        repair_targets = random.sample(violating_indices, max_repairs)
+        for target_idx in repair_targets:
+            if random.random() < 0.8:
+                _mutate_session(individual[target_idx], context, individual=individual)
+                targeted += 1
+            else:
+                # Random mutation for diversity
+                rand_idx = random.randint(0, len(individual) - 1)
+                _mutate_session(individual[rand_idx], context, individual=individual)
+                rand_mut += 1
     else:
-        # Random mutation (20% for diversity)
+        # No violations found — random mutation for diversity
         if len(individual) > 0:
             target_idx = random.randint(0, len(individual) - 1)
-            _mutate_session(individual[target_idx], context)
-        return individual, {"targeted_mutations": 0, "random_mutations": 1}
+            _mutate_session(individual[target_idx], context, individual=individual)
+            rand_mut = 1
+
+    return individual, {"targeted_mutations": targeted, "random_mutations": rand_mut}
 
 
 def _find_violating_sessions(
@@ -175,40 +189,76 @@ def _has_instructor_conflict(
     return False
 
 
-def _mutate_session(gene: SessionGene, context: SchedulingContext) -> None:
+def _mutate_session(
+    gene: SessionGene,
+    context: SchedulingContext,
+    individual: list[SessionGene] | None = None,
+) -> None:
     """
-    Mutate a single SessionGene.
+    Mutate a single SessionGene — conflict-aware when individual is provided.
 
     Strategy (weighted random):
-    - 40% chance: change time slots
-    - 30% chance: change room
+    - 40% chance: change time slots (conflict-aware)
+    - 30% chance: change room (type-aware)
     - 20% chance: change instructor
     - 10% chance: change multiple attributes (aggressive)
     """
     mutation_type = random.random()
 
-    # Convert available_quanta to list for sampling
+    # Build conflict-aware available quanta if individual is provided
     available_quanta_list = list(context.available_quanta)
 
-    if mutation_type < 0.4:
-        # Change time slots - find contiguous block
-        num_quanta = gene.num_quanta
-        if num_quanta > 0 and len(available_quanta_list) >= num_quanta:
-            # Find a random valid start time that allows contiguous block
+    # Build blocked set: quanta used by same group/instructor in other genes
+    blocked: set[int] = set()
+    if individual is not None:
+        gene_groups = set(gene.group_ids)
+        for other in individual:
+            if other is gene:
+                continue
+            if gene_groups & set(other.group_ids):
+                for q in range(
+                    other.start_quanta, other.start_quanta + other.num_quanta
+                ):
+                    blocked.add(q)
+            if other.instructor_id == gene.instructor_id:
+                for q in range(
+                    other.start_quanta, other.start_quanta + other.num_quanta
+                ):
+                    blocked.add(q)
 
+    # Prefer conflict-free quanta for time mutations
+    free_quanta = [q for q in available_quanta_list if q not in blocked]
+    time_pool = (
+        free_quanta if len(free_quanta) >= gene.num_quanta else available_quanta_list
+    )
+
+    if mutation_type < 0.4:
+        # Change time slots - find contiguous block avoiding conflicts
+        num_quanta = gene.num_quanta
+        if num_quanta > 0 and len(time_pool) >= num_quanta:
             valid_starts = [
                 q
-                for q in available_quanta_list
-                if all((q + i) in available_quanta_list for i in range(num_quanta))
+                for q in time_pool
+                if all((q + i) in time_pool for i in range(num_quanta))
             ]
             if valid_starts:
                 gene.start_quanta = random.choice(valid_starts)
-                # num_quanta stays the same
 
     elif mutation_type < 0.7:
-        # Change room
+        # Change room — type-aware selection
         if context.rooms:
-            gene.room_id = random.choice(list(context.rooms.keys()))
+            from schedule_engine.ga.operators.mutation import (
+                find_suitable_rooms_for_course,
+            )
+
+            primary_group = gene.group_ids[0] if gene.group_ids else ""
+            suitable = find_suitable_rooms_for_course(
+                gene.course_id, gene.course_type, primary_group, context
+            )
+            if suitable:
+                gene.room_id = random.choice(suitable)
+            else:
+                gene.room_id = random.choice(list(context.rooms.keys()))
 
     elif mutation_type < 0.9:
         # Change instructor (must be qualified)
@@ -221,17 +271,27 @@ def _mutate_session(gene: SessionGene, context: SchedulingContext) -> None:
             gene.instructor_id = random.choice(list(context.instructors.keys()))
 
     else:
-        # Change multiple attributes (aggressive mutation)
+        # Change multiple attributes (aggressive mutation) — room is type-aware
         num_quanta = gene.num_quanta
-        if num_quanta > 0 and len(available_quanta_list) >= num_quanta:
-            # Find a random valid start time that allows contiguous block
+        if num_quanta > 0 and len(time_pool) >= num_quanta:
             valid_starts = [
                 q
-                for q in available_quanta_list
-                if all((q + i) in available_quanta_list for i in range(num_quanta))
+                for q in time_pool
+                if all((q + i) in time_pool for i in range(num_quanta))
             ]
             if valid_starts:
                 gene.start_quanta = random.choice(valid_starts)
 
         if context.rooms:
-            gene.room_id = random.choice(list(context.rooms.keys()))
+            from schedule_engine.ga.operators.mutation import (
+                find_suitable_rooms_for_course,
+            )
+
+            primary_group = gene.group_ids[0] if gene.group_ids else ""
+            suitable = find_suitable_rooms_for_course(
+                gene.course_id, gene.course_type, primary_group, context
+            )
+            if suitable:
+                gene.room_id = random.choice(suitable)
+            else:
+                gene.room_id = random.choice(list(context.rooms.keys()))

@@ -34,7 +34,7 @@ def plot_diversity_trend(diversity_trend: list[float], output_dir: str) -> None:
 
     format_axis(
         ax,
-        xlabel="Generation (0 = Initial Population)",
+        xlabel="Generation",
         ylabel="Average Chromosome Distance",
         title="Population Diversity Over Generations",
         legend=False,
@@ -42,4 +42,4 @@ def plot_diversity_trend(diversity_trend: list[float], output_dir: str) -> None:
 
     plt.tight_layout()
     plot_dir = get_nsga_plot_dir(output_dir)
-    save_figure(fig, plot_dir / "diversity.pdf")
+    save_figure(fig, plot_dir / "population_diversity_over_generations.pdf")

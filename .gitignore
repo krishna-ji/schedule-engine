@@ -4,6 +4,7 @@ __pycache__/
 *.logs
 *.md
 !README.md
+!README_USER.md
 output/
 TEMPFILESWORKING/
 logs/

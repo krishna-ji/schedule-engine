@@ -47,7 +47,7 @@
         "./src"
     ],
     // Disabled Pylance type checking to let Mypy be the authority
-    "python.analysis.typeCheckingMode": "",
+    "python.analysis.typeCheckingMode": "off",
     // Black formatter settings
     "black-formatter.args": [
         "--line-length=88",
@@ -83,18 +83,9 @@
     // ==================
     // TERMINAL SETTINGS
     // ==================
-    "terminal.integrated.defaultProfile.windows": "PowerShell",
     // ==================
     // COPILOT SETTINGS
     // ==================
-    "github.copilot.chat.commitMessageGeneration.instructions": [
-        {
-            "file": ".github/copilot-instructions.md"
-        },
-        {
-            "text": "Commit messages should use hybrid academic–software format. Include experiment context, dataset version, or model scope when relevant."
-        }
-    ],
     // ==================
     // TOKEN CUSTOMIZATION
     // ==================
