@@ -196,11 +196,8 @@ class UltimateExperiment(BaseExperiment):
     def _run_evolution(self) -> tuple[list[Any], EvolutionStats]:
         from schedule_engine.ga.operators.local_search import optimize_gene_greedy
         from schedule_engine.ga.repair.basic import repair_individual_unified
-        from schedule_engine.ga.repair.engine import (
-            RepairEngine,
-            _build_counts,
-            _gene_violation_score,
-        )
+        from schedule_engine.ga.repair.engine import (RepairEngine, _build_counts,
+                                                      _gene_violation_score)
         from schedule_engine.utils.room_compatibility import is_room_type_compatible
 
         start_time = time.time()
@@ -716,6 +713,15 @@ class UltimateExperiment(BaseExperiment):
                 ls_delta = gene_ls_pass(ind)
                 self._total_ls_fixes += ls_delta
 
+            # Apply rescheduling passes + final repair on init
+            group_reschedule_pass(ind, n_groups=5)
+            instructor_reschedule_pass(ind, n_instr=5)
+            repair_individual_unified(
+                ind, self.data.context, selective=True,
+                max_iterations=self.deterministic_max_iters,
+            )
+            gene_ls_pass(ind)
+
             h, s = self.evaluate(ind)
             self.logger.info(
                 "Start %d/%d: Hard=%.0f Soft=%.0f (%.1fs)",
@@ -845,22 +851,22 @@ class UltimateExperiment(BaseExperiment):
                 )
                 # Strategy A: fresh from scratch
                 fresh_ind, fresh_h, fresh_s = make_fresh_individual(self._restarts)
-                # Strategy B: warm restart — heavy perturb best + full repair
+                # Strategy B: warm restart — moderate perturb + reschedule + repair
                 warm = copy.deepcopy(best_ind)
-                heavy_n = max(40, len(warm) // 5)  # ~20% of genes
+                heavy_n = max(20, len(warm) // 10)  # ~10% of genes
                 smart_perturb(warm, heavy_n)
-                # Apply both rescheduling passes on warm restart
                 group_reschedule_pass(warm, n_groups=5)
                 instructor_reschedule_pass(warm, n_instr=5)
-                repair_individual_unified(
-                    warm,
-                    self.data.context,
-                    selective=True,
-                    max_iterations=self.deterministic_max_iters,
-                )
-                gene_ls_pass(warm)
+                for _ in range(2):  # 2 rounds of repair+LS
+                    repair_individual_unified(
+                        warm,
+                        self.data.context,
+                        selective=True,
+                        max_iterations=self.deterministic_max_iters,
+                    )
+                    gene_ls_pass(warm)
                 repair_engine.repair_individual(
-                    warm, budget_ms=self.engine_budget_ms * 2
+                    warm, budget_ms=self.engine_budget_ms * 3
                 )
                 warm_h, warm_s = self.evaluate(warm)
                 # Pick the better restart
