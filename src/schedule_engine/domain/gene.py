@@ -7,6 +7,28 @@ if TYPE_CHECKING:
     from schedule_engine.io.time_system import QuantumTimeSystem
 
 
+# ---------------------------------------------------------------------------
+# Explicit time-system injection (replaces implicit global singleton)
+# ---------------------------------------------------------------------------
+
+_time_system: QuantumTimeSystem | None = None
+
+
+def set_time_system(qts: QuantumTimeSystem | None) -> None:
+    """Inject the QuantumTimeSystem used for gene validation.
+
+    Call once at startup (or in test fixtures) before creating SessionGenes.
+    Passing ``None`` clears the reference (useful in test teardown).
+    """
+    global _time_system
+    _time_system = qts
+
+
+def get_time_system() -> QuantumTimeSystem | None:
+    """Return the current QuantumTimeSystem, or ``None`` if not yet set."""
+    return _time_system
+
+
 @dataclass
 class SessionGene:
     """
@@ -126,23 +148,27 @@ class SessionGene:
 
 
 def _get_time_system_metadata() -> tuple[QuantumTimeSystem | None, int]:  # type: ignore[name-defined]
-    """Fetch QuantumTimeSystem info with safe fallbacks."""
-    global _SESSION_GENE_QTS
+    """Fetch QuantumTimeSystem info with safe fallbacks.
 
-    if _SESSION_GENE_QTS is None:
+    Prefers the explicitly-injected instance (via ``set_time_system``).
+    Falls back to creating a default ``QuantumTimeSystem()`` and caching it
+    so behaviour is unchanged for callers that haven't migrated yet.
+    """
+    global _time_system
+
+    if _time_system is None:
         try:
             from schedule_engine.io.time_system import QuantumTimeSystem
 
-            _SESSION_GENE_QTS = QuantumTimeSystem()
+            _time_system = QuantumTimeSystem()
         except Exception:
-            _SESSION_GENE_QTS = None
+            pass  # leave as None
 
-    if _SESSION_GENE_QTS is None:
+    if _time_system is None:
         # Fallback for tests or incomplete initialization
         return None, 70
 
-    qts = _SESSION_GENE_QTS
-    return qts, qts.total_quanta
+    return _time_system, _time_system.total_quanta
 
 
 def _get_day_bounds(qts: QuantumTimeSystem, quantum: int) -> tuple[int, int] | None:  # type: ignore[name-defined]
@@ -155,6 +181,3 @@ def _get_day_bounds(qts: QuantumTimeSystem, quantum: int) -> tuple[int, int] | N
         if day_offset <= quantum < day_offset + day_quanta:
             return day_offset, day_quanta
     return None
-
-
-_SESSION_GENE_QTS: QuantumTimeSystem | None = None  # type: ignore[name-defined]

@@ -11,13 +11,11 @@ from typing import Any
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-# Config values (used internally only)
-from schedule_engine.config.calendar_config import (
-    EXCAL_DEFAULT_OUTPUT_PDF,
-    EXCAL_END_HOUR,
-    EXCAL_QUANTUM_MINUTES,
-    EXCAL_START_HOUR,
-)
+# Calendar export constants
+EXCAL_QUANTUM_MINUTES: int = 15
+EXCAL_START_HOUR: int = 7
+EXCAL_END_HOUR: int = 20
+EXCAL_DEFAULT_OUTPUT_PDF: str = "calendar.pdf"
 from schedule_engine.domain.course import Course
 from schedule_engine.domain.session import CourseSession
 from schedule_engine.io.time_system import QuantumTimeSystem

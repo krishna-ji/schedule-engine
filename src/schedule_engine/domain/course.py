@@ -17,6 +17,8 @@ class Course:
         name: Display name of the course
         quanta_per_week: Number of sessions required per week
         required_room_features: Type of room required (e.g., 'lecture', 'lab', 'seminar')
+                               NOTE: Currently str, but may change to str | None = None
+                               to support courses without specific room requirements.
         enrolled_group_ids: List of student group IDs enrolled in this course
         qualified_instructor_ids: List of instructor IDs qualified to teach this course
         course_type: Type of course - 'theory' or 'practical'

@@ -15,6 +15,7 @@ from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
 from schedule_engine.domain.session import CourseSession
+from schedule_engine.domain.timetable import ConflictPair, Timetable
 from schedule_engine.domain.types import Individual, SchedulingContext
 
 __all__ = [
@@ -26,6 +27,9 @@ __all__ = [
     "Room",
     # Gene
     "SessionGene",
+    # Timetable (pre-indexed schedule view)
+    "ConflictPair",
+    "Timetable",
     # Types
     "Individual",
     "SchedulingContext",

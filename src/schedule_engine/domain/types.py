@@ -6,7 +6,7 @@ This module contains type-safe data structures used throughout the system.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from schedule_engine.domain.course import Course
@@ -47,6 +47,7 @@ class SchedulingContext:
     available_quanta: list[int]
     config: Any | None = None
     cohort_pairs: list[tuple[str, str]] | None = None
+    family_map: dict[str, set[str]] = field(default_factory=dict)
 
     def validate(self) -> list[str]:
         """

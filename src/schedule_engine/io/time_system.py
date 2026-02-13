@@ -76,15 +76,68 @@ class QuantumTimeSystem:
     }
 
     def __init__(
-        self, operating_hours: dict[str, tuple[str, str] | None] | None = None
+        self,
+        operating_hours: dict[str, tuple[str, str] | None] | None = None,
+        *,
+        # Break / scheduling parameters (previously on TimeConfig)
+        midday_break_start: str = "12:00",
+        midday_break_end: str = "13:00",
+        break_window_start: str = "12:00",
+        break_window_end: str = "14:00",
+        enforce_break_placement: bool = True,
+        break_min_quanta: int = 1,
+        break_violation_penalty: int = 1,
+        # Theory block penalties
+        theory_isolated_penalty: int = 1,
+        theory_oversized_penalty_per_quantum: int = 1,
+        theory_max_excused_isolated: int = 1,
+        # Practical block penalties
+        practical_fragmentation_penalty: int = 1,
+        # Block sizing
+        preferred_block_size_min: int = 1,
+        preferred_block_size_max: int = 3,
+        max_session_coalescence: int = 3,
+        max_sessions_per_day: int = 4,
+        # Time preferences
+        earliest_preferred_time: str = "07:00",
+        latest_preferred_time: str = "21:00",
+        # Legacy
+        isolated_session_penalty: int = 1,
+        oversized_block_penalty_per_quantum: int = 1,
     ) -> None:
         """
         Initializes the QuantumTimeSystem with default operating hours.
         Precomputes continuous quantum mappings for each operational day.
 
+        All break/constraint parameters can be passed directly or will be
+        read from the global Config if available.
+
         Example:
             qts = QuantumTimeSystem()
+            qts = QuantumTimeSystem(midday_break_start="11:30", break_min_quanta=2)
         """
+        # Store break / scheduling parameters
+        self.midday_break_start = midday_break_start
+        self.midday_break_end = midday_break_end
+        self.break_window_start = break_window_start
+        self.break_window_end = break_window_end
+        self.enforce_break_placement = enforce_break_placement
+        self.break_min_quanta = break_min_quanta
+        self.break_violation_penalty = break_violation_penalty
+        self.theory_isolated_penalty = theory_isolated_penalty
+        self.theory_oversized_penalty_per_quantum = theory_oversized_penalty_per_quantum
+        self.theory_max_excused_isolated = theory_max_excused_isolated
+        self.practical_fragmentation_penalty = practical_fragmentation_penalty
+        self.preferred_block_size_min = preferred_block_size_min
+        self.preferred_block_size_max = preferred_block_size_max
+        self.max_session_coalescence = max_session_coalescence
+        self.max_sessions_per_day = max_sessions_per_day
+        self.earliest_preferred_time = earliest_preferred_time
+        self.latest_preferred_time = latest_preferred_time
+        self.isolated_session_penalty = isolated_session_penalty
+        self.oversized_block_penalty_per_quantum = oversized_block_penalty_per_quantum
+
+        # Resolve operating hours
         resolved_hours = (
             operating_hours
             or self._resolve_operating_hours_from_config()
@@ -106,34 +159,9 @@ class QuantumTimeSystem:
             )
             return None
 
-        time_cfg = getattr(cfg, "time", None)
-        if time_cfg is None:
-            return None
-
-        base_start = getattr(time_cfg, "opening_time", None)
-        base_end = getattr(time_cfg, "closing_time", None)
-        if not base_start or not base_end:
-            return None
-
-        closed_days = {
-            day.capitalize() for day in (getattr(time_cfg, "closed_days", []) or [])
-        }
-        overrides = getattr(time_cfg, "day_overrides", {}) or {}
-
-        resolved: dict[str, tuple[str, str] | None] = {}
-        for day in self.DAY_NAMES:
-            if day in closed_days:
-                resolved[day] = None
-                continue
-
-            override = self._get_override_for_day(overrides, day)
-            if override is None:
-                resolved[day] = (base_start, base_end)
-                continue
-
-            resolved[day] = self._extract_override_hours(override)
-
-        return resolved
+        # TimeConfig was merged into QTS __init__ kwargs.
+        # No separate config.time section exists anymore.
+        return None
 
     @staticmethod
     def _get_override_for_day(overrides: dict[str, Any], day: str) -> Any:
@@ -534,3 +562,117 @@ class QuantumTimeSystem:
         if operating_hours is None:
             raise ValueError(f"Day {day} has no operating hours")
         return operating_hours[1]
+
+    # Time Helper Methods (formerly in utils/time_helpers.py)
+
+    def get_midday_break_quanta(self) -> dict[str, set[int]]:
+        """
+        Get quantum indices for midday break period.
+
+        Returns:
+            Dict mapping day_name -> set of quantum indices (within-day) for break period
+        """
+        break_quanta: dict[str, set[int]] = {}
+
+        for day in self.DAY_NAMES:
+            if not self.is_operational(day):
+                continue
+
+            try:
+                break_start_q = self.time_to_quanta(day, self.midday_break_start)
+                break_end_q = self.time_to_quanta(day, self.midday_break_end)
+
+                day_offset = self.day_quanta_offset[day]
+                if day_offset is None:
+                    continue
+
+                within_day_start = break_start_q - day_offset
+                within_day_end = break_end_q - day_offset
+
+                break_quanta[day] = set(range(within_day_start, within_day_end))
+            except ValueError:
+                continue
+
+        return break_quanta
+
+    def quantum_to_day_and_within_day(self, quantum: int) -> tuple[str, int]:
+        """
+        Convert continuous quantum to (day_name, within_day_quantum).
+
+        Args:
+            quantum: Continuous quantum index
+
+        Returns:
+            Tuple of (day_name, within_day_quantum_index)
+        """
+        for day in self.DAY_NAMES:
+            if self.day_quanta_offset[day] is None:
+                continue
+
+            day_offset = self.day_quanta_offset[day]
+            day_count = self.day_quanta_count[day]
+
+            if day_offset is None or day_count is None:
+                continue
+
+            if day_offset <= quantum < day_offset + day_count:
+                within_day = quantum - day_offset
+                return day, within_day
+
+        raise ValueError(f"Quantum {quantum} out of valid range")
+
+    def get_break_window_quanta(self) -> dict[str, set[int]]:
+        """
+        Get break window quanta per day (within-day indices).
+
+        Returns:
+            Dict mapping day_name -> set of within-day quanta in break window
+        """
+        windows: dict[str, set[int]] = {}
+
+        for day in self.DAY_NAMES:
+            if not self.is_operational(day):
+                continue
+
+            try:
+                break_start_q = self.time_to_quanta(day, self.break_window_start)
+                break_end_q = self.time_to_quanta(day, self.break_window_end)
+
+                day_offset = self.day_quanta_offset[day]
+                if day_offset is None:
+                    continue
+
+                within_day_start = break_start_q - day_offset
+                within_day_end = break_end_q - day_offset
+
+                windows[day] = set(range(within_day_start, within_day_end))
+            except ValueError:
+                continue
+
+        return windows
+
+    def build_group_day_schedules(
+        self,
+        sessions: list,
+    ) -> dict[tuple[str, str], set[int]]:
+        """
+        Build occupied quanta per group per day.
+
+        Args:
+            sessions: List of CourseSession objects
+
+        Returns:
+            Dict mapping (group_id, day_name) -> set of within-day quanta occupied
+        """
+        group_day_map: dict[tuple[str, str], set[int]] = defaultdict(set)
+
+        for session in sessions:
+            for group_id in session.group_ids:
+                for q in session.session_quanta:
+                    try:
+                        day, within_day = self.quantum_to_day_and_within_day(q)
+                        group_day_map[(group_id, day)].add(within_day)
+                    except ValueError:
+                        continue
+
+        return dict(group_day_map)

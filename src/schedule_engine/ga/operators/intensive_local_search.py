@@ -465,8 +465,8 @@ def apply_selective_probabilistic(
         return individual, False
 
     # Apply selective repair (violations only)
-    from schedule_engine.ga.operators.repair import repair_individual_unified
-    from schedule_engine.ga.operators.violation_detector import detect_violated_genes
+    from schedule_engine.ga.repair.basic import repair_individual_unified
+    from schedule_engine.ga.repair.detector import detect_violated_genes
 
     violations = detect_violated_genes(individual, context, strategy="hybrid")
 

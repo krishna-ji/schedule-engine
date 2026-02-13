@@ -343,8 +343,12 @@ def _check_availability_violations(
                 session.course_id, session.course_type, course_map
             )
 
-            # Check instructor availability
-            if session.instructor and q not in session.instructor.available_quanta:
+            # Check instructor availability (full-time instructors are always available)
+            if (
+                session.instructor
+                and not session.instructor.is_full_time
+                and q not in session.instructor.available_quanta
+            ):
                 violations.append(
                     {
                         "type": "Instructor Unavailable",

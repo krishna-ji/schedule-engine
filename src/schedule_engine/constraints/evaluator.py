@@ -1,192 +1,109 @@
-"""
-Individual constraint evaluator for per-constraint breakdown.
+"""Unified Evaluator — the single way to evaluate fitness.
 
-ENHANCEMENT #2: Provides fine-grained constraint violation analysis
-for RL state representation and targeted repair strategies.
+Replaces:
+- ``ga/evaluator/fitness.py``
+- ``ga/evaluator/detailed_fitness.py``
+- ``ga/run_helpers.py::create_evaluator()``
+- ``ga/run_helpers.py::get_constraint_breakdown()``
+- ``constraints/all_constraints.py`` (evaluate_all, evaluate_hard_constraints, etc.)
+
+Usage::
+
+    from schedule_engine.constraints import Evaluator
+
+    evaluator = Evaluator()  # uses default constraints
+    hard, soft = evaluator.fitness(genes, context, qts)
+    breakdown = evaluator.breakdown(genes, context, qts)
 """
 
 from __future__ import annotations
 
-from schedule_engine.constraints.hard import (
-    course_completeness,
-    instructor_exclusivity,
-    instructor_qualifications,
-    instructor_time_availability,
-    room_exclusivity,
-    room_suitability,
-    room_time_availability,
-    student_group_exclusivity,
-)
-from schedule_engine.constraints.soft import (
-    instructor_schedule_compactness,
-    session_continuity,
-    student_lunch_break,
-    student_schedule_compactness,
-)
-from schedule_engine.domain.course import Course
-from schedule_engine.domain.session import CourseSession
+from typing import TYPE_CHECKING
+
+from schedule_engine.constraints.constraints import ALL_CONSTRAINTS, Constraint
+from schedule_engine.domain.timetable import Timetable
+
+if TYPE_CHECKING:
+    from schedule_engine.domain.gene import SessionGene
+    from schedule_engine.domain.types import SchedulingContext
+    from schedule_engine.io.time_system import QuantumTimeSystem
+
+__all__ = ["Evaluator"]
 
 
-class ConstraintEvaluator:
-    """
-    Evaluates individual constraints and provides per-constraint breakdown.
+class Evaluator:
+    """Single, authoritative fitness evaluator.
 
-    Used by RL state encoder to provide fine-grained constraint information
-    for targeted repair strategies.
+    Accepts either raw genes or a pre-built ``Timetable`` for both
+    aggregate fitness and per-constraint breakdown.
+
+    Parameters
+    ----------
+    constraints : list[Constraint] | None
+        Custom constraint list.  Defaults to all hard + soft constraints.
     """
 
-    # Hard constraint function mapping
-    HARD_CONSTRAINTS = {
-        "student_group_exclusivity": student_group_exclusivity,
-        "instructor_exclusivity": instructor_exclusivity,
-        "instructor_qualifications": instructor_qualifications,
-        "room_suitability": room_suitability,
-        "instructor_time_availability": instructor_time_availability,
-        "room_time_availability": room_time_availability,
-        "course_completeness": course_completeness,
-        "room_exclusivity": room_exclusivity,
-    }
+    def __init__(self, constraints: list[Constraint] | None = None) -> None:
+        if constraints is None:
+            constraints = list(ALL_CONSTRAINTS)
+        self.hard = [c for c in constraints if c.kind == "hard"]
+        self.soft = [c for c in constraints if c.kind == "soft"]
+        self._all = self.hard + self.soft
 
-    # Soft constraint function mapping
-    SOFT_CONSTRAINTS = {
-        "student_schedule_compactness": student_schedule_compactness,
-        "instructor_schedule_compactness": instructor_schedule_compactness,
-        "student_lunch_break": student_lunch_break,
-        "session_continuity": session_continuity,
-    }
+    # Core: fitness
 
-    def __init__(self, course_map: dict[tuple, Course] | None = None):
-        """
-        Initialize constraint evaluator.
+    def fitness(
+        self,
+        genes: list[SessionGene],
+        context: SchedulingContext,
+        qts: QuantumTimeSystem | None = None,
+    ) -> tuple[float, float]:
+        """Return ``(hard_penalty, soft_penalty)``."""
+        tt = Timetable(genes, context, qts)
+        return self.fitness_from_timetable(tt)
 
-        Args:
-            course_map: Mapping from (course_id, course_type) to Course entity.
-                       Required for constraints that need course information.
-        """
-        self.course_map = course_map or {}
+    def fitness_from_timetable(self, tt: Timetable) -> tuple[float, float]:
+        """Evaluate an already-constructed Timetable."""
+        hard = sum(c.weight * c.evaluate(tt) for c in self.hard)
+        soft = sum(c.weight * c.evaluate(tt) for c in self.soft)
+        return hard, soft
 
-    def evaluate_hard_breakdown(self, sessions: list[CourseSession]) -> dict[str, int]:
-        """
-        Evaluate all hard constraints individually.
+    # Core: breakdown
 
-        Args:
-            sessions: List of decoded course sessions
-
-        Returns:
-            Dictionary mapping constraint names to violation counts
-        """
-        breakdown = {}
-
-        for name, func in self.HARD_CONSTRAINTS.items():
-            try:
-                # Check if constraint needs course information
-                if name in ["instructor_qualifications", "room_suitability"]:
-                    violations = func(sessions, self.course_map)
-                else:
-                    violations = func(sessions)
-                breakdown[name] = violations
-            except Exception as e:
-                # Log error but don't crash - return 0 for failed constraint
-                print(f"Warning: Failed to evaluate constraint {name}: {e}")
-                breakdown[name] = 0
-
-        return breakdown
-
-    def evaluate_soft_breakdown(
-        self, sessions: list[CourseSession]
+    def breakdown(
+        self,
+        genes: list[SessionGene],
+        context: SchedulingContext,
+        qts: QuantumTimeSystem | None = None,
     ) -> dict[str, float]:
+        """Return ``{constraint_name: penalty}`` for every constraint."""
+        tt = Timetable(genes, context, qts)
+        return self.breakdown_from_timetable(tt)
+
+    def breakdown_from_timetable(self, tt: Timetable) -> dict[str, float]:
+        """Per-constraint breakdown from an already-constructed Timetable."""
+        return {c.name: c.evaluate(tt) for c in self._all}
+
+    # Convenience: hard/soft breakdowns separately
+
+    def hard_breakdown(self, tt: Timetable) -> dict[str, float]:
+        """Hard constraint breakdown only."""
+        return {c.name: c.evaluate(tt) for c in self.hard}
+
+    def soft_breakdown(self, tt: Timetable) -> dict[str, float]:
+        """Soft constraint breakdown only."""
+        return {c.name: c.evaluate(tt) for c in self.soft}
+
+    # Convenience: evaluate with a summary like evaluate_all()
+
+    def evaluate_all(
+        self, tt: Timetable
+    ) -> tuple[float, float, dict[str, float], dict[str, float]]:
+        """Full evaluation with breakdowns.
+
+        Returns ``(hard_total, soft_total, hard_breakdown, soft_breakdown)``.
+        Drop-in replacement for ``all_constraints.evaluate_all()``.
         """
-        Evaluate all soft constraints individually.
-
-        Args:
-            sessions: List of decoded course sessions
-
-        Returns:
-            Dictionary mapping constraint names to penalty counts
-        """
-        breakdown = {}
-
-        for name, func in self.SOFT_CONSTRAINTS.items():
-            try:
-                # Check if constraint needs course information
-                if name == "session_continuity":
-                    penalties = func(sessions, self.course_map)
-                else:
-                    penalties = func(sessions)
-                breakdown[name] = penalties
-            except Exception as e:
-                # Log error but don't crash - return 0 for failed constraint
-                print(f"Warning: Failed to evaluate constraint {name}: {e}")
-                breakdown[name] = 0
-
-        return breakdown
-
-    def evaluate_full_breakdown(
-        self, sessions: list[CourseSession]
-    ) -> dict[str, int | float]:
-        """
-        Evaluate all constraints and return combined breakdown.
-
-        Args:
-            sessions: List of decoded course sessions
-
-        Returns:
-            Dictionary with all constraint violations (hard + soft)
-        """
-        hard_breakdown = self.evaluate_hard_breakdown(sessions)
-        soft_breakdown = self.evaluate_soft_breakdown(sessions)
-
-        # Combine both dictionaries
-        return {**hard_breakdown, **soft_breakdown}
-
-    def get_top_violators(
-        self, sessions: list[CourseSession], top_n: int = 3
-    ) -> list[tuple[str, int | float]]:
-        """
-        Get the top N most violated constraints.
-
-        Useful for prioritizing repair efforts.
-
-        Args:
-            sessions: List of decoded course sessions
-            top_n: Number of top violators to return
-
-        Returns:
-            List of (constraint_name, violation_count) tuples, sorted by violations
-        """
-        breakdown = self.evaluate_full_breakdown(sessions)
-
-        # Sort by violation count (descending)
-        sorted_violations = sorted(breakdown.items(), key=lambda x: x[1], reverse=True)
-
-        return sorted_violations[:top_n]
-
-    def get_constraint_priorities(
-        self, sessions: list[CourseSession]
-    ) -> dict[str, float]:
-        """
-        Calculate constraint priority scores for targeted repair.
-
-        Priority = violation_count * weight (from config)
-
-        Args:
-            sessions: List of decoded course sessions
-
-        Returns:
-            Dictionary mapping constraint names to priority scores
-        """
-        breakdown = self.evaluate_full_breakdown(sessions)
-        priorities = {}
-
-        # Apply weights (from config or defaults)
-        # Hard constraints typically have weight 2.0-3.0
-        # Soft constraints typically have weight 0.5-2.0
-        for constraint_name, violations in breakdown.items():
-            if constraint_name in self.HARD_CONSTRAINTS:
-                weight = 3.0  # Default hard constraint weight
-            else:
-                weight = 1.0  # Default soft constraint weight
-
-            priorities[constraint_name] = violations * weight
-
-        return priorities
+        hb = self.hard_breakdown(tt)
+        sb = self.soft_breakdown(tt)
+        return sum(hb.values()), sum(sb.values()), hb, sb

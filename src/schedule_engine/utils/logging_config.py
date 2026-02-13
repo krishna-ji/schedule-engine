@@ -151,3 +151,37 @@ def critical(msg: str, exc_info: bool = False) -> None:
         exc_info: If True, include exception traceback
     """
     get_logger().critical(msg, exc_info=exc_info)
+
+
+# ---------------------------------------------------------------------------
+# Event tracking (merged from event_tracker.py)
+# ---------------------------------------------------------------------------
+
+
+class EventTracker:
+    """Helper class to track events during a GA generation.
+
+    Events tracked:
+    - crossover_repair_applied, mutation_repair_applied
+    - stagnation_detected, hypermutation_start, hypermutation_ended
+    - population_restart, perfect_solution
+    """
+
+    def __init__(self) -> None:
+        self.events: list[str] = []
+
+    def add(self, event: str) -> None:
+        """Add an event to the tracker."""
+        self.events.append(event)
+
+    def has_events(self) -> bool:
+        """Check if any events were recorded."""
+        return bool(self.events)
+
+    def get_events(self) -> list[str]:
+        """Get list of events."""
+        return list(self.events)
+
+    def clear(self) -> None:
+        """Clear all events."""
+        self.events.clear()
