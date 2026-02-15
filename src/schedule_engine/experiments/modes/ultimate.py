@@ -231,9 +231,12 @@ class UltimateExperiment(BaseExperiment):
     def _run_evolution(self) -> tuple[list[Any], EvolutionStats]:
         from schedule_engine.ga.operators.local_search import optimize_gene_greedy
         from schedule_engine.ga.repair.basic import repair_individual_unified
-        from schedule_engine.ga.repair.engine import (RepairEngine, _build_counts,
-                                                      _gene_violation_score)
-        from schedule_engine.utils.room_compatibility import is_room_type_compatible
+        from schedule_engine.ga.repair.engine import (
+            RepairEngine,
+            _build_counts,
+            _gene_violation_score,
+        )
+        from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
 
         start_time = time.time()
         rng = random.Random(self.seed)
@@ -348,9 +351,11 @@ class UltimateExperiment(BaseExperiment):
                     suitable = [
                         r.room_id
                         for r in self.data.context.rooms.values()
-                        if is_room_type_compatible(
+                        if is_room_suitable_for_course(
                             req,
                             str(getattr(r, "room_features", "lecture")).lower().strip(),
+                            getattr(course, "specific_lab_features", None),
+                            getattr(r, "specific_features", None),
                         )
                     ]
                     if suitable:
@@ -838,11 +843,13 @@ class UltimateExperiment(BaseExperiment):
                 no_improve_count = 0
                 improved_tag = " *IMPROVED*"
                 self._improvement_iters.append(ils_iter + 1)
-                self._improvement_events.append({
-                    "iter": ils_iter + 1,
-                    "delta": _prev_best_h - best_h,
-                    "source": "perturb+repair",
-                })
+                self._improvement_events.append(
+                    {
+                        "iter": ils_iter + 1,
+                        "delta": _prev_best_h - best_h,
+                        "source": "perturb+repair",
+                    }
+                )
             else:
                 no_improve_count += 1
 
@@ -870,23 +877,27 @@ class UltimateExperiment(BaseExperiment):
                     trial, budget_ms=self.engine_budget_ms * 3
                 )
                 new_h, new_s = self.evaluate(trial)
-                self._reschedule_events.append({
-                    "iter": ils_iter + 1,
-                    "type": resc_type,
-                    "before": resc_before_h,
-                    "after": new_h,
-                })
+                self._reschedule_events.append(
+                    {
+                        "iter": ils_iter + 1,
+                        "type": resc_type,
+                        "before": resc_before_h,
+                        "after": new_h,
+                    }
+                )
                 if (new_h, new_s) < (best_h, best_s):
                     best_h, best_s = new_h, new_s
                     best_ind = trial
                     self._ils_improvements += 1
                     no_improve_count = 0
                     self._improvement_iters.append(ils_iter + 1)
-                    self._improvement_events.append({
-                        "iter": ils_iter + 1,
-                        "delta": resc_before_h - best_h,
-                        "source": "rescheduling",
-                    })
+                    self._improvement_events.append(
+                        {
+                            "iter": ils_iter + 1,
+                            "delta": resc_before_h - best_h,
+                            "source": "rescheduling",
+                        }
+                    )
                     self.logger.info("  rescheduling improved to Hard=%d", best_h)
 
             # ── diversification restart ───────────────────────────────
@@ -940,11 +951,13 @@ class UltimateExperiment(BaseExperiment):
                     best_ind = copy.deepcopy(restart_ind)
                     self._ils_improvements += 1
                     self._improvement_iters.append(ils_iter + 1)
-                    self._improvement_events.append({
-                        "iter": ils_iter + 1,
-                        "delta": restart_before_h - best_h,
-                        "source": "restart",
-                    })
+                    self._improvement_events.append(
+                        {
+                            "iter": ils_iter + 1,
+                            "delta": restart_before_h - best_h,
+                            "source": "restart",
+                        }
+                    )
                 no_improve_count = 0
 
             # ── per-iteration tracking (for ILS plots) ────────────────
@@ -960,14 +973,20 @@ class UltimateExperiment(BaseExperiment):
             self._iter_perturb_sizes.append(n_perturb)
 
             # Per-constraint breakdown for this iteration
-            if ils_iter == 0 or (ils_iter + 1) % max(1, self.log_interval) == 0 or improved_tag:
+            if (
+                ils_iter == 0
+                or (ils_iter + 1) % max(1, self.log_interval) == 0
+                or improved_tag
+            ):
                 bd = self._get_hard_breakdown(best_ind)
                 for cname, cnt in bd.items():
                     if cname not in self._iter_constraint_history:
                         self._iter_constraint_history[cname] = []
                     self._iter_constraint_history[cname].append(float(cnt))
                 # Ensure consistent length — use iteration index as alignment key
-                self._iter_constraint_history.setdefault("_sample_iters", []).append(ils_iter + 1)
+                self._iter_constraint_history.setdefault("_sample_iters", []).append(
+                    ils_iter + 1
+                )
 
             # ── logging ───────────────────────────────────────────────
             elapsed = time.time() - start_time

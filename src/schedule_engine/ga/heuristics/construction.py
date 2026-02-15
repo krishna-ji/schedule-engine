@@ -596,7 +596,10 @@ def _find_suitable_room(
         room_id
         for room_id, room in context.rooms.items()
         if isinstance(room, Room)
-        and room.is_suitable_for_course_type(course.required_room_features)
+        and room.is_suitable_for_course_type(
+            course.required_room_features,
+            getattr(course, "specific_lab_features", None),
+        )
     ]
 
     # Find available room

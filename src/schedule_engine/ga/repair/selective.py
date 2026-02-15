@@ -568,18 +568,26 @@ def repair_room_type_mismatches_selective(
         )
         room_type = getattr(room, "room_features", "lecture").lower().strip()
 
-        # Check if already compatible
-        from schedule_engine.utils.room_compatibility import is_room_type_compatible
+        # Check if already compatible (type + specific features)
+        from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
 
-        if is_room_type_compatible(required_type, room_type):
+        course_lab_feats = getattr(course, "specific_lab_features", None)
+        room_spec_feats = getattr(room, "specific_features", None)
+
+        if is_room_suitable_for_course(
+            required_type, room_type, course_lab_feats, room_spec_feats
+        ):
             continue  # Already matches
 
-        # Find compatible room
+        # Find compatible room (type + specific features)
         compatible_rooms = [
             r.room_id
             for r in context.rooms.values()
-            if is_room_type_compatible(
-                required_type, getattr(r, "room_features", "lecture").lower().strip()
+            if is_room_suitable_for_course(
+                required_type,
+                getattr(r, "room_features", "lecture").lower().strip(),
+                course_lab_feats,
+                getattr(r, "specific_features", None),
             )
         ]
 

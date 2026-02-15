@@ -1563,15 +1563,27 @@ def find_suitable_rooms(
             .strip()
         )
 
-        # PRIORITY 1: Exact match
+        # Course-level specific lab features (for practical courses)
+        lab_feats = getattr(course, "specific_lab_features", None) or []
+
+        # PRIORITY 1: Exact type match + specific feature match
         if room_str == required_str:
-            exact_matches.append(room)
+            if lab_feats:
+                # For practical courses with lab requirements, room must have a matching feature
+                room_spec = getattr(room, "specific_features", None) or []
+                room_feat_set = {f.lower().strip() for f in room_spec}
+                if any(f.lower().strip() in room_feat_set for f in lab_feats):
+                    exact_matches.append(room)
+                # else: type matches but wrong lab — skip
+            else:
+                exact_matches.append(room)
             continue
 
         # PRIORITY 2: Flexible match using Room's built-in method
+        # (includes specific_lab_features matching for practical courses)
         if hasattr(
             room, "is_suitable_for_course_type"
-        ) and room.is_suitable_for_course_type(required_str):
+        ) and room.is_suitable_for_course_type(required_str, lab_feats or None):
             flexible_matches.append(room)
             continue
 

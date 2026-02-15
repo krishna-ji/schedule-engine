@@ -12,7 +12,7 @@ This eliminates 4+ duplicate implementations and ensures consistent behavior.
 
 from __future__ import annotations
 
-__all__ = ["is_room_type_compatible"]
+__all__ = ["is_room_type_compatible", "is_room_suitable_for_course"]
 
 
 def is_room_type_compatible(required: str, room_type: str) -> bool:
@@ -75,3 +75,56 @@ def is_room_type_compatible(required: str, room_type: str) -> bool:
         "computer_lab",
         "science_lab",
     ]
+
+
+def is_room_suitable_for_course(
+    required_type: str,
+    room_type: str,
+    course_lab_features: list[str] | None = None,
+    room_specific_features: list[str] | None = None,
+) -> bool:
+    """Check if a room is fully suitable for a course: type AND specific features.
+
+    For practical courses with specific lab requirements (e.g. "chemistry lab",
+    "networking lab"), the room must have **at least one** of those features in
+    its ``specific_features`` list.  Theory courses or practical courses
+    without specific lab requirements only need the broad type match.
+
+    Args:
+        required_type: Course's ``required_room_features`` (``"lecture"`` or ``"practical"``).
+        room_type: Room's ``room_features`` (``"lecture"`` or ``"practical"``).
+        course_lab_features: Course's ``specific_lab_features`` (may be empty/None).
+        room_specific_features: Room's ``specific_features`` (may be empty/None).
+
+    Returns:
+        ``True`` if the room satisfies both type and feature requirements.
+
+    Examples:
+        >>> is_room_suitable_for_course("practical", "practical",
+        ...     ["chemistry lab"], ["chemistry lab", "physics lab"])
+        True
+        >>> is_room_suitable_for_course("practical", "practical",
+        ...     ["chemistry lab"], ["networking lab"])
+        False
+        >>> is_room_suitable_for_course("practical", "practical", [], [])
+        True
+        >>> is_room_suitable_for_course("lecture", "lecture", None, None)
+        True
+    """
+    # Step 1: broad type check
+    if not is_room_type_compatible(required_type, room_type):
+        return False
+
+    # Step 2: specific feature check (only for practical courses with requirements)
+    if not course_lab_features:
+        return True  # No specific feature requirements
+
+    if not room_specific_features:
+        return False  # Course needs features but room has none
+
+    # Room must provide at least one of the required features.
+    # (A single practical session can be held in any room that provides
+    #  at least one matching feature; the course's full feature list spans
+    #  all sessions across the semester.)
+    room_feat_set = {f.lower().strip() for f in room_specific_features}
+    return any(f.lower().strip() in room_feat_set for f in course_lab_features)

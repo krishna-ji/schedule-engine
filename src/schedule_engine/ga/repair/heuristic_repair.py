@@ -149,7 +149,10 @@ def _order_by_difficulty(
             1
             for room in rooms.values()
             if room.capacity >= total_size
-            and room.is_suitable_for_course_type(course.required_room_features)
+            and room.is_suitable_for_course_type(
+                course.required_room_features,
+                getattr(course, "specific_lab_features", None),
+            )
         )
 
         # Return tuple: (time_options, room_options, group_count)
@@ -215,7 +218,8 @@ def _find_first_feasible(
         total_size = sum(groups[gid].student_count for gid in session.group_ids)
         for room_id, room in rooms.items():
             if room.capacity >= total_size and room.is_suitable_for_course_type(
-                course.required_room_features
+                course.required_room_features,
+                getattr(course, "specific_lab_features", None),
             ):
                 # Check room not occupied
                 if room_id in occupied_rooms and any(
@@ -366,7 +370,10 @@ def _random_assignment(
                 rid
                 for rid, room in rooms.items()
                 if room.capacity >= total_size
-                and room.is_suitable_for_course_type(course.required_room_features)
+                and room.is_suitable_for_course_type(
+                    course.required_room_features,
+                    getattr(course, "specific_lab_features", None),
+                )
             ]
             if suitable:
                 return SessionGene(
@@ -421,7 +428,10 @@ def _propose_move(
             rid
             for rid, room in rooms.items()
             if room.capacity >= total_size
-            and room.is_suitable_for_course_type(course.required_room_features)
+            and room.is_suitable_for_course_type(
+                course.required_room_features,
+                getattr(course, "specific_lab_features", None),
+            )
             and rid != session.room_id
         ]
         if suitable:

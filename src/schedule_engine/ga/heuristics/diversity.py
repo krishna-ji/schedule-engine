@@ -186,7 +186,10 @@ def crowding_mutation(
             compatible_rooms = [
                 r_id
                 for r_id, room in context.rooms.items()
-                if room.is_suitable_for_course_type(course.required_room_features)
+                if room.is_suitable_for_course_type(
+                    course.required_room_features,
+                    getattr(course, "specific_lab_features", None),
+                )
                 and room_usage[r_id] < avg_room_usage
             ]
 
@@ -425,7 +428,10 @@ def _inject_diversity(
             compatible_rooms = [
                 r_id
                 for r_id, room in context.rooms.items()
-                if room.is_suitable_for_course_type(course.required_room_features)
+                if room.is_suitable_for_course_type(
+                    course.required_room_features,
+                    getattr(course, "specific_lab_features", None),
+                )
             ]
             if compatible_rooms:
                 gene.room_id = random.choice(compatible_rooms)

@@ -129,16 +129,20 @@ def _find_available_room(
     occupied: OccupiedMap,
     required_type: str = "lecture",
     min_capacity: int = 0,
+    course_lab_features: list[str] | None = None,
 ) -> str | None:
     """Find a room without conflicts."""
     duration_range = range(gene.start_quanta, gene.end_quanta)
 
-    from schedule_engine.utils.room_compatibility import is_room_type_compatible
+    from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
 
     for room in context.rooms.values():
-        # Check type compatibility
+        # Check type + specific feature compatibility
         room_type = getattr(room, "room_features", "lecture").lower().strip()
-        if not is_room_type_compatible(required_type, room_type):
+        room_spec_feats = getattr(room, "specific_features", None)
+        if not is_room_suitable_for_course(
+            required_type, room_type, course_lab_features, room_spec_feats
+        ):
             continue
 
         # Check capacity
@@ -277,9 +281,13 @@ def repair_room_conflicts_fast(
             if gid in context.groups
         )
 
+        course_lab_feats = (
+            getattr(course, "specific_lab_features", None) if course else None
+        )
+
         local_omap = build_occupied_map(individual, exclude_gene=gene)
         new_room = _find_available_room(
-            gene, context, local_omap, required_type, total_enrollment
+            gene, context, local_omap, required_type, total_enrollment, course_lab_feats
         )
 
         if new_room is not None and new_room != gene.room_id:

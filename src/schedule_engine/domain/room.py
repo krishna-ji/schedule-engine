@@ -40,8 +40,23 @@ class Room:
         """Check if room can accommodate a given group size."""
         return self.capacity >= group_size
 
-    def is_suitable_for_course_type(self, required_room_features: str) -> bool:
-        """Check if room type matches the required room type for a course."""
-        from schedule_engine.utils.room_compatibility import is_room_type_compatible
+    def is_suitable_for_course_type(
+        self,
+        required_room_features: str,
+        course_lab_features: list[str] | None = None,
+    ) -> bool:
+        """Check if room is suitable for a course (type + specific lab features).
 
-        return is_room_type_compatible(required_room_features, self.room_features)
+        Args:
+            required_room_features: Broad type requirement (``"lecture"``/``"practical"``).
+            course_lab_features: Specific lab features the course needs.
+                When provided, room must have at least one matching feature.
+        """
+        from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
+
+        return is_room_suitable_for_course(
+            required_room_features,
+            self.room_features,
+            course_lab_features,
+            self.specific_features,
+        )

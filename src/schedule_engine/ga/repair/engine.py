@@ -248,9 +248,13 @@ def _is_room_suitable(
     required = str(required).lower().strip()
     room_features = str(room_features).lower().strip()
 
-    from schedule_engine.utils.room_compatibility import is_room_type_compatible
+    from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
 
-    if not is_room_type_compatible(required, room_features):
+    course_lab_feats = getattr(course, "specific_lab_features", None)
+    room_spec_feats = getattr(room, "specific_features", None)
+    if not is_room_suitable_for_course(
+        required, room_features, course_lab_feats, room_spec_feats
+    ):
         return False
 
     max_size = _max_group_size(gene, context)

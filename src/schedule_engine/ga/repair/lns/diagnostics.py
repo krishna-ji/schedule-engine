@@ -9,10 +9,10 @@ import logging
 from collections import defaultdict
 
 from schedule_engine.domain.course import Course
+from schedule_engine.domain.gene import SessionGene
 from schedule_engine.domain.group import Group
 from schedule_engine.domain.instructor import Instructor
 from schedule_engine.domain.room import Room
-from schedule_engine.domain.gene import SessionGene
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,10 @@ class SubproblemDiagnostics:
             for room in self.rooms.values():
                 if (
                     room.capacity >= total_group_size
-                    and room.is_suitable_for_course_type(course.required_room_features)
+                    and room.is_suitable_for_course_type(
+                        course.required_room_features,
+                        getattr(course, "specific_lab_features", None),
+                    )
                 ):
                     suitable_rooms += 1
 

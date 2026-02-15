@@ -492,7 +492,10 @@ def _repair_solution(
         compatible_rooms = [
             r_id
             for r_id, room in context.rooms.items()
-            if room.is_suitable_for_course_type(course.required_room_features)
+            if room.is_suitable_for_course_type(
+                course.required_room_features,
+                getattr(course, "specific_lab_features", None),
+            )
         ]
 
         if compatible_rooms:

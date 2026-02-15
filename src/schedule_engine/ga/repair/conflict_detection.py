@@ -277,15 +277,19 @@ def _track_room_feature_violations(
     sessions: list[CourseSession],
 ) -> tuple[set[int], int, dict[str, Any]]:
     """Track room feature violations."""
+    from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
+
     violations = 0
     conflicted_indices = set()
 
     for idx, session in enumerate(sessions):
         if session.room and session.required_room_features:
             required_features = session.required_room_features.strip().lower()
-            if (
-                required_features
-                and required_features != session.room.room_features.strip().lower()
+            room_features = session.room.room_features.strip().lower()
+            course_lab_feats = getattr(session, "specific_lab_features", None)
+            room_spec_feats = getattr(session.room, "specific_features", None)
+            if required_features and not is_room_suitable_for_course(
+                required_features, room_features, course_lab_feats, room_spec_feats
             ):
                 violations += 1
                 conflicted_indices.add(idx)

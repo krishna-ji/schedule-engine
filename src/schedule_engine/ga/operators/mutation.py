@@ -179,10 +179,16 @@ def find_suitable_rooms_for_course(
             continue
 
         # Check room type compatibility using centralized logic
-        from schedule_engine.utils.room_compatibility import is_room_type_compatible
+        from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
 
-        if is_room_type_compatible(
-            required_room_features.lower().strip(), room_features.lower().strip()
+        course_lab_feats = getattr(course, "specific_lab_features", None)
+        room_spec_feats = getattr(room, "specific_features", None)
+
+        if is_room_suitable_for_course(
+            required_room_features.lower().strip(),
+            room_features.lower().strip(),
+            course_lab_feats,
+            room_spec_feats,
         ):
             suitable_room_ids.append(room_id)
 

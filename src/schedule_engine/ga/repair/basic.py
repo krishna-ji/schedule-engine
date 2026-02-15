@@ -369,8 +369,13 @@ def repair_room_overlap_reassign(
             if course
             else "lecture"
         )
+        course_lab_feats = (
+            getattr(course, "specific_lab_features", None) if course else None
+        )
 
-        candidate_room = _find_compatible_room(individual, gene, context, required_type)
+        candidate_room = _find_compatible_room(
+            individual, gene, context, required_type, course_lab_feats
+        )
         if candidate_room is None or candidate_room == gene.room_id:
             continue
 
@@ -415,7 +420,12 @@ def repair_room_conflicts(
             if course
             else "lecture"
         )
-        new_room = _find_compatible_room(individual, gene, context, required_type)
+        course_lab_feats = (
+            getattr(course, "specific_lab_features", None) if course else None
+        )
+        new_room = _find_compatible_room(
+            individual, gene, context, required_type, course_lab_feats
+        )
         if new_room is not None:
             gene.room_id = new_room
             fixes += 1
@@ -529,15 +539,20 @@ def repair_room_type_mismatches(
         )
         room_type = getattr(room, "room_features", "lecture").lower().strip()
 
-        # Check if already compatible using flexible matching
-        from schedule_engine.utils.room_compatibility import is_room_type_compatible
+        # Check if already compatible using flexible matching (type + specific features)
+        from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
 
-        if is_room_type_compatible(required_type, room_type):
+        course_lab_feats = getattr(course, "specific_lab_features", None)
+        room_spec_feats = getattr(room, "specific_features", None)
+
+        if is_room_suitable_for_course(
+            required_type, room_type, course_lab_feats, room_spec_feats
+        ):
             continue  # Already matches
 
-        # Find compatible room (pass required_type directly)
+        # Find compatible room (pass course lab features for matching)
         replacement_room = _find_compatible_room(
-            individual, gene, context, required_type
+            individual, gene, context, required_type, course_lab_feats
         )
         if replacement_room is not None:
             gene.room_id = replacement_room
@@ -1163,14 +1178,16 @@ def _find_compatible_room(
     current_gene: SessionGene,
     context: SchedulingContext,
     required_type: str,
+    course_lab_features: list[str] | None = None,
 ) -> str | None:
-    """Find a room matching required type without conflicts.
+    """Find a room matching required type + specific features without conflicts.
 
     Args:
         individual: Current schedule
         current_gene: Gene to find room for
         context: Scheduling context
         required_type: Required room type ("lecture", "practical", etc.)
+        course_lab_features: Specific lab features the course needs.
 
     Returns:
         Room ID if found, None otherwise
@@ -1178,7 +1195,7 @@ def _find_compatible_room(
     occupied = _build_occupied_quanta_map(individual, current_gene)
     duration_range = range(current_gene.start_quanta, current_gene.end_quanta)
 
-    from schedule_engine.utils.room_compatibility import is_room_type_compatible
+    from schedule_engine.utils.room_compatibility import is_room_suitable_for_course
 
     # Calculate total enrollment for capacity check
     total_enrollment = sum(
@@ -1190,9 +1207,12 @@ def _find_compatible_room(
     # Collect compatible candidates and sort by preference
     candidates = []
     for room in context.rooms.values():
-        # Check room type compatibility using centralized logic
+        # Check room type + specific feature compatibility
         room_type = getattr(room, "room_features", "lecture").lower().strip()
-        if not is_room_type_compatible(required_type, room_type):
+        room_spec_feats = getattr(room, "specific_features", None)
+        if not is_room_suitable_for_course(
+            required_type, room_type, course_lab_features, room_spec_feats
+        ):
             continue
 
         # Check capacity (hard requirement)
@@ -1336,9 +1356,7 @@ def repair_individual_unified(
     if selective:
         try:
             from schedule_engine.config import get_config
-            from schedule_engine.ga.repair.selective import (
-                repair_individual_selective,
-            )
+            from schedule_engine.ga.repair.selective import repair_individual_selective
 
             detection_strategy = get_config().repair.detection_strategy
             logger.debug(f" Applying selective repair (strategy={detection_strategy})")
@@ -1353,9 +1371,7 @@ def repair_individual_unified(
         except Exception:  # pragma: no cover - fallback to full scan
             pass
 
-    from schedule_engine.ga.repair.wrappers import (
-        get_enabled_repair_operators,
-    )
+    from schedule_engine.ga.repair.wrappers import get_enabled_repair_operators
 
     stats = {
         "iterations": 0,
