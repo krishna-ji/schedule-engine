@@ -42,10 +42,28 @@ from schedule_engine.domain.room import Room
 from schedule_engine.io.time_system import QuantumTimeSystem
 from schedule_engine.utils.console_service import get_console
 
-__all__ = ["check_feasibility", "FeasibilityReport"]
+__all__ = ["check_feasibility", "FeasibilityReport", "InfeasibleProblemError"]
 from schedule_engine.utils.system_info import get_cpu_count
 
 console = get_console()
+
+
+class InfeasibleProblemError(RuntimeError):
+    """Raised when pre-scheduling feasibility checks detect an unsolvable problem.
+
+    Attributes:
+        report: The full FeasibilityReport with all check results and details.
+    """
+
+    def __init__(self, report: "FeasibilityReport") -> None:
+        critical = report.get_critical_failures()
+        names = [r.check_name for r in critical]
+        msg = (
+            f"Problem is INFEASIBLE: {len(critical)} critical check(s) failed "
+            f"({', '.join(names)}). Fix the data before scheduling."
+        )
+        super().__init__(msg)
+        self.report = report
 
 
 @dataclass
@@ -139,6 +157,15 @@ def check_feasibility(
     if True:  # All checks enabled
         checks_to_run.append(
             ("room_feature", _check_room_feature_bottleneck, (courses, rooms, qts))
+        )
+
+    if True:  # All checks enabled
+        checks_to_run.append(
+            (
+                "specific_lab_features",
+                _check_specific_lab_features,
+                (courses, rooms),
+            )
         )
 
     if True:  # All checks enabled
@@ -240,9 +267,7 @@ def _check_instructor_workload(
             total_supply += len(instructor.available_quanta)
 
     # Apply tolerance margin
-    adjusted_supply = total_supply * (
-        1 + _TOLERANCE_MARGIN
-    )
+    adjusted_supply = total_supply * (1 + _TOLERANCE_MARGIN)
 
     passed = total_demand <= adjusted_supply
     utilization_rate = (
@@ -336,9 +361,7 @@ def _check_instructor_qualification_bottleneck(
                 supply += len(instructor.available_quanta)
 
         # Check if supply meets demand
-        adjusted_supply = supply * (
-            1 + _TOLERANCE_MARGIN
-        )
+        adjusted_supply = supply * (1 + _TOLERANCE_MARGIN)
 
         if demand > adjusted_supply:
             shortage = demand - supply
@@ -471,9 +494,7 @@ def _check_room_capacity_bottleneck(
         largest_room_capacity = max(largest_room_capacity, room.capacity)
 
     # Apply tolerance
-    adjusted_supply = total_seat_hours * (
-        1 + _TOLERANCE_MARGIN
-    )
+    adjusted_supply = total_seat_hours * (1 + _TOLERANCE_MARGIN)
 
     # Check 1: Global capacity
     global_passed = total_student_hours <= adjusted_supply
@@ -598,9 +619,7 @@ def _check_room_feature_bottleneck(
     bottlenecks: list[dict[str, Any]] = []
     for feature, demand in feature_demand.items():
         supply = feature_supply.get(feature, 0)
-        adjusted_supply = supply * (
-            1 + _TOLERANCE_MARGIN
-        )
+        adjusted_supply = supply * (1 + _TOLERANCE_MARGIN)
 
         if demand > adjusted_supply:
             shortage = demand - supply
@@ -664,6 +683,195 @@ def _check_room_feature_bottleneck(
     )
 
 
+def _check_specific_lab_features(
+    courses: dict[tuple, Course],
+    rooms: dict[str, Room],
+) -> FeasibilityResult:
+    """
+    Check 6: Specific Lab Feature Availability
+
+    Verifies that every specific lab feature required by practical courses
+    (e.g., "networking lab", "general programming lab") exists in at least
+    one room's specific_features list.
+
+    This goes beyond the room-type check (lecture vs practical) and validates
+    that the actual lab equipment/capabilities are available.
+
+    Also checks per-feature capacity: for each required lab feature, are there
+    enough rooms with that feature to handle the total demand?
+    """
+    # Collect all specific features required by enrolled courses
+    # feature -> list of course keys that need it
+    feature_demand: dict[str, list[tuple]] = defaultdict(list)
+    feature_quanta: dict[str, int] = defaultdict(int)
+
+    for course_key, course in courses.items():
+        if not course.enrolled_group_ids:
+            continue
+        if not course.specific_lab_features:
+            continue
+        for feat in course.specific_lab_features:
+            feature_demand[feat].append(course_key)
+            feature_quanta[feat] += course.quanta_per_week
+
+    if not feature_demand:
+        return FeasibilityResult(
+            check_name="Specific Lab Feature Availability",
+            passed=True,
+            severity="critical",
+            message="No specific lab features required by any course [!ok]",
+            details={"required_features": 0, "available_features": 0},
+        )
+
+    # Collect all specific features available across rooms,
+    # split by room type so we can verify practical courses get practical rooms.
+    available_features: set[str] = set()
+    practical_features: set[str] = set()
+    feature_rooms: dict[str, list[str]] = defaultdict(list)
+    feature_practical_rooms: dict[str, list[str]] = defaultdict(list)
+    for room in rooms.values():
+        for feat in room.specific_features:
+            available_features.add(feat)
+            feature_rooms[feat].append(room.room_id)
+            if room.room_features == "practical":
+                practical_features.add(feat)
+                feature_practical_rooms[feat].append(room.room_id)
+
+    # Check for completely missing features
+    required_features = set(feature_demand.keys())
+    missing_features = required_features - available_features
+    present_features = required_features & available_features
+
+    # Also check for features only available in lecture rooms (type mismatch).
+    # Practical courses can only use practical rooms, so a feature that only
+    # exists on lecture rooms is effectively missing for scheduling.
+    type_mismatch_features: set[str] = set()
+    for feat in present_features:
+        # All courses needing this feature are practical (they have specific_lab_features)
+        if feat not in practical_features:
+            # Feature exists but ONLY on lecture rooms — unusable for practical courses
+            type_mismatch_features.add(feat)
+
+    # Combine: truly missing + type-mismatched = effectively missing
+    effectively_missing = missing_features | type_mismatch_features
+
+    # Build details for completely missing features (critical)
+    missing_details: list[dict[str, Any]] = []
+    for feat in sorted(missing_features):
+        course_keys = feature_demand[feat]
+        course_names = []
+        for ck in course_keys[:5]:
+            if ck in courses:
+                course_names.append(f"{ck[0]} ({ck[1]})")
+        missing_details.append(
+            {
+                "feature": feat,
+                "required_by_courses": len(course_keys),
+                "sample_courses": course_names,
+                "total_quanta_demand": feature_quanta[feat],
+                "reason": "not in any room",
+            }
+        )
+
+    # Build details for type-mismatched features (warning only — scheduler
+    # doesn't use specific_lab_features for room assignment, and some courses
+    # legitimately list "Lecture Hall" in PracticalRoomFeatures for tutorials).
+    mismatch_details: list[dict[str, Any]] = []
+    for feat in sorted(type_mismatch_features):
+        course_keys = feature_demand[feat]
+        course_names = []
+        for ck in course_keys[:5]:
+            if ck in courses:
+                course_names.append(f"{ck[0]} ({ck[1]})")
+        mismatch_details.append(
+            {
+                "feature": feat,
+                "required_by_courses": len(course_keys),
+                "sample_courses": course_names,
+                "total_quanta_demand": feature_quanta[feat],
+                "reason": (
+                    f"only on lecture room(s) {feature_rooms[feat]}, "
+                    "but listed for practical courses"
+                ),
+            }
+        )
+
+    # CRITICAL failure only for completely missing features.
+    # Type-mismatch is a warning (doesn't block scheduling).
+    passed = len(missing_features) == 0
+
+    if passed and not type_mismatch_features:
+        message = (
+            f"All {len(required_features)} specific lab features are available "
+            f"in practical rooms ({len(practical_features)} practical room features) [!ok]"
+        )
+    elif passed:
+        message = (
+            f"All {len(required_features)} specific lab features found in rooms; "
+            f"{len(type_mismatch_features)} only on lecture rooms (warning) [!ok]"
+        )
+    else:
+        message = (
+            f"{len(missing_features)}/{len(required_features)} specific lab feature(s) "
+            f"completely MISSING from all rooms ✗"
+        )
+        if type_mismatch_features:
+            message += f" (+ {len(type_mismatch_features)} only on lecture rooms)"
+
+    recommendations = []
+    if missing_details:
+        recommendations.append("MISSING lab features (no room provides these):")
+        for d in missing_details:
+            samples = ", ".join(d["sample_courses"])
+            recommendations.append(
+                f"  • '{d['feature']}': {d['reason']} — needed by "
+                f"{d['required_by_courses']} course(s) ({d['total_quanta_demand']} quanta) "
+                f"— e.g. {samples}"
+            )
+        recommendations.extend(
+            [
+                "",
+                "Solutions:",
+                "• Add the missing features to the correct practical rooms in Rooms.json",
+                "• Ensure lab rooms (type=Practical) have their features listed",
+                "• Re-map course PracticalRoomFeatures in Course.json to existing room features",
+            ]
+        )
+    if mismatch_details:
+        if missing_details:
+            recommendations.append("")
+        recommendations.append(
+            "WARNING: Features only on lecture rooms (practical courses may need re-mapping):"
+        )
+        for d in mismatch_details:
+            samples = ", ".join(d["sample_courses"])
+            recommendations.append(
+                f"  • '{d['feature']}': {d['reason']} " f"— e.g. {samples}"
+            )
+    if passed and not type_mismatch_features:
+        recommendations.append(
+            f"All {len(present_features)} required lab features matched to practical rooms"
+        )
+
+    return FeasibilityResult(
+        check_name="Specific Lab Feature Availability",
+        passed=passed,
+        severity="critical",
+        message=message,
+        details={
+            "required_features": len(required_features),
+            "available_features": len(available_features),
+            "practical_features": len(practical_features),
+            "missing_count": len(missing_features),
+            "type_mismatch_count": len(type_mismatch_features),
+            "missing_features": missing_details,
+            "type_mismatch_warnings": mismatch_details,
+            "present_count": len(present_features - type_mismatch_features),
+        },
+        recommendations=recommendations,
+    )
+
+
 def _check_group_pigeonhole(
     courses: dict[tuple, Course],
     groups: dict[str, Group],
@@ -704,9 +912,7 @@ def _check_group_pigeonhole(
             available = total_operating_quanta
 
         # Apply tolerance
-        adjusted_available = available * (
-            1 + _TOLERANCE_MARGIN
-        )
+        adjusted_available = available * (1 + _TOLERANCE_MARGIN)
 
         utilization = (
             (total_demand / available * 100) if available > 0 else float("inf")

@@ -58,7 +58,9 @@ def init_worker(
             except (AttributeError, KeyError, TypeError, ValueError):
                 extra_pairs = []
 
-        store = DataStore.from_json(data_dir, extra_cohort_pairs=extra_pairs)
+        store = DataStore.from_json(
+            data_dir, extra_cohort_pairs=extra_pairs, run_preflight=False
+        )
         context = store.to_context()
 
     except Exception as e:

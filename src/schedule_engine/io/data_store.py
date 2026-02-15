@@ -71,6 +71,7 @@ class DataStore:
         closed_days: list[str] | None = None,
         operating_hours: dict[str, tuple[str, str] | None] | None = None,
         extra_cohort_pairs: list[tuple[str, str]] | None = None,
+        run_preflight: bool = True,
     ) -> DataStore:
         """Load all scheduling data from a directory of JSON files.
 
@@ -83,7 +84,15 @@ class DataStore:
             operating_hours: Full per-day override; takes precedence over
                              opening_time / closing_time / closed_days.
             extra_cohort_pairs: Manually configured pairs to merge with
-                from schedule_engine.ga.core.population import (
+                auto-derived group cohort pairs.
+            run_preflight: Run feasibility checks after loading.  Raises
+                ``InfeasibleProblemError`` if critical checks fail.  Default
+                ``True`` — every code path gets validation automatically.
+                Set ``False`` only for lightweight unit-test fixtures.
+
+        Raises:
+            InfeasibleProblemError: If any critical feasibility check fails
+                and *run_preflight* is True.
         """
         data_dir = Path(data_dir)
         closed_days = closed_days or ["Saturday"]
@@ -136,7 +145,7 @@ class DataStore:
 
         # Note: Cohort pairs are now accessed via config or passed to build_constraints()
 
-        return cls(
+        store = cls(
             courses=courses,
             groups=groups,
             instructors=instructors,
@@ -144,6 +153,21 @@ class DataStore:
             qts=qts,
             cohort_pairs=cohort_pairs,
         )
+
+        # ---- PREFLIGHT: Feasibility gate (runs on every code path) ----
+        if run_preflight:
+            from schedule_engine.io.feasibility import (
+                InfeasibleProblemError,
+                check_feasibility,
+            )
+
+            is_feasible, report = check_feasibility(
+                courses, instructors, rooms, groups, qts
+            )
+            if not is_feasible:
+                raise InfeasibleProblemError(report)
+
+        return store
 
     # Convenience
 

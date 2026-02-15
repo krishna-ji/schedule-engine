@@ -249,6 +249,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
                 credits=credits,
                 lecture_hours=lec + tut,
                 practical_hours=0,
+                specific_lab_features=[],  # Theory courses don't need lab features
             )
             # Key by (course_code, course_type) for uniqueness
             courses[(course_code, "theory")] = course
@@ -272,6 +273,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
                 credits=credits,
                 lecture_hours=0,
                 practical_hours=prac,
+                specific_lab_features=practical_features,  # e.g. ["networking lab", "general programming lab"]
             )
             # Key by (course_code, course_type) for uniqueness
             courses[(course_code, "practical")] = course
@@ -454,12 +456,18 @@ def load_rooms(path: str, qts: QuantumTimeSystem) -> dict[str, Room]:
         # "Practical" -> "practical", "Lecture" -> "lecture"
         room_type = item.get("type", "Lecture").strip().lower()
 
+        # Parse specific features array (e.g. ["Networking Lab", "General Programming Lab"])
+        specific_features = [
+            f.strip().lower() for f in item.get("features", []) if f.strip()
+        ]
+
         rooms[room_id] = Room(
             room_id=room_id,
             name=item.get("name", room_id),
             capacity=item["capacity"],
             room_features=room_type,  # Use type field, not features array
             available_quanta=available_quanta,
+            specific_features=specific_features,  # e.g. ["networking lab", "drawing hall"]
         )
     return rooms
 

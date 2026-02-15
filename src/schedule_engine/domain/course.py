@@ -21,6 +21,8 @@ class Course:
                                to support courses without specific room requirements.
         enrolled_group_ids: List of student group IDs enrolled in this course
         qualified_instructor_ids: List of instructor IDs qualified to teach this course
+        specific_lab_features: Specific lab features required (e.g., 'networking lab')
+                               from PracticalRoomFeatures in Course.json
         course_type: Type of course - 'theory' or 'practical'
         course_code: Course code (may differ from course_id if split into theory/practical)
         department: Department offering the course
@@ -46,6 +48,9 @@ class Course:
     credits: int = 0  # Credits
     lecture_hours: int = 0  # L+T for theory
     practical_hours: int = 0  # P for practical
+    specific_lab_features: list[str] = field(
+        default_factory=list
+    )  # e.g. ["networking lab", "general programming lab"]
 
     def __post_init__(self) -> None:
         """Validate course data after initialization."""

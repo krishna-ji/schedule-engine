@@ -18,6 +18,7 @@ class Room:
         capacity: Maximum number of students the room can accommodate
         room_features: Type of room (e.g., 'lecture', 'lab', 'seminar', 'auditorium')
         available_quanta: Set of available quantum time slots
+        specific_features: List of specific capabilities (e.g., 'networking lab', 'drawing hall')
     """
 
     room_id: str
@@ -25,6 +26,9 @@ class Room:
     capacity: int
     room_features: str
     available_quanta: set[int] = field(default_factory=set)
+    specific_features: list[str] = field(
+        default_factory=list
+    )  # e.g. ["networking lab", "general programming lab"]
 
     def __post_init__(self) -> None:
         """Validate room data after initialization."""

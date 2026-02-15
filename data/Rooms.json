@@ -15,7 +15,9 @@
     "name": "Chemistry Lab [B -211]",
     "capacity": 24,
     "type": "Practical",
-    "features": []
+    "features": [
+      "Chemistry Lab"
+    ]
   },
   {
     "room_id": "D101",
@@ -480,7 +482,9 @@
     "name": "Mechanical Workshop [A-Block]",
     "capacity": 24,
     "type": "Practical",
-    "features": []
+    "features": [
+      "Mechanical Workshop"
+    ]
   },
   {
     "room_id": "A101",
@@ -504,7 +508,9 @@
     "name": "Physics Lab [B-209]",
     "capacity": 24,
     "type": "Practical",
-    "features": []
+    "features": [
+      "Physics Lab"
+    ]
   },
   {
     "room_id": "E200",

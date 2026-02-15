@@ -85,6 +85,20 @@ def _log_capacity_warnings(report: FeasibilityReport, logger: logging.Logger) ->
                     b.get("shortage"),
                 )
 
+        elif result.check_name == "Specific Lab Feature Availability":
+            missing = details.get("missing_features", [])
+            logger.warning(
+                "Specific lab feature check: %s feature(s) missing from rooms",
+                details.get("missing_count", len(missing)),
+            )
+            for m in missing[:5]:
+                logger.warning(
+                    "  feature='%s': needed by %s course(s), %s quanta",
+                    m.get("feature"),
+                    m.get("required_by_courses"),
+                    m.get("total_quanta_demand"),
+                )
+
         elif result.check_name == "Group Pigeonhole Problem":
             overloaded = details.get("details", [])
             logger.warning(
