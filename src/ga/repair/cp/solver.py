@@ -157,7 +157,15 @@ class CPSATSolver:
     # ── Pre-computation helpers ──────────────────────────────────────
 
     def _precompute_compatibility(self) -> None:
-        from src.utils.room_compatibility import is_room_suitable_for_course
+        from src.utils.room_compatibility import (
+            is_room_suitable_for_course,
+            is_room_type_compatible,
+        )
+
+        # Also build a type-compatible room list (broad match, no specific
+        # feature check).  Used as fallback domain when exact-suitable rooms
+        # are over-subscribed or empty.
+        self._type_compat_rooms: dict[tuple[str, str], list[str]] = {}
 
         for key, course in self.ctx.courses.items():
             req = (
@@ -167,12 +175,17 @@ class CPSATSolver:
             )
             lab = getattr(course, "specific_lab_features", None)
             suitable: list[str] = []
+            type_compat: list[str] = []
             for room in self.ctx.rooms.values():
                 rt = str(getattr(room, "room_features", "lecture")).lower().strip()
                 rf = getattr(room, "specific_features", None)
                 if is_room_suitable_for_course(req, rt, lab, rf):
                     suitable.append(room.room_id)
+                elif is_room_type_compatible(req, rt):
+                    type_compat.append(room.room_id)
             self._suitable_rooms[key] = suitable
+            # type_compat_rooms = suitable first, then type-compatible fallbacks
+            self._type_compat_rooms[key] = suitable + type_compat
             self._qual_instrs[key] = list(course.qualified_instructor_ids)
 
     def _precompute_days(self) -> None:
@@ -262,6 +275,10 @@ class CPSATSolver:
         dur_map: dict[int, int] = {}
         rooms_for: dict[int, list[str]] = {}
         instrs_for: dict[int, list[str]] = {}
+        # Track how many suitable rooms each gene has, for room-suitability
+        # penalty.  Index into rooms_for[gi] — indices >= n_suitable are
+        # type-compatible fallbacks that incur a penalty.
+        n_suitable_for: dict[int, int] = {}
 
         for gi in gene_indices:
             g = genes[gi]
@@ -269,9 +286,15 @@ class CPSATSolver:
             dur = g.num_quanta
             dur_map[gi] = dur
 
-            # HC5: Room suitability → restrict room domain
-            sr = self._suitable_rooms.get(ckey, all_rooms) or all_rooms
+            # HC5: Room suitability — use type-compatible rooms as domain
+            # (suitable rooms first, then type-compatible fallbacks).
+            # This prevents structural infeasibility when exact-suitable
+            # rooms are over-subscribed.
+            suitable = self._suitable_rooms.get(ckey, [])
+            type_compat = self._type_compat_rooms.get(ckey, [])
+            sr = type_compat if type_compat else all_rooms
             rooms_for[gi] = sr
+            n_suitable_for[gi] = len(suitable)
 
             # HC4: Instructor qualification → restrict instr domain
             qi = self._qual_instrs.get(ckey, []) or all_instrs
@@ -297,18 +320,22 @@ class CPSATSolver:
                     model.add_hint(instr_idxs[gi], qi.index(g.instructor_id))
 
         # ── 2. HC1 — Student Group Exclusivity ──────────────────────
-        #    For every group-family member, all intervals mapped to it
-        #    must not overlap (including frozen intervals).
+        #    For every group in a gene's group_ids, all intervals mapped
+        #    to it must not overlap (including frozen intervals).
+        #
+        #    NOTE: We do NOT expand via family_map here.  Gene group_ids
+        #    already encode the correct overlap semantics:
+        #      - Theory genes list ALL relevant sections: ['BAM1A','BAM1B']
+        #      - Practical genes list only their section:  ['BAM1A']
+        #    Expanding through family_map would incorrectly add sibling
+        #    sections (e.g. BAM1B) to a BAM1A-only practical session's
+        #    NoOverlap list, massively over-constraining the model.
 
         group_ivs: dict[str, list[Any]] = {}
 
         def _add_group_iv(gids: tuple[str, ...] | list[str], iv: Any) -> None:
-            seen: set[str] = set()
             for gid in gids:
-                for fam in self.family_map.get(gid, {gid}):
-                    if fam not in seen:
-                        seen.add(fam)
-                        group_ivs.setdefault(fam, []).append(iv)
+                group_ivs.setdefault(gid, []).append(iv)
 
         for gi in gene_indices:
             _add_group_iv(genes[gi].group_ids, intervals[gi])
@@ -413,6 +440,20 @@ class CPSATSolver:
                 model.add_abs_equality(d, starts[gi] - genes[gi].start_quanta)
                 obj_terms.append(self.deviation_weight * d)
 
+        # 6a′. Room suitability penalty — prefer truly suitable rooms
+        #    over type-compatible fallbacks.  rooms_for[gi] is ordered
+        #    [suitable ... type_compat ...] so indices >= n_suitable mean
+        #    a fallback room is used.
+        ROOM_SUIT_WEIGHT = 10
+        for gi in gene_indices:
+            n_suit = n_suitable_for[gi]
+            n_total = len(rooms_for[gi])
+            if 0 < n_suit < n_total:
+                is_fb = model.new_bool_var(f"rfb{gi}")
+                model.add(room_idxs[gi] >= n_suit).only_enforce_if(is_fb)
+                model.add(room_idxs[gi] < n_suit).only_enforce_if(is_fb.negated())
+                obj_terms.append(ROOM_SUIT_WEIGHT * is_fb)
+
         # 6b. Soft-constraint objectives (compactness)
         if self.soft_objective and gene_indices:
             max_q = max(avail_quanta) + 1 if avail_quanta else 35
@@ -426,17 +467,15 @@ class CPSATSolver:
 
             for gi in gene_indices:
                 for gid in genes[gi].group_ids:
-                    for fam in self.family_map.get(gid, {gid}):
-                        group_gene_map.setdefault(fam, []).append(gi)
+                    group_gene_map.setdefault(gid, []).append(gi)
 
             for fa in frozen:
                 for gid in fa.group_ids:
-                    for fam in self.family_map.get(gid, {gid}):
-                        lo, hi = group_frozen_bounds.get(fam, (max_q, 0))
-                        group_frozen_bounds[fam] = (
-                            min(lo, fa.start_quanta),
-                            max(hi, fa.start_quanta + fa.num_quanta),
-                        )
+                    lo, hi = group_frozen_bounds.get(gid, (max_q, 0))
+                    group_frozen_bounds[gid] = (
+                        min(lo, fa.start_quanta),
+                        max(hi, fa.start_quanta + fa.num_quanta),
+                    )
 
             for gid, gis in group_gene_map.items():
                 if len(gis) < 2 and gid not in group_frozen_bounds:
