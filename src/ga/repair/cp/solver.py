@@ -442,20 +442,20 @@ class CPSATSolver:
                 if len(gis) < 2 and gid not in group_frozen_bounds:
                     continue  # single session, no compactness to optimise
 
-                # Build min/max variables across gene starts/ends for this group
-                ends = [starts[gi] + dur_map[gi] for gi in gis]
-                start_vars = [starts[gi] for gi in gis]
+                # Build min/max across gene starts/ends + frozen bounds
+                all_starts: list[Any] = [starts[gi] for gi in gis]
+                all_ends: list[Any] = [starts[gi] + dur_map[gi] for gi in gis]
+
+                # Include frozen bounds as constants so span covers them
+                if gid in group_frozen_bounds:
+                    flo, fhi = group_frozen_bounds[gid]
+                    all_starts.append(flo)
+                    all_ends.append(fhi)
 
                 g_min = model.new_int_var(0, max_q, f"gmin_{gid}")
                 g_max = model.new_int_var(0, max_q, f"gmax_{gid}")
-                model.add_min_equality(g_min, start_vars)
-                model.add_max_equality(g_max, ends)
-
-                # If frozen sessions exist, constrain the bounds further
-                if gid in group_frozen_bounds:
-                    flo, fhi = group_frozen_bounds[gid]
-                    model.add(g_min <= flo)
-                    model.add(g_max >= fhi)
+                model.add_min_equality(g_min, all_starts)
+                model.add_max_equality(g_max, all_ends)
 
                 span = model.new_int_var(0, max_q, f"gspan_{gid}")
                 model.add(span == g_max - g_min)
@@ -479,18 +479,19 @@ class CPSATSolver:
             for iid, gis in instr_gene_map.items():
                 if len(gis) < 2 and iid not in instr_frozen_bounds:
                     continue
-                ends = [starts[gi] + dur_map[gi] for gi in gis]
-                start_vars = [starts[gi] for gi in gis]
 
-                i_min = model.new_int_var(0, max_q, f"imin_{iid}")
-                i_max = model.new_int_var(0, max_q, f"imax_{iid}")
-                model.add_min_equality(i_min, start_vars)
-                model.add_max_equality(i_max, ends)
+                i_starts: list[Any] = [starts[gi] for gi in gis]
+                i_ends: list[Any] = [starts[gi] + dur_map[gi] for gi in gis]
 
                 if iid in instr_frozen_bounds:
                     flo, fhi = instr_frozen_bounds[iid]
-                    model.add(i_min <= flo)
-                    model.add(i_max >= fhi)
+                    i_starts.append(flo)
+                    i_ends.append(fhi)
+
+                i_min = model.new_int_var(0, max_q, f"imin_{iid}")
+                i_max = model.new_int_var(0, max_q, f"imax_{iid}")
+                model.add_min_equality(i_min, i_starts)
+                model.add_max_equality(i_max, i_ends)
 
                 span = model.new_int_var(0, max_q, f"ispan_{iid}")
                 model.add(span == i_max - i_min)
