@@ -160,8 +160,10 @@ class CPHybridExperiment(BaseExperiment):
     ) -> list:
         """Run a quick CP-SAT repair on violated genes only.
 
-        Non-violated genes are frozen so the solver only fixes conflicts.
+        Non-violated genes are intelligently frozen to ensure mutual consistency.
+        If INFEASIBLE, adaptively reduces frozen ratio and retries.
         """
+        from src.ga.repair.cp.frozen_selector import select_consistent_frozen_genes
         from src.ga.repair.cp.solver import CPSATSolver, FrozenAssignment
         from src.ga.repair.detector import detect_violated_genes
 
@@ -172,12 +174,8 @@ class CPHybridExperiment(BaseExperiment):
         violated_indices = sorted(violations.keys())
         violated_set = set(violated_indices)
 
-        # Freeze all non-violated genes
-        frozen = [
-            FrozenAssignment.from_gene(i, g)
-            for i, g in enumerate(ind)
-            if i not in violated_set
-        ]
+        # Candidate genes for freezing: all non-violated genes
+        candidate_indices = [i for i in range(len(ind)) if i not in violated_set]
 
         solver = CPSATSolver(
             self.data.context,
@@ -187,26 +185,58 @@ class CPHybridExperiment(BaseExperiment):
             soft_objective=self.cp_soft_objective,
         )
 
-        result = solver.solve(
-            ind,
-            violated_indices,
-            frozen=frozen,
-            warm_start=True,
-        )
+        # Adaptive retry: start with max_frozen_ratio=0.5, reduce if INFEASIBLE
+        frozen_ratios = [0.5, 0.25, 0.1, 0.0]
+        for ratio in frozen_ratios:
+            # Select consistent frozen genes
+            frozen_indices = select_consistent_frozen_genes(
+                ind, candidate_indices, self.data.context, max_frozen_ratio=ratio
+            )
+            frozen = [FrozenAssignment.from_gene(i, ind[i]) for i in frozen_indices]
 
-        self._cp_quick_repairs += 1
+            result = solver.solve(
+                ind,
+                violated_indices,
+                frozen=frozen,
+                warm_start=True,
+            )
 
-        if result.success:
-            self._cp_quick_success += 1
-            repaired = list(ind)
-            for gi, (iid, rid, sq) in result.assignments.items():
-                repaired[gi] = copy.deepcopy(ind[gi])
-                repaired[gi].instructor_id = iid
-                repaired[gi].room_id = rid
-                repaired[gi].start_quanta = sq
-            return repaired
+            self._cp_quick_repairs += 1
 
-        return ind  # solver failed, return original
+            if result.status != "INFEASIBLE":
+                if result.success:
+                    self._cp_quick_success += 1
+                    repaired = list(ind)
+                    for gi, (iid, rid, sq) in result.assignments.items():
+                        repaired[gi] = copy.deepcopy(ind[gi])
+                        repaired[gi].instructor_id = iid
+                        repaired[gi].room_id = rid
+                        repaired[gi].start_quanta = sq
+                    logger.debug(
+                        "CP repair succeeded with %d frozen genes (ratio=%.2f)",
+                        len(frozen_indices),
+                        ratio,
+                    )
+                    return repaired
+                else:
+                    # OPTIMAL/FEASIBLE but no solution — return original
+                    logger.debug(
+                        "CP repair status=%s with %d frozen genes",
+                        result.status,
+                        len(frozen_indices),
+                    )
+                    return ind
+
+            # INFEASIBLE — try with fewer frozen genes
+            logger.debug(
+                "CP repair INFEASIBLE with %d frozen genes (ratio=%.2f), retrying...",
+                len(frozen_indices),
+                ratio,
+            )
+
+        # All attempts failed
+        logger.warning("CP repair failed after %d attempts", len(frozen_ratios))
+        return ind  # return original
 
     # ------------------------------------------------------------------
     # CP-SAT repair: full pipeline (decomposed)

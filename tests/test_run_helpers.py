@@ -16,7 +16,7 @@ class TestRunHelpersDeadCodeRemoval:
 
     def test_create_detailed_evaluator_not_importable(self):
         with pytest.raises(ImportError):
-            pass
+            from src.ga.run_helpers import create_detailed_evaluator
 
 
 class TestRunHelpersPublicAPI:

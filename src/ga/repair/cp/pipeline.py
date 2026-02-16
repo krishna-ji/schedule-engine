@@ -23,9 +23,8 @@ from __future__ import annotations
 
 import logging
 import time as _time
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.domain.gene import SessionGene
@@ -160,8 +159,37 @@ class CPRepairPipeline:
         # Build frozen assignments from bridge results
         frozen: list[FrozenAssignment] = []
         if global_result.success:
+            # Use the frozen selector to validate bridge assignments
+            from src.ga.repair.cp.frozen_selector import select_consistent_frozen_genes
+
+            bridge_indices_set = set(partition.bridge_gene_indices)
+            bridge_candidates = list(partition.bridge_gene_indices)
+
+            # Apply CP results to a temporary chromosome
+            temp_genes = list(genes)
             for gi, (iid, rid, sq) in global_result.assignments.items():
-                g = genes[gi]
+                temp_genes[gi].instructor_id = iid
+                temp_genes[gi].room_id = rid
+                temp_genes[gi].start_quanta = sq
+
+            # Select bridge genes that are safe to freeze (validates consistency)
+            safe_bridge_indices = select_consistent_frozen_genes(
+                temp_genes,
+                bridge_candidates,
+                ctx,
+                max_frozen_ratio=1.0,  # Try to freeze all bridges
+            )
+
+            logger.info(
+                "Bridge validation: %d/%d bridge assignments are mutually consistent",
+                len(safe_bridge_indices),
+                len(bridge_candidates),
+            )
+
+            # Freeze only the safe bridge genes
+            for gi in safe_bridge_indices:
+                iid, rid, sq = global_result.assignments[gi]
+                g = temp_genes[gi]
                 frozen.append(
                     FrozenAssignment(
                         gene_index=gi,
@@ -176,12 +204,9 @@ class CPRepairPipeline:
                 )
         else:
             logger.warning(
-                "Global Phase failed (%s) — proceeding with original bridge "
-                "assignments as frozen constraints",
+                "Global Phase failed (%s) — not freezing bridge assignments",
                 global_result.status,
             )
-            for gi in partition.bridge_gene_indices:
-                frozen.append(FrozenAssignment.from_gene(gi, genes[gi]))
 
         # ── 3. Cluster Phase — solve each cluster independently ─────
         cluster_results: dict[str, CPSolveResult] = {}
@@ -245,16 +270,26 @@ class CPRepairPipeline:
             )
             # Find genes involved in violations
             from src.ga.repair.detector import detect_violated_genes
+            from src.ga.repair.cp.frozen_selector import select_consistent_frozen_genes
 
             violated_set = detect_violated_genes(repaired, ctx)
             if violated_set:
                 violated_indices = sorted(violated_set)
-                # Freeze everything that's NOT violated
-                coord_frozen: list[FrozenAssignment] = []
                 violated_set_fast = set(violated_indices)
-                for i, g in enumerate(repaired):
-                    if i not in violated_set_fast:
-                        coord_frozen.append(FrozenAssignment.from_gene(i, g))
+
+                # Candidates for freezing: non-violated genes
+                candidate_indices = [
+                    i for i in range(len(repaired)) if i not in violated_set_fast
+                ]
+
+                # Select consistent frozen genes
+                safe_frozen_indices = select_consistent_frozen_genes(
+                    repaired, candidate_indices, ctx, max_frozen_ratio=0.5
+                )
+                coord_frozen = [
+                    FrozenAssignment.from_gene(i, repaired[i])
+                    for i in safe_frozen_indices
+                ]
 
                 coord_result = coord_solver.solve(
                     repaired,
