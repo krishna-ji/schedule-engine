@@ -3,11 +3,10 @@
     // EDITOR SETTINGS
     // ==================
     "editor.formatOnSave": true,
-    // Global fallback (overridden by specific languages below)
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.codeActionsOnSave": {
-        "source.organizeImports": "explicit",
-        "source.fixAll": "explicit"
+        "source.organizeImports": "always",
+        "source.fixAll": "always"
     },
     "editor.rulers": [
         88
@@ -22,20 +21,19 @@
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.organizeImports.ruff": "explicit",
-            "source.fixAll.ruff": "explicit"
+            "source.organizeImports.ruff": "always",
+            "source.fixAll.ruff": "always"
         }
     },
     "[yaml]": {
         "editor.insertSpaces": true,
         "editor.tabSize": 2
     },
-    // NEW: Auto-fix Markdown issues (headers, spacing)
     "[markdown]": {
         "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.fixAll.markdownlint": "explicit"
+            "source.fixAll.markdownlint": "always"
         }
     },
     // ==================
@@ -46,22 +44,27 @@
     "python.analysis.extraPaths": [
         "./src"
     ],
-    // Disabled Pylance type checking to let Mypy be the authority
+    // Let Mypy be the type-checking authority (not Pylance)
     "python.analysis.typeCheckingMode": "off",
     // Black formatter settings
     "black-formatter.args": [
         "--line-length=88",
         "--preview"
     ],
-    // Ruff linter settings
+    // ==================
+    // RUFF (auto-lint on save)
+    // ==================
     "ruff.enable": true,
     "ruff.lint.enable": true,
-    // Mypy settings
+    "ruff.fixAll": true,
+    "ruff.organizeImports": true,
+    "ruff.lint.run": "onSave",
+    // ==================
+    // MYPY (type checking)
+    // ==================
     "mypy-type-checker.reportingScope": "workspace",
     "mypy-type-checker.args": [
-        "--ignore-missing-imports",
-        "--disallow-untyped-defs",
-        "--check-untyped-defs"
+        "--config-file=${workspaceFolder}/pyproject.toml"
     ],
     // ==================
     // FILE EXCLUSIONS
@@ -80,12 +83,6 @@
         ".mypy_cache/": true,
         ".ruff_cache/": true
     },
-    // ==================
-    // TERMINAL SETTINGS
-    // ==================
-    // ==================
-    // COPILOT SETTINGS
-    // ==================
     // ==================
     // TOKEN CUSTOMIZATION
     // ==================

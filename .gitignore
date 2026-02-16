@@ -28,6 +28,11 @@ ENV/
 uv.lock
 .uv/
 
+# Build / packaging artifacts
+*.egg-info/
+dist/
+build/
+
 # Ruff cache
 .ruff_cache/
 .mypy_cache/
