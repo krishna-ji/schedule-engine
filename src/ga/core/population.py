@@ -4,18 +4,21 @@ import json
 import os
 import random
 from concurrent.futures import ProcessPoolExecutor
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-from src.domain.course import Course
 from src.domain.gene import SessionGene
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
-from src.domain.types import Individual, SchedulingContext
 from src.ga.core.individual import create_individual
 from src.utils.console_service import get_console
 from src.utils.parallel_worker import get_worker_context, init_worker
 from src.utils.system_info import get_cpu_count
+
+if TYPE_CHECKING:
+    from src.domain.course import Course
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
+    from src.domain.types import Individual, SchedulingContext
 
 type CourseKey = tuple[str, str]
 type DetailedPair = tuple[CourseKey, list[str], str, int]
@@ -32,7 +35,7 @@ def analyze_group_hierarchy_from_json(json_path: str) -> HierarchyMap:
     The JSON structure has parent groups with a "subgroups" array, e.g.:
         {"group_id": "BME1AB", "subgroups": [{"id": "BME1A"}, {"id": "BME1B"}]}
     """
-    with open(json_path) as handle:
+    with Path(json_path).open() as handle:
         raw_data = json.load(handle)
 
     parents: set[str] = set()
@@ -250,7 +253,7 @@ def _get_family_map_from_json(
     json_path: str = "data/Groups.json",
 ) -> dict[str, set[str]]:
     """Get the pre-computed family map, loading from JSON and caching."""
-    global _cached_family_map, _cached_json_path
+    global _cached_family_map
 
     hierarchy = get_hierarchy_from_json(json_path)
 
@@ -294,9 +297,8 @@ def generate_course_group_pairs(
         if len(group_id) > 1 and group_id[-1].isalpha():
             parent_prefix = group_id[:-1]
             parent_to_subgroups[parent_prefix].append(group_id)
-        else:
-            if group_id not in parent_to_subgroups:
-                parent_to_subgroups[group_id] = [group_id]
+        elif group_id not in parent_to_subgroups:
+            parent_to_subgroups[group_id] = [group_id]
 
     for parent_prefix, sibling_ids in parent_to_subgroups.items():
         first_sibling = groups[sibling_ids[0]]
@@ -328,10 +330,10 @@ def generate_course_group_pairs(
 
                 elif course.course_type == "practical":
                     practical_quanta = course.quanta_per_week
-                    for sibling_id in sibling_ids:
-                        pairs.append(
-                            (course_key, [sibling_id], "practical", practical_quanta)
-                        )
+                    pairs.extend(
+                        (course_key, [sibling_id], "practical", practical_quanta)
+                        for sibling_id in sibling_ids
+                    )
 
     return pairs
 
@@ -376,16 +378,14 @@ def get_subsession_durations(quanta_per_week: int, course_type: str) -> list[int
     if course_type == "practical":
         # Practicals: Single continuous session (can span days if > quanta_per_day)
         return [quanta_per_week]
-    else:
-        # Theory: Break into 2-quanta blocks with remainder
-        if quanta_per_week % 2 == 0:
-            # Even: All 2-quanta blocks (e.g., 6 → [2,2,2])
-            return [2] * (quanta_per_week // 2)
-        else:
-            # Odd: 2-quanta blocks + 1-quanta remainder (e.g., 5 → [2,2,1])
-            blocks = [2] * (quanta_per_week // 2)
-            blocks.append(1)
-            return blocks
+    # Theory: Break into 2-quanta blocks with remainder
+    if quanta_per_week % 2 == 0:
+        # Even: All 2-quanta blocks (e.g., 6 → [2,2,2])
+        return [2] * (quanta_per_week // 2)
+    # Odd: 2-quanta blocks + 1-quanta remainder (e.g., 5 → [2,2,1])
+    blocks = [2] * (quanta_per_week // 2)
+    blocks.append(1)
+    return blocks
 
 
 console = get_console()
@@ -585,10 +585,9 @@ def _create_single_individual_wrapper(
 
     if genes:
         return create_individual(genes)
-    else:
-        if not silent:
-            print(f"Warning: Individual {individual_idx + 1} has no genes!")
-        return None
+    if not silent:
+        print(f"Warning: Individual {individual_idx + 1} has no genes!")
+    return None
 
 
 def generate_course_group_aware_population(
@@ -707,9 +706,8 @@ def generate_course_group_aware_population(
 
             if genes:
                 population.append(create_individual(genes))
-            else:
-                if not silent:
-                    print(f"Warning: Individual {individual_idx + 1} has no genes!")
+            elif not silent:
+                print(f"Warning: Individual {individual_idx + 1} has no genes!")
 
     else:
         # PARALLEL: Generate individuals concurrently
@@ -788,7 +786,7 @@ def extract_course_group_relationships(
             if practical_key in context.courses:
                 course_group_pairs.append((practical_key, group_id))
 
-    return course_group_pairs  # type: ignore[return-value]
+    return course_group_pairs
 
 
 def create_course_component_sessions(
@@ -929,7 +927,7 @@ def create_session_gene_with_conflict_avoidance(
     # ENHANCED: Try to find instructor-time pairs that respect availability
     # Build set of quanta already used by THIS individual's instructors
     used_by_instructors: set[int] = set()
-    for inst_id, inst_quanta in instructor_schedule.items():
+    for inst_quanta in instructor_schedule.values():
         used_by_instructors.update(inst_quanta)
 
     # Build set of quanta used by groups in this session
@@ -996,7 +994,7 @@ def create_session_gene_with_conflict_avoidance(
         suitable_rooms = list(context.rooms.values())
 
     if not suitable_rooms and context.rooms:
-        suitable_rooms = [list(context.rooms.values())[0]]
+        suitable_rooms = [next(iter(context.rooms.values()))]
 
     if not suitable_rooms:
         logging.warning(f"No rooms available for {course_id}, creating gene anyway")
@@ -1125,9 +1123,9 @@ def create_component_session_with_conflict_avoidance(
     DEPRECATED: Use create_session_gene_with_conflict_avoidance instead.
     Kept for backwards compatibility with old population generators.
     """
-    course = context.courses.get((course_id, component_type)) or context.courses.get(
+    course = context.courses.get((course_id, component_type)) or context.courses.get(  # type: ignore[call-overload]
         course_id
-    )  # type: ignore[arg-type, call-overload]
+    )
     if not course:
         return None  # type: ignore[return-value]
 
@@ -1193,7 +1191,7 @@ def create_component_session_with_conflict_avoidance(
 
     # Create session gene
     # Extract course_id and course_type
-    actual_course_id = course_id[0] if isinstance(course_id, tuple) else course_id
+    actual_course_id = course_id[0] if isinstance(course_id, tuple) else course_id  # type: ignore[unreachable]
     actual_course_type = component_type
 
     # Convert quanta list to contiguous representation
@@ -1289,7 +1287,7 @@ def _find_consecutive_block(
     Returns None if not found.
     """
     if len(free_quanta) < block_size:
-        return None  # type: ignore[return-value]
+        return None
 
     sorted_free = sorted(free_quanta)
 
@@ -1304,7 +1302,7 @@ def _find_consecutive_block(
         if is_consecutive:
             return candidates
 
-    return None  # type: ignore[return-value]
+    return None
 
 
 def create_component_session(
@@ -1329,9 +1327,9 @@ def create_component_session(
     Returns:
         SessionGene object for this component (or None if creation fails)
     """
-    course = context.courses.get((course_id, component_type)) or context.courses.get(
+    course = context.courses.get((course_id, component_type)) or context.courses.get(  # type: ignore[call-overload]
         course_id
-    )  # type: ignore[arg-type, call-overload]
+    )
     if not course:
         return None  # type: ignore[return-value]
 
@@ -1389,7 +1387,7 @@ def create_component_session(
 
     # Create session gene
     # Extract course_id and course_type
-    actual_course_id = course_id[0] if isinstance(course_id, tuple) else course_id
+    actual_course_id = course_id[0] if isinstance(course_id, tuple) else course_id  # type: ignore[unreachable]
     actual_course_type = component_type
 
     # Convert quanta list to contiguous representation
@@ -1480,7 +1478,7 @@ def find_qualified_instructors_with_availability(
         available_list = sorted(inst_available)
 
         # Find valid start positions for consecutive blocks
-        for i, start_q in enumerate(available_list):
+        for _i, start_q in enumerate(available_list):
             end_q = start_q + required_quanta
 
             # Check if all quanta in range are available

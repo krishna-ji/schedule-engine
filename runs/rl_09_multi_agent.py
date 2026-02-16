@@ -10,6 +10,7 @@ Analyze multi-agent coordinator dynamics:
 Usage:
     python runs/rl_09_multi_agent.py
 """
+
 from __future__ import annotations
 
 import json
@@ -112,7 +113,7 @@ def main() -> None:
         episode_selections: list[str] = []
         episode_states: list[dict[str, object]] = []
 
-        for step in range(MAX_STEPS):
+        for _step in range(MAX_STEPS):
             # Get current state for agent selection
             state = {
                 "generation": info.get("generation", 0),

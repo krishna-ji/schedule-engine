@@ -9,6 +9,7 @@ Compare different reward formulations:
 Usage:
     python runs/rl_05_compare_rewards.py
 """
+
 from __future__ import annotations
 
 import json

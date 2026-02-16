@@ -1,6 +1,6 @@
 import csv
 import math
-import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,8 +33,8 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
     csv_dir = get_csv_dir(output_dir)
 
     # Save population data to CSV
-    csv_path = os.path.join(csv_dir, "population_fitness.csv")
-    with open(csv_path, "w", newline="") as f:
+    csv_path = Path(csv_dir) / "population_fitness.csv"
+    with csv_path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
             [
@@ -53,8 +53,8 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
     pareto_hard = [ind.fitness.values[0] for ind in pareto_front]
     pareto_soft = [ind.fitness.values[1] for ind in pareto_front]
 
-    csv_path = os.path.join(csv_dir, "pareto_front.csv")
-    with open(csv_path, "w", newline="") as f:
+    csv_path = Path(csv_dir) / "pareto_front.csv"
+    with csv_path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
             ["Pareto_Index", "Hard_Constraint_Violations", "Soft_Constraint_Penalties"]
@@ -148,7 +148,7 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
         xlabel="Hard Constraint Violations",
         ylabel="Soft Constraint Penalty",
         title=f"Final Population Fitness Distribution\n({len(population)} individuals, "
-        f"{len({(h, s) for h, s in zip(hard_vals, soft_vals, strict=False)})} unique solutions)",
+        f"{len(set(zip(hard_vals, soft_vals, strict=False)))} unique solutions)",
         legend=True,
     )
     ax.set_xlim(left=0)

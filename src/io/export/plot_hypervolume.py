@@ -11,7 +11,7 @@ combining convergence and diversity into a single value.
 """
 
 import csv
-import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -53,7 +53,7 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
 
     # Create plot directory
     plot_dir = get_nsga_plot_dir(output_dir)
-    os.makedirs(plot_dir, exist_ok=True)
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
 
     # Create plot
     fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))
@@ -125,9 +125,7 @@ def plot_hypervolume_trend(hypervolume_history: list, output_dir: str) -> None:
     ax.grid(True, alpha=0.3, linestyle="--")
 
     # Save figure
-    output_path = os.path.join(
-        plot_dir, "hypervolume_indicator_over_generations.pdf"
-    )
+    output_path = str(Path(plot_dir) / "hypervolume_indicator_over_generations.pdf")
     save_figure(fig, output_path)
     plt.close(fig)
 
@@ -180,8 +178,8 @@ def plot_hypervolume_with_confidence(
     confidence = 1.96 * (std_hv / np.sqrt(n_runs))  # 95% CI
 
     # Save statistics to CSV
-    csv_path = os.path.join(csv_dir, "hypervolume_statistics.csv")
-    with open(csv_path, "w", newline="") as f:
+    csv_path = Path(csv_dir) / "hypervolume_statistics.csv"
+    with csv_path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
             ["Generation", "Mean", "Std", "Min", "Max", "CI_Lower", "CI_Upper"]
@@ -262,7 +260,7 @@ def plot_hypervolume_with_confidence(
 
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    output_path = os.path.join(plot_dir, "hypervolume_multi_run.pdf")
+    output_path = str(Path(plot_dir) / "hypervolume_multi_run.pdf")
     save_figure(fig, output_path)
     plt.close(fig)
 
@@ -290,7 +288,7 @@ def plot_hypervolume_comparison(
         - plots/hypervolume_comparison.pdf: Comparison plot
     """
     plot_dir = get_nsga_plot_dir(output_dir)
-    os.makedirs(plot_dir, exist_ok=True)
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
 
     fig, ax = create_thesis_figure(1, 1, figsize=(12, 7))
 
@@ -352,6 +350,6 @@ def plot_hypervolume_comparison(
 
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    output_path = os.path.join(plot_dir, "hypervolume_comparison.pdf")
+    output_path = str(Path(plot_dir) / "hypervolume_comparison.pdf")
     save_figure(fig, output_path)
     plt.close(fig)

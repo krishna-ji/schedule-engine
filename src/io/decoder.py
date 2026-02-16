@@ -7,12 +7,16 @@ meaningful `CourseSession` objects.
 
 from __future__ import annotations
 
-from src.domain.course import Course
-from src.domain.gene import SessionGene
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
+from typing import TYPE_CHECKING
+
 from src.domain.session import CourseSession
+
+if TYPE_CHECKING:
+    from src.domain.course import Course
+    from src.domain.gene import SessionGene
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
 
 __all__ = ["decode_individual"]
 

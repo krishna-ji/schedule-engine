@@ -83,9 +83,8 @@ def repair_with_heuristic(
     if repaired is not None:
         logger.info(f"Heuristic repair: LOCAL SEARCH SUCCESS (time={elapsed:.2f}s)")
         return repaired
-    else:
-        logger.warning(f"Heuristic repair: FAILED (time={elapsed:.2f}s)")
-        return None
+    logger.warning(f"Heuristic repair: FAILED (time={elapsed:.2f}s)")
+    return None
 
 
 def _greedy_assign(
@@ -301,8 +300,8 @@ def _local_search_repair(
         delta_soft = neighbor_fitness[1] - current_fitness[1]
 
         accept = False
-        if (
-            delta_hard < 0 or delta_hard == 0 and delta_soft < 0
+        if delta_hard < 0 or (
+            delta_hard == 0 and delta_soft < 0
         ):  # Hard constraint improvement
             accept = True
         elif temperature > 0.1:  # Simulated annealing

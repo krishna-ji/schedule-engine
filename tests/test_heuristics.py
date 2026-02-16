@@ -23,16 +23,9 @@ from conftest import (
     make_group,
     make_instructor,
     make_room,
-    structural_fields_preserved,
 )
 
-from src.config import Config, init_config
-from src.constraints.constraints import (
-    InstructorExclusivity,
-    RoomExclusivity,
-    StudentGroupExclusivity,
-)
-from src.domain.gene import SessionGene
+from src.constraints.constraints import StudentGroupExclusivity
 from src.domain.timetable import Timetable
 
 # Heuristic Registries (OOP + Legacy)
@@ -59,7 +52,7 @@ class TestOOPRegistry:
     def test_categories_correct(self):
         from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
-        VALID = {
+        valid = {
             "construction",
             "perturbation",
             "improvement",
@@ -69,7 +62,7 @@ class TestOOPRegistry:
         }
         all_h = get_all_heuristic_objects()
         for h in all_h:
-            assert h.category in VALID, f"{h.name} has invalid category {h.category}"
+            assert h.category in valid, f"{h.name} has invalid category {h.category}"
 
     def test_category_counts(self):
         from src.ga.heuristics.heuristics import get_all_heuristic_objects
@@ -123,9 +116,7 @@ class TestOOPRegistry:
         assert get_heuristic_by_name_oop("nonexistent_heuristic") is None
 
     def test_category_lookup(self):
-        from src.ga.heuristics.heuristics import (
-            get_heuristics_by_category_oop,
-        )
+        from src.ga.heuristics.heuristics import get_heuristics_by_category_oop
 
         construction = get_heuristics_by_category_oop("construction")
         assert len(construction) == 3
@@ -307,13 +298,13 @@ class TestPerturbation:
         from src.ga.heuristics.perturbation import temporal_shift
 
         individual, ctx = self._make_individual_and_ctx()
-        before_times = [g.start_quanta for g in individual]
+        [g.start_quanta for g in individual]
         # Run many times to increase chance of modification
         random.seed(42)
         temporal_shift(individual, ctx, delta=5, probability=1.0)
-        after_times = [g.start_quanta for g in individual]
+        [g.start_quanta for g in individual]
         # At least one should have changed (probability=1.0)
-        assert before_times != after_times or True  # May still be same if slots invalid
+        assert True  # May still be same if slots invalid
 
     def test_temporal_shift_preserves_structure(self):
         from src.ga.heuristics.perturbation import temporal_shift
@@ -321,7 +312,7 @@ class TestPerturbation:
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
         temporal_shift(individual, ctx, probability=1.0)
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert b.course_id == a.course_id
             assert b.group_ids == a.group_ids
             assert b.num_quanta == a.num_quanta
@@ -332,7 +323,7 @@ class TestPerturbation:
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
         room_shuffle(individual, ctx, probability=1.0)
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert b.course_id == a.course_id
             assert b.group_ids == a.group_ids
             assert b.num_quanta == a.num_quanta
@@ -344,7 +335,7 @@ class TestPerturbation:
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
         instructor_reassign(individual, ctx, probability=1.0)
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert b.course_id == a.course_id
             assert b.group_ids == a.group_ids
             assert b.num_quanta == a.num_quanta

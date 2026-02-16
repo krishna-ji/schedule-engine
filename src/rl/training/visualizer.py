@@ -11,7 +11,7 @@ Output: Organized in respective experiment output folders.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,6 +19,9 @@ import seaborn as sns
 from tensorboard.backend.event_processing import event_accumulator
 
 from src.utils.logging_config import get_logger
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = get_logger(__name__)
 
@@ -468,7 +471,7 @@ def export_csv_data(data: dict[str, dict], output_dir: Path) -> None:
         filename = tag.replace("/", "_").replace("\\", "_") + ".csv"
         csv_path = csv_dir / filename
 
-        with open(csv_path, "w") as f:
+        with csv_path.open("w") as f:
             f.write("step,value,wall_time\n")
             for step, value, wall_time in zip(
                 values["steps"], values["values"], values["wall_time"], strict=False

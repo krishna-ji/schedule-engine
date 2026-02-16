@@ -139,10 +139,9 @@ class HybridController:
         if action is not None:
             self.rl_calls += 1
             return action
-        else:
-            logger.warning("RL prediction failed, using fallback")
-            self.fallback_calls += 1
-            return self._fallback_action(valid_actions)
+        logger.warning("RL prediction failed, using fallback")
+        self.fallback_calls += 1
+        return self._fallback_action(valid_actions)
 
     def _rl_fallback(
         self,
@@ -195,17 +194,17 @@ class HybridController:
         if self.fallback_strategy == FallbackStrategy.RANDOM:
             return random.choice(valid_actions)
 
-        elif self.fallback_strategy == FallbackStrategy.GREEDY:
+        if self.fallback_strategy == FallbackStrategy.GREEDY:
             # Return first action (assume sorted by priority)
             return valid_actions[0]
 
-        elif self.fallback_strategy == FallbackStrategy.ROUND_ROBIN:
+        if self.fallback_strategy == FallbackStrategy.ROUND_ROBIN:
             # Cycle through actions
             action = valid_actions[self.round_robin_idx % len(valid_actions)]
             self.round_robin_idx += 1
             return action
 
-        elif self.fallback_strategy == FallbackStrategy.RECENT_BEST:
+        if self.fallback_strategy == FallbackStrategy.RECENT_BEST:
             # Select action with best recent reward
             if not self.recent_rewards:
                 return random.choice(valid_actions)
@@ -221,12 +220,11 @@ class HybridController:
                 return random.choice(valid_actions)
 
             # Select best
-            best_action: int = max(valid_recent, key=lambda a: np.mean(valid_recent[a]))  # type: ignore[no-any-return]
+            best_action: int = max(valid_recent, key=lambda a: np.mean(valid_recent[a]))
             return best_action
 
-        else:
-            # Default to random
-            return random.choice(valid_actions)
+        # Default to random
+        return random.choice(valid_actions)
 
     def update_reward(self, action: int, reward: float) -> None:
         """

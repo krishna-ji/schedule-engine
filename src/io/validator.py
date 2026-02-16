@@ -8,14 +8,16 @@ Fails fast with clear error messages to prevent cryptic runtime failures.
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from src.domain.course import Course
-from src.domain.types import SchedulingContext
 from src.exceptions import DataValidationError
 from src.utils.console_service import get_console
 
-__all__ = ["ValidationError", "InputValidator", "validate_input"]
+if TYPE_CHECKING:
+    from src.domain.types import SchedulingContext
+
+__all__ = ["InputValidator", "ValidationError", "validate_input"]
 
 console = get_console()
 

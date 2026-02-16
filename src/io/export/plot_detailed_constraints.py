@@ -86,9 +86,7 @@ def plot_individual_hard_constraints(
         plt.tight_layout()
 
         # Save individual plot
-        filename = (
-            f"hard_constraint_{constraint_name}_violations_over_generations.pdf"
-        )
+        filename = f"hard_constraint_{constraint_name}_violations_over_generations.pdf"
         save_figure(fig, constraint_dir / filename)
 
 
@@ -164,9 +162,7 @@ def plot_individual_soft_constraints(
         plt.tight_layout()
 
         # Save individual plot
-        filename = (
-            f"soft_constraint_{constraint_name}_penalty_over_generations.pdf"
-        )
+        filename = f"soft_constraint_{constraint_name}_penalty_over_generations.pdf"
         save_figure(fig, constraint_dir / filename)
 
 
@@ -181,4 +177,4 @@ def plot_constraint_summary(
     Note:
         CSV data available in csv/constraint_metrics.csv (hard_total, soft_total columns)
     """
-    return None
+    return

@@ -7,7 +7,7 @@ best individuals each generation.
 """
 
 import random
-from typing import Callable
+from collections.abc import Callable
 
 from src.domain.gene import SessionGene
 from src.domain.types import SchedulingContext
@@ -46,8 +46,6 @@ def memetic_repair(
             SOFT_CONSTRAINT_CLASSES,
         )
         from src.domain.timetable import Timetable
-        from src.domain.types import SchedulingContext
-        from src.io.time_system import QuantumTimeSystem
 
         def evaluator(ind: list[SessionGene]) -> tuple[float, float]:
             tt = Timetable(genes=ind, context=context)

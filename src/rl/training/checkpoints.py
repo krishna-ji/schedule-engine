@@ -93,7 +93,7 @@ class CheckpointManager:
             return []
 
         try:
-            with open(self.manifest_path) as f:
+            with self.manifest_path.open() as f:
                 data = json.load(f)
 
             checkpoints = [CheckpointMetadata(**entry) for entry in data]
@@ -108,7 +108,7 @@ class CheckpointManager:
         try:
             data = [asdict(cp) for cp in self.checkpoints]
 
-            with open(self.manifest_path, "w") as f:
+            with self.manifest_path.open("w") as f:
                 json.dump(data, f, indent=2)
 
             logger.debug(f"Saved manifest with {len(self.checkpoints)} checkpoints")
@@ -345,7 +345,7 @@ def create_checkpoint_metadata(
     model_path: str,
     timestep: int,
     validation_metrics: dict[str, float],
-    **kwargs: float | str | dict[str, float] | int | None,  # type: ignore[misc]
+    **kwargs: float | str | dict[str, float] | int | None,
 ) -> CheckpointMetadata:
     """
     Convenience function to create checkpoint metadata.

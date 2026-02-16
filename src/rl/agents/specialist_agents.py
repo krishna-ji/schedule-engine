@@ -157,7 +157,7 @@ class SpecialistAgents:
             self.repair_actions += 1
             return int(action), "repair"
 
-        elif hard_violations == 0:
+        if hard_violations == 0:
             # Use optimizer agent
             if self.optimizer_agent is None:
                 raise RuntimeError("Optimizer agent not loaded")
@@ -166,37 +166,33 @@ class SpecialistAgents:
             self.optimizer_actions += 1
             return int(action), "optimizer"
 
-        else:
-            # Near threshold: blend or use soft switching
-            if (
-                self.use_soft_switching
-                and self.repair_agent is not None
-                and self.optimizer_agent is not None
-            ):
-                # Compute blending weight
-                alpha = hard_violations / self.switching_threshold  # ∈ [0, 1]
+        # Near threshold: blend or use soft switching
+        if (
+            self.use_soft_switching
+            and self.repair_agent is not None
+            and self.optimizer_agent is not None
+        ):
+            # Compute blending weight
+            alpha = hard_violations / self.switching_threshold  # ∈ [0, 1]
 
-                # Get actions from both agents
-                repair_action, _ = self.repair_agent.predict(state, deterministic=False)
-                optimizer_action, _ = self.optimizer_agent.predict(
-                    state, deterministic=False
-                )
+            # Get actions from both agents
+            repair_action, _ = self.repair_agent.predict(state, deterministic=False)
+            optimizer_action, _ = self.optimizer_agent.predict(
+                state, deterministic=False
+            )
 
-                # Probabilistic selection
-                action = repair_action if np.random.rand() < alpha else optimizer_action
+            # Probabilistic selection
+            action = repair_action if np.random.rand() < alpha else optimizer_action
 
-                self.blended_actions += 1
-                return int(action), "blended"
-            else:
-                # Fallback to repair agent if in transition zone
-                if self.repair_agent is None:
-                    raise RuntimeError("Repair agent not loaded")
+            self.blended_actions += 1
+            return int(action), "blended"
+        # Fallback to repair agent if in transition zone
+        if self.repair_agent is None:
+            raise RuntimeError("Repair agent not loaded")
 
-                action, _ = self.repair_agent.predict(
-                    state, deterministic=deterministic
-                )
-                self.repair_actions += 1
-                return int(action), "repair"
+        action, _ = self.repair_agent.predict(state, deterministic=deterministic)
+        self.repair_actions += 1
+        return int(action), "repair"
 
     def get_statistics(self) -> dict[str, Any]:
         """
@@ -316,7 +312,7 @@ class AgentCoordinator:
             return max(self.agent_performance, key=self.agent_performance.get)  # type: ignore[arg-type]
 
         # Final fallback: first agent
-        return list(self.agents.keys())[0]
+        return next(iter(self.agents.keys()))
 
     def predict(
         self,

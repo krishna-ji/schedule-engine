@@ -4,21 +4,23 @@ from __future__ import annotations
 
 import argparse
 import random
+import sys
 from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 import numpy as np
 from gymnasium import Env as GymEnv
 
 EnvFactory = Callable[[], GymEnv[Any, Any]]
 
-from stable_baselines3.common.vec_env import VecEnv  # noqa: E402
+if TYPE_CHECKING:
+    from stable_baselines3.common.vec_env import VecEnv
 
-from src.domain.types import SchedulingContext  # noqa: E402
+    from src.domain.types import SchedulingContext
+
 from src.io.data_store import load_input_data
-from src.rl.gym_env import ScheduleEnv  # noqa: E402
+from src.rl.gym_env import ScheduleEnv
 from src.rl.training import RLTrainer
 from src.rl.training.config_loader import (
     DEFAULT_PROFILE,
@@ -318,9 +320,7 @@ def create_environment(
     logger.info(f"[ENV {env_rank}] Creating environment (this takes 30-60s per env)...")
 
     from src.ga.core.evaluator import evaluate as evaluate_fitness
-    from src.ga.core.population import (
-        generate_course_group_aware_population,
-    )
+    from src.ga.core.population import generate_course_group_aware_population
 
     # CRITICAL: Inside SubprocVecEnv worker processes, we CANNOT use nested multiprocessing
     # This function runs inside each of the 16 parallel RL environments (daemon processes)
@@ -352,7 +352,7 @@ def create_environment(
             groups=context.groups,
             rooms=context.rooms,
         )
-        cast(_FitnessAssignable, individual).fitness.values = fitness
+        cast("_FitnessAssignable", individual).fitness.values = fitness
 
     logger.info(
         f"[ENV {env_rank}] [OK] Population initialized with {len(initial_population)} individuals"
@@ -880,14 +880,14 @@ def main() -> None:
                 "You can manually generate plots later using: uv run visualize-rl"
             )
 
-        # Register experiment in manifest
-        exp_manager.register_run(
-            runtime_mode="e5",
-            config_reference=args.loaded_profile,
-            output_path=output_dir,
-            experiment_name=experiment_name,
-            notes=f"RL training: {args.agent_type.upper()}, {args.timesteps:,} steps, model: {model_path.name}",
-        )
+        # TODO: Register experiment in manifest when exp_manager is implemented
+        # exp_manager.register_run(
+        #     runtime_mode="e5",
+        #     config_reference=args.loaded_profile,
+        #     output_path=output_dir,
+        #     experiment_name=experiment_name,
+        #     notes=f"RL training: {args.agent_type.upper()}, {args.timesteps:,} steps, model: {model_path.name}",
+        # )
 
         logger.info("\n" + "=" * 60)
         logger.info("OUTPUT LOCATIONS")

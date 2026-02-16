@@ -11,13 +11,16 @@ import copy
 import random
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from src.domain.types import SchedulingContext
+
 from src.config import Config, init_config
-from src.domain.types import SchedulingContext
 from src.ga.core.population import generate_course_group_aware_population
 from src.io.data_store import load_input_data
 from src.rl.agents import RandomAgent, create_dqn_agent, create_ppo_agent
@@ -77,131 +80,137 @@ def build_notebook_config(
         name="notebook-experiment",
         environment="test",
         ga=ga_kwargs,
-        repair=dict(
-            enabled=True,
-            detection_strategy="hybrid",
-            heuristics={},
-            memetic_mode=False,
-            max_iterations=3,
-            apply_after_mutation=True,
-            apply_after_crossover=True,
-            selective_mode=True,
-            recheck_after_repair=True,
-            budget_ms_per_generation=50,
-            max_steps_per_individual=5,
-            max_candidates_per_operator=20,
-            policy="round_robin",
-            epsilon=0.1,
-            exhaustive_search=dict(enabled=True, generations=[3, 25]),
-            stagnation_repair=dict(enabled=True, patience=5, min_generation=8),
-            selective_repair=dict(
-                enabled=True,
-                apply_probability=0.3,
-                detection_strategy="hybrid",
-            ),
-        ),
-        enhancements=dict(
-            master_enabled=True,
-            memetic_mode=True,
-            increased_population=True,
-            frequent_repair=True,
-            greedy_initialization_percent=0.4,
-            hypermutation=dict(enabled=True, trigger_on_stagnation=True),
-            violation_heatmap=dict(enabled=True, target_hot_genes=True),
-            multi_neighborhood=dict(enabled=True, max_combinations=50),
-        ),
-        heuristics=dict(master_enabled=True),
-        soft_constraints=dict(
-            student_schedule_compactness=dict(
-                enabled=True, weight=1.0, gap_penalty_per_quantum=1
-            ),
-            instructor_schedule_compactness=dict(
-                enabled=True, weight=1.0, gap_penalty_per_quantum=1
-            ),
-            student_lunch_break=dict(
-                enabled=True, weight=1.0, distance_penalty_per_quantum=1
-            ),
-            session_continuity=dict(enabled=True, weight=1.0),
-            paired_cohort_practical_alignment=dict(enabled=True, weight=1.0),
-            soft_weight_factor=1.0,
-        ),
-        rl=dict(
-            enabled=False,
-            mode="disabled",
-            environment=dict(
-                max_steps_per_episode=100,
-                observation_history_size=10,
-                diversity_update_interval=1,
-                diversity_sample_size=None,
-                action_id_map={},
-                render_mode=None,
-            ),
-            reward=dict(
-                fitness_weight=10.0,
-                diversity_weight=1.0,
-                time_weight=0.01,
-                normalize=False,
-            ),
-            agent=dict(
-                type="ppo",
-                model_path="models/rl_agents/best_model.zip",
-                device="cpu",
-                ppo=dict(
-                    learning_rate=0.0003,
-                    n_steps=512,
-                    batch_size=64,
-                    n_epochs=10,
-                    gamma=0.99,
-                    gae_lambda=0.95,
-                    clip_range=0.2,
-                    ent_coef=0.01,
-                ),
-                dqn=dict(
-                    learning_rate=0.0001,
-                    buffer_size=100000,
-                    batch_size=32,
-                    gamma=0.99,
-                    exploration_fraction=0.1,
-                    exploration_final_eps=0.05,
-                ),
-            ),
-            training=dict(
-                total_timesteps=100000,
-                checkpoint_interval=10000,
-                evaluation_interval=5000,
-                tensorboard_log="logs/tensorboard",
-                checkpoint_dir="models/rl_agents/checkpoints",
-                save_dir="models/rl_agents",
-                verbose=1,
-                curriculum=[],
-            ),
-            inference=dict(
-                batch_prediction=False,
-                timeout_ms=10,
-                fallback_on_timeout=True,
-                cache_predictions=False,
-            ),
-            hybrid=dict(
-                mode="rl_primary",
-                fallback_strategy="random",
-                rl_probability=0.8,
-                enable_action_masking=True,
-            ),
-            evaluation=dict(
-                baseline_strategies=["random", "round_robin", "greedy"],
-                num_evaluation_episodes=10,
-                save_metrics=True,
-                metrics_dir="output/rl_metrics",
-            ),
-            logging=dict(
-                log_heuristic_usage=True,
-                log_rewards=True,
-                log_state_transitions=False,
-                log_inference_time=True,
-            ),
-        ),
-        io=dict(data_dir="data", output_dir="output"),
-        parallel=dict(use_multiprocessing=True, num_workers=None),
+        repair={
+            "enabled": True,
+            "detection_strategy": "hybrid",
+            "heuristics": {},
+            "memetic_mode": False,
+            "max_iterations": 3,
+            "apply_after_mutation": True,
+            "apply_after_crossover": True,
+            "selective_mode": True,
+            "recheck_after_repair": True,
+            "budget_ms_per_generation": 50,
+            "max_steps_per_individual": 5,
+            "max_candidates_per_operator": 20,
+            "policy": "round_robin",
+            "epsilon": 0.1,
+            "exhaustive_search": {"enabled": True, "generations": [3, 25]},
+            "stagnation_repair": {"enabled": True, "patience": 5, "min_generation": 8},
+            "selective_repair": {
+                "enabled": True,
+                "apply_probability": 0.3,
+                "detection_strategy": "hybrid",
+            },
+        },
+        enhancements={
+            "master_enabled": True,
+            "memetic_mode": True,
+            "increased_population": True,
+            "frequent_repair": True,
+            "greedy_initialization_percent": 0.4,
+            "hypermutation": {"enabled": True, "trigger_on_stagnation": True},
+            "violation_heatmap": {"enabled": True, "target_hot_genes": True},
+            "multi_neighborhood": {"enabled": True, "max_combinations": 50},
+        },
+        heuristics={"master_enabled": True},
+        soft_constraints={
+            "student_schedule_compactness": {
+                "enabled": True,
+                "weight": 1.0,
+                "gap_penalty_per_quantum": 1,
+            },
+            "instructor_schedule_compactness": {
+                "enabled": True,
+                "weight": 1.0,
+                "gap_penalty_per_quantum": 1,
+            },
+            "student_lunch_break": {
+                "enabled": True,
+                "weight": 1.0,
+                "distance_penalty_per_quantum": 1,
+            },
+            "session_continuity": {"enabled": True, "weight": 1.0},
+            "paired_cohort_practical_alignment": {"enabled": True, "weight": 1.0},
+            "soft_weight_factor": 1.0,
+        },
+        rl={
+            "enabled": False,
+            "mode": "disabled",
+            "environment": {
+                "max_steps_per_episode": 100,
+                "observation_history_size": 10,
+                "diversity_update_interval": 1,
+                "diversity_sample_size": None,
+                "action_id_map": {},
+                "render_mode": None,
+            },
+            "reward": {
+                "fitness_weight": 10.0,
+                "diversity_weight": 1.0,
+                "time_weight": 0.01,
+                "normalize": False,
+            },
+            "agent": {
+                "type": "ppo",
+                "model_path": "models/rl_agents/best_model.zip",
+                "device": "cpu",
+                "ppo": {
+                    "learning_rate": 0.0003,
+                    "n_steps": 512,
+                    "batch_size": 64,
+                    "n_epochs": 10,
+                    "gamma": 0.99,
+                    "gae_lambda": 0.95,
+                    "clip_range": 0.2,
+                    "ent_coef": 0.01,
+                },
+                "dqn": {
+                    "learning_rate": 0.0001,
+                    "buffer_size": 100000,
+                    "batch_size": 32,
+                    "gamma": 0.99,
+                    "exploration_fraction": 0.1,
+                    "exploration_final_eps": 0.05,
+                },
+            },
+            "training": {
+                "total_timesteps": 100000,
+                "checkpoint_interval": 10000,
+                "evaluation_interval": 5000,
+                "tensorboard_log": "logs/tensorboard",
+                "checkpoint_dir": "models/rl_agents/checkpoints",
+                "save_dir": "models/rl_agents",
+                "verbose": 1,
+                "curriculum": [],
+            },
+            "inference": {
+                "batch_prediction": False,
+                "timeout_ms": 10,
+                "fallback_on_timeout": True,
+                "cache_predictions": False,
+            },
+            "hybrid": {
+                "mode": "rl_primary",
+                "fallback_strategy": "random",
+                "rl_probability": 0.8,
+                "enable_action_masking": True,
+            },
+            "evaluation": {
+                "baseline_strategies": ["random", "round_robin", "greedy"],
+                "num_evaluation_episodes": 10,
+                "save_metrics": True,
+                "metrics_dir": "output/rl_metrics",
+            },
+            "logging": {
+                "log_heuristic_usage": True,
+                "log_rewards": True,
+                "log_state_transitions": False,
+                "log_inference_time": True,
+            },
+        },
+        io={"data_dir": "data", "output_dir": "output"},
+        parallel={"use_multiprocessing": True, "num_workers": None},
         cohort_pairs=[],
     )
     init_config(config)
@@ -282,6 +291,7 @@ def train_agent(
         Tuple of (agent, training_time_seconds).
     """
     agent_type = agent_type.lower()
+    agent: Any
     if agent_type == "ppo":
         agent = create_ppo_agent(env=env, seed=seed, verbose=0, **agent_kwargs)
     elif agent_type == "dqn":

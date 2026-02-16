@@ -27,18 +27,18 @@ from src.metrics.pareto_metrics import (
 )
 
 __all__ = [
-    # Core metrics
-    "calculate_hypervolume",
-    "calculate_generational_distance",
-    "calculate_inverted_generational_distance",
-    "calculate_spacing",
-    "average_pairwise_diversity",
-    "individual_distance",
-    "calculate_convergence_rate",
-    "detect_stagnation",
     # Behavioral diversity
     "BehavioralArchive",
-    "extract_behavioral_features",
+    "average_pairwise_diversity",
+    "calculate_convergence_rate",
+    "calculate_generational_distance",
+    # Core metrics
+    "calculate_hypervolume",
+    "calculate_inverted_generational_distance",
+    "calculate_spacing",
     "compute_novelty",
+    "detect_stagnation",
+    "extract_behavioral_features",
+    "individual_distance",
     "k_nearest_neighbors",
 ]

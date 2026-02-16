@@ -2,7 +2,7 @@
 Selective Repair Heuristic
 
 Selective repair operator integrated as a heuristic.
-Targets only genes with detected violations for 3-4× speedup.
+Targets only genes with detected violations for 3-4x speedup.
 
 Performance:
 - Scans ~5-15% of genes instead of 100%
@@ -14,11 +14,11 @@ Constraint Coverage: Same as base repairs (6 of 8 hard, 1 of 4 soft)
 Application: Default repair mode in Modes B-E (recommended for speed)
 """
 
+from src.domain.gene import SessionGene
 from src.domain.types import SchedulingContext
 
 # Import the original selective repair logic
 from src.ga.repair.selective import repair_individual_selective
-from src.domain.gene import SessionGene
 
 
 def selective_repair(

@@ -10,21 +10,21 @@ class TestDeletedModules:
 
     def test_shared_course_analyzer_deleted(self):
         with pytest.raises(ImportError):
-            import src.ga.shared_course_analyzer  # noqa: F401
+            import src.ga.shared_course_analyzer
 
     def test_rl_rewards_deleted(self):
         with pytest.raises(ImportError):
-            import src.rl.rewards  # noqa: F401
+            import src.rl.rewards
 
     def test_metrics_package_deleted(self):
         """Entire metrics/ package is deleted - use ga.metrics."""
         with pytest.raises(ImportError):
-            import src.metrics  # noqa: F401
+            import src.metrics
 
     def test_heuristics_package_deleted(self):
         """Top-level heuristics/ is deleted - use ga.heuristics."""
         with pytest.raises(ImportError):
-            import src.heuristics  # noqa: F401
+            import src.heuristics
 
 
 class TestGAHeuristicsPackage:

@@ -6,7 +6,7 @@ group, instructor, room, and quantum.
 
 This class eliminates:
 - 9 scattered `decode_individual()` calls across the codebase
-- 14 redundant map-rebuilds per evaluation (group-day map rebuilt 3× alone)
+- 14 redundant map-rebuilds per evaluation (group-day map rebuilt 3x alone)
 - The need for `CourseSession` as a separate decode target
 
 Design principles:
@@ -19,18 +19,18 @@ Design principles:
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.domain.course import Course
+    from src.domain.gene import SessionGene
     from src.domain.group import Group
     from src.domain.instructor import Instructor
     from src.domain.room import Room
+    from src.domain.types import SchedulingContext
     from src.io.time_system import QuantumTimeSystem
 
-from src.domain.gene import SessionGene
-from src.domain.types import SchedulingContext
 
 __all__ = ["ConflictPair", "Timetable"]
 
@@ -91,27 +91,27 @@ class Timetable:
     # Construction
 
     __slots__ = (
-        "_genes",
         "_context",
-        "_qts",
-        # Occupancy indexes  (entity_id, quantum) → list[gene_idx]
-        "_group_occ",
-        "_instructor_occ",
-        "_room_occ",
-        # Daily schedule indexes
-        "_group_daily",
-        "_instructor_daily",
-        # Completeness
-        "_course_group_quanta",
         # Course daily
         "_course_daily",
-        # Practical quanta
-        "_practical_quanta",
+        # Completeness
+        "_course_group_quanta",
+        "_genes",
+        "_genes_at_quantum",
         # Quick per-entity gene lists
         "_genes_by_group",
         "_genes_by_instructor",
         "_genes_by_room",
-        "_genes_at_quantum",
+        # Daily schedule indexes
+        "_group_daily",
+        # Occupancy indexes  (entity_id, quantum) → list[gene_idx]
+        "_group_occ",
+        "_instructor_daily",
+        "_instructor_occ",
+        # Practical quanta
+        "_practical_quanta",
+        "_qts",
+        "_room_occ",
         # Cached decoded sessions (lazy)
         "_sessions",
     )
@@ -168,7 +168,7 @@ class Timetable:
     def __getitem__(self, idx: int) -> SessionGene:
         return self._genes[idx]
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
         return iter(self._genes)
 
     # Public: Per-entity gene lists
@@ -346,9 +346,9 @@ class Timetable:
 
             # Completeness: accumulate quanta per (course, type, group)
             for gid in gene.group_ids:
-                course_group_quanta[
-                    (gene.course_id, gene.course_type, gid)
-                ] += gene.num_quanta
+                course_group_quanta[(gene.course_id, gene.course_type, gid)] += (
+                    gene.num_quanta
+                )
 
             # Practical quanta tracking
             if gene.course_type == "practical":
@@ -423,15 +423,15 @@ class Timetable:
             if len(gene_idxs) <= 1:
                 continue
             # Report all pairwise conflicts
-            for i in range(len(gene_idxs)):
-                for j in range(i + 1, len(gene_idxs)):
-                    conflicts.append(
-                        ConflictPair(
-                            gene_a_idx=gene_idxs[i],
-                            gene_b_idx=gene_idxs[j],
-                            resource_type=resource_type,
-                            resource_id=res_id,
-                            quantum=quantum,
-                        )
-                    )
+            conflicts.extend(
+                ConflictPair(
+                    gene_a_idx=gene_idxs[i],
+                    gene_b_idx=gene_idxs[j],
+                    resource_type=resource_type,
+                    resource_id=res_id,
+                    quantum=quantum,
+                )
+                for i in range(len(gene_idxs))
+                for j in range(i + 1, len(gene_idxs))
+            )
         return conflicts

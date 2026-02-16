@@ -58,7 +58,6 @@
     "ruff.lint.enable": true,
     "ruff.fixAll": true,
     "ruff.organizeImports": true,
-    "ruff.lint.run": "onSave",
     // ==================
     // MYPY (type checking)
     // ==================

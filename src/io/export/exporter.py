@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
 import textwrap
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -16,9 +16,11 @@ EXCAL_QUANTUM_MINUTES: int = 15
 EXCAL_START_HOUR: int = 7
 EXCAL_END_HOUR: int = 20
 EXCAL_DEFAULT_OUTPUT_PDF: str = "calendar.pdf"
-from src.domain.course import Course
-from src.domain.session import CourseSession
-from src.io.time_system import QuantumTimeSystem
+
+if TYPE_CHECKING:
+    from src.domain.course import Course
+    from src.domain.session import CourseSession
+    from src.io.time_system import QuantumTimeSystem
 
 
 def _format_course_name_with_type(course_name: str, course_type: str) -> str:
@@ -98,8 +100,8 @@ def _save_schedule_as_json(
         The JSON file will be named 'schedule.json'.
     """
     filename = "schedule.json"
-    full_path = os.path.join(output_path, filename)
-    os.makedirs(output_path, exist_ok=True)
+    full_path = str(Path(output_path) / filename)
+    Path(output_path).mkdir(parents=True, exist_ok=True)
 
     result = []
     for session in schedule:
@@ -127,7 +129,7 @@ def _save_schedule_as_json(
             }
         )
 
-    with open(full_path, "w") as f:
+    with Path(full_path).open("w") as f:
         json.dump(result, f, indent=2)
 
     return full_path
@@ -292,7 +294,7 @@ def _save_json_schedule_as_pdf(
         plt.close(fig)
 
     # Load JSON
-    with open(json_path) as f:
+    with Path(json_path).open() as f:
         data = json.load(f)
 
     group_sessions = defaultdict(list)
@@ -379,14 +381,14 @@ def export_everything(
         - PDF settings (hours, quantum minutes) come from calendar_config.py
         - Parallel mode generates JSON and PDF concurrently (2x speedup)
     """
-    os.makedirs(output_path, exist_ok=True)
+    Path(output_path).mkdir(parents=True, exist_ok=True)
 
     if not parallel:
         # Sequential export (for debugging)
         json_path = _save_schedule_as_json(
             schedule, output_path, qts, course_lookup=course_lookup
         )
-        pdf_path = os.path.join(output_path, EXCAL_DEFAULT_OUTPUT_PDF)
+        pdf_path = str(Path(output_path) / EXCAL_DEFAULT_OUTPUT_PDF)
         _save_json_schedule_as_pdf(
             json_path=json_path,
             output_pdf_path=pdf_path,
@@ -396,7 +398,7 @@ def export_everything(
         )
     else:
         # Parallel export (2x faster)
-        pdf_path = os.path.join(output_path, EXCAL_DEFAULT_OUTPUT_PDF)
+        pdf_path = str(Path(output_path) / EXCAL_DEFAULT_OUTPUT_PDF)
 
         def save_json() -> str:
             """Worker function for JSON export."""

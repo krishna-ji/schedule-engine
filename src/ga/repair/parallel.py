@@ -18,24 +18,24 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from multiprocessing import cpu_count
-from typing import TYPE_CHECKING, Callable
-
-from src.domain.gene import SessionGene
-from src.domain.types import SchedulingContext
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from src.domain.gene import SessionGene
     from src.domain.instructor import Instructor
-    from src.domain.room import Room
+    from src.domain.types import SchedulingContext
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "RepairStats",
     "OccupiedMap",
-    "build_occupied_map",
+    "RepairStats",
     "apply_fast_repair",
-    "parallel_repair_population",
+    "build_occupied_map",
     "get_repair_operators",
+    "parallel_repair_population",
 ]
 
 
@@ -167,7 +167,7 @@ def _find_conflict_free_time(
     gene: SessionGene,
     context: SchedulingContext,
     occupied: OccupiedMap,
-    instructor: "Instructor",
+    instructor: Instructor,
 ) -> int | None:
     """Find a time slot without conflicts."""
     duration = gene.num_quanta

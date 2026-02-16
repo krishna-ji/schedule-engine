@@ -16,7 +16,7 @@ class ProbabilityPolicy:
     these probabilities based on search state (convergence, diversity, stagnation).
 
     Action space:
-    - Option 1: Discrete (9 actions): 3 levels for cxpb × 3 levels for mutpb
+    - Option 1: Discrete (9 actions): 3 levels for cxpb x 3 levels for mutpb
     - Option 2: Continuous (2 actions): [cxpb, mutpb] in [0, 1]²
 
     Benefits:
@@ -54,8 +54,7 @@ class ProbabilityPolicy:
         """
         if self.mode == "discrete":
             return len(self.cxpb_levels) * len(self.mutpb_levels)  # 9 actions
-        else:
-            return 2  # [cxpb, mutpb]
+        return 2  # [cxpb, mutpb]
 
     def action_to_probabilities(
         self, action: int | NDArray[np.float32]

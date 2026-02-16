@@ -100,7 +100,7 @@ class ModelLoader:
             logger.debug(
                 f"Model loaded from cache: {model_path} (original load time: {load_time:.1f}ms)"
             )
-            return model  # type: ignore[no-any-return]
+            return model
 
         # Load model
         start_time = time.time()
@@ -140,7 +140,7 @@ class ModelLoader:
             else:
                 logger.info(f"Model loaded in {load_time_ms:.1f}ms: {model_path}")
 
-            return model  # type: ignore[no-any-return]
+            return model
 
         except Exception as e:
             logger.error(f"Failed to load model {model_path}: {e}")

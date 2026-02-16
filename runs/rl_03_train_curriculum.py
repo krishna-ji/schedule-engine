@@ -10,6 +10,7 @@ Train PPO with curriculum learning - progressive phases:
 Usage:
     python runs/rl_03_train_curriculum.py
 """
+
 from __future__ import annotations
 
 import json

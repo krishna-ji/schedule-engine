@@ -11,8 +11,6 @@ Validates:
 Run: python verify_schedule_index.py
 """
 
-from pathlib import Path
-
 from src.domain.gene import SessionGene
 from src.ga.core.schedule_index import ScheduleIndex
 
@@ -81,12 +79,12 @@ def test_basic_operations():
     # Test invalidation
     index.invalidate()
     assert not index.is_valid(), "Index should be invalid after invalidate()"
-    print(f"  ✓ Invalidation works")
+    print("  ✓ Invalidation works")
 
     # Test rebuild
     _ = index.find_group_conflicts()
     assert index.is_valid(), "Index should be valid after rebuild"
-    print(f"  ✓ Rebuild works")
+    print("  ✓ Rebuild works")
 
     print("✅ Basic operations: PASS\n")
 
@@ -196,7 +194,7 @@ def test_conflict_detection_accuracy():
     assert (
         0 in group_conflicts and 1 in group_conflicts[0]
     ), "Should detect group overlap between gene 0 and 1"
-    print(f"  ✓ Group overlap detected correctly")
+    print("  ✓ Group overlap detected correctly")
 
     # Scenario 2: Instructor overlap
     genes = [
@@ -226,7 +224,7 @@ def test_conflict_detection_accuracy():
     assert (
         0 in instructor_conflicts and 1 in instructor_conflicts[0]
     ), "Should detect instructor overlap"
-    print(f"  ✓ Instructor overlap detected correctly")
+    print("  ✓ Instructor overlap detected correctly")
 
     # Scenario 3: Room overlap
     genes = [
@@ -254,7 +252,7 @@ def test_conflict_detection_accuracy():
     room_conflicts = index.find_room_conflicts()
 
     assert 0 in room_conflicts and 1 in room_conflicts[0], "Should detect room overlap"
-    print(f"  ✓ Room overlap detected correctly")
+    print("  ✓ Room overlap detected correctly")
 
     # Scenario 4: No conflicts
     genes = [
@@ -280,7 +278,7 @@ def test_conflict_detection_accuracy():
 
     index = ScheduleIndex.from_individual(genes)
     assert not index.has_conflicts(), "Should have no conflicts"
-    print(f"  ✓ No false positives (clean schedule validated)")
+    print("  ✓ No false positives (clean schedule validated)")
 
     print("✅ Conflict detection accuracy: PASS\n")
 
@@ -319,7 +317,7 @@ def test_caching_efficiency():
     _ = index.count_violations()
     assert index.is_valid(), "Should remain valid (cache hit)"
 
-    print(f"  ✓ Multiple operations use cached maps (no rebuild)")
+    print("  ✓ Multiple operations use cached maps (no rebuild)")
 
     # Invalidation forces rebuild
     index.invalidate()
@@ -328,7 +326,7 @@ def test_caching_efficiency():
     _ = index.find_group_conflicts()
     assert index.is_valid(), "Should rebuild and become valid"
 
-    print(f"  ✓ Invalidation + rebuild works correctly")
+    print("  ✓ Invalidation + rebuild works correctly")
     print("✅ Caching efficiency: PASS\n")
 
 

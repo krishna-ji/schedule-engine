@@ -7,8 +7,10 @@ effective heuristics at each step.
 
 import copy
 import time
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 import gymnasium as gym
 import numpy as np
@@ -48,7 +50,7 @@ class ScheduleEnv(gym.Env):
         Continuous [-1, 1] - fitness improvement + diversity - time penalty
     """
 
-    metadata = {"render_modes": ["human", "ansi"]}
+    metadata = {"render_modes": ["human", "ansi"]}  # noqa: RUF012
 
     def __init__(
         self,
@@ -463,9 +465,9 @@ class ScheduleEnv(gym.Env):
     @staticmethod
     def _get_combined_fitness_value(individual: Individual) -> float:
         """Compute combined fitness value for comparisons."""
-        if not hasattr(individual, "fitness") or not individual.fitness.valid:  # type: ignore[attr-defined]
+        if not hasattr(individual, "fitness") or not individual.fitness.valid:
             return float("inf")
-        hard, soft = individual.fitness.values  # type: ignore[attr-defined]
+        hard, soft = individual.fitness.values
         return float(abs(hard) * 100 + abs(soft))
 
     def _get_info(self) -> dict[str, Any]:
@@ -483,7 +485,7 @@ class ScheduleEnv(gym.Env):
         """Render environment state."""
         if self.render_mode == "ansi":
             return self._render_ansi()
-        elif self.render_mode == "human":
+        if self.render_mode == "human":
             print(self._render_ansi())
             return None
         return None
@@ -505,7 +507,6 @@ class ScheduleEnv(gym.Env):
 
     def close(self) -> None:
         """Clean up environment resources."""
-        pass
 
     def _ensure_deap_individual(self, individual: Individual) -> Individual:
         """Convert plain list to DEAP Individual if needed."""
@@ -516,7 +517,7 @@ class ScheduleEnv(gym.Env):
         from deap import creator
 
         # Create new DEAP Individual from plain list
-        deap_individual: Individual = creator.Individual(individual)  # type: ignore[no-any-return]
+        deap_individual: Individual = creator.Individual(individual)
         return deap_individual
 
     def _ensure_individual_fitness(
@@ -531,9 +532,9 @@ class ScheduleEnv(gym.Env):
             )
             return False
 
-        values = getattr(individual.fitness, "values", ())  # type: ignore[attr-defined]
+        values = getattr(individual.fitness, "values", ())
         values_valid = (
-            getattr(individual.fitness, "valid", False)  # type: ignore[attr-defined]
+            getattr(individual.fitness, "valid", False)
             and len(values) == 2
             and all(isinstance(value, int | float) for value in values)
         )
@@ -546,9 +547,7 @@ class ScheduleEnv(gym.Env):
             return True
 
         if self._fitness_evaluator is None:
-            from src.ga.core.evaluator import (
-                evaluate as evaluate_fitness,
-            )  # type: ignore[attr-defined]
+            from src.ga.core.evaluator import evaluate as evaluate_fitness
 
             self._fitness_evaluator = evaluate_fitness
 
@@ -568,7 +567,7 @@ class ScheduleEnv(gym.Env):
             )
             return False
 
-        individual.fitness.values = fitness  # type: ignore[attr-defined]
+        individual.fitness.values = fitness
         return True
 
     def _clone_individual(self, individual: Individual) -> Individual:
@@ -596,7 +595,7 @@ class ScheduleEnv(gym.Env):
         ]
 
         # Copy fitness so mutations don't alias original individuals
-        if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
+        if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):
             cloned.fitness = copy.copy(individual.fitness)  # type: ignore[attr-defined]
             cloned.fitness.values = individual.fitness.values  # type: ignore[attr-defined]
 

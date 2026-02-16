@@ -9,12 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from numpy.typing import NDArray
     from stable_baselines3 import PPO
 
-import numpy as np
-from numpy.typing import NDArray
+    from src.domain.types import Individual
 
-from src.domain.types import Individual
+import numpy as np
+
 from src.rl.multi_agent.specialist_agents import (
     ExplorerAgent,
     IntensifierAgent,
@@ -59,7 +60,7 @@ class AgentCoordinator:
         self.total_selections = 0
 
         # Meta-agent (if strategy=meta_agent)
-        self.meta_agent: PPO | None = None  # type: ignore[name-defined]
+        self.meta_agent: PPO | None = None
 
     def select_agent(
         self,
@@ -81,21 +82,19 @@ class AgentCoordinator:
         if self.strategy == "state_based":
             return self._select_state_based(population, state)
 
-        elif self.strategy == "ucb":
+        if self.strategy == "ucb":
             return self._select_ucb()
 
-        elif self.strategy == "meta_agent":
+        if self.strategy == "meta_agent":
             if observation is not None:
                 return self._select_meta_agent(observation)
-            else:
-                # Fallback when no observation provided
-                return self.agents[1]  # OptimizerAgent
+            # Fallback when no observation provided
+            return self.agents[1]  # OptimizerAgent
 
-        else:
-            # Fallback: round-robin
-            idx = self.total_selections % len(self.agents)
-            self.total_selections += 1
-            return self.agents[idx]
+        # Fallback: round-robin
+        idx = self.total_selections % len(self.agents)
+        self.total_selections += 1
+        return self.agents[idx]
 
     def _select_state_based(
         self, population: list[Individual], state: dict[str, Any]
@@ -177,9 +176,8 @@ class AgentCoordinator:
             action, _ = self.meta_agent.predict(observation, deterministic=True)
             agent_idx = int(action) % len(self.agents)
             return self.agents[agent_idx]
-        else:
-            # Fallback: state-based
-            return self.agents[1]  # OptimizerAgent
+        # Fallback: state-based
+        return self.agents[1]  # OptimizerAgent
 
     def update_ucb_reward(self, agent: SpecialistAgent, reward: float) -> None:
         """
@@ -260,12 +258,11 @@ class RankBasedCoordinator(AgentCoordinator):
         if pareto_rank == 1:
             # Elite solutions: careful refinement
             return self.agents[3]  # IntensifierAgent
-        elif pareto_rank == 2:
+        if pareto_rank == 2:
             # Good solutions: standard optimization
             return self.agents[1]  # OptimizerAgent
-        elif pareto_rank == 3:
+        if pareto_rank == 3:
             # Moderate solutions: exploration
             return self.agents[2]  # ExplorerAgent
-        else:
-            # Poor solutions: aggressive repair
-            return self.agents[0]  # RepairAgent
+        # Poor solutions: aggressive repair
+        return self.agents[0]  # RepairAgent

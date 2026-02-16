@@ -119,13 +119,13 @@ class ActionMapper:
                     "Action IDs must be >= 1."
                 )
             if action_id in used_ids:
-                raise ValueError(
-                    f"Duplicate action_id {action_id} in action_id_map."
-                )
+                raise ValueError(f"Duplicate action_id {action_id} in action_id_map.")
             used_ids.add(action_id)
 
         heuristic_by_name = {h.name: h for h in heuristics}
-        for name, action_id in sorted(self.action_id_map.items(), key=lambda item: item[1]):
+        for name, action_id in sorted(
+            self.action_id_map.items(), key=lambda item: item[1]
+        ):
             heuristic = heuristic_by_name.get(name)
             if heuristic is None:
                 logger.warning(
@@ -210,7 +210,7 @@ class ActionMapper:
             # Use shallow copy + list copy instead of deepcopy for 10-50x speedup
             individual_copy = copy.copy(individual)
             individual_copy[:] = individual[:]
-            if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
+            if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):
                 individual_copy.fitness.values = individual.fitness.values  # type: ignore[attr-defined]
 
             import inspect
@@ -391,13 +391,14 @@ class ActionMapper:
             func_params = set()
 
         # Build exclusion set: metadata fields + already provided positional params
-        excluded = set(provided_params + ["enabled", "priority"])
+        excluded = {*provided_params, "enabled", "priority"}
 
         # Extract kwargs: only params that are in function signature, not provided positionally, and not metadata
-        kwargs = {}
-        for key, value in heuristic_config.items():
-            if key not in excluded and key in func_params:
-                kwargs[key] = value
+        kwargs = {
+            key: value
+            for key, value in heuristic_config.items()
+            if key not in excluded and key in func_params
+        }
 
         return kwargs
 
@@ -408,8 +409,8 @@ class ActionMapper:
     @staticmethod
     def _invalidate_fitness(individual: Individual) -> None:
         """Mark a DEAP individual fitness as invalid after in-place mutation."""
-        if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):  # type: ignore[attr-defined]
-            individual.fitness.values = ()  # type: ignore[attr-defined]
+        if hasattr(individual, "fitness") and hasattr(individual.fitness, "values"):
+            individual.fitness.values = ()
 
     def _execute_with_timeout(
         self,

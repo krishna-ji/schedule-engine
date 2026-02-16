@@ -19,4 +19,4 @@ Phase 2 Components:
 from src.rl.gym_env.schedule_env import ScheduleEnv
 from src.rl.hybrid.hybrid_controller import HybridController
 
-__all__ = ["ScheduleEnv", "HybridController"]
+__all__ = ["HybridController", "ScheduleEnv"]

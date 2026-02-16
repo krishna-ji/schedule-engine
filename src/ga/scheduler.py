@@ -10,12 +10,10 @@ from __future__ import annotations
 import os
 import random
 import time
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
 from deap import base, tools
 from rich.live import Live
 from rich.progress import (
@@ -31,11 +29,14 @@ from rich.table import Table
 from rich.text import Text
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from stable_baselines3.common.base_class import BaseAlgorithm
+
+    from src.domain.types import SchedulingContext
 
 from src.config import get_config
 from src.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
-from src.domain.types import SchedulingContext
 from src.ga.core.evaluator import evaluate, evaluate_detailed
 from src.ga.core.metrics_collector import MetricsCollector
 from src.ga.core.population import generate_course_group_aware_population
@@ -203,7 +204,7 @@ class AlwaysShowTimeRemainingColumn(ProgressColumn):
                 # First estimate - initialize EMA
                 self._ema_remaining = raw_remaining
             else:
-                # Smooth: EMA = α * new + (1-α) * old
+                # Smooth: EMA = a * new + (1-a) * old
                 self._ema_remaining = (
                     self._alpha * raw_remaining
                     + (1 - self._alpha) * self._ema_remaining
@@ -503,9 +504,7 @@ class GAScheduler:
             )
         elif strategy == "random":
             # Pure random initialization (no heuristics, no conflict avoidance)
-            from src.ga.core.population import (
-                generate_pure_random_population,
-            )
+            from src.ga.core.population import generate_pure_random_population
 
             self.toolbox.register(
                 "population",
@@ -738,7 +737,7 @@ class GAScheduler:
         valid_actions = self.rl_action_mapper.enabled_actions  # type: ignore[union-attr]
 
         # Select action using RL controller (with fallback)
-        action_id = self.rl_controller.select_action(  # type: ignore[union-attr]
+        action_id = self.rl_controller.select_action(
             state=state,
             valid_actions=valid_actions,
             deterministic=True,  # Use deterministic policy for production
@@ -946,10 +945,8 @@ class GAScheduler:
             return
 
         # Select target individual(s)
-        if (
-            heuristic_meta.requires_population
-            or heuristic_meta.modifies_individual
-            and len(self.population) > 1
+        if heuristic_meta.requires_population or (
+            heuristic_meta.modifies_individual and len(self.population) > 1
         ):
             target_size = min(4, len(self.population))
         else:
@@ -2336,34 +2333,31 @@ class GAScheduler:
                     f"[dim]   Gen {gen}: {evaluated_count}/{len(invalid)} "
                     f"individuals evaluated successfully[/dim]"
                 )
-        else:
-            # CRITICAL ERROR: No individuals to evaluate (fitness invalidation completely failed)
-            if gen > 0:  # Skip generation 0 (initial population already evaluated)
-                console.print(
-                    f"[bold red]   ERROR Gen {gen}: NO individuals marked for re-evaluation! "
-                    f"Fitness invalidation is BROKEN. GA is NOT evolving![/bold red]"
-                )
-                console.print(
-                    f"[yellow]   Emergency fallback: Force re-evaluating ALL {len(offspring)} individuals...[/yellow]"
-                )
+        # CRITICAL ERROR: No individuals to evaluate (fitness invalidation completely failed)
+        elif gen > 0:  # Skip generation 0 (initial population already evaluated)
+            console.print(
+                f"[bold red]   ERROR Gen {gen}: NO individuals marked for re-evaluation! "
+                f"Fitness invalidation is BROKEN. GA is NOT evolving![/bold red]"
+            )
+            console.print(
+                f"[yellow]   Emergency fallback: Force re-evaluating ALL {len(offspring)} individuals...[/yellow]"
+            )
 
-                # Emergency fallback: Re-evaluate ENTIRE population
-                profiler.start_phase(
-                    "evaluation_emergency", items_to_process=len(offspring)
-                )
+            # Emergency fallback: Re-evaluate ENTIRE population
+            profiler.start_phase(
+                "evaluation_emergency", items_to_process=len(offspring)
+            )
 
-                fitness_values = list(
-                    self.toolbox.map(self.toolbox.evaluate, offspring)
-                )
+            fitness_values = list(self.toolbox.map(self.toolbox.evaluate, offspring))
 
-                for ind, fit in zip(offspring, fitness_values, strict=True):
-                    ind.fitness.values = fit
+            for ind, fit in zip(offspring, fitness_values, strict=True):
+                ind.fitness.values = fit
 
-                profiler.end_phase()
+            profiler.end_phase()
 
-                console.print(
-                    f"[green]   Emergency re-evaluation complete: {len(offspring)} individuals[/green]"
-                )
+            console.print(
+                f"[green]   Emergency re-evaluation complete: {len(offspring)} individuals[/green]"
+            )
 
         # Track overhead
         _eval_prep_time = _invalid_check_time
@@ -2743,9 +2737,8 @@ class GAScheduler:
         if feasible:
             # Among feasible solutions, select one with minimum soft penalty
             return min(feasible, key=lambda ind: ind.fitness.values[1])
-        else:
-            # No feasible solution, return best from Pareto front
-            return pareto_front[0]
+        # No feasible solution, return best from Pareto front
+        return pareto_front[0]
 
     def _validate_population_structure(self):
         """
@@ -2787,4 +2780,3 @@ class GAScheduler:
             # NOTE: Duplicates are now ALLOWED for theory courses split into multiple sessions
             # E.g., ENME 152 theory may have 3 genes (one per 2-hour session)
             # Only validate that both individuals have the same TOTAL structure
-            pass

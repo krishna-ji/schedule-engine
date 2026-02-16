@@ -60,7 +60,7 @@ class MetricsCollector:
         self._hypervolume_ref_point: Any | None = None
         self.all_time_best: Any | None = None
         self._cached_hard_details: dict[str, int] = {}
-        self._cached_soft_details: dict[str, int] = {}
+        self._cached_soft_details: dict[str, float] = {}
 
     # ------------------------------------------------------------------
 
@@ -76,9 +76,7 @@ class MetricsCollector:
         if gen == -1:
             return
 
-        from src.ga.metrics.convergence import (
-            calculate_constraint_satisfaction_rate,
-        )
+        from src.ga.metrics.convergence import calculate_constraint_satisfaction_rate
         from src.ga.metrics.hypervolume import (
             calculate_hypervolume,
             get_hypervolume_reference_point,
@@ -169,16 +167,18 @@ class MetricsCollector:
                 if self.metrics.feasibility_rate
                 else 0.0
             )
-            self.metrics.igd.append(
-                self.metrics.igd[-1] if self.metrics.igd else 0.0
-            )
+            self.metrics.igd.append(self.metrics.igd[-1] if self.metrics.igd else 0.0)
             self.metrics.spread.append(
                 self.metrics.spread[-1] if self.metrics.spread else 0.0
             )
             spread = self.metrics.spread[-1]
 
         # Detailed breakdown
-        best = best_individual if best_individual is not None else tools.selBest(population, 1)[0]
+        best = (
+            best_individual
+            if best_individual is not None
+            else tools.selBest(population, 1)[0]
+        )
         hard_details, soft_details = evaluate_detailed(
             best,
             self.context.courses,
@@ -193,9 +193,7 @@ class MetricsCollector:
         if (
             self.all_time_best is None
             or best.fitness.values[0] < self.all_time_best.fitness.values[0]
-        ):
-            self.all_time_best = self.toolbox.clone(best)
-        elif (
+        ) or (
             best.fitness.values[0] == self.all_time_best.fitness.values[0]
             and best.fitness.values[1] < self.all_time_best.fitness.values[1]
         ):
@@ -208,9 +206,8 @@ class MetricsCollector:
 
         # Violation heatmap
         if self.violation_heatmap and gen >= 0:
-            from src.ga.metrics.violation_recorder import (
-                record_violations_to_heatmap,
-            )
+            from src.ga.metrics.violation_recorder import record_violations_to_heatmap
+
             record_violations_to_heatmap(best, self.context, self.violation_heatmap)
             self.violation_heatmap.record_generation(gen)
 

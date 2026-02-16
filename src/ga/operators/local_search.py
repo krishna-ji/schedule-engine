@@ -31,6 +31,7 @@ Usage:
 """
 
 import random
+from typing import Any
 
 from src.domain.course import Course
 from src.domain.gene import SessionGene
@@ -326,16 +327,15 @@ def _generate_instructor_neighbors(
         if instructor.instructor_id == gene.instructor_id:
             continue
         # Must be qualified
-        qualified = getattr(instructor, "qualified_courses", set())
+        qualified: set[Any] = getattr(instructor, "qualified_courses", set())
         if course_key not in qualified and gene.course_id not in qualified:
             continue
         # Must be available at current time
-        if not instructor.is_full_time:
-            if not all(
-                q in instructor.available_quanta
-                for q in range(gene.start_quanta, gene.end_quanta)
-            ):
-                continue
+        if not instructor.is_full_time and not all(
+            q in instructor.available_quanta
+            for q in range(gene.start_quanta, gene.end_quanta)
+        ):
+            continue
         neighbor = SessionGene(
             course_id=gene.course_id,
             course_type=gene.course_type,
@@ -361,9 +361,8 @@ def _generate_time_instructor_neighbors(
     For genes where the current instructor is unavailable at the current time,
     this finds new (time, instructor) pairs. Sampled to keep neighborhood bounded.
     """
-    from src.ga.core.quanta_converter import quanta_list_to_contiguous
 
-    neighbors = []
+    neighbors: list[SessionGene] = []
     course_key = (gene.course_id, gene.course_type)
     available_quanta = sorted(context.available_quanta)
 
@@ -372,7 +371,7 @@ def _generate_time_instructor_neighbors(
     for instructor in context.instructors.values():
         if instructor.instructor_id == gene.instructor_id:
             continue
-        q_courses = getattr(instructor, "qualified_courses", set())
+        q_courses: set[Any] = getattr(instructor, "qualified_courses", set())
         if course_key in q_courses or gene.course_id in q_courses:
             qualified_instructors.append(instructor)
 
@@ -404,11 +403,10 @@ def _generate_time_instructor_neighbors(
         end_q = start_q + duration
         for instructor in sampled_instructors:
             # Must be available at this new time
-            if not instructor.is_full_time:
-                if not all(
-                    q in instructor.available_quanta for q in range(start_q, end_q)
-                ):
-                    continue
+            if not instructor.is_full_time and not all(
+                q in instructor.available_quanta for q in range(start_q, end_q)
+            ):
+                continue
             neighbor = SessionGene(
                 course_id=gene.course_id,
                 course_type=gene.course_type,

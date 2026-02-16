@@ -236,7 +236,7 @@ class ModelRegistry:
         if not self.registry_path.exists():
             return {"deployments": [], "rollback_history": []}
 
-        with open(self.registry_path) as f:
+        with self.registry_path.open() as f:
             data: dict[str, Any] = json.load(f)
 
         if "deployments" not in data:
@@ -249,6 +249,6 @@ class ModelRegistry:
     def _save_registry(self, data: dict[str, Any]) -> None:
         """Save registry to JSON file (atomic write)."""
         temp_path = self.registry_path.with_suffix(".json.tmp")
-        with open(temp_path, "w") as f:
+        with temp_path.open("w") as f:
             json.dump(data, f, indent=2)
         temp_path.replace(self.registry_path)

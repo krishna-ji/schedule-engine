@@ -257,7 +257,7 @@ class ParallelHeuristicExecutor:
                                 else (float("inf"),)
                             ),
                         )
-                        return cast(Individual, best)
+                        return cast("Individual", best)
                 return results[0] if results else individual
 
         except Exception as e:

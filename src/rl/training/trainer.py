@@ -285,7 +285,7 @@ class RLTrainer:
             logger.info(f"  Episodes: {current_stage.num_episodes}")
             logger.info(f"  Max generations: {current_stage.max_generations}")
 
-            # Calculate timesteps for this stage (episodes × max_steps)
+            # Calculate timesteps for this stage (episodes x max_steps)
             # Default to 100 steps per episode if max_steps not configured
             stage_timesteps = current_stage.num_episodes * 100
 
@@ -524,7 +524,7 @@ class RLTrainer:
         )
 
         metadata_path = model_path.with_suffix(".json")
-        with open(metadata_path, "w") as f:
+        with metadata_path.open("w") as f:
             json.dump(metadata, f, indent=2)
 
         logger.info(f"Metadata saved to {metadata_path}")
@@ -562,7 +562,7 @@ class RLTrainer:
         # Load metadata if exists
         metadata_path = model_path_obj.with_suffix(".json")
         if metadata_path.exists():
-            with open(metadata_path) as f:
+            with metadata_path.open() as f:
                 metadata = json.load(f)
             logger.info(f"Loaded metadata: {metadata.get('save_time', 'unknown')}")
 
@@ -587,7 +587,7 @@ class RLTrainer:
                 # Try to unwrap if it has an .env attribute
                 underlying = getattr(base_env, "env", None)
                 if underlying and isinstance(underlying, gym.Env):
-                    return cast(gym.Env[Any, Any], underlying)
+                    return cast("gym.Env[Any, Any]", underlying)
 
             # SubprocVecEnv doesn't expose environments directly
             # Return VecEnv directly (caller will use evaluate_policy instead)
@@ -668,7 +668,7 @@ class RLTrainer:
 
         for episode in range(n_eval_episodes):
             obs_raw, _ = eval_env.reset()
-            obs: ObservationType = cast(ObservationType, obs_raw)
+            obs: ObservationType = cast("ObservationType", obs_raw)
             done = False
             episode_reward: float = 0.0
             episode_length = 0  # Will be cast to float for calculations
@@ -677,7 +677,7 @@ class RLTrainer:
                 action, _ = self.agent.predict(obs, deterministic=deterministic)
                 step_result: tuple[Any, Any, Any, Any, Any] = eval_env.step(action)  # type: ignore[assignment]
                 obs_raw, reward, terminated, truncated, info = step_result
-                obs = cast(ObservationType, obs_raw)
+                obs = cast("ObservationType", obs_raw)
                 done = terminated or truncated
 
                 episode_reward += float(reward)

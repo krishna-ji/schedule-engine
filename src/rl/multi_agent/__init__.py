@@ -15,10 +15,10 @@ from src.rl.multi_agent.specialist_agents import (
 )
 
 __all__ = [
-    "SpecialistAgent",
-    "RepairAgent",
-    "OptimizerAgent",
+    "AgentCoordinator",
     "ExplorerAgent",
     "IntensifierAgent",
-    "AgentCoordinator",
+    "OptimizerAgent",
+    "RepairAgent",
+    "SpecialistAgent",
 ]

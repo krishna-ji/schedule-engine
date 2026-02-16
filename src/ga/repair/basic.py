@@ -58,13 +58,15 @@ Usage:
 """
 
 from collections import defaultdict
-from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 from src.domain.gene import SessionGene
 from src.domain.instructor import Instructor
 from src.domain.types import SchedulingContext
-from src.ga.core.schedule_index import ScheduleIndex
 from src.ga.repair.wrappers import repair_operator
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 # 1. INSTRUCTOR AVAILABILITY REPAIR (Priority 1)
@@ -242,7 +244,7 @@ def repair_instructor_availability_reassign(
                 continue
 
             # Must be qualified for this course
-            qualified = getattr(candidate, "qualified_courses", set())
+            qualified: set[Any] = getattr(candidate, "qualified_courses", set())
             if course_key not in qualified and gene.course_id not in qualified:
                 continue
 
@@ -776,7 +778,7 @@ def repair_student_compactness(
             group_day_genes[group_id][day].append((gene_idx, gene, within_day))
 
     # Process each group-day combination
-    for group_id, days in group_day_genes.items():
+    for days in group_day_genes.values():
         for day_name, gene_list in days.items():
             if len(gene_list) < 2:
                 continue  # Need at least 2 sessions to have gaps
@@ -790,7 +792,7 @@ def repair_student_compactness(
             center = starts[len(starts) // 2]
 
             # Try to move outlier sessions closer to center
-            for gene_idx, gene, within_day in sorted_genes:
+            for _gene_idx, gene, within_day in sorted_genes:
                 # Calculate gap to nearest neighbor
                 is_outlier = abs(within_day - center) > gene.num_quanta + 2
 
@@ -869,7 +871,7 @@ def repair_instructor_compactness(
         )
 
     # Process each instructor-day combination
-    for instructor_id, days in instructor_day_genes.items():
+    for days in instructor_day_genes.values():
         for day_name, gene_list in days.items():
             if len(gene_list) < 2:
                 continue  # Need at least 2 sessions to have gaps
@@ -883,7 +885,7 @@ def repair_instructor_compactness(
             center = starts[len(starts) // 2]
 
             # Try to move outlier sessions closer to center
-            for gene_idx, gene, within_day in sorted_genes:
+            for _gene_idx, gene, within_day in sorted_genes:
                 # Calculate gap to nearest neighbor
                 is_outlier = abs(within_day - center) > gene.num_quanta + 2
 
@@ -973,7 +975,7 @@ def repair_student_lunch_break(
                 group_day_lunch_genes[group_id][day].append((gene_idx, gene))
 
     # Process each group-day with lunch violations
-    for group_id, days in group_day_lunch_genes.items():
+    for days in group_day_lunch_genes.values():
         for day_name, gene_list in days.items():
             if not gene_list:
                 continue
@@ -989,11 +991,11 @@ def repair_student_lunch_break(
             max_break = max(break_quanta) if break_quanta else 8
 
             # Try to move ONE session out of lunch (limit work)
-            for gene_idx, gene in gene_list[:3]:  # Limit to 3 attempts
+            for _gene_idx, gene in gene_list[:3]:  # Limit to 3 attempts
                 duration = gene.num_quanta
 
                 # Generate candidate slots: before lunch or after lunch
-                before_slots = list(range(0, max(0, min_break - duration + 1)))
+                before_slots = list(range(max(0, min_break - duration + 1)))
                 after_slots = list(
                     range(max_break + 1, day_quanta_count - duration + 1)
                 )

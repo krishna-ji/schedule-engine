@@ -23,23 +23,23 @@ from src.ga.repair.wrappers import (
 )
 
 __all__ = [
-    # Mutation operators
-    "mutate_individual",
-    "mutate_gene",
+    "RepairEngine",
     # Crossover operators
     "crossover_course_group_aware",
-    # Repair operators (re-exported from ga.repair for compat)
-    "repair_individual",
-    "repair_individual_unified",
-    "repair_individual_selective",
-    "RepairEngine",
     # Violation detection
     "detect_violated_genes",
-    # Repair registry (decorator-based)
-    "repair_operator",
     "get_all_repair_operators",
     "get_enabled_repair_operators",
-    "get_repair_operator_metadata",
     "get_repair_operator_function",
+    "get_repair_operator_metadata",
     "get_repair_statistics_template",
+    "mutate_gene",
+    # Mutation operators
+    "mutate_individual",
+    # Repair operators (re-exported from ga.repair for compat)
+    "repair_individual",
+    "repair_individual_selective",
+    "repair_individual_unified",
+    # Repair registry (decorator-based)
+    "repair_operator",
 ]

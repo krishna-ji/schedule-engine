@@ -10,10 +10,6 @@ End-to-end pipeline tests verifying component interplay:
 
 from __future__ import annotations
 
-import copy
-import random
-
-import pytest
 from conftest import (
     make_context,
     make_course,
@@ -25,31 +21,26 @@ from conftest import (
 
 from src.config import Config, init_config
 from src.constraints.constraints import (
-    CourseCompleteness,
     InstructorExclusivity,
-    InstructorQualifications,
     RoomExclusivity,
-    RoomSuitability,
     StudentGroupExclusivity,
-    build_constraints,
 )
 from src.constraints.evaluator import Evaluator
 from src.domain.timetable import Timetable
 from src.ga.operators.crossover import crossover_course_group_aware
-from src.ga.operators.fast_nsga2 import sel_nsga2_fast
 from src.ga.operators.mutation import mutate_gene, mutate_individual
 from src.ga.repair.basic import repair_individual_unified
 
 
 def _init():
     """Initialize config for tests that need repair pipeline."""
-    init_config(Config(repair=dict(enabled=True, heuristics={})))
+    init_config(Config(repair={"enabled": True, "heuristics": {}}))
 
 
 def _make_medium_scenario():
     """A realistic-ish scenario with multiple courses, groups, instructors, rooms.
 
-    Creates 4 courses × 2 groups × 3 instructors × 4 rooms.
+    Creates 4 courses x 2 groups x 3 instructors x 4 rooms.
     """
     courses = [
         make_course(
@@ -125,8 +116,8 @@ class TestConstructEvaluate:
         result = evaluator.fitness(individual, ctx)
         assert isinstance(result, tuple)
         assert len(result) == 2
-        assert isinstance(result[0], (int, float))
-        assert isinstance(result[1], (int, float))
+        assert isinstance(result[0], int | float)
+        assert isinstance(result[1], int | float)
 
     def test_evaluator_hard_soft_split(self):
         ctx = _make_medium_scenario()
@@ -152,8 +143,8 @@ class TestConstructEvaluate:
         result = evaluator.evaluate_all(tt)
         assert len(result) == 4
         hard_total, soft_total, hard_bd, soft_bd = result
-        assert isinstance(hard_total, (int, float))
-        assert isinstance(soft_total, (int, float))
+        assert isinstance(hard_total, int | float)
+        assert isinstance(soft_total, int | float)
         assert isinstance(hard_bd, dict)
         assert isinstance(soft_bd, dict)
 
@@ -217,8 +208,8 @@ class TestConstructRepairEvaluate:
 
         evaluator = Evaluator()
         hard, soft = evaluator.fitness(individual, ctx)
-        assert isinstance(hard, (int, float))
-        assert isinstance(soft, (int, float))
+        assert isinstance(hard, int | float)
+        assert isinstance(soft, int | float)
 
 
 # Crossover → Repair → Evaluate
@@ -265,7 +256,7 @@ class TestMutationEvaluate:
 
         evaluator = Evaluator()
         hard, soft = evaluator.fitness(mutated[0], ctx)
-        assert isinstance(hard, (int, float))
+        assert isinstance(hard, int | float)
 
     def test_mutated_gene_valid(self):
         ctx = _make_medium_scenario()

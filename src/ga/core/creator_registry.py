@@ -39,7 +39,7 @@ def _initialize_creator() -> None:
         creator.create("Individual", list, fitness=creator.FitnessMulti)
 
 
-def get_creator() -> type[creator]:  # type: ignore[name-defined,no-any-return]
+def get_creator() -> type[creator]:
     """
     Get the initialized DEAP creator instance.
 

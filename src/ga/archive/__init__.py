@@ -10,6 +10,6 @@ from src.ga.archive.novelty_archive import NoveltyArchive
 
 __all__ = [
     "BehavioralDescriptors",
-    "NoveltyArchive",
     "MAPElites",
+    "NoveltyArchive",
 ]

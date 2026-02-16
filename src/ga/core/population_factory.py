@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.domain.gene import SessionGene
-    from src.domain.types import Individual, SchedulingContext
+    from src.domain.types import SchedulingContext
 
 __all__ = ["PopulationFactory"]
 
@@ -118,10 +118,9 @@ class PopulationFactory:
         """
         if strategy == "hybrid":
             return self._hybrid_population(n)
-        elif strategy == "random":
+        if strategy == "random":
             return self._pure_random_population(n)
-        else:
-            return self._smart_population(n)
+        return self._smart_population(n)
 
     # Internal strategies
 

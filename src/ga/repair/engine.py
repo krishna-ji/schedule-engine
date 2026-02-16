@@ -13,11 +13,14 @@ import logging
 import random
 import time
 from collections import defaultdict
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from src.domain.gene import SessionGene
-from src.domain.types import SchedulingContext
+
+if TYPE_CHECKING:
+    from src.domain.types import SchedulingContext
 
 FitnessFn = Callable[[list[SessionGene]], tuple[float, float]]
 
@@ -574,7 +577,9 @@ class RepairEngine:
         self.operator_map = {op.name: op for op in self.operators}
 
         if policy == "round_robin":
-            self.policy = RoundRobinPolicy([op.name for op in self.operators])
+            self.policy: RoundRobinPolicy | EpsilonGreedyPolicy = RoundRobinPolicy(
+                [op.name for op in self.operators]
+            )
             self.policy_type = "round_robin"
         else:
             self.policy = EpsilonGreedyPolicy(
@@ -613,12 +618,10 @@ class RepairEngine:
 
             if forced_operator:
                 operator_name = forced_operator
-            elif self.policy_type == "round_robin":
-                operator_name = self.policy.select()  # type: ignore[assignment]
+            elif isinstance(self.policy, RoundRobinPolicy):
+                operator_name = self.policy.select()
             else:
-                operator_name = self.policy.select(  # type: ignore[assignment]
-                    self.operator_stats, self.rng
-                )
+                operator_name = self.policy.select(self.operator_stats, self.rng)
 
             operator = self.operator_map.get(operator_name)
             if operator is None:
@@ -662,10 +665,11 @@ class RepairEngine:
                 after = self._evaluate_candidate(individual, candidate)
                 if after is None:
                     continue
-                if self._is_lex_better(after, before):
-                    if best_after is None or self._is_lex_better(after, best_after):
-                        best = candidate
-                        best_after = after
+                if self._is_lex_better(after, before) and (
+                    best_after is None or self._is_lex_better(after, best_after)
+                ):
+                    best = candidate
+                    best_after = after
 
             if best is None or best_after is None:
                 result = RepairStepResult(

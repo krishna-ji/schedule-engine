@@ -22,9 +22,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from configs.base import BaseConfig
     from src.config.models import Config
-
-from configs.base import BaseConfig
 
 
 def load_experiment_config(

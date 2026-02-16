@@ -7,10 +7,13 @@ Moves sessions out of break windows to ensure groups have proper breaks.
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from src.domain.types import Individual
 from src.io.time_system import QuantumTimeSystem
+
+if TYPE_CHECKING:
+    from src.domain.gene import SessionGene
+    from src.domain.types import Individual
 
 
 def repair_break_placement(
@@ -64,7 +67,7 @@ def repair_break_placement(
     repairs = 0
 
     for _iteration in range(max_iterations):
-        sessions = decode_individual(individual, courses, instructors, groups, rooms)  # type: ignore[arg-type]
+        sessions = decode_individual(individual, courses, instructors, groups, rooms)
         break_windows = qts.get_break_window_quanta()
         group_schedules = qts.build_group_day_schedules(sessions)
 
@@ -124,7 +127,6 @@ def _shift_session_out_of_break(
     Returns:
         1 if repair successful, 0 otherwise
     """
-    from src.domain.gene import SessionGene
 
     # Find genes that involve this group and overlap with break window
     candidate_genes: list[tuple[int, SessionGene]] = []
@@ -158,7 +160,7 @@ def _shift_session_out_of_break(
     session_duration = gene.num_quanta
 
     # Before break: slots that end before break starts
-    before_slots = list(range(0, max(0, min_break - session_duration + 1)))
+    before_slots = list(range(max(0, min_break - session_duration + 1)))
 
     # After break: slots that start after break ends
     day_quanta_count = qts.day_quanta_count[day_name]
@@ -191,7 +193,7 @@ def _shift_session_out_of_break(
         # Simple validation: ensure new quanta don't overlap with break
         valid = True
         for q in gene.get_quanta_list():
-            _, within_day_q = quantum_to_day_and_within_day(q, qts)
+            _, within_day_q = qts.quantum_to_day_and_within_day(q)
             if within_day_q in break_quanta:
                 valid = False
                 break
@@ -199,9 +201,8 @@ def _shift_session_out_of_break(
         if valid:
             # Accept the repair
             return 1
-        else:
-            # Revert and try next slot
-            gene.start_quanta = original_start
+        # Revert and try next slot
+        gene.start_quanta = original_start
 
     # No valid slot found
     return 0

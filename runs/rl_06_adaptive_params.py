@@ -12,6 +12,7 @@ Compares fixed vs adaptive configuration.
 Usage:
     python runs/rl_06_adaptive_params.py
 """
+
 from __future__ import annotations
 
 import json

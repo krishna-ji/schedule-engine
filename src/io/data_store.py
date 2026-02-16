@@ -15,15 +15,10 @@ Usage::
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from src.domain.course import Course
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
 from src.domain.types import SchedulingContext
 from src.io.data_loader import (
     derive_cohort_pairs_from_groups,
@@ -35,6 +30,12 @@ from src.io.data_loader import (
     load_rooms,
 )
 from src.io.time_system import QuantumTimeSystem
+
+if TYPE_CHECKING:
+    from src.domain.course import Course
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
 
 __all__ = ["DataStore"]
 
@@ -245,7 +246,7 @@ class DataStore:
 def load_input_data(
     data_dir: str,
     config: Any | None = None,
-) -> tuple["QuantumTimeSystem", "SchedulingContext"]:
+) -> tuple[QuantumTimeSystem, SchedulingContext]:
     """Load and link all input entities via :class:`DataStore`.
 
     Only includes courses enrolled by at least one group.

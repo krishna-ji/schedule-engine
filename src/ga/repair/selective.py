@@ -7,7 +7,7 @@ individual.
 
 Performance Impact:
 - Reduces gene scans from 100% to ~5-15% of population
-- Expected 3-4× speedup in repair operations
+- Expected 3-4x speedup in repair operations
 - Backward compatible with full-scan mode
 
 Constraint Coverage (8 selective repair variants):
@@ -305,7 +305,7 @@ def repair_group_overlaps_selective(
         groups = [context.groups.get(gid) for gid in gene.group_ids]
 
         # Type-safe concatenation of optional entity lists
-        entities_list = [course, instructor, room] + list(groups)
+        entities_list = [course, instructor, room, *list(groups)]
         if not all(entities_list):
             continue
 
@@ -408,7 +408,7 @@ def repair_room_conflicts_selective(
         room = context.rooms.get(gene.room_id)
         groups = [context.groups.get(gid) for gid in gene.group_ids]
 
-        if not all([course, instructor, room] + list(groups)):
+        if not all([course, instructor, room, *list(groups)]):
             continue
 
         # Find available slot using correct function signature (4 params)
@@ -474,7 +474,7 @@ def repair_instructor_conflicts_selective(
         room = context.rooms.get(gene.room_id)
         groups = [context.groups.get(gid) for gid in gene.group_ids]
 
-        if not all([course, instructor, room] + list(groups)):
+        if not all([course, instructor, room, *list(groups)]):
             continue
 
         # Find available slot using correct function signature (4 params)

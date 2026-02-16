@@ -19,18 +19,18 @@ from src.domain.timetable import ConflictPair, Timetable
 from src.domain.types import Individual, SchedulingContext
 
 __all__ = [
+    # Timetable (pre-indexed schedule view)
+    "ConflictPair",
     # Entities
     "Course",
     "CourseSession",
     "Group",
-    "Instructor",
-    "Room",
-    # Gene
-    "SessionGene",
-    # Timetable (pre-indexed schedule view)
-    "ConflictPair",
-    "Timetable",
     # Types
     "Individual",
+    "Instructor",
+    "Room",
     "SchedulingContext",
+    # Gene
+    "SessionGene",
+    "Timetable",
 ]

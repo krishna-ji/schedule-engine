@@ -69,8 +69,8 @@ def record_violations_to_heatmap(
             for q in range(gene.start_quanta, gene.end_quanta):
                 group_schedule[group_id][q].append(gene)
 
-    for _group_id, quanta_map in group_schedule.items():
-        for _quantum, genes in quanta_map.items():
+    for quanta_map in group_schedule.values():
+        for genes in quanta_map.values():
             if len(genes) > 1:
                 # Record all genes involved in overlap
                 for gene in genes:
@@ -84,8 +84,8 @@ def record_violations_to_heatmap(
         for q in range(gene.start_quanta, gene.end_quanta):
             instructor_schedule[gene.instructor_id][q].append(gene)
 
-    for _instructor_id, quanta_map in instructor_schedule.items():
-        for _quantum, genes in quanta_map.items():
+    for quanta_map in instructor_schedule.values():
+        for genes in quanta_map.values():
             if len(genes) > 1:
                 for gene in genes:
                     heatmap.record_violation(gene, "instructor_conflict")
@@ -96,8 +96,8 @@ def record_violations_to_heatmap(
         for q in range(gene.start_quanta, gene.end_quanta):
             room_schedule[gene.room_id][q].append(gene)
 
-    for _room_id, quanta_map in room_schedule.items():
-        for _quantum, genes in quanta_map.items():
+    for quanta_map in room_schedule.values():
+        for genes in quanta_map.values():
             if len(genes) > 1:
                 for gene in genes:
                     heatmap.record_violation(gene, "room_conflict")

@@ -116,10 +116,10 @@ def generate_violation_report(
     report_lines.append("=" * 80)
 
     # Write to file
-    import os
+    from pathlib import Path
 
-    report_file = os.path.join(output_path, "log_violations.log")
-    with open(report_file, "w", encoding="utf-8") as f:
+    report_file = Path(output_path) / "log_violations.log"
+    with report_file.open("w", encoding="utf-8") as f:
         f.write("\n".join(report_lines))
 
     print(f"Violation report saved: {report_file}")
@@ -471,10 +471,10 @@ def _format_group_violations(violations: list[dict]) -> list[str]:
         lines.append(
             f"\n[!]  Group {group} has {len(conflicts)} overlapping sessions at {time}:"
         )
-        for conflict in conflicts:
-            lines.append(
-                f"    - {conflict['course']} @ {conflict['room']} with {conflict['instructor']}"
-            )
+        lines.extend(
+            f"    - {conflict['course']} @ {conflict['room']} with {conflict['instructor']}"
+            for conflict in conflicts
+        )
 
     lines.append("")
     return lines
@@ -497,10 +497,10 @@ def _format_instructor_violations(violations: list[dict]) -> list[str]:
         lines.append(
             f"\n[!]  Instructor {instructor} has {len(conflicts)} overlapping sessions at {time}:"
         )
-        for conflict in conflicts:
-            lines.append(
-                f"    - {conflict['course']} with {conflict['groups']} @ {conflict['room']}"
-            )
+        lines.extend(
+            f"    - {conflict['course']} with {conflict['groups']} @ {conflict['room']}"
+            for conflict in conflicts
+        )
 
     lines.append("")
     return lines
@@ -523,10 +523,10 @@ def _format_room_violations(violations: list[dict]) -> list[str]:
         lines.append(
             f"\n[!]  Room {room} has {len(conflicts)} overlapping sessions at {time}:"
         )
-        for conflict in conflicts:
-            lines.append(
-                f"    - {conflict['course']} with {conflict['groups']} by {conflict['instructor']}"
-            )
+        lines.extend(
+            f"    - {conflict['course']} with {conflict['groups']} by {conflict['instructor']}"
+            for conflict in conflicts
+        )
 
     lines.append("")
     return lines
@@ -611,19 +611,19 @@ def _format_schedule_violations(violations: list[dict]) -> list[str]:
 
     if under:
         lines.append(f"\nUnder-scheduled Courses: {len(under)}")
-        for v in under:
-            lines.append(
-                f"  [!]  {v['course']} for group {v['group']}: "
-                f"Expected {v['expected']} quanta, got {v['actual']}"
-            )
+        lines.extend(
+            f"  [!]  {v['course']} for group {v['group']}: "
+            f"Expected {v['expected']} quanta, got {v['actual']}"
+            for v in under
+        )
 
     if over:
         lines.append(f"\nOver-scheduled Courses: {len(over)}")
-        for v in over:
-            lines.append(
-                f"  [!]  {v['course']} for group {v['group']}: "
-                f"Expected {v['expected']} quanta, got {v['actual']}"
-            )
+        lines.extend(
+            f"  [!]  {v['course']} for group {v['group']}: "
+            f"Expected {v['expected']} quanta, got {v['actual']}"
+            for v in over
+        )
 
     lines.append("")
     return lines

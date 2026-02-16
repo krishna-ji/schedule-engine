@@ -8,6 +8,7 @@ Comparison against PPO baseline.
 Usage:
     python runs/rl_02_train_dqn.py
 """
+
 from __future__ import annotations
 
 import json

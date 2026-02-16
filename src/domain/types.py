@@ -9,13 +9,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from src.domain.course import Course
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
-
 if TYPE_CHECKING:
+    from src.domain.course import Course
     from src.domain.gene import SessionGene
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
 
 __all__ = ["Individual", "SchedulingContext"]
 

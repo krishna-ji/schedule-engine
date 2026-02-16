@@ -6,12 +6,12 @@ with full configurability for testing constraints, repairs, heuristics, and
 the GA pipeline.
 
 QuantumTimeSystem defaults (reference):
-    6 operational days: Sunday–Friday
-    7 quanta/day: 10:00–17:00 (each quantum = 60 min)
-    42 total quanta: 0–41
+    6 operational days: Sunday-Friday
+    7 quanta/day: 10:00-17:00 (each quantum = 60 min)
+    42 total quanta: 0-41
     Day offsets: Sun=0, Mon=7, Tue=14, Wed=21, Thu=28, Fri=35
-    Midday break: within-day quantum 2 (12:00–13:00, 1 quantum per day)
-    Break window: within-day quanta {2, 3} (12:00–14:00)
+    Midday break: within-day quantum 2 (12:00-13:00, 1 quantum per day)
+    Break window: within-day quanta {2, 3} (12:00-14:00)
 """
 
 from __future__ import annotations
@@ -311,7 +311,7 @@ def count_soft_violations(timetable: Timetable) -> float:
 
 @pytest.fixture
 def qts() -> QuantumTimeSystem:
-    """Default QuantumTimeSystem: 6 days × 7 quanta = 42 total."""
+    """Default QuantumTimeSystem: 6 days x 7 quanta = 42 total."""
     return QuantumTimeSystem()
 
 

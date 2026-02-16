@@ -23,14 +23,14 @@ if TYPE_CHECKING:
     from src.domain.types import Individual
 
 __all__ = [
-    "GAScheduler",
     "GAConfig",
     "GAMetrics",
-    "get_creator",
-    "create_individual",
-    "SessionGene",
-    "RepairPipeline",
+    "GAScheduler",
     "PopulationFactory",
+    "RepairPipeline",
+    "SessionGene",
+    "create_individual",
+    "get_creator",
 ]
 
 

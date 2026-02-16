@@ -17,10 +17,10 @@ from src.experiments.modes.roundrobin import RoundRobinExperiment
 from src.experiments.modes.ultimate import UltimateExperiment
 
 __all__ = [
+    "AdaptiveExperiment",
     "BaselineExperiment",
     "MemeticExperiment",
-    "RoundRobinExperiment",
-    "AdaptiveExperiment",
     "RLGuidedExperiment",
+    "RoundRobinExperiment",
     "UltimateExperiment",
 ]

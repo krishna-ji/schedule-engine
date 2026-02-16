@@ -41,10 +41,9 @@ class PhaseProfile:
         """Format duration in appropriate units."""
         if self.duration < 0.001:
             return f"{self.duration * 1000000:.0f}µs"
-        elif self.duration < 1.0:
+        if self.duration < 1.0:
             return f"{self.duration * 1000:.0f}ms"
-        else:
-            return f"{self.duration:.2f}s"
+        return f"{self.duration:.2f}s"
 
 
 @dataclass
@@ -286,10 +285,9 @@ class PerformanceProfiler:
             def fmt(t: float) -> str:
                 if t < 0.001:
                     return f"{t * 1000000:.0f}µs"
-                elif t < 1.0:
+                if t < 1.0:
                     return f"{t * 1000:.0f}ms"
-                else:
-                    return f"{t:.2f}s"
+                return f"{t:.2f}s"
 
             table.add_row(
                 phase_name,

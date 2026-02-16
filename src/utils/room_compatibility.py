@@ -12,7 +12,7 @@ This eliminates 4+ duplicate implementations and ensures consistent behavior.
 
 from __future__ import annotations
 
-__all__ = ["is_room_type_compatible", "is_room_suitable_for_course"]
+__all__ = ["is_room_suitable_for_course", "is_room_type_compatible"]
 
 
 def is_room_type_compatible(required: str, room_type: str) -> bool:

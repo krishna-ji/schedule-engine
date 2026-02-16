@@ -88,7 +88,7 @@ def configure_console(
 
 # Convenience re-exports for common usage
 __all__ = [
+    "configure_console",
     "get_console",
     "reset_console",
-    "configure_console",
 ]

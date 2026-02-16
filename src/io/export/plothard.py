@@ -50,6 +50,4 @@ def plot_hard_constraint_violation_over_generation(
 
     plt.tight_layout()
     plot_dir = get_nsga_plot_dir(output_dir)
-    save_figure(
-        fig, plot_dir / "total_hard_constraint_violations_over_generations.pdf"
-    )
+    save_figure(fig, plot_dir / "total_hard_constraint_violations_over_generations.pdf")

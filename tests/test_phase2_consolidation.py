@@ -11,8 +11,6 @@ These tests run BEFORE and AFTER consolidation to ensure no functionality is los
 
 from __future__ import annotations
 
-import pytest
-
 # =============================================================================
 # Part 1: ga/metrics/ package tests
 # =============================================================================
@@ -123,7 +121,7 @@ class TestHeuristicsLegacyAPI:
     def test_categories_constant(self):
         from src.ga.heuristics import CATEGORIES
 
-        assert isinstance(CATEGORIES, (list, tuple))
+        assert isinstance(CATEGORIES, list | tuple)
         assert len(CATEGORIES) > 0
 
     def test_heuristic_info_class(self):
@@ -193,7 +191,7 @@ class TestHeuristicsOOPAPI:
     def test_all_heuristics_list(self):
         from src.ga.heuristics import ALL_HEURISTICS
 
-        assert isinstance(ALL_HEURISTICS, (list, tuple))
+        assert isinstance(ALL_HEURISTICS, list | tuple)
 
     def test_category_lists(self):
         from src.ga.heuristics import (
@@ -213,7 +211,7 @@ class TestHeuristicsOOPAPI:
             PERTURBATION_HEURISTICS,
             REPAIR_HEURISTICS,
         ]:
-            assert isinstance(lst, (list, tuple))
+            assert isinstance(lst, list | tuple)
 
     def test_heuristic_names(self):
         from src.ga.heuristics import (
@@ -221,8 +219,8 @@ class TestHeuristicsOOPAPI:
             HEURISTIC_NAMES,
         )
 
-        assert isinstance(HEURISTIC_NAMES, (list, tuple, set))
-        assert isinstance(ENABLED_HEURISTIC_NAMES, (list, tuple, set))
+        assert isinstance(HEURISTIC_NAMES, list | tuple | set)
+        assert isinstance(ENABLED_HEURISTIC_NAMES, list | tuple | set)
 
     def test_build_heuristics(self):
         from src.ga.heuristics import build_heuristics
@@ -249,8 +247,8 @@ class TestHeuristicsOOPAPI:
         )
 
         if HEURISTIC_NAMES:
-            name = list(HEURISTIC_NAMES)[0]
-            h = get_heuristic_by_name_oop(name)
+            name = next(iter(HEURISTIC_NAMES))
+            get_heuristic_by_name_oop(name)
             # May return None if not found, that's ok
 
 
@@ -375,7 +373,7 @@ class TestOperatorsRegistry:
         from src.ga.operators import get_all_repair_operators
 
         operators = get_all_repair_operators()
-        assert isinstance(operators, (list, tuple, dict))
+        assert isinstance(operators, list | tuple | dict)
 
     def test_get_enabled_repair_operators(self):
         from src.ga.operators import get_enabled_repair_operators
@@ -432,7 +430,7 @@ class TestCrossModuleIntegration:
         """Verify repair heuristics are part of heuristics registry."""
         from src.ga.heuristics import REPAIR_HEURISTICS
 
-        assert isinstance(REPAIR_HEURISTICS, (list, tuple))
+        assert isinstance(REPAIR_HEURISTICS, list | tuple)
 
     def test_metrics_with_population(self):
         """Verify metrics functions are callable."""

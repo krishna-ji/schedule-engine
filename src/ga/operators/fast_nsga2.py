@@ -39,7 +39,7 @@ def fast_nondominated_sort(population: list[Individual]) -> list[list[Individual
     dominating_count = [0] * n  # Count of individuals dominating each individual
     fronts: list[list[int]] = [[]]
 
-    typed_population = cast(list[_IndividualWithFitness], population)
+    typed_population = cast("list[_IndividualWithFitness]", population)
 
     # Fast domination checking - compare all pairs
     for i in range(n):
@@ -78,15 +78,7 @@ def fast_nondominated_sort(population: list[Individual]) -> list[list[Individual
             break
 
     # Convert index-based fronts to individual-based fronts
-    result_fronts = []
-    for front in fronts:
-        if front:  # Only include non-empty fronts
-            result_fronts.append([population[i] for i in front])
-
-    return result_fronts
-    for front in fronts:
-        if front:
-            result_fronts.append([population[i] for i in front])
+    result_fronts = [[population[i] for i in front] for front in fronts if front]
 
     return result_fronts
 
@@ -102,7 +94,7 @@ def dominates(ind1: _IndividualWithFitness, ind2: _IndividualWithFitness) -> boo
     for val1, val2 in zip(ind1.fitness.values, ind2.fitness.values, strict=False):
         if val1 > val2:  # Minimization: lower is better
             return False
-        elif val1 < val2:
+        if val1 < val2:
             better_in_any = True
 
     return better_in_any
@@ -117,7 +109,7 @@ def assign_crowding_distance(front: list[Individual]) -> None:
     if len(front) == 0:
         return
 
-    typed_front = cast(list[_IndividualWithFitness], front)
+    typed_front = cast("list[_IndividualWithFitness]", front)
 
     # Initialize distances to 0
     for ind in typed_front:
@@ -187,7 +179,7 @@ def sel_nsga2_fast(individuals: list[Individual], k: int) -> list[Individual]:
             # Add part of front based on crowding distance
             assign_crowding_distance(front)
             # Sort by crowding distance (descending - keep most diverse)
-            typed_front = cast(list[_IndividualWithFitness], front)
+            typed_front = cast("list[_IndividualWithFitness]", front)
             typed_front.sort(key=lambda x: x.fitness.crowding_dist, reverse=True)
             selected.extend(front[: k - len(selected)])
             break
@@ -204,13 +196,13 @@ def compare_nsga2(ind1: _IndividualWithFitness, ind2: _IndividualWithFitness) ->
     # Lower rank is better
     if ind1.fitness.rank < ind2.fitness.rank:
         return -1
-    elif ind1.fitness.rank > ind2.fitness.rank:
+    if ind1.fitness.rank > ind2.fitness.rank:
         return 1
 
     # Same rank: higher crowding distance is better
     if ind1.fitness.crowding_dist > ind2.fitness.crowding_dist:
         return -1
-    elif ind1.fitness.crowding_dist < ind2.fitness.crowding_dist:
+    if ind1.fitness.crowding_dist < ind2.fitness.crowding_dist:
         return 1
 
     return 0

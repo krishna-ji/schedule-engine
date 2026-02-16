@@ -9,11 +9,6 @@ Tests mathematical/algorithmic properties that must hold:
 
 from __future__ import annotations
 
-import copy
-import math
-
-import pytest
-
 from src.ga.operators.fast_nsga2 import (
     assign_crowding_distance,
     dominates,
@@ -169,7 +164,6 @@ class TestRoundRobinSelector:
 
     def _make_data(self):
         """Create NotebookData-like object with qts, rooms, instructors, courses."""
-        import pathlib
         from dataclasses import dataclass, field
 
         from conftest import (

@@ -17,7 +17,6 @@ Subclasses implement:
 
 from __future__ import annotations
 
-import copy
 import logging
 import random
 import sys
@@ -25,10 +24,15 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from deap import base, creator, tools
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from src.experiments.output.base import BaseExporter
 
 from src.experiments.checks import run_feasibility_checks
 from src.ga import PopulationFactory
@@ -43,10 +47,8 @@ from src.ga.run_helpers import (
     print_constraint_details,
     setup_deap,
     smart_mutation,
-    stats_to_ga_metrics,
     track_nsga_metrics,
 )
-from src.io.decoder import decode_individual
 
 
 class BaseExperiment(ABC):
@@ -318,10 +320,10 @@ class BaseExperiment(ABC):
         """Create single individual using configured strategy."""
         if self.init_strategy == "hybrid":
             return self.population_factory.greedy_individual()
-        elif self.init_strategy == "random":
+        if self.init_strategy == "random":
             return self.population_factory.random_individual(conflict_aware=False)
-        else:  # "smart" (default)
-            return self.population_factory.random_individual(conflict_aware=True)
+        # "smart" (default)
+        return self.population_factory.random_individual(conflict_aware=True)
 
     def _create_population_by_strategy(self, n: int) -> list[Any]:
         """Create population using configured strategy."""
@@ -342,7 +344,7 @@ class BaseExperiment(ABC):
 
     def create_initial_population(self) -> list[Any]:
         """Create and evaluate initial population."""
-        pop = self.toolbox.population(n=self.pop_size)
+        pop: list[Any] = self.toolbox.population(n=self.pop_size)
         for ind in pop:
             ind.fitness.values = self.evaluate(ind)
         return pop
@@ -414,10 +416,7 @@ class BaseExperiment(ABC):
         breakdown = get_constraint_breakdown(list(best_ind), self.data)
 
         # Split into hard and soft
-        from src.constraints import (
-            HARD_CONSTRAINT_NAMES,
-            SOFT_CONSTRAINT_NAMES,
-        )
+        from src.constraints import HARD_CONSTRAINT_NAMES, SOFT_CONSTRAINT_NAMES
 
         hard_bd = {k: v for k, v in breakdown.items() if k in HARD_CONSTRAINT_NAMES}
         soft_bd = {k: v for k, v in breakdown.items() if k in SOFT_CONSTRAINT_NAMES}
@@ -569,7 +568,6 @@ class BaseExperiment(ABC):
 
     def _export_results(self) -> None:
         """Export results using exporter. Override for custom export."""
-        from src.experiments.output.base import BaseExporter
 
         exporter = self._create_exporter()
         exporter.export_all(
@@ -579,7 +577,7 @@ class BaseExperiment(ABC):
             metadata=self._build_metadata(),
         )
 
-    def _create_exporter(self) -> "BaseExporter":
+    def _create_exporter(self) -> BaseExporter:
         """Create exporter instance. Override for custom exporter."""
         from src.experiments.output.base import BaseExporter
 

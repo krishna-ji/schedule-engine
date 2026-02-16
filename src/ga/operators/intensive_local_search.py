@@ -42,9 +42,9 @@ Usage:
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+from src.domain.gene import SessionGene
 from src.domain.types import Individual, SchedulingContext
 from src.ga.operators.local_search import optimize_gene_exhaustive, optimize_gene_greedy
-from src.domain.gene import SessionGene
 from src.utils.system_info import get_cpu_count
 
 type ExhaustiveArgs = tuple[
@@ -157,8 +157,8 @@ def apply_exhaustive_search(
     sorted_pop = sorted(
         population,
         key=lambda ind: (
-            ind.fitness.values  # type: ignore[attr-defined]
-            if hasattr(ind, "fitness") and ind.fitness.valid  # type: ignore[attr-defined]
+            ind.fitness.values
+            if hasattr(ind, "fitness") and ind.fitness.valid
             else (float("inf"), float("inf"))
         ),
     )
@@ -183,7 +183,7 @@ def apply_exhaustive_search(
         # Same optimization used in RL environment (proven effective)
         improved_ind = type(original_ind)(original_ind[:])  # Copy genes list
         # Copy fitness if it exists
-        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):  # type: ignore[attr-defined]
+        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):
             improved_ind.fitness.values = original_ind.fitness.values  # type: ignore[attr-defined]
 
         if parallel and num_workers > 1:
@@ -323,8 +323,8 @@ def apply_greedy_search(
     sorted_pop = sorted(
         population,
         key=lambda ind: (
-            ind.fitness.values  # type: ignore[attr-defined]
-            if hasattr(ind, "fitness") and ind.fitness.valid  # type: ignore[attr-defined]
+            ind.fitness.values
+            if hasattr(ind, "fitness") and ind.fitness.valid
             else (float("inf"), float("inf"))
         ),
     )
@@ -348,7 +348,7 @@ def apply_greedy_search(
         # Fast shallow copy + list copy (10-50x faster than deepcopy)
         improved_ind = type(original_ind)(original_ind[:])  # Copy genes list
         # Copy fitness if it exists
-        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):  # type: ignore[attr-defined]
+        if hasattr(original_ind, "fitness") and hasattr(original_ind.fitness, "values"):
             improved_ind.fitness.values = original_ind.fitness.values  # type: ignore[attr-defined]
 
         if parallel and num_workers > 1:

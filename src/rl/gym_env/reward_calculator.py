@@ -68,7 +68,7 @@ class RewardCalculator:
             reference_point: Reference point for hypervolume (e.g., [1000, 10000])
             hypervolume_scale: Scale factor for hypervolume normalization
         """
-        self.fitness_weight = fitness_weight  # type: ignore[attr-defined]
+        self.fitness_weight = fitness_weight
         self.diversity_weight = diversity_weight
         self.time_weight = time_weight
         self.normalize = normalize
@@ -139,7 +139,7 @@ class RewardCalculator:
 
         # Weighted sum
         total_reward = (
-            self.fitness_weight * fitness_reward  # type: ignore[attr-defined]
+            self.fitness_weight * fitness_reward
             + self.diversity_weight * diversity_bonus
             - self.time_weight * time_penalty
         )
@@ -225,9 +225,9 @@ class RewardCalculator:
         # Extract Pareto front (fitness values for all individuals)
         pareto_front = np.array(
             [
-                ind.fitness.values  # type: ignore[attr-defined]
+                ind.fitness.values
                 for ind in population
-                if hasattr(ind, "fitness") and ind.fitness.valid  # type: ignore[attr-defined]
+                if hasattr(ind, "fitness") and ind.fitness.valid
             ]
         )
 
@@ -252,15 +252,12 @@ class RewardCalculator:
 
         return float(normalized_reward)
 
-    def _calculate_population_best_reward(
-        self, population: list[Individual]
-    ) -> float:
+    def _calculate_population_best_reward(self, population: list[Individual]) -> float:
         """Calculate reward based on population best fitness improvement."""
         valid_fitness = [
             self._get_combined_fitness(individual)
             for individual in population
-            if hasattr(individual, "fitness")
-            and individual.fitness.valid  # type: ignore[attr-defined]
+            if hasattr(individual, "fitness") and individual.fitness.valid
         ]
 
         if not valid_fitness:
@@ -286,10 +283,10 @@ class RewardCalculator:
 
         Combines hard and soft violations: hard * 100 + soft
         """
-        if not hasattr(individual, "fitness") or not individual.fitness.valid:  # type: ignore[attr-defined]
+        if not hasattr(individual, "fitness") or not individual.fitness.valid:
             return float("inf")
 
-        hard, soft = individual.fitness.values  # type: ignore[attr-defined]
+        hard, soft = individual.fitness.values
         return float(abs(hard) * 100 + abs(soft))
 
     def calculate_episode_reward(
@@ -335,7 +332,7 @@ class RewardCalculator:
     def get_config(self) -> dict[str, Any]:
         """Get reward calculator configuration."""
         config = {
-            "fitness_weight": self.fitness_weight,  # type: ignore[attr-defined]
+            "fitness_weight": self.fitness_weight,
             "diversity_weight": self.diversity_weight,
             "time_weight": self.time_weight,
             "normalize": self.normalize,

@@ -6,7 +6,6 @@ known bugs (dead self-overlap check, no hierarchy awareness).
 
 from __future__ import annotations
 
-import pytest
 from conftest import (
     make_context,
     make_course,
@@ -38,7 +37,7 @@ class TestDetectFast:
         gene = make_gene(start=0, duration=5)
         result = _detect_fast([gene])
         # The "self_overlap" type will never appear because the check is dead code
-        for idx, issues in result.items():
+        for issues in result.values():
             assert "self_overlap" not in issues, "Dead code should never fire"
 
     def test_empty_schedule_detected(self):
@@ -215,7 +214,7 @@ class TestDetectStrategies:
         ctx = make_context(
             courses=[make_course("CS101"), make_course("CS102")],
         )
-        fast_result = detect_violated_genes([g1, g2], ctx, strategy="fast")
+        detect_violated_genes([g1, g2], ctx, strategy="fast")
         full_result = detect_violated_genes([g1, g2], ctx, strategy="full")
         # Full should at least detect group_overlap
         full_violations_0 = full_result.get(0, [])

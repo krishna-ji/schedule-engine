@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import copy
 
-import pytest
 from conftest import (
     make_context,
     make_course,
@@ -27,10 +26,8 @@ from conftest import (
 
 from src.config import Config, init_config
 from src.constraints.constraints import (
-    CourseCompleteness,
     InstructorExclusivity,
     InstructorQualifications,
-    InstructorTimeAvailability,
     RoomExclusivity,
     RoomSuitability,
     StudentGroupExclusivity,
@@ -40,7 +37,6 @@ from src.ga.repair.basic import (
     repair_group_overlaps,
     repair_individual_unified,
     repair_instructor_availability,
-    repair_instructor_availability_reassign,
     repair_instructor_conflicts,
     repair_instructor_qualifications,
     repair_room_conflicts,
@@ -61,7 +57,7 @@ class TestRepairInstructorAvailability:
         gene = make_gene(instructor_id="I1", start=0, duration=2)
         ctx = make_context(instructors=[inst])
 
-        before = copy.deepcopy(gene)
+        copy.deepcopy(gene)
         individual = [gene]
         fixes = repair_instructor_availability(individual, ctx)
 
@@ -142,7 +138,7 @@ class TestRepairGroupOverlaps:
         pre_penalty = constraint.evaluate(Timetable(individual, ctx))
         assert pre_penalty > 0, "Must start with a violation"
 
-        fixes = repair_group_overlaps(individual, ctx)
+        repair_group_overlaps(individual, ctx)
 
         post_penalty = constraint.evaluate(Timetable(individual, ctx))
         assert post_penalty < pre_penalty, "Repair should reduce violations"
@@ -159,7 +155,7 @@ class TestRepairGroupOverlaps:
         individual = [g1, g2]
         repair_group_overlaps(individual, ctx)
 
-        for i, (b, a) in enumerate(zip(before, individual)):
+        for i, (b, a) in enumerate(zip(before, individual, strict=False)):
             assert structural_fields_preserved(b, a), f"Gene {i}: structural change"
 
     def test_no_conflict_no_change(self):
@@ -171,7 +167,7 @@ class TestRepairGroupOverlaps:
         )
 
         individual = [g1, g2]
-        fixes = repair_group_overlaps(individual, ctx)
+        repair_group_overlaps(individual, ctx)
 
         # May be 0 or could reposition — just verify no violation exists
         tt = Timetable(individual, ctx)
@@ -246,7 +242,7 @@ class TestRepairRoomOverlapReassign:
         individual = [g1, g2]
         repair_room_overlap_reassign(individual, ctx)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
 
@@ -317,7 +313,7 @@ class TestRepairInstructorConflicts:
         individual = [g1, g2]
         repair_instructor_conflicts(individual, ctx)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
 
@@ -426,7 +422,7 @@ class TestRepairIndividualUnified:
 
     def setup_method(self):
         """Initialize config before each test."""
-        init_config(Config(repair=dict(enabled=True, heuristics={})))
+        init_config(Config(repair={"enabled": True, "heuristics": {}}))
 
     def _make_messy_individual(self):
         """Create a schedule with multiple violations."""
@@ -466,7 +462,7 @@ class TestRepairIndividualUnified:
         pre_total = pre_group + pre_room + pre_instr
         assert pre_total > 0, "Must start with violations"
 
-        stats = repair_individual_unified(individual, ctx, selective=False)
+        repair_individual_unified(individual, ctx, selective=False)
 
         post_tt = Timetable(individual, ctx)
         post_group = StudentGroupExclusivity().evaluate(post_tt)
@@ -508,7 +504,7 @@ class TestRepairIndividualUnified:
         repair_individual_unified(individual, ctx, selective=False)
 
         # Genes should be essentially unchanged
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
     def test_selective_mode(self):

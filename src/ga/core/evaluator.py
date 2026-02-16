@@ -14,16 +14,20 @@ Functions:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from src.constraints.evaluator import Evaluator
-from src.domain.course import Course
-from src.domain.gene import SessionGene
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
 from src.domain.timetable import Timetable
 from src.domain.types import SchedulingContext
 from src.io.decoder import decode_individual
 from src.io.time_system import QuantumTimeSystem
+
+if TYPE_CHECKING:
+    from src.domain.course import Course
+    from src.domain.gene import SessionGene
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
 
 # Module-level default evaluator (lazy singleton)
 _default_evaluator: Evaluator | None = None
@@ -78,9 +82,9 @@ def evaluate(
         instructors=instructors,
         groups=groups,
         rooms=rooms,
-        qts=QuantumTimeSystem(),
+        available_quanta=[],
     )
-    tt = Timetable(genes=individual, context=context)
+    tt = Timetable(genes=individual, context=context, qts=QuantumTimeSystem())
     return evaluate_from_timetable(tt)
 
 
@@ -95,7 +99,7 @@ def evaluate_detailed(
     instructors: dict[str, Instructor],
     groups: dict[str, Group],
     rooms: dict[str, Room] | None = None,
-) -> tuple[dict[str, int], dict[str, int]]:
+) -> tuple[dict[str, int], dict[str, float]]:
     """Evaluate a timetable individual with detailed constraint breakdown.
 
     Returns:
@@ -110,9 +114,9 @@ def evaluate_detailed(
         instructors=instructors,
         groups=groups,
         rooms=rooms,
-        qts=QuantumTimeSystem(),
+        available_quanta=[],
     )
-    tt = Timetable(genes=individual, context=context)
+    tt = Timetable(genes=individual, context=context, qts=QuantumTimeSystem())
 
     ev = _get_evaluator()
     hard_details = {c.name: int(c.weight * c.evaluate(tt)) for c in ev.hard}
@@ -121,7 +125,7 @@ def evaluate_detailed(
 
 
 def evaluate_from_detailed(
-    hard_details: dict[str, int], soft_details: dict[str, int]
+    hard_details: dict[str, int], soft_details: dict[str, float]
 ) -> tuple[int, int]:
     """Convert detailed constraint breakdown to total penalties.
 

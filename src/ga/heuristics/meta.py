@@ -29,12 +29,16 @@ Usage:
 
 import copy
 import random
+from typing import TYPE_CHECKING
 
 from src.domain.gene import SessionGene
 from src.domain.types import SchedulingContext
 
 # Import other heuristic categories for orchestration
 from src.ga.heuristics import improvement, perturbation
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 # VARIABLE NEIGHBORHOOD DESCENT (Systematic neighborhood exploration)
@@ -68,7 +72,7 @@ def variable_neighborhood_descent(
     Returns:
         Total number of improvements made
     """
-    neighborhood_operators = [
+    neighborhood_operators: list[Callable[..., int]] = [
         improvement.kempe_chain,
         improvement.ejection_chain,
         improvement.variable_depth_search,

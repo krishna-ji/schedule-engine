@@ -9,12 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import NDArray
 
 if TYPE_CHECKING:
+    from numpy.typing import NDArray
     from stable_baselines3 import PPO
 
-from src.domain.types import Individual
+    from src.domain.types import Individual
 
 
 class RankBasedAgent:
@@ -58,22 +58,20 @@ class RankBasedAgent:
         if self.model:
             action, _ = self.model.predict(observation, deterministic=deterministic)
             self.activation_count += 1
-            return int(action)  # type: ignore[no-any-return]
-        else:
-            # Fallback: rank-dependent heuristic selection
-            return self._fallback_action()
+            return int(action)
+        # Fallback: rank-dependent heuristic selection
+        return self._fallback_action()
 
     def _fallback_action(self) -> int:
         """Fallback heuristic selection based on rank."""
         if self.rank == 1:
             # Elite: gentle refinement (VDS, GLS)
-            return int(np.random.choice([12, 18]))  # type: ignore[no-any-return]
-        elif self.rank <= 3:
+            return int(np.random.choice([12, 18]))
+        if self.rank <= 3:
             # Good: standard optimization (Kempe, ejection)
-            return int(np.random.choice([10, 11, 12]))  # type: ignore[no-any-return]
-        else:
-            # Poor: aggressive repair (multi-perturbation, exploration)
-            return int(np.random.choice([7, 8, 14]))  # type: ignore[no-any-return]
+            return int(np.random.choice([10, 11, 12]))
+        # Poor: aggressive repair (multi-perturbation, exploration)
+        return int(np.random.choice([7, 8, 14]))
 
     def _load_model(self) -> None:
         """Load trained model."""
@@ -178,12 +176,11 @@ class RankBasedMultiAgent:
         # (This is approximate; full NSGA-II ranking is more complex)
         if domination_count == 0:
             return 1  # Non-dominated
-        elif domination_count <= 5:
+        if domination_count <= 5:
             return 2
-        elif domination_count <= 15:
+        if domination_count <= 15:
             return 3
-        else:
-            return 4
+        return 4
 
     def get_statistics(self) -> dict[str, int]:
         """Get usage statistics for all agents."""

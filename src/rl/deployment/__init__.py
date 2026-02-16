@@ -13,4 +13,4 @@ from src.rl.deployment.inference import RLInference
 from src.rl.deployment.model_loader import ModelLoader
 from src.rl.deployment.registry import ModelRegistration, ModelRegistry
 
-__all__ = ["ModelLoader", "RLInference", "ModelRegistry", "ModelRegistration"]
+__all__ = ["ModelLoader", "ModelRegistration", "ModelRegistry", "RLInference"]

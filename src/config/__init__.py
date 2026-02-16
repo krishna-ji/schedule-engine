@@ -53,6 +53,10 @@ class Config:
             else:
                 setattr(self, key, val)
 
+    def __getattr__(self, name: str) -> Any:
+        """Allow dynamic attribute access for mypy compatibility."""
+        raise AttributeError(f"Config has no attribute {name!r}")
+
     def get(self, key: str, default: Any = None) -> Any:
         return getattr(self, key, default)
 
@@ -62,7 +66,7 @@ class Config:
     def __contains__(self, key: str) -> bool:
         return key in self.__dict__
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
         return iter(self.__dict__)
 
     def to_dict(self) -> dict[str, Any]:
@@ -101,7 +105,7 @@ def init_config(config_obj: Config) -> Config:
 
 def get_config() -> Config:
     """Return the global config. Must call init_config() first."""
-    global _config
+    global _config  # noqa: PLW0602
     if _config is None:
         raise RuntimeError(
             "Config not initialized. Call init_config(Config(...)) first."
@@ -111,7 +115,7 @@ def get_config() -> Config:
 
 def get_config_or_default() -> Config:
     """Return global config, or empty Config if not initialized."""
-    global _config
+    global _config  # noqa: PLW0602
     if _config is None:
         return Config()
     return _config

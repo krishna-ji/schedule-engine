@@ -10,6 +10,6 @@ from src.rl.local_search.solution_selector import SolutionSelector
 
 __all__ = [
     "MemeticPolicy",
-    "SolutionSelector",
     "OperatorPortfolio",
+    "SolutionSelector",
 ]

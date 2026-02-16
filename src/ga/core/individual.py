@@ -1,14 +1,11 @@
-from typing import TYPE_CHECKING, cast
+from typing import cast
 
+from src.domain.gene import SessionGene
 from src.domain.types import Individual
 from src.ga.core.creator_registry import get_creator
-from src.domain.gene import SessionGene
 
 # Get centralized creator instance
 creator = get_creator()
-
-if TYPE_CHECKING:
-    pass
 
 
 def create_individual(gene_list: list[SessionGene]) -> Individual:

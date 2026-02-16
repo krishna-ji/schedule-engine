@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from stable_baselines3.common.base_class import BaseAlgorithm
 
 from src.utils.logging_config import get_logger
+
+if TYPE_CHECKING:
+    from stable_baselines3.common.base_class import BaseAlgorithm
 
 logger = get_logger(__name__)
 

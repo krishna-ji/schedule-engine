@@ -10,7 +10,7 @@ Generates comprehensive convergence plots combining multiple metrics:
 These plots provide holistic view of algorithm performance.
 """
 
-import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,7 +51,7 @@ def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str) -> None:
         return
 
     plot_dir = get_nsga_plot_dir(output_dir)
-    os.makedirs(plot_dir, exist_ok=True)
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
 
     # Normalize all metrics to [0, 1] range
     normalized_metrics = {}
@@ -113,7 +113,7 @@ def plot_multi_metric_convergence(metrics_dict: dict, output_dir: str) -> None:
     ax.grid(True, alpha=0.3, linestyle="--")
     ax.legend(loc="best", framealpha=0.9)
 
-    output_path = os.path.join(plot_dir, "convergence_multi_metric.pdf")
+    output_path = str(Path(plot_dir) / "convergence_multi_metric.pdf")
     save_figure(fig, output_path)
     plt.close(fig)
 
@@ -145,7 +145,7 @@ def plot_convergence_dashboard(
         - plots/nsga/convergence_dashboard.pdf: Complete dashboard
     """
     plot_dir = get_nsga_plot_dir(output_dir)
-    os.makedirs(plot_dir, exist_ok=True)
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
 
     # Create 2x3 subplot grid
     fig, axes = create_thesis_figure(2, 3, figsize=(18, 10))
@@ -291,7 +291,7 @@ def plot_convergence_dashboard(
     )
     plt.tight_layout()
 
-    output_path = os.path.join(plot_dir, "convergence_dashboard.pdf")
+    output_path = str(Path(plot_dir) / "convergence_dashboard.pdf")
     save_figure(fig, output_path)
     plt.close(fig)
 
@@ -316,7 +316,7 @@ def plot_convergence_rate(
         return
 
     plot_dir = get_nsga_plot_dir(output_dir)
-    os.makedirs(plot_dir, exist_ok=True)
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
 
     # Calculate convergence rate with window=10
     window = 10
@@ -398,7 +398,7 @@ def plot_convergence_rate(
     plt.tight_layout()
 
     safe_name = metric_name.lower().replace(" ", "_")
-    output_path = os.path.join(plot_dir, f"convergence_rate_{safe_name}.pdf")
+    output_path = str(Path(plot_dir) / f"convergence_rate_{safe_name}.pdf")
     save_figure(fig, output_path)
     plt.close(fig)
 
@@ -422,7 +422,7 @@ def plot_constraint_satisfaction_evolution(
         return
 
     plot_dir = get_nsga_plot_dir(output_dir)
-    os.makedirs(plot_dir, exist_ok=True)
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
 
     fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))
 
@@ -484,6 +484,6 @@ def plot_constraint_satisfaction_evolution(
     ax.set_ylim([0, 105])
     ax.grid(True, alpha=0.3, linestyle="--")
 
-    output_path = os.path.join(plot_dir, "feasibility_rate_over_generations.pdf")
+    output_path = str(Path(plot_dir) / "feasibility_rate_over_generations.pdf")
     save_figure(fig, output_path)
     plt.close(fig)

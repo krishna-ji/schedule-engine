@@ -14,7 +14,6 @@ Soft constraints:
 
 from __future__ import annotations
 
-import pytest
 from conftest import (
     assert_constraint_positive,
     assert_constraint_zero,
@@ -22,7 +21,6 @@ from conftest import (
     make_course,
     make_gene,
     make_group,
-    make_instructor,
     make_room,
 )
 
@@ -236,7 +234,7 @@ class TestStudentLunchBreak:
         ctx = make_context(courses=[make_course("CS101", quanta=2)])
         tt = Timetable([g], ctx)
         penalty = c.evaluate(tt)
-        assert penalty == 20.0  # 2 missing × 10.0
+        assert penalty == 20.0  # 2 missing x 10.0
 
     def test_no_classes_no_penalty(self):
         """Empty timetable → no group days → no penalty."""
@@ -277,7 +275,7 @@ class TestSessionContinuity:
         assert_constraint_positive(c, tt, expected=10.0)
 
     def test_three_isolated_blocks(self):
-        """CS101 theory at q=0, q=3, q=6 → 3 isolated → 2 excess × 10 = 20."""
+        """CS101 theory at q=0, q=3, q=6 -> 3 isolated -> 2 excess x 10 = 20."""
         c = SessionContinuity(isolated_slot_penalty=10.0)
         genes = [
             make_gene(course_id="CS101", course_type="theory", start=0, duration=1),
@@ -338,7 +336,7 @@ class TestSessionContinuity:
         tt = Timetable(genes, ctx)
         penalty = c.evaluate(tt)
         # q=0 → isolated, q=3 → isolated, q=5,6 → contiguous block
-        # blocks: [0], [3], [5,6] → 2 isolated, 1 excused → 1 × 10 = 10
+        # blocks: [0], [3], [5,6] -> 2 isolated, 1 excused -> 1 x 10 = 10
         assert penalty > 0, "Scattered theory slots must be penalized"
 
 

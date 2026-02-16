@@ -13,41 +13,46 @@ DRY Principle: All notebooks import from here instead of duplicating code.
 
 from __future__ import annotations
 
+import contextlib
 import copy
-import logging
 import random
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from deap import base, creator, tools
 
-from src.domain.course import Course
+if TYPE_CHECKING:
+    import logging
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from src.domain.course import Course
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
+    from src.domain.types import SchedulingContext
+    from src.ga.scheduler import GAMetrics
+    from src.io.time_system import QuantumTimeSystem
+
 from src.domain.gene import SessionGene
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
-from src.domain.types import SchedulingContext
-from src.io.decoder import decode_individual
-from src.io.time_system import QuantumTimeSystem
 
 __all__ = [
-    "NotebookData",
     "EvolutionConfig",
     "EvolutionStats",
-    "track_nsga_metrics",
-    "stats_to_ga_metrics",
-    "load_data",
-    "create_random_individual",
-    "create_evaluator",
+    "NotebookData",
     "course_aware_crossover",
-    "smart_mutation",
-    "setup_deap",
-    "get_constraint_breakdown",
-    "run_nsga2",
+    "create_evaluator",
+    "create_random_individual",
     "get_best_individual",
+    "get_constraint_breakdown",
+    "load_data",
     "print_constraint_details",
+    "run_nsga2",
+    "setup_deap",
+    "smart_mutation",
+    "stats_to_ga_metrics",
+    "track_nsga_metrics",
 ]
 
 
@@ -134,9 +139,7 @@ def track_nsga_metrics(
     from deap import tools
 
     from src.ga.metrics import average_pairwise_diversity
-    from src.ga.metrics.convergence import (
-        calculate_constraint_satisfaction_rate,
-    )
+    from src.ga.metrics.convergence import calculate_constraint_satisfaction_rate
     from src.ga.metrics.hypervolume import (
         calculate_hypervolume,
         get_hypervolume_reference_point,
@@ -194,7 +197,7 @@ def track_nsga_metrics(
         stats.detailed_soft[name].append(breakdown.get(name, 0))
 
 
-def stats_to_ga_metrics(stats: EvolutionStats) -> "GAMetrics":
+def stats_to_ga_metrics(stats: EvolutionStats) -> GAMetrics:
     """Convert notebook stats into core GA metrics for report export."""
     from src.ga.scheduler import GAMetrics
 
@@ -267,7 +270,7 @@ def print_constraint_details(
     hard_nonzero = [f"{_short_name(k)}={int(v)}" for k, v in hard_items if v > 0]
     soft_nonzero = [f"{_short_name(k)}={int(v)}" for k, v in soft_items if v > 0]
     hard_zero = [_short_name(k) for k, v in hard_items if v == 0]
-    soft_zero = [_short_name(k) for k, v in soft_items if v == 0]
+    [_short_name(k) for k, v in soft_items if v == 0]
 
     # Color code the totals
     hard_color = "green" if hard_total == 0 else "red" if hard_total > 500 else "yellow"
@@ -295,14 +298,14 @@ def print_constraint_details(
         zero_str = f"  [dim]ok: {', '.join(hard_zero)}[/dim]" if hard_zero else ""
         console.print(f"    [red]HARD[/red] {hard_str}{zero_str}")
     else:
-        console.print(f"    [green]HARD[/green] [green bold]✓ all clear[/green bold]")
+        console.print("    [green]HARD[/green] [green bold]✓ all clear[/green bold]")
 
     # Soft breakdown
     if soft_nonzero:
         soft_str = "  ".join(soft_nonzero)
         console.print(f"    [cyan]SOFT[/cyan] {soft_str}")
     else:
-        console.print(f"    [green]SOFT[/green] [green bold]✓ all clear[/green bold]")
+        console.print("    [green]SOFT[/green] [green bold]✓ all clear[/green bold]")
 
     # Horizontal separator
     console.print(f"  [dim]{'─' * 78}[/dim]")
@@ -351,12 +354,12 @@ def load_data(
         cfg = Config(
             name="default",
             environment="test",
-            heuristics=dict(master_enabled=True),
-            repair=dict(
-                enabled=True,
-                detection_strategy="hybrid",
-                heuristics={},
-            ),
+            heuristics={"master_enabled": True},
+            repair={
+                "enabled": True,
+                "detection_strategy": "hybrid",
+                "heuristics": {},
+            },
         )
         init_config(cfg)
 
@@ -418,7 +421,7 @@ def create_random_individual(
     all_instructors = list(data.instructors.values())
     all_rooms = list(data.rooms.values())
     total_quanta = data.qts.total_quanta
-    all_quanta = list(range(total_quanta))
+    list(range(total_quanta))
 
     # For conflict-aware: track group occupancy
     # Maps group_id -> set of occupied quanta
@@ -427,10 +430,8 @@ def create_random_individual(
     # Load family map for hierarchy-aware conflict detection
     family_map: dict[str, set[str]] = {}
     if conflict_aware:
-        try:
+        with contextlib.suppress(Exception):
             family_map = get_family_map_from_json("data/Groups.json")
-        except Exception:
-            pass  # Fall back to non-hierarchy-aware
 
     # Shuffle pairs to avoid systematic bias (first pairs always get best slots)
     shuffled_pairs = list(pair_tuples)
@@ -818,10 +819,7 @@ def run_nsga2(
             breakdown = get_constraint_breakdown(list(best_ind), data)
 
             # Split into hard and soft
-            from src.constraints import (
-                HARD_CONSTRAINT_NAMES,
-                SOFT_CONSTRAINT_NAMES,
-            )
+            from src.constraints import HARD_CONSTRAINT_NAMES, SOFT_CONSTRAINT_NAMES
 
             hard_bd = {k: v for k, v in breakdown.items() if k in HARD_CONSTRAINT_NAMES}
             soft_bd = {k: v for k, v in breakdown.items() if k in SOFT_CONSTRAINT_NAMES}

@@ -229,64 +229,60 @@ def mutate_individual(
 
         modified_individual, stats = constraint_guided_mutation(individual, context)
         return (modified_individual,)
-    else:
-        # Traditional random mutation — now conflict-aware
-        logger.debug(" Using random mutation (conflict-aware)")
-        for i in range(len(individual)):
-            if random.random() < mut_prob:
-                gene = individual[i]
-                course_key = (gene.course_id, gene.course_type)
-                course = context.courses.get(course_key)
-                # Conflict-aware time mutation using full individual context
-                new_quanta = mutate_time_quanta(
-                    gene, course, context, individual=individual
-                )
-                from src.ga.core.quanta_converter import (
-                    quanta_list_to_contiguous,
+    # Traditional random mutation — now conflict-aware
+    logger.debug(" Using random mutation (conflict-aware)")
+    for i in range(len(individual)):
+        if random.random() < mut_prob:
+            gene = individual[i]
+            course_key = (gene.course_id, gene.course_type)
+            course = context.courses.get(course_key)
+            # Conflict-aware time mutation using full individual context
+            new_quanta = mutate_time_quanta(
+                gene, course, context, individual=individual
+            )
+            from src.ga.core.quanta_converter import (
+                quanta_list_to_contiguous,
+            )
+
+            start_q, num_q = quanta_list_to_contiguous(new_quanta)
+
+            # Instructor: qualified-aware
+            qualified_instructors = [
+                inst_id
+                for inst_id, inst in context.instructors.items()
+                if course_key in getattr(inst, "qualified_courses", [])
+            ]
+            if gene.instructor_id in qualified_instructors and random.random() < 0.5:
+                new_instructor = gene.instructor_id
+            else:
+                new_instructor = random.choice(
+                    qualified_instructors
+                    if qualified_instructors
+                    else [gene.instructor_id]
                 )
 
-                start_q, num_q = quanta_list_to_contiguous(new_quanta)
-
-                # Instructor: qualified-aware
-                qualified_instructors = [
-                    inst_id
-                    for inst_id, inst in context.instructors.items()
-                    if course_key in getattr(inst, "qualified_courses", [])
-                ]
-                if (
-                    gene.instructor_id in qualified_instructors
-                    and random.random() < 0.5
-                ):
-                    new_instructor = gene.instructor_id
-                else:
-                    new_instructor = random.choice(
-                        qualified_instructors
-                        if qualified_instructors
-                        else [gene.instructor_id]
-                    )
-
-                # Room: type-aware
-                primary_group = gene.group_ids[0] if gene.group_ids else None
-                suitable_rooms = find_suitable_rooms_for_course(
-                    gene.course_id,
-                    gene.course_type,
-                    primary_group if primary_group else "",
-                    context,
+            # Room: type-aware
+            primary_group = gene.group_ids[0] if gene.group_ids else None
+            suitable_rooms = find_suitable_rooms_for_course(
+                gene.course_id,
+                gene.course_type,
+                primary_group if primary_group else "",
+                context,
+            )
+            if gene.room_id in suitable_rooms and random.random() < 0.3:
+                new_room = gene.room_id
+            else:
+                new_room = random.choice(
+                    suitable_rooms if suitable_rooms else list(context.rooms.keys())
                 )
-                if gene.room_id in suitable_rooms and random.random() < 0.3:
-                    new_room = gene.room_id
-                else:
-                    new_room = random.choice(
-                        suitable_rooms if suitable_rooms else list(context.rooms.keys())
-                    )
 
-                individual[i] = SessionGene(
-                    course_id=gene.course_id,
-                    course_type=gene.course_type,
-                    instructor_id=new_instructor,
-                    group_ids=gene.group_ids,
-                    room_id=new_room,
-                    start_quanta=start_q,
-                    num_quanta=num_q,
-                )
-        return (individual,)
+            individual[i] = SessionGene(
+                course_id=gene.course_id,
+                course_type=gene.course_type,
+                instructor_id=new_instructor,
+                group_ids=gene.group_ids,
+                room_id=new_room,
+                start_quanta=start_q,
+                num_quanta=num_q,
+            )
+    return (individual,)

@@ -64,8 +64,7 @@ class SessionGene:
         qts, total_quanta = _get_time_system_metadata()
 
         # Range validation
-        if self.start_quanta < 0:
-            self.start_quanta = 0
+        self.start_quanta = max(self.start_quanta, 0)
         if self.start_quanta >= total_quanta:
             self.start_quanta = total_quanta - 1
 
@@ -147,7 +146,7 @@ class SessionGene:
         )
 
 
-def _get_time_system_metadata() -> tuple[QuantumTimeSystem | None, int]:  # type: ignore[name-defined]
+def _get_time_system_metadata() -> tuple[QuantumTimeSystem | None, int]:
     """Fetch QuantumTimeSystem info with safe fallbacks.
 
     Prefers the explicitly-injected instance (via ``set_time_system``).
@@ -171,7 +170,7 @@ def _get_time_system_metadata() -> tuple[QuantumTimeSystem | None, int]:  # type
     return _time_system, _time_system.total_quanta
 
 
-def _get_day_bounds(qts: QuantumTimeSystem, quantum: int) -> tuple[int, int] | None:  # type: ignore[name-defined]
+def _get_day_bounds(qts: QuantumTimeSystem, quantum: int) -> tuple[int, int] | None:
     """Return (day_offset, day_quanta_count) for the given quantum."""
     for day in qts.DAY_NAMES:
         day_offset = qts.day_quanta_offset.get(day)

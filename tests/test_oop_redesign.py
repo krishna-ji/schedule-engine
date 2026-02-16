@@ -13,8 +13,6 @@ All tests use lightweight in-memory fixtures and never touch disk.
 
 from __future__ import annotations
 
-import pytest
-
 from src.domain.course import Course
 from src.domain.gene import SessionGene
 from src.domain.group import Group
@@ -244,8 +242,7 @@ class TestEvaluator:
         assert len(ev.soft) == 6
 
     def test_evaluator_custom_constraints(self):
-        from src.constraints import StudentGroupExclusivity
-        from src.constraints import Evaluator
+        from src.constraints import Evaluator, StudentGroupExclusivity
 
         ev = Evaluator(constraints=[StudentGroupExclusivity()])
         assert len(ev.hard) == 1
@@ -260,8 +257,8 @@ class TestEvaluator:
         result = ev.fitness(genes, ctx)
         assert isinstance(result, tuple)
         assert len(result) == 2
-        assert isinstance(result[0], (int, float))
-        assert isinstance(result[1], (int, float))
+        assert isinstance(result[0], int | float)
+        assert isinstance(result[1], int | float)
 
     def test_fitness_from_timetable(self):
         from src.constraints import Evaluator
@@ -488,7 +485,7 @@ class TestCrossPhaseIntegration:
         genes = [_make_gene()]
         tt = Timetable(genes, ctx)
         result = StudentGroupExclusivity().evaluate(tt)
-        assert isinstance(result, (int, float))
+        assert isinstance(result, int | float)
 
     def test_evaluator_uses_constraints_on_timetable(self):
         """Phase 1 + Phase 2 + Phase 3 integration."""
@@ -498,13 +495,12 @@ class TestCrossPhaseIntegration:
         ctx = _simple_context()
         genes = [_make_gene()]
         hard, soft = ev.fitness(genes, ctx)
-        assert isinstance(hard, (int, float))
-        assert isinstance(soft, (int, float))
+        assert isinstance(hard, int | float)
+        assert isinstance(soft, int | float)
 
     def test_evaluator_breakdown_names_match_constraints(self):
         # All constraint names appear in breakdown dict.
-        from src.constraints import ALL_CONSTRAINTS
-        from src.constraints import Evaluator
+        from src.constraints import ALL_CONSTRAINTS, Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()

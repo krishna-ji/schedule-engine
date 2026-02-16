@@ -15,19 +15,20 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
-import numpy as np
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-from src.domain.gene import SessionGene
-from src.ga.run_helpers import NotebookData
+    from src.domain.gene import SessionGene
+    from src.ga.run_helpers import NotebookData
 
 __all__ = [
-    "local_search_individual",
-    "RoundRobinSelector",
     "AdaptiveSelector",
+    "RoundRobinSelector",
     "SimpleRLSelector",
     "load_trained_agent",
+    "local_search_individual",
 ]
 
 
@@ -473,17 +474,16 @@ class SimpleRLSelector:
         """Epsilon-greedy action selection."""
         # Initialize Q-values for new state
         if state not in self.q_table:
-            self.q_table[state] = {a: 0.0 for a in self.actions}
+            self.q_table[state] = dict.fromkeys(self.actions, 0.0)
 
         # Epsilon-greedy
         if random.random() < self.epsilon:
             return random.choice(self.actions)
-        else:
-            # Greedy: choose best action
-            q_values = self.q_table[state]
-            max_q = max(q_values.values())
-            best_actions = [a for a, q in q_values.items() if q == max_q]
-            return random.choice(best_actions)
+        # Greedy: choose best action
+        q_values = self.q_table[state]
+        max_q = max(q_values.values())
+        best_actions = [a for a, q in q_values.items() if q == max_q]
+        return random.choice(best_actions)
 
     def _calculate_reward(
         self,
@@ -512,7 +512,7 @@ class SimpleRLSelector:
         """Q-learning update."""
         # Initialize Q-values for new state if needed
         if new_state not in self.q_table:
-            self.q_table[new_state] = {a: 0.0 for a in self.actions}
+            self.q_table[new_state] = dict.fromkeys(self.actions, 0.0)
 
         # Q-learning update rule
         old_q = self.q_table[state][action]
@@ -592,14 +592,14 @@ def load_trained_agent(model_dir: Path | str) -> Any | None:
     if q_table_path.exists():
         import json
 
-        with open(q_table_path) as f:
+        with q_table_path.open() as f:
             data = json.load(f)
 
         # Reconstruct SimpleRLSelector
         agent = SimpleRLSelector()
         # Convert string keys back to tuples
         agent.q_table = {
-            tuple(map(int, k.strip("()").split(", "))): v
+            tuple(map(int, k.strip("()").split(", "))): v  # type: ignore[misc]
             for k, v in data.get("q_table", {}).items()
         }
         agent.epsilon = data.get("epsilon", 0.05)

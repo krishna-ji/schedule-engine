@@ -103,7 +103,7 @@ def find_hard_conflict_sessions(
 
 def _evaluate_constraint_with_tracking(
     constraint_name: str,
-    constraint_func: Callable[..., int],
+    constraint_func: Callable[..., int] | None,
     sessions: list[CourseSession],
     courses: dict[tuple, Course] | None = None,
 ) -> tuple[set[int], int, dict[str, Any]]:
@@ -125,39 +125,38 @@ def _evaluate_constraint_with_tracking(
     # Dispatch to specific tracking function based on constraint type
     if constraint_name == "student_group_exclusivity":
         return _track_student_group_conflicts(sessions)
-    elif constraint_name == "instructor_exclusivity":
+    if constraint_name == "instructor_exclusivity":
         return _track_instructor_conflicts(sessions)
-    elif constraint_name == "room_exclusivity":
+    if constraint_name == "room_exclusivity":
         return _track_room_conflicts(sessions)
-    elif constraint_name == "instructor_qualifications":
+    if constraint_name == "instructor_qualifications":
         # Courses is required for this constraint
         if courses is None:
             return set(), 0, {}
         return _track_qualification_violations(sessions, courses)
-    elif constraint_name in ("room_capacity", "room_suitability"):
+    if constraint_name in ("room_capacity", "room_suitability"):
         return _track_room_capacity_violations(sessions)
-    elif constraint_name == "room_features":
+    if constraint_name == "room_features":
         return _track_room_feature_violations(sessions)
-    elif constraint_name in ("instructor_availability", "instructor_time_availability"):
+    if constraint_name in ("instructor_availability", "instructor_time_availability"):
         return _track_instructor_availability_violations(sessions)
-    elif constraint_name in ("group_availability", "room_time_availability"):
+    if constraint_name in ("group_availability", "room_time_availability"):
         return _track_group_availability_violations(sessions)
-    elif constraint_name == "course_completeness":
+    if constraint_name == "course_completeness":
         # Course completeness is a global constraint, not per-session trackable
         return set(), 0, {}
-    else:
-        # Generic fallback: skip if no constraint function provided
-        if constraint_func is None:
-            return set(), 0, {}
-        if courses:
-            violation_count = constraint_func(sessions, courses)
-        else:
-            violation_count = constraint_func(sessions)
-
-        # If violations exist but we can't track specifically, mark all sessions
-        if violation_count > 0:
-            return set(range(len(sessions))), violation_count, {}
+    # Generic fallback: skip if no constraint function provided
+    if constraint_func is None:
         return set(), 0, {}
+    if courses:
+        violation_count = constraint_func(sessions, courses)
+    else:
+        violation_count = constraint_func(sessions)
+
+    # If violations exist but we can't track specifically, mark all sessions
+    if violation_count > 0:
+        return set(range(len(sessions))), violation_count, {}
+    return set(), 0, {}
 
 
 def _track_student_group_conflicts(

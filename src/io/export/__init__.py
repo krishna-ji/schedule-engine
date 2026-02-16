@@ -29,20 +29,20 @@ from src.io.export.violation_reporter import generate_violation_report
 __all__ = [
     # Main exports
     "export_everything",
-    # Plots
-    "plot_pareto_front",
-    "plot_multi_metric_convergence",
-    "plot_convergence_dashboard",
-    "plot_convergence_rate",
-    "plot_constraint_satisfaction_evolution",
-    "plot_hard_constraint_violation_over_generation",
-    "plot_soft_constraint_violation_over_generation",
-    "plot_diversity_trend",
-    "plot_hypervolume_trend",
-    "plot_spacing_trend",
-    "plot_individual_hard_constraints",
-    "plot_individual_soft_constraints",
-    "plot_constraint_summary",
     # Reports
     "generate_violation_report",
+    "plot_constraint_satisfaction_evolution",
+    "plot_constraint_summary",
+    "plot_convergence_dashboard",
+    "plot_convergence_rate",
+    "plot_diversity_trend",
+    "plot_hard_constraint_violation_over_generation",
+    "plot_hypervolume_trend",
+    "plot_individual_hard_constraints",
+    "plot_individual_soft_constraints",
+    "plot_multi_metric_convergence",
+    # Plots
+    "plot_pareto_front",
+    "plot_soft_constraint_violation_over_generation",
+    "plot_spacing_trend",
 ]

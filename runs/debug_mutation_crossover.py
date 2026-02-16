@@ -44,7 +44,7 @@ pop = exp.create_initial_population()
 # Sort by fitness for analysis
 pop_sorted = sorted(pop, key=lambda x: (x.fitness.values[0], x.fitness.values[1]))
 
-print(f"\nInitial population fitness (best 5):")
+print("\nInitial population fitness (best 5):")
 for i, ind in enumerate(pop_sorted[:5]):
     print(f"  {i}: Hard={ind.fitness.values[0]:.0f}, Soft={ind.fitness.values[1]:.0f}")
 

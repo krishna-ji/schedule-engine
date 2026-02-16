@@ -152,7 +152,7 @@ class QuantumTimeSystem:
         """Derive operating hours from the active configuration if present."""
 
         try:
-            cfg = get_config()
+            _cfg = get_config()
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(
                 "QuantumTimeSystem using defaults (config unavailable): %s", exc

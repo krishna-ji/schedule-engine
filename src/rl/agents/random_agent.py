@@ -48,7 +48,8 @@ class RandomAgent:
         Returns:
             (action, state) - state is None for random agent
         """
-        action = self.rng.integers(0, self.action_space.n)  # type: ignore[attr-defined]
+        n_actions: int = self.action_space.n  # type: ignore[attr-defined]
+        action = self.rng.integers(0, n_actions)
         return int(action), None
 
     def learn(
@@ -80,7 +81,6 @@ class RandomAgent:
         Args:
             path: Save path (ignored)
         """
-        pass
 
     @staticmethod
     def load(path: str, env: gym.Env, **kwargs: Any) -> "RandomAgent":

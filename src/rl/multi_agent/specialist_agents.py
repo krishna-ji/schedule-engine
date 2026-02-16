@@ -39,7 +39,7 @@ class SpecialistAgent(ABC):
 
         if TYPE_CHECKING:
             from stable_baselines3 import PPO
-        self.model: PPO | None = None  # type: ignore[name-defined]
+        self.model: PPO | None = None
         self.activation_count = 0
         self.success_count = 0
 
@@ -57,7 +57,6 @@ class SpecialistAgent(ABC):
         Returns:
             True if this agent's expertise is needed
         """
-        pass
 
     @abstractmethod
     def select_action(self, observation: NDArray[np.float32]) -> int:
@@ -70,7 +69,6 @@ class SpecialistAgent(ABC):
         Returns:
             Action ID (heuristic index)
         """
-        pass
 
     def load_model(self) -> None:
         """Load trained model from disk."""
@@ -137,10 +135,9 @@ class RepairAgent(SpecialistAgent):
         if self.model:
             action, _ = self.model.predict(observation, deterministic=True)
             return int(action)
-        else:
-            # Fallback: Prioritize improvement heuristics
-            # Kempe chain (action 10), ejection chain (action 11)
-            return int(np.random.choice([10, 11]))
+        # Fallback: Prioritize improvement heuristics
+        # Kempe chain (action 10), ejection chain (action 11)
+        return int(np.random.choice([10, 11]))
 
 
 class OptimizerAgent(SpecialistAgent):
@@ -175,10 +172,9 @@ class OptimizerAgent(SpecialistAgent):
         if self.model:
             action, _ = self.model.predict(observation, deterministic=True)
             return int(action)
-        else:
-            # Fallback: Meta-heuristics for fine-tuning
-            # Variable depth search (12), guided local search (18)
-            return int(np.random.choice([12, 18]))
+        # Fallback: Meta-heuristics for fine-tuning
+        # Variable depth search (12), guided local search (18)
+        return int(np.random.choice([12, 18]))
 
 
 class ExplorerAgent(SpecialistAgent):
@@ -208,10 +204,9 @@ class ExplorerAgent(SpecialistAgent):
         if self.model:
             action, _ = self.model.predict(observation, deterministic=True)
             return int(action)
-        else:
-            # Fallback: Perturbation + diversity heuristics
-            # Multi-perturbation (8), crowding mutation (14), adaptive diversity (16)
-            return int(np.random.choice([8, 14, 16]))
+        # Fallback: Perturbation + diversity heuristics
+        # Multi-perturbation (8), crowding mutation (14), adaptive diversity (16)
+        return int(np.random.choice([8, 14, 16]))
 
 
 class IntensifierAgent(SpecialistAgent):
@@ -252,7 +247,6 @@ class IntensifierAgent(SpecialistAgent):
         if self.model:
             action, _ = self.model.predict(observation, deterministic=True)
             return int(action)
-        else:
-            # Fallback: Intensive local search
-            # Iterated local search (17), guided local search (18)
-            return int(np.random.choice([17, 18]))
+        # Fallback: Intensive local search
+        # Iterated local search (17), guided local search (18)
+        return int(np.random.choice([17, 18]))

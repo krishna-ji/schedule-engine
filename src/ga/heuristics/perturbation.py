@@ -78,7 +78,7 @@ def random_swap(
         # Select two random genes
         gene1, gene2 = random.sample(individual, 2)
 
-        if swap_type == "time" or swap_type == "both":
+        if swap_type in ("time", "both"):
             # Swap entire time blocks (quanta) between sessions
             # Use new contiguous block representation (start_quanta, num_quanta)
             original_start_gene1 = gene1.start_quanta
@@ -94,7 +94,7 @@ def random_swap(
 
             swaps_performed += 1
 
-        if swap_type == "room" or swap_type == "both":
+        if swap_type in ("room", "both"):
             # Only swap rooms if both courses compatible with both rooms
             course1 = get_course_for_gene(context, gene1)
             course2 = get_course_for_gene(context, gene2)

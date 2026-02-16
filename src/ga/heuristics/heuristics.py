@@ -26,12 +26,14 @@ Usage:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from src.domain.gene import SessionGene
-from src.domain.types import SchedulingContext
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from src.domain.gene import SessionGene
+    from src.domain.types import SchedulingContext
 
 # PROTOCOL
 
@@ -50,9 +52,7 @@ class Heuristic(Protocol):
     """
 
     name: str
-    category: Literal[
-        "construction", "perturbation", "improvement", "diversity", "meta", "repair"
-    ]
+    category: str  # one of "construction", "perturbation", "improvement", "diversity", "meta", "repair"
     priority: int
     enabled: bool
 
@@ -61,7 +61,7 @@ class Heuristic(Protocol):
         individual: list[SessionGene],
         context: SchedulingContext,
         **kwargs: Any,
-    ) -> int:
+    ) -> Any:
         """Apply heuristic and return modification count."""
         ...
 
@@ -105,7 +105,7 @@ class FunctionHeuristic:
     def __init__(
         self,
         name: str,
-        function: Callable[..., int],
+        function: Callable[..., Any],
         category: str,
         priority: int,
         enabled: bool = True,
@@ -129,7 +129,7 @@ class FunctionHeuristic:
         individual: list[SessionGene],
         context: SchedulingContext,
         **kwargs: Any,
-    ) -> int:
+    ) -> Any:
         """Apply the wrapped function."""
         # Merge default kwargs with runtime kwargs
         merged = {**self._default_kwargs, **kwargs}

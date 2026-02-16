@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
+if TYPE_CHECKING:
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
 
 __all__ = ["CourseSession"]
 

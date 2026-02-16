@@ -273,11 +273,10 @@ def lns_igls_repair(
                 f"[green]   [LNS-IGLS] IGLS repair: SUCCESS (OK) ({repair_time_elapsed:.2f}s)[/green]"
             )
 
-    else:
-        if enable_diagnostics:
-            console.print(
-                f"[red]   [LNS-IGLS] IGLS repair: FAILED (X) ({repair_time_elapsed:.2f}s)[/red]"
-            )
+    elif enable_diagnostics:
+        console.print(
+            f"[red]   [LNS-IGLS] IGLS repair: FAILED (X) ({repair_time_elapsed:.2f}s)[/red]"
+        )
 
     # Step 7: Reintegrate or return original
     if repaired_sessions is not None:
@@ -303,19 +302,18 @@ def lns_igls_repair(
                 f"(total_time={repair_time:.2f}s)[/bold green]"
             )
         # Type cast for mypy (create_individual returns DEAP Individual which inherits from list)
-        return list(new_individual)  # type: ignore[return-value]
-    else:
-        _lns_stats.failed_repairs += 1
-        repair_time = time.time() - start_time
-        _lns_stats.total_repair_time += repair_time
+        return list(new_individual)
+    _lns_stats.failed_repairs += 1
+    repair_time = time.time() - start_time
+    _lns_stats.total_repair_time += repair_time
 
-        logger.warning(f"LNS-IGLS: Repair FAILED (time={repair_time:.2f}s)")
-        if enable_diagnostics:
-            console.print(
-                f"[bold red]   [LNS-IGLS] (X) Repair FAILED: IGLS could not repair subproblem "
-                f"(total_time={repair_time:.2f}s)[/bold red]"
-            )
-        return individual
+    logger.warning(f"LNS-IGLS: Repair FAILED (time={repair_time:.2f}s)")
+    if enable_diagnostics:
+        console.print(
+            f"[bold red]   [LNS-IGLS] (X) Repair FAILED: IGLS could not repair subproblem "
+            f"(total_time={repair_time:.2f}s)[/bold red]"
+        )
+    return individual
 
 
 def apply_lns_to_population(

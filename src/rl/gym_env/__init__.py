@@ -12,4 +12,4 @@ from src.rl.gym_env.reward_calculator import RewardCalculator
 from src.rl.gym_env.schedule_env import ScheduleEnv
 from src.rl.gym_env.state_encoder import StateEncoder
 
-__all__ = ["ScheduleEnv", "StateEncoder", "ActionMapper", "RewardCalculator"]
+__all__ = ["ActionMapper", "RewardCalculator", "ScheduleEnv", "StateEncoder"]

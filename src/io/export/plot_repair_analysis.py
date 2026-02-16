@@ -15,7 +15,9 @@ from .thesis_style import (
 apply_thesis_style()
 
 
-def _extract_repair_series(repair_history: list[dict]) -> dict[str, list[float]]:
+def _extract_repair_series(
+    repair_history: list[dict],
+) -> dict[str, list[float] | list[int]]:
     if not repair_history:
         return {}
 
@@ -24,11 +26,11 @@ def _extract_repair_series(repair_history: list[dict]) -> dict[str, list[float]]
     repairs_applied = [float(item.get("repairs_applied", 0.0)) for item in ordered]
     delta_hard = [float(item.get("delta_hard", 0.0)) for item in ordered]
     delta_soft = [float(item.get("delta_soft", 0.0)) for item in ordered]
-    repair_time_ms = [
+    repair_time_ms: list[float] = [
         (
-            float(item.get("repair_time_ms"))
+            float(item["repair_time_ms"])
             if item.get("repair_time_ms") is not None
-            else np.nan
+            else float("nan")
         )
         for item in ordered
     ]

@@ -7,23 +7,26 @@ into structured entities such as Course, Group, Instructor, and Room.
 from __future__ import annotations
 
 import json
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from src.domain.course import Course
 from src.domain.group import Group
 from src.domain.instructor import Instructor
 from src.domain.room import Room
-from src.io.time_system import QuantumTimeSystem
+
+if TYPE_CHECKING:
+    from src.io.time_system import QuantumTimeSystem
 
 __all__ = [
+    "derive_cohort_pairs_from_groups",
     "encode_availability",
-    "load_instructors",
-    "load_courses",
-    "load_groups",
-    "load_rooms",
     "link_courses_and_groups",
     "link_courses_and_instructors",
-    "derive_cohort_pairs_from_groups",
+    "load_courses",
+    "load_groups",
+    "load_instructors",
+    "load_rooms",
 ]
 
 
@@ -134,7 +137,7 @@ def load_instructors(path: str, qts: QuantumTimeSystem) -> dict[str, Instructor]
     Returns:
         Dict[str, Instructor]: Dictionary mapping instructor IDs to Instructor instances.
     """
-    with open(path) as f:
+    with Path(path).open() as f:
         data = json.load(f)
     instructors = {}
     for item in data:
@@ -163,17 +166,16 @@ def load_instructors(path: str, qts: QuantumTimeSystem) -> dict[str, Instructor]
             if isinstance(course_entry, dict):
                 # New format: {"coursecode": "ENSH 151", "coursetype": "Theory"}
                 course_qualifications.append(course_entry)
+            # Old format: "ENSH 151" or "ENSH 151-PR"
+            # Convert to new format for backward compatibility
+            elif course_entry.endswith("-PR"):
+                course_qualifications.append(
+                    {"coursecode": course_entry[:-3], "coursetype": "Practical"}
+                )
             else:
-                # Old format: "ENSH 151" or "ENSH 151-PR"
-                # Convert to new format for backward compatibility
-                if course_entry.endswith("-PR"):
-                    course_qualifications.append(
-                        {"coursecode": course_entry[:-3], "coursetype": "Practical"}
-                    )
-                else:
-                    course_qualifications.append(
-                        {"coursecode": course_entry, "coursetype": "Theory"}
-                    )
+                course_qualifications.append(
+                    {"coursecode": course_entry, "coursetype": "Theory"}
+                )
 
         instructors[item["id"]] = Instructor(
             instructor_id=item["id"],
@@ -200,7 +202,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
     Returns:
         Dict[tuple, Course]: Dictionary keyed by (course_code, course_type) tuples.
     """
-    with open(path) as f:
+    with Path(path).open() as f:
         data = json.load(f)
     courses = {}
 
@@ -210,7 +212,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         dept_list = [d.strip() for d in item.get("Dept", "GENERAL").split(",")]
         department = dept_list[0]
         semester = item.get("Semester", 1)
-        credits = item.get("Credits", 3)
+        credit_hours = item.get("Credits", 3)
 
         lec = item.get("L", 0)
         tut = item.get("T", 0)
@@ -222,7 +224,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         # - Self-study, project work (0 L/T/P hours)
         # This filtering is intentional to focus on schedulable classroom sessions.
         # Skipped courses are logged below for transparency.
-        if credits == 0 or (lec == 0 and tut == 0 and prac == 0):
+        if credit_hours == 0 or (lec == 0 and tut == 0 and prac == 0):
             continue
 
         practical_features = item.get("PracticalRoomFeatures", "").strip()
@@ -246,7 +248,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
                 course_code=course_code,
                 department=department,
                 semester=semester,
-                credits=credits,
+                credits=credit_hours,
                 lecture_hours=lec + tut,
                 practical_hours=0,
                 specific_lab_features=[],  # Theory courses don't need lab features
@@ -270,7 +272,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
                 course_code=course_code,
                 department=department,
                 semester=semester,
-                credits=credits,
+                credits=credit_hours,
                 lecture_hours=0,
                 practical_hours=prac,
                 specific_lab_features=practical_features,  # e.g. ["networking lab", "general programming lab"]
@@ -297,7 +299,7 @@ def load_groups(path: str, qts: QuantumTimeSystem) -> dict[str, Group]:
     Returns:
         Dict[str, Group]: Dictionary of group IDs to Group instances.
     """
-    with open(path) as f:
+    with Path(path).open() as f:
         data = json.load(f)
     groups = {}
 
@@ -364,7 +366,7 @@ def derive_cohort_pairs_from_groups(path: str) -> list[tuple[str, str]]:
         Deterministic list of subgroup ID tuples ready for ``SchedulingContext``.
     """
 
-    with open(path) as file_handle:
+    with Path(path).open() as file_handle:
         raw_data = json.load(file_handle)
 
     derived_pairs: list[tuple[str, str]] = []
@@ -437,7 +439,7 @@ def load_rooms(path: str, qts: QuantumTimeSystem) -> dict[str, Room]:
     Returns:
         Dict[str, Room]: Dictionary of room IDs to Room objects.
     """
-    with open(path) as f:
+    with Path(path).open() as f:
         data = json.load(f)
     rooms = {}
     for item in data:

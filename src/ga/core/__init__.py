@@ -17,10 +17,10 @@ from src.ga.core.population_factory import PopulationFactory
 from src.ga.core.quanta_converter import quanta_list_to_contiguous
 
 __all__ = [
-    "get_creator",
+    "PopulationFactory",
     "create_individual",
     "evaluate",
     "evaluate_detailed",
-    "PopulationFactory",
+    "get_creator",
     "quanta_list_to_contiguous",
 ]

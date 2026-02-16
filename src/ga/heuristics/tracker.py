@@ -253,36 +253,36 @@ class HeuristicTracker:
 
         # Update per-heuristic stats
         stats = self.heuristic_stats[heuristic_name]
-        stats["total_applications"] = cast(int, stats["total_applications"]) + 1
+        stats["total_applications"] = cast("int", stats["total_applications"]) + 1
         assert isinstance(stats["generations_applied"], set)
         stats["generations_applied"].add(generation)
-        stats["total_time"] = cast(float, stats["total_time"]) + execution_time
+        stats["total_time"] = cast("float", stats["total_time"]) + execution_time
 
         if success:
             stats["successful_applications"] = (
-                cast(int, stats["successful_applications"]) + 1
+                cast("int", stats["successful_applications"]) + 1
             )
             stats["total_improvement"] = (
-                cast(float, stats["total_improvement"]) + improvement
+                cast("float", stats["total_improvement"]) + improvement
             )
             stats["best_improvement"] = max(
-                cast(float, stats["best_improvement"]), improvement
+                cast("float", stats["best_improvement"]), improvement
             )
         else:
             stats["worst_improvement"] = min(
-                cast(float, stats["worst_improvement"]), improvement
+                cast("float", stats["worst_improvement"]), improvement
             )
 
         # Update averages
-        stats["average_improvement"] = cast(float, stats["total_improvement"]) / cast(
-            int, stats["total_applications"]
+        stats["average_improvement"] = cast("float", stats["total_improvement"]) / cast(
+            "int", stats["total_applications"]
         )
-        stats["average_time"] = cast(float, stats["total_time"]) / cast(
-            int, stats["total_applications"]
+        stats["average_time"] = cast("float", stats["total_time"]) / cast(
+            "int", stats["total_applications"]
         )
         stats["success_rate"] = (
-            cast(int, stats["successful_applications"])
-            / cast(int, stats["total_applications"])
+            cast("int", stats["successful_applications"])
+            / cast("int", stats["total_applications"])
             * 100
         )
 
@@ -304,7 +304,7 @@ class HeuristicTracker:
         # Find best heuristic overall
         best_heuristic = max(
             self.heuristic_stats.items(),
-            key=lambda x: cast(float, x[1]["total_improvement"]),
+            key=lambda x: cast("float", x[1]["total_improvement"]),
         )
 
         return {
@@ -333,7 +333,7 @@ class HeuristicTracker:
 
         # Export summary
         summary_path = output_dir / "heuristic_summary.json"
-        with open(summary_path, "w") as f:
+        with summary_path.open("w") as f:
             json.dump(self.get_summary(), f, indent=2)
 
         # Export per-heuristic stats
@@ -343,11 +343,11 @@ class HeuristicTracker:
             stats_export[name] = {
                 k: v for k, v in stats.items() if k != "generations_applied"
             }
-            gen_set = cast(set[int], stats["generations_applied"])
+            gen_set = cast("set[int]", stats["generations_applied"])
             # Convert to list for JSON serialization (assign to dict, not stats)
             stats_export[name]["generations_applied"] = sorted(gen_set)
 
-        with open(heuristic_stats_path, "w") as f:
+        with heuristic_stats_path.open("w") as f:
             json.dump(stats_export, f, indent=2)
 
         # Export generation timeline
@@ -382,7 +382,7 @@ class HeuristicTracker:
                 }
             )
 
-        with open(timeline_path, "w") as f:
+        with timeline_path.open("w") as f:
             json.dump(timeline, f, indent=2)
 
         print("      [!ok] heuristic_summary.json")
@@ -425,16 +425,16 @@ class HeuristicTracker:
         # Sort heuristics by total improvement
         sorted_heuristics = sorted(
             self.heuristic_stats.items(),
-            key=lambda x: cast(float, x[1]["total_improvement"]),
+            key=lambda x: cast("float", x[1]["total_improvement"]),
             reverse=True,
         )
 
         names = [h[0] for h in sorted_heuristics]
         improvements = [
-            cast(float, h[1]["total_improvement"]) for h in sorted_heuristics
+            cast("float", h[1]["total_improvement"]) for h in sorted_heuristics
         ]
         applications = [
-            cast(int, h[1]["total_applications"]) for h in sorted_heuristics
+            cast("int", h[1]["total_applications"]) for h in sorted_heuristics
         ]
 
         # Plot 1: Total Improvement
@@ -463,7 +463,7 @@ class HeuristicTracker:
         """Plot which heuristics were applied in each generation."""
         fig, ax = plt.subplots(figsize=(14, 8))
 
-        # Create matrix: generations × heuristics
+        # Create matrix: generations x heuristics
         all_heuristics = sorted(self.heuristic_stats.keys())
         all_generations = sorted(self.generation_stats.keys())
 
@@ -517,12 +517,12 @@ class HeuristicTracker:
         # Sort by success rate
         sorted_heuristics = sorted(
             self.heuristic_stats.items(),
-            key=lambda x: cast(float, x[1]["success_rate"]),
+            key=lambda x: cast("float", x[1]["success_rate"]),
             reverse=True,
         )
 
         names = [h[0] for h in sorted_heuristics]
-        success_rates = [cast(float, h[1]["success_rate"]) for h in sorted_heuristics]
+        success_rates = [cast("float", h[1]["success_rate"]) for h in sorted_heuristics]
 
         colors = [
             "green" if rate >= 50 else "orange" if rate >= 25 else "red"
@@ -606,21 +606,21 @@ class HeuristicTracker:
             # Infer category from heuristic name or metadata
             category = self._infer_category(name)
             category_stats[category]["total_improvement"] = cast(
-                float, category_stats[category]["total_improvement"]
-            ) + cast(float, stats["total_improvement"])
+                "float", category_stats[category]["total_improvement"]
+            ) + cast("float", stats["total_improvement"])
             category_stats[category]["applications"] = cast(
-                int, category_stats[category]["applications"]
-            ) + cast(int, stats["total_applications"])
+                "int", category_stats[category]["applications"]
+            ) + cast("int", stats["total_applications"])
             category_stats[category]["successful"] = cast(
-                int, category_stats[category]["successful"]
-            ) + cast(int, stats["successful_applications"])
+                "int", category_stats[category]["successful"]
+            ) + cast("int", stats["successful_applications"])
 
         # Calculate success rates
-        for _cat, cat_stats in category_stats.items():
-            apps = cast(int, cat_stats["applications"])
+        for cat_stats in category_stats.values():
+            apps = cast("int", cat_stats["applications"])
             if apps > 0:
                 cat_stats["success_rate"] = (
-                    cast(int, cat_stats["successful"]) / apps * 100
+                    cast("int", cat_stats["successful"]) / apps * 100
                 )
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
@@ -658,22 +658,19 @@ class HeuristicTracker:
 
         if any(x in name_lower for x in ["degree", "constrained", "deadline"]):
             return "construction"
-        elif any(
+        if any(
             x in name_lower
             for x in ["swap", "shift", "shuffle", "reassign", "perturbation"]
         ):
             return "perturbation"
-        elif any(x in name_lower for x in ["kempe", "ejection", "depth"]):
+        if any(x in name_lower for x in ["kempe", "ejection", "depth"]):
             return "improvement"
-        elif any(
-            x in name_lower for x in ["diversity", "crowding", "niche", "distance"]
-        ):
+        if any(x in name_lower for x in ["diversity", "crowding", "niche", "distance"]):
             return "diversity"
-        elif any(
+        if any(
             x in name_lower for x in ["neighborhood", "iterated", "adaptive", "guided"]
         ):
             return "meta"
-        elif any(x in name_lower for x in ["repair", "igls", "lns"]):
+        if any(x in name_lower for x in ["repair", "igls", "lns"]):
             return "repair"
-        else:
-            return "other"
+        return "other"

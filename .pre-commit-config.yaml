@@ -1,0 +1,28 @@
+# Pre-commit hooks for schedule-engine
+# Install: pre-commit install
+# Run all: pre-commit run --all-files
+
+repos:
+  # ── Ruff (lint + format) ──────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        name: ruff lint
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+
+      - id: ruff-format
+        name: ruff format
+        types_or: [python, pyi]
+
+  # ── Mypy (type checking) ──────────────────────────────────
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy --config-file=pyproject.toml --explicit-package-bases
+        language: system
+        types: [python]
+        # Check full project (not just staged files) so mypy has full context
+        pass_filenames: false

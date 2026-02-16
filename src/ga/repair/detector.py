@@ -28,10 +28,13 @@ Usage:
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
-from src.domain.types import SchedulingContext
-from src.domain.gene import SessionGene
 from src.ga.core.schedule_index import ScheduleIndex
+
+if TYPE_CHECKING:
+    from src.domain.gene import SessionGene
+    from src.domain.types import SchedulingContext
 
 
 def detect_violated_genes(
@@ -125,7 +128,7 @@ def _detect_full(
     Uses ScheduleIndex for efficient caching:
     - Builds schedule maps ONCE (instead of 3 separate builds)
     - Reuses cached maps for all conflict checks
-    - 3× faster than original implementation
+    - 3x faster than original implementation
 
     Checks:
     - Group overlaps (same group at same time)
@@ -147,17 +150,17 @@ def _detect_full(
     # === NEW: Use ScheduleIndex for efficient conflict detection ===
     # Builds all 3 maps (group/room/instructor) in ONE pass instead of 3
     index = ScheduleIndex.from_individual(individual)
-    
+
     # Detect group overlaps (uses cached map)
     group_conflicts = index.find_group_conflicts()
     for idx in group_conflicts:
         violations[idx].append("group_overlap")
-    
+
     # Detect room conflicts (uses same cached map)
     room_conflicts = index.find_room_conflicts()
     for idx in room_conflicts:
         violations[idx].append("room_conflict")
-    
+
     # Detect instructor conflicts (uses same cached map)
     instructor_conflicts = index.find_instructor_conflicts()
     for idx in instructor_conflicts:
@@ -195,11 +198,8 @@ def _detect_full(
             continue
 
         # Check room type compatibility (Room uses 'room_features' not 'room_type')
-        if (
-            course.course_type == "practical"
-            and room.room_features != "lab"
-            or course.course_type == "theory"
-            and room.room_features == "lab"
+        if (course.course_type == "practical" and room.room_features != "lab") or (
+            course.course_type == "theory" and room.room_features == "lab"
         ):
             violations[idx].append("room_suitability")
 

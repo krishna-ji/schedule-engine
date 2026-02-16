@@ -19,10 +19,8 @@ from conftest import (
     make_group,
     make_instructor,
     make_room,
-    structural_fields_preserved,
 )
 
-from src.domain.gene import SessionGene
 from src.ga.operators.crossover import crossover_course_group_aware
 from src.ga.operators.fast_nsga2 import (
     assign_crowding_distance,
@@ -179,11 +177,11 @@ class TestCrossover:
         """With cx_prob=0.0, no attributes should swap."""
         ind1, ind2 = self._make_pair()
         before1 = [copy.deepcopy(g) for g in ind1]
-        before2 = [copy.deepcopy(g) for g in ind2]
+        [copy.deepcopy(g) for g in ind2]
 
         crossover_course_group_aware(ind1, ind2, cx_prob=0.0)
 
-        for b, a in zip(before1, ind1):
+        for b, a in zip(before1, ind1, strict=False):
             assert b.instructor_id == a.instructor_id
             assert b.room_id == a.room_id
             assert b.start_quanta == a.start_quanta
@@ -506,7 +504,7 @@ class TestNonDominatedSorting:
         b = FakeIndividual((2.0, 2.0))
         c = FakeIndividual((3.0, 3.0))
         pop = [a, b, c]
-        fronts = fast_nondominated_sort(pop)
+        fast_nondominated_sort(pop)
         assert a.fitness.rank == 0
         assert b.fitness.rank == 1
         assert c.fitness.rank == 2
@@ -526,7 +524,7 @@ class TestNonDominatedSorting:
         f1 = fast_nondominated_sort(pop1)
         f2 = fast_nondominated_sort(pop2)
         assert len(f1) == len(f2)
-        for front1, front2 in zip(f1, f2):
+        for front1, front2 in zip(f1, f2, strict=False):
             assert len(front1) == len(front2)
 
 

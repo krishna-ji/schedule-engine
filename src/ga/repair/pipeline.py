@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import logging
 import random
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.domain.gene import SessionGene
@@ -218,15 +218,15 @@ class RepairPipeline:
         """
         try:
             from src.ga.repair.engine import (
-                InstructorSwapOperator,
-                RoomSwapOperator,
-                TimeSlotOperator,
+                MoveTimeOperator,
+                ReassignInstructorOperator,
+                SwapRoomOperator,
             )
 
             operators: list[RepairOperator] = [
-                TimeSlotOperator(),
-                RoomSwapOperator(),
-                InstructorSwapOperator(),
+                MoveTimeOperator(),
+                SwapRoomOperator(),
+                ReassignInstructorOperator(),
             ]
         except ImportError:
             logger.warning(

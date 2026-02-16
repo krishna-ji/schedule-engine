@@ -27,20 +27,20 @@ from src.ga.repair.wrappers import (
 )
 
 __all__ = [
-    # Core repair
-    "repair_individual",
-    "repair_individual_unified",
-    "repair_individual_selective",
     # Engine & pipeline
     "RepairEngine",
     "RepairPipeline",
     # Detection
     "detect_violated_genes",
-    # Registry (decorator-based)
-    "repair_operator",
     "get_all_repair_operators",
     "get_enabled_repair_operators",
-    "get_repair_operator_metadata",
     "get_repair_operator_function",
+    "get_repair_operator_metadata",
     "get_repair_statistics_template",
+    # Core repair
+    "repair_individual",
+    "repair_individual_selective",
+    "repair_individual_unified",
+    # Registry (decorator-based)
+    "repair_operator",
 ]

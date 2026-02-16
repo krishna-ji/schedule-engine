@@ -20,19 +20,15 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from src.domain.gene import SessionGene
-from src.ga.repair.wrappers import repair_operator
 from src.ga.core.population import (
     analyze_group_hierarchy,
     build_group_family_map,
     get_family_map_from_json,
-    get_parent,
-    get_sibling_groups,
-    get_subgroups,
-    groups_conflict,
 )
+from src.ga.repair.wrappers import repair_operator
 
 if TYPE_CHECKING:
+    from src.domain.gene import SessionGene
     from src.domain.types import SchedulingContext
 
 
@@ -44,7 +40,7 @@ def _get_or_build_family_map(context: SchedulingContext) -> dict[str, set[str]]:
     Caches the result in context for reuse across repair iterations.
     """
     # Check if already computed and cached
-    if hasattr(context, "_group_family_map") and context._group_family_map:  # type: ignore
+    if hasattr(context, "_group_family_map") and context._group_family_map:
         return context._group_family_map  # type: ignore
 
     # Use JSON-based hierarchy (correct behavior)
@@ -139,9 +135,10 @@ def _find_family_aware_conflict_free_slot(
             continue
 
         # Check instructor availability if provided
-        if instructor_available is not None:
-            if not all(q in instructor_available for q in range(start_q, end_q)):
-                continue
+        if instructor_available is not None and not all(
+            q in instructor_available for q in range(start_q, end_q)
+        ):
+            continue
 
         # Check no conflicts
         conflict_free = True
@@ -194,7 +191,7 @@ def repair_group_overlaps_hierarchy(
     family_map = _get_or_build_family_map(context)
 
     # Build family-aware occupation map
-    occupied = _build_family_aware_occupied_map(individual, family_map)
+    _build_family_aware_occupied_map(individual, family_map)
 
     # Pre-compute gene families for faster checking
     gene_families = []
@@ -239,7 +236,7 @@ def repair_group_overlaps_hierarchy(
                 gene.start_quanta = new_start
                 fixes += 1
                 # Rebuild occupation map after fix
-                occupied = _build_family_aware_occupied_map(individual, family_map)
+                _build_family_aware_occupied_map(individual, family_map)
 
     return fixes
 
@@ -411,7 +408,7 @@ def count_family_aware_violations(
     (e.g., BME1A session conflicting with BME1AB session).
     """
     violations = 0
-    occupied = _build_family_aware_occupied_map(individual, family_map)
+    _build_family_aware_occupied_map(individual, family_map)
 
     # Pre-compute gene families
     gene_families = []

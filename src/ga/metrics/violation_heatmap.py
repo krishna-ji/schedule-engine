@@ -147,8 +147,9 @@ class ViolationHeatmap:
             },
         }
 
-        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-        with open(filepath, "w") as f:
+        filepath_obj = Path(filepath)
+        filepath_obj.parent.mkdir(parents=True, exist_ok=True)
+        with filepath_obj.open("w") as f:
             json.dump(data, f, indent=2)
 
     @classmethod
@@ -167,7 +168,7 @@ class ViolationHeatmap:
         if not Path(filepath).exists():
             return heatmap
 
-        with open(filepath) as f:
+        with Path(filepath).open() as f:
             data = json.load(f)
 
         # Restore violations (convert string keys back to tuples)
@@ -319,7 +320,5 @@ if __name__ == "__main__":
     loaded = ViolationHeatmap.load_from_file(test_file)
     console.print(f"[green][!ok] Loaded {len(loaded.violations)} gene records[/green]")
 
-    import os
-
-    os.remove(test_file)
+    Path(test_file).unlink()
     console.print("[dim]Cleaned up test file[/dim]\n")

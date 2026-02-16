@@ -6,8 +6,8 @@ fast hill-climbing repair that quickly addresses obvious constraint
 violations without the overhead of exhaustive search.
 """
 
-from src.domain.types import SchedulingContext
 from src.domain.gene import SessionGene
+from src.domain.types import SchedulingContext
 
 
 def greedy_repair(

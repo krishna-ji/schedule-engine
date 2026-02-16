@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from src.domain.types import SchedulingContext
 from src.domain.course import Course
-from src.domain.gene import SessionGene
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from src.domain.gene import SessionGene
+    from src.domain.types import SchedulingContext
 
 
 def get_course_for_gene(context: SchedulingContext, gene: SessionGene) -> Course:

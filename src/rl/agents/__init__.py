@@ -17,9 +17,9 @@ from src.rl.agents.random_agent import RandomAgent
 from src.rl.agents.specialist_agents import AgentCoordinator, SpecialistAgents
 
 __all__ = [
-    "create_ppo_agent",
-    "create_dqn_agent",
+    "AgentCoordinator",
     "RandomAgent",
     "SpecialistAgents",
-    "AgentCoordinator",
+    "create_dqn_agent",
+    "create_ppo_agent",
 ]

@@ -35,7 +35,7 @@ def _ensure_config():
 
         get_config()
     except RuntimeError:
-        init_config(Config(repair=dict(enabled=True, heuristics={})))
+        init_config(Config(repair={"enabled": True, "heuristics": {}}))
 
 
 from conftest import (
@@ -394,7 +394,7 @@ class TestDetectorScheduleIndexIntegration:
         violations = detect_violated_genes(individual, ctx, strategy="full")
 
         # No group/room/instructor overlaps
-        for idx, vtypes in violations.items():
+        for vtypes in violations.values():
             assert "group_overlap" not in vtypes
             assert "room_conflict" not in vtypes
             assert "instructor_conflict" not in vtypes
@@ -418,7 +418,7 @@ class TestDetectorScheduleIndexIntegration:
         violations = detect_violated_genes(individual, ctx, strategy="fast")
 
         # Fast mode shouldn't detect group overlaps
-        for idx, vtypes in violations.items():
+        for vtypes in violations.values():
             assert "group_overlap" not in vtypes
 
 
@@ -446,7 +446,7 @@ class TestVNDBehavior:
         before = [copy.deepcopy(g) for g in individual]
         variable_neighborhood_descent(individual, ctx, max_iterations=3)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(
                 b, a
             ), f"Structural field changed: {b} -> {a}"
@@ -517,7 +517,7 @@ class TestILSBehavior:
         before = [copy.deepcopy(g) for g in individual]
         iterated_local_search(individual, ctx, num_iterations=2)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
     def test_ils_with_zero_perturbation(self):
@@ -562,7 +562,7 @@ class TestALNSBehavior:
         before = [copy.deepcopy(g) for g in individual]
         adaptive_large_neighborhood(individual, ctx, num_iterations=2)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
     def test_alns_on_clean_individual(self):
@@ -605,7 +605,7 @@ class TestGLSBehavior:
         before = [copy.deepcopy(g) for g in individual]
         guided_local_search(individual, ctx, num_iterations=2)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
     def test_gls_penalty_factor_affects_behavior(self):
@@ -636,7 +636,7 @@ class TestMetaHelpers:
 
         individual, ctx = _make_conflicting_individual()
         fitness = _simple_fitness(individual, ctx)
-        assert isinstance(fitness, (int, float))
+        assert isinstance(fitness, int | float)
         assert fitness >= 0
 
     def test_simple_fitness_clean_is_lower(self):
@@ -678,7 +678,7 @@ class TestMetaHelpers:
         fitness = _simple_fitness_with_penalties(
             individual, ctx, time_pen, room_pen, instr_pen, 0.1
         )
-        assert isinstance(fitness, (int, float))
+        assert isinstance(fitness, int | float)
         assert fitness >= 0
 
 
@@ -749,7 +749,7 @@ class TestPerturbationBehavior:
         before = [copy.deepcopy(g) for g in individual]
         random_swap(individual, ctx, num_swaps=3)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert b.course_id == a.course_id
             assert b.group_ids == a.group_ids
 
@@ -760,7 +760,7 @@ class TestPerturbationBehavior:
         before = [copy.deepcopy(g) for g in individual]
         temporal_shift(individual, ctx, probability=1.0)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert b.course_id == a.course_id
             assert b.group_ids == a.group_ids
             assert b.num_quanta == a.num_quanta
@@ -772,7 +772,7 @@ class TestPerturbationBehavior:
         before = [copy.deepcopy(g) for g in individual]
         room_shuffle(individual, ctx, probability=1.0)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert b.course_id == a.course_id
             assert b.group_ids == a.group_ids
             assert b.start_quanta == a.start_quanta
@@ -785,7 +785,7 @@ class TestPerturbationBehavior:
         before = [copy.deepcopy(g) for g in individual]
         instructor_reassign(individual, ctx, probability=1.0)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert b.course_id == a.course_id
             assert b.group_ids == a.group_ids
             assert b.start_quanta == a.start_quanta
@@ -842,7 +842,7 @@ class TestBasicRepairOperators:
         before = [copy.deepcopy(g) for g in individual]
         repair_group_overlaps(individual, ctx)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
 
@@ -931,7 +931,7 @@ class TestIGLSRepair:
         before = [copy.deepcopy(g) for g in individual]
         igls_repair(individual, ctx, max_iterations=2)
 
-        for b, a in zip(before, individual):
+        for b, a in zip(before, individual, strict=False):
             assert structural_fields_preserved(b, a)
 
     def test_igls_selective_vs_full(self):
@@ -1094,12 +1094,15 @@ class TestRepairEngine:
             violations = 0
             for i, g1 in enumerate(ind):
                 for j, g2 in enumerate(ind):
-                    if i < j and g1.room_id == g2.room_id:
-                        if (
+                    if (
+                        i < j
+                        and g1.room_id == g2.room_id
+                        and (
                             g1.start_quanta < g2.start_quanta + g2.num_quanta
                             and g2.start_quanta < g1.start_quanta + g1.num_quanta
-                        ):
-                            violations += 1
+                        )
+                    ):
+                        violations += 1
             return (float(violations), 0.0)
 
         engine = RepairEngine(
@@ -1162,7 +1165,7 @@ class TestRepairPolicies:
         policy = EpsilonGreedyPolicy(operators, epsilon=1.0)  # Full exploration
 
         rng = random.Random(42)
-        selections = set(policy.select({}, rng) for _ in range(100))
+        selections = {policy.select({}, rng) for _ in range(100)}
         # With epsilon=1.0, should eventually select all operators
         assert len(selections) > 1
 

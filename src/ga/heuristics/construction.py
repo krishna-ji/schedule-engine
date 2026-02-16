@@ -29,13 +29,16 @@ Usage:
 
 import random
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from src.domain.course import Course
 from src.domain.gene import SessionGene
-from src.domain.instructor import Instructor
 from src.domain.room import Room
 from src.domain.types import SchedulingContext
 from src.io.time_system import QuantumTimeSystem
+
+if TYPE_CHECKING:
+    from src.domain.instructor import Instructor
 
 type AssignedTimes = dict[str, set[int]]
 type AssignedRooms = dict[str, set[int]]
@@ -608,7 +611,7 @@ def _find_suitable_room(
             return room_id
 
     # Fallback: return first suitable room (will conflict, but repair will fix)
-    return suitable_rooms[0] if suitable_rooms else list(context.rooms.keys())[0]
+    return suitable_rooms[0] if suitable_rooms else next(iter(context.rooms.keys()))
 
 
 def _select_qualified_instructor(
@@ -650,7 +653,7 @@ def _select_qualified_instructor(
     return str(
         course.qualified_instructor_ids[0]
         if course.qualified_instructor_ids
-        else list(context.instructors.keys())[0]
+        else next(iter(context.instructors.keys()))
     )
 
 

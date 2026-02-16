@@ -32,21 +32,21 @@ from src.io.validator import validate_input
 __all__ = [
     # DataStore (preferred entry point)
     "DataStore",
+    # Time system
+    "QuantumTimeSystem",
+    "check_feasibility",
+    # Decoding
+    "decode_individual",
+    "derive_cohort_pairs_from_groups",
+    "encode_availability",
+    "generate_feasibility_report_file",
+    "link_courses_and_groups",
+    "link_courses_and_instructors",
     # Data loading
     "load_courses",
     "load_groups",
     "load_instructors",
     "load_rooms",
-    "link_courses_and_groups",
-    "link_courses_and_instructors",
-    "encode_availability",
-    "derive_cohort_pairs_from_groups",
-    # Time system
-    "QuantumTimeSystem",
-    # Decoding
-    "decode_individual",
     # Validation
     "validate_input",
-    "check_feasibility",
-    "generate_feasibility_report_file",
 ]

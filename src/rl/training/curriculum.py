@@ -231,19 +231,18 @@ class CurriculumManager:
 
         if strategy == "random":
             return random.sample(all_courses, target_num_courses)
-        elif strategy == "smallest":
+        if strategy == "smallest":
             # Sort by total sessions (L+T+P hours)
             sorted_courses = sorted(all_courses, key=lambda c: c.L + c.T + c.P)
             return sorted_courses[:target_num_courses]
-        elif strategy == "largest":
+        if strategy == "largest":
             sorted_courses = sorted(
                 all_courses,
                 key=lambda c: c.L + c.T + c.P,
                 reverse=True,
             )
             return sorted_courses[:target_num_courses]
-        else:
-            raise ValueError(f"Unknown strategy: {strategy}")
+        raise ValueError(f"Unknown strategy: {strategy}")
 
     def create_validation_set(
         self,
@@ -332,7 +331,7 @@ class CurriculumManager:
         save_path_obj = Path(save_path)
         save_path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(save_path_obj, "w") as f:
+        with save_path_obj.open("w") as f:
             json.dump(progress, f, indent=2)
 
         logger.info(f"Saved curriculum progress to {save_path}")
@@ -351,7 +350,7 @@ class CurriculumManager:
             return False
 
         try:
-            with open(load_path) as f:
+            with Path(load_path).open() as f:
                 progress = json.load(f)
 
             self.current_stage_idx = progress["current_stage_idx"]

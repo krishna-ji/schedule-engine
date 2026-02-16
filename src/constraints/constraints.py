@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from src.domain.timetable import Timetable
@@ -87,10 +87,10 @@ def _instructor_daily_map(
 
 
 __all__ = [
-    "Constraint",
     "ALL_CONSTRAINTS",
     "HARD_CONSTRAINT_CLASSES",
     "SOFT_CONSTRAINT_CLASSES",
+    "Constraint",
     "build_constraints",
 ]
 
@@ -104,7 +104,7 @@ class Constraint(Protocol):
 
     name: str
     weight: float
-    kind: Literal["hard", "soft"]
+    kind: str  # Literal["hard"] or Literal["soft"] on concrete classes
 
     def evaluate(self, tt: Timetable) -> float:
         """Evaluate constraint against timetable. Returns penalty (0 = no violation)."""
@@ -117,7 +117,7 @@ class Constraint(Protocol):
 class StudentGroupExclusivity:
     """Groups cannot be in two places at the same time."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "student_group_exclusivity"
@@ -131,7 +131,7 @@ class StudentGroupExclusivity:
 class InstructorExclusivity:
     """Instructors cannot teach two classes simultaneously."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "instructor_exclusivity"
@@ -145,7 +145,7 @@ class InstructorExclusivity:
 class RoomExclusivity:
     """Rooms cannot host two sessions simultaneously."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "room_exclusivity"
@@ -159,7 +159,7 @@ class RoomExclusivity:
 class InstructorQualifications:
     """Instructors must be qualified to teach assigned courses."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "instructor_qualifications"
@@ -218,7 +218,7 @@ class InstructorQualifications:
 class RoomSuitability:
     """Rooms must be suitable for course type (lecture/lab/etc)."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "room_suitability"
@@ -266,7 +266,7 @@ class RoomSuitability:
 class InstructorTimeAvailability:
     """Instructors only teach during their available time slots."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "instructor_time_availability"
@@ -296,7 +296,7 @@ class InstructorTimeAvailability:
 class RoomTimeAvailability:
     """Rooms only used during their available time slots."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "room_time_availability"
@@ -321,7 +321,7 @@ class RoomTimeAvailability:
 class CourseCompleteness:
     """Each course scheduled for exactly required quanta per week."""
 
-    kind: Literal["hard"] = "hard"
+    kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
         self.name = "course_completeness"
@@ -357,7 +357,7 @@ class CourseCompleteness:
 class StudentScheduleCompactness:
     """Minimize idle time gaps in student schedules."""
 
-    kind: Literal["soft"] = "soft"
+    kind: str = "soft"
 
     def __init__(
         self,
@@ -380,7 +380,7 @@ class StudentScheduleCompactness:
 class InstructorScheduleCompactness:
     """Minimize idle time gaps in instructor schedules."""
 
-    kind: Literal["soft"] = "soft"
+    kind: str = "soft"
 
     def __init__(
         self,
@@ -403,7 +403,7 @@ class InstructorScheduleCompactness:
 class StudentLunchBreak:
     """Students should have free time during lunch window (break_window_start to break_window_end)."""
 
-    kind: Literal["soft"] = "soft"
+    kind: str = "soft"
 
     def __init__(
         self,
@@ -458,7 +458,7 @@ class StudentLunchBreak:
 class SessionContinuity:
     """Penalize fragmented schedules (isolated single slots, bad block sizes)."""
 
-    kind: Literal["soft"] = "soft"
+    kind: str = "soft"
 
     def __init__(
         self,
@@ -474,7 +474,7 @@ class SessionContinuity:
 
     def evaluate(self, tt: Timetable) -> float:
         """Penalize isolated slots and non-preferred block sizes."""
-        penalty = 0
+        penalty = 0.0
         qts = tt.qts or QuantumTimeSystem()
 
         # Group sessions by (course_id, course_type, day)
@@ -533,7 +533,7 @@ class SessionContinuity:
 class PairedCohortPracticalAlignment:
     """Paired cohorts should have parallel practical schedules."""
 
-    kind: Literal["soft"] = "soft"
+    kind: str = "soft"
 
     def __init__(self, weight: float = 1.0):
         self.name = "paired_cohort_practical_alignment"
@@ -560,12 +560,12 @@ class PairedCohortPracticalAlignment:
             # Find shared practical courses
             left_courses = {
                 (cid, ctype)
-                for cid, ctype, gid in course_group_quanta.keys()
+                for cid, ctype, gid in course_group_quanta
                 if gid == left_id and ctype == "practical"
             }
             right_courses = {
                 (cid, ctype)
-                for cid, ctype, gid in course_group_quanta.keys()
+                for cid, ctype, gid in course_group_quanta
                 if gid == right_id and ctype == "practical"
             }
             shared_practicals = left_courses & right_courses
@@ -582,7 +582,7 @@ class PairedCohortPracticalAlignment:
 class BreakPlacementCompliance:
     """Groups should have breaks during designated windows."""
 
-    kind: Literal["soft"] = "soft"
+    kind: str = "soft"
 
     def __init__(
         self,
@@ -605,7 +605,7 @@ class BreakPlacementCompliance:
         break_windows = self._get_break_windows(qts)
 
         # Re-use pre-built group_daily index (or compute fallback)
-        for group_id, days in _group_daily_map(tt, qts).items():
+        for days in _group_daily_map(tt, qts).values():
             for day_name, occupied_quanta in days.items():
                 if day_name not in break_windows:
                     continue

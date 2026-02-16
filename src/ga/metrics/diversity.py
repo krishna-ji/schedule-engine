@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from src.domain.gene import SessionGene
+if TYPE_CHECKING:
+    from src.domain.gene import SessionGene
 
 
 def gene_distance(g1: SessionGene, g2: SessionGene) -> float:

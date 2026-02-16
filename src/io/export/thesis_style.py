@@ -5,14 +5,16 @@ Applies Seaborn-inspired theme with Times New Roman font.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # CRITICAL: Set non-interactive backend BEFORE any other matplotlib imports
 # This prevents tkinter-related errors in CLI environments
-import matplotlib
+import matplotlib as mpl
 
-matplotlib.use("Agg")  # Non-interactive backend for file generation
+mpl.use("Agg")  # Non-interactive backend for file generation
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -123,7 +125,7 @@ def apply_thesis_style() -> None:
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", PALETTE)
 
 
-def get_color(name: str) -> str:
+def get_color(name: str) -> Any:
     """Get a color from the thesis palette by name."""
     return COLORS.get(name, COLORS["blue"])
 

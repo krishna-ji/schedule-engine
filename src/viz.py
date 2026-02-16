@@ -11,22 +11,24 @@ DRY Principle: All notebooks import visualization functions from here.
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.ga.run_helpers import EvolutionStats
+if TYPE_CHECKING:
+    import logging
+
+    from src.ga.run_helpers import EvolutionStats
 
 __all__ = [
-    "plot_convergence",
     "plot_constraint_breakdown",
-    "plot_pareto_front",
-    "plot_diversity_metrics",
     "plot_constraint_trends",
+    "plot_convergence",
+    "plot_diversity_metrics",
     "plot_feasibility_progress",
+    "plot_pareto_front",
     "print_summary",
 ]
 
@@ -143,7 +145,7 @@ def plot_constraint_breakdown(
     ax.grid(True, axis="x", alpha=0.3)
 
     # Add value labels
-    for i, (name, val) in enumerate(zip(names, values)):
+    for i, (_name, val) in enumerate(zip(names, values, strict=False)):
         ax.text(
             val + 0.5 if val >= 0 else val - 0.5,
             i,
@@ -205,7 +207,7 @@ def print_summary(
     )
     hard, soft = best.fitness.values
 
-    lines.append(f"\n Best Solution:")
+    lines.append("\n Best Solution:")
     lines.append(f"   Hard Violations: {hard:.0f}")
     lines.append(f"   Soft Penalty:    {soft:.1f}")
     lines.append(f"   Feasible:        {' Yes' if hard == 0 else ' No'}")
@@ -229,7 +231,7 @@ def print_summary(
 
     # Constraint breakdown
     if breakdown:
-        lines.append(f"\n Best Solution Constraint Breakdown:")
+        lines.append("\n Best Solution Constraint Breakdown:")
         from src.constraints import (
             HARD_CONSTRAINT_NAMES,
             HARD_CONSTRAINTS,
@@ -331,7 +333,7 @@ def plot_pareto_front(
     )
 
     # Connect Pareto front points
-    sorted_pf = sorted(zip(pf_hard, pf_soft), key=lambda x: x[0])
+    sorted_pf = sorted(zip(pf_hard, pf_soft, strict=False), key=lambda x: x[0])
     pf_hard_sorted = [p[0] for p in sorted_pf]
     pf_soft_sorted = [p[1] for p in sorted_pf]
     ax.plot(pf_hard_sorted, pf_soft_sorted, "r--", alpha=0.5, linewidth=1)

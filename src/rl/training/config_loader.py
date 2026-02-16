@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.rl.training.presets import TRAINING_BASE_DEFAULTS, TRAINING_PROFILE_OVERRIDES
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 DEFAULT_PROFILE = "test"
 

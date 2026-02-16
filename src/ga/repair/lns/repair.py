@@ -5,8 +5,8 @@ Large Neighborhood Search repair operator integrated as a heuristic.
 This operator uses conflict detection and subproblem solving for repair.
 """
 
-from src.domain.types import SchedulingContext
 from src.domain.gene import SessionGene
+from src.domain.types import SchedulingContext
 
 # Import the original LNS repair logic
 from src.ga.repair.lns.operator import lns_igls_repair
@@ -61,7 +61,6 @@ def lns_repair(
     # Check if any modifications were made
     if repaired_individual is individual:
         return 0  # No changes
-    else:
-        # Copy the repaired genes back to the original individual
-        individual[:] = repaired_individual
-        return 1  # Repair was applied
+    # Copy the repaired genes back to the original individual
+    individual[:] = repaired_individual
+    return 1  # Repair was applied

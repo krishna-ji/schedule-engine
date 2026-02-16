@@ -99,7 +99,7 @@ def get_worker_context() -> dict[str, Any]:
     Raises:
         RuntimeError: If context is not initialized (not in a worker process)
     """
-    global _WORKER_CONTEXT
+    global _WORKER_CONTEXT  # noqa: PLW0602
     if _WORKER_CONTEXT is None:
         # Fallback for sequential execution or if init failed
         # But strictly speaking, this should only be called in workers

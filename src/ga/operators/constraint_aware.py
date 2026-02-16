@@ -18,10 +18,7 @@ import random
 from typing import TYPE_CHECKING
 
 from src.domain.gene import SessionGene
-from src.ga.core.population import (
-    build_group_family_map,
-    get_family_map_from_json,
-)
+from src.ga.core.population import build_group_family_map, get_family_map_from_json
 
 if TYPE_CHECKING:
     from src.domain.types import Individual, SchedulingContext
@@ -29,7 +26,7 @@ if TYPE_CHECKING:
 
 def _get_or_build_family_map(context: SchedulingContext) -> dict[str, set[str]]:
     """Get cached family map or build one using JSON-based hierarchy."""
-    if hasattr(context, "_group_family_map") and context._group_family_map:  # type: ignore
+    if hasattr(context, "_group_family_map") and context._group_family_map:
         return context._group_family_map  # type: ignore
 
     # Use JSON-based hierarchy (correct behavior)
@@ -158,7 +155,7 @@ def mutate_gene_constraint_aware(
 
     # Get course info
     course_key = (gene.course_id, gene.course_type)
-    course = context.courses.get(course_key)
+    context.courses.get(course_key)
     # INSTRUCTOR: Mutate with qualification check
     qualified_instructors = [
         inst_id
@@ -252,7 +249,7 @@ def crossover_constraint_aware(
         keys2 = set(gene_map2.keys())
         if keys1 != keys2:
             raise ValueError(
-                f"Crossover: Individuals have mismatched (course, group) pairs!"
+                "Crossover: Individuals have mismatched (course, group) pairs!"
             )
 
     keys_to_process = (

@@ -35,16 +35,16 @@ from src.ga.metrics.violation_heatmap import ViolationHeatmap
 from src.ga.metrics.violation_recorder import record_violations_to_heatmap
 
 __all__ = [
-    # Core metrics
-    "calculate_hypervolume",
-    "calculate_generational_distance",
-    "calculate_inverted_generational_distance",
-    "calculate_spacing",
-    "average_pairwise_diversity",
-    "individual_distance",
-    "calculate_convergence_rate",
-    "detect_stagnation",
     # Violation tracking
     "ViolationHeatmap",
+    "average_pairwise_diversity",
+    "calculate_convergence_rate",
+    "calculate_generational_distance",
+    # Core metrics
+    "calculate_hypervolume",
+    "calculate_inverted_generational_distance",
+    "calculate_spacing",
+    "detect_stagnation",
+    "individual_distance",
     "record_violations_to_heatmap",
 ]

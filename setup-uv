@@ -8,7 +8,12 @@ from pathlib import Path
 
 def check_uv_installed():
     try:
-        return subprocess.run(["uv", "--version"], capture_output=True).returncode == 0
+        return (
+            subprocess.run(
+                ["uv", "--version"], capture_output=True, check=False
+            ).returncode
+            == 0
+        )
     except FileNotFoundError:
         return False
 

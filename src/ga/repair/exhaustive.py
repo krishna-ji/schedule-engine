@@ -6,8 +6,8 @@ gene in an individual. Extremely expensive but finds high-quality local
 optima when other repair passes stall.
 """
 
-from src.domain.types import SchedulingContext
 from src.domain.gene import SessionGene
+from src.domain.types import SchedulingContext
 
 
 def exhaustive_repair(

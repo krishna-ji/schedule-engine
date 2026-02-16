@@ -6,6 +6,7 @@ Encodes 15+ features capturing population quality, diversity, and progress.
 """
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -68,7 +69,7 @@ class StateEncoder:
     """
 
     # Hard constraint names (8 total)
-    HARD_CONSTRAINT_NAMES = [
+    HARD_CONSTRAINT_NAMES: ClassVar[list[str]] = [
         "student_group_exclusivity",
         "instructor_exclusivity",
         "instructor_qualifications",
@@ -80,7 +81,7 @@ class StateEncoder:
     ]
 
     # Soft constraint names (4 total)
-    SOFT_CONSTRAINT_NAMES = [
+    SOFT_CONSTRAINT_NAMES: ClassVar[list[str]] = [
         "student_schedule_compactness",
         "instructor_schedule_compactness",
         "student_lunch_break",
@@ -174,20 +175,16 @@ class StateEncoder:
             ind
             for ind in population
             if hasattr(ind, "fitness")
-            and getattr(ind.fitness, "valid", False)  # type: ignore[attr-defined]
-            and len(ind.fitness.values) >= 2  # type: ignore[attr-defined]
+            and getattr(ind.fitness, "valid", False)
+            and len(ind.fitness.values) >= 2
         ]
 
         if not valid_population:
             return self._get_zero_features()
 
         # Extract fitness values (both objectives) from valid individuals
-        hard_violations = np.array(
-            [ind.fitness.values[0] for ind in valid_population]  # type: ignore[attr-defined]
-        )
-        soft_violations = np.array(
-            [ind.fitness.values[1] for ind in valid_population]  # type: ignore[attr-defined]
-        )
+        hard_violations = np.array([ind.fitness.values[0] for ind in valid_population])
+        soft_violations = np.array([ind.fitness.values[1] for ind in valid_population])
 
         # Combined fitness (weighted sum for single metric)
         fitness_values = hard_violations * 100 + soft_violations
@@ -466,8 +463,7 @@ class StateEncoder:
 
         if self.enable_constraint_breakdown:
             return np.concatenate([base_features, constraint_array, history_array])
-        else:
-            return np.concatenate([base_features, history_array])
+        return np.concatenate([base_features, history_array])
 
     def _normalize_observation(self, obs: NDArray[np.float64]) -> NDArray[np.float64]:
         """

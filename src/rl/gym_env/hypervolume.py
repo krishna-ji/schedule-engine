@@ -7,7 +7,7 @@ The hypervolume indicator measures the volume of objective space dominated by
 a Pareto front. Higher hypervolume = better multi-objective quality.
 
 Mathematical Definition:
-    HV(P, r) = λ(⋃_{p∈P} [p, r])
+    HV(P, r) = lambda(U_{p in P} [p, r])
 
 Where:
     - P: Pareto front (set of non-dominated points)
@@ -112,10 +112,9 @@ class HypervolumeCalculator:
         # Compute hypervolume based on number of objectives
         if self.n_objectives == 2:
             return self._hypervolume_2d(pareto_points)
-        elif self.n_objectives == 3:
+        if self.n_objectives == 3:
             return self._hypervolume_3d(pareto_points)
-        else:
-            return self._hypervolume_wfg(pareto_points)
+        return self._hypervolume_wfg(pareto_points)
 
     def compute_contribution(
         self,
@@ -283,11 +282,10 @@ class HypervolumeCalculator:
                     width = sorted_points[i + 1][0] - point[0]
                 else:
                     width = point[0] - sorted_points[i + 1][0]
+            elif self.minimize:
+                width = self.reference_point[0] - point[0]
             else:
-                if self.minimize:
-                    width = self.reference_point[0] - point[0]
-                else:
-                    width = point[0] - self.reference_point[0]
+                width = point[0] - self.reference_point[0]
 
             if width > 0:
                 hypervolume += width * hv_slice
@@ -361,5 +359,4 @@ def compute_hypervolume_reward(
         scale = 1000.0
         normalized_reward = np.tanh(delta_hv / scale)
         return float(normalized_reward)
-    else:
-        return float(delta_hv)
+    return float(delta_hv)

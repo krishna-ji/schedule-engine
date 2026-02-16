@@ -67,12 +67,11 @@ def constraint_guided_mutation(
                 rand_idx = random.randint(0, len(individual) - 1)
                 _mutate_session(individual[rand_idx], context, individual=individual)
                 rand_mut += 1
-    else:
-        # No violations found — random mutation for diversity
-        if len(individual) > 0:
-            target_idx = random.randint(0, len(individual) - 1)
-            _mutate_session(individual[target_idx], context, individual=individual)
-            rand_mut = 1
+    # No violations found — random mutation for diversity
+    elif len(individual) > 0:
+        target_idx = random.randint(0, len(individual) - 1)
+        _mutate_session(individual[target_idx], context, individual=individual)
+        rand_mut = 1
 
     return individual, {"targeted_mutations": targeted, "random_mutations": rand_mut}
 

@@ -23,26 +23,26 @@ Usage:
 
 from __future__ import annotations
 
-import sys
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich import box
-from rich.panel import Panel
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from src.domain.course import Course
+    from src.domain.group import Group
+    from src.domain.instructor import Instructor
+    from src.domain.room import Room
+    from src.io.time_system import QuantumTimeSystem
 
 # Feasibility defaults (previously on FeasibilityConfig)
 _TOLERANCE_MARGIN = 0.02
-from src.domain.course import Course
-from src.domain.group import Group
-from src.domain.instructor import Instructor
-from src.domain.room import Room
-from src.io.time_system import QuantumTimeSystem
 from src.utils.console_service import get_console
 
-__all__ = ["check_feasibility", "FeasibilityReport", "InfeasibleProblemError"]
+__all__ = ["FeasibilityReport", "InfeasibleProblemError", "check_feasibility"]
 from src.utils.system_info import get_cpu_count
 
 console = get_console()
@@ -55,7 +55,7 @@ class InfeasibleProblemError(RuntimeError):
         report: The full FeasibilityReport with all check results and details.
     """
 
-    def __init__(self, report: "FeasibilityReport") -> None:
+    def __init__(self, report: FeasibilityReport) -> None:
         critical = report.get_critical_failures()
         names = [r.check_name for r in critical]
         msg = (
@@ -394,7 +394,7 @@ def _check_instructor_qualification_bottleneck(
     recommendations = []
     if not passed:
         # Show top 5 most problematic courses
-        bottlenecks.sort(key=lambda x: x.get("shortage", 0), reverse=True)  # type: ignore[arg-type,return-value]
+        bottlenecks.sort(key=lambda x: x.get("shortage", 0), reverse=True)
         recommendations.append("Most critical bottlenecks:")
         for b in bottlenecks[:5]:
             shortage = b.get("shortage", 0)
@@ -753,16 +753,13 @@ def _check_specific_lab_features(
             type_mismatch_features.add(feat)
 
     # Combine: truly missing + type-mismatched = effectively missing
-    effectively_missing = missing_features | type_mismatch_features
+    _ = missing_features | type_mismatch_features  # union kept for documentation
 
     # Build details for completely missing features (critical)
     missing_details: list[dict[str, Any]] = []
     for feat in sorted(missing_features):
         course_keys = feature_demand[feat]
-        course_names = []
-        for ck in course_keys[:5]:
-            if ck in courses:
-                course_names.append(f"{ck[0]} ({ck[1]})")
+        course_names = [f"{ck[0]} ({ck[1]})" for ck in course_keys[:5] if ck in courses]
         missing_details.append(
             {
                 "feature": feat,
@@ -945,12 +942,12 @@ def _check_group_pigeonhole(
     recommendations = []
     if not passed:
         recommendations.append("Overloaded groups:")
-        for g in overloaded_groups:
-            recommendations.append(
-                f"  • {g['group_name']} ({g['group_id']}): "
-                f"needs {g['demand']} quanta but only {g['available']} available "
-                f"({g['utilization']:.0f}% utilization, {g['num_courses']} courses)"
-            )
+        recommendations.extend(
+            f"  • {g['group_name']} ({g['group_id']}): "
+            f"needs {g['demand']} quanta but only {g['available']} available "
+            f"({g['utilization']:.0f}% utilization, {g['num_courses']} courses)"
+            for g in overloaded_groups
+        )
 
         recommendations.extend(
             [
@@ -1065,8 +1062,9 @@ def generate_feasibility_report_file(
         output_path: Path to save the report
     """
     from datetime import datetime
+    from pathlib import Path
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    with Path(output_path).open("w", encoding="utf-8") as f:
         f.write("=" * 80 + "\n")
         f.write("FEASIBILITY ANALYSIS REPORT\n")
         f.write("=" * 80 + "\n")
@@ -1098,7 +1096,7 @@ def generate_feasibility_report_file(
                 f.write("Details:\n")
 
                 # Format details based on check type
-                if "bottlenecks" in result.details and result.details["bottlenecks"]:
+                if result.details.get("bottlenecks"):
                     f.write(
                         f"  Bottlenecks Found: {len(result.details['bottlenecks'])}\n\n"
                     )

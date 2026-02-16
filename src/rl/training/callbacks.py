@@ -84,7 +84,7 @@ class PeriodicEvaluationCallback(BaseCallback):
                 while not done:
                     action, _ = self.model.predict(
                         obs, deterministic=self.deterministic
-                    )  # type: ignore[arg-type]
+                    )
                     step_result = self.eval_env.step(action)
 
                     # Handle both old gym and new gymnasium APIs
@@ -92,7 +92,7 @@ class PeriodicEvaluationCallback(BaseCallback):
                         len(step_result) == 5
                     ):  # gymnasium: obs, reward, terminated, truncated, info
                         obs_new, reward, terminated, truncated, _ = step_result
-                        obs = obs_new  # type: ignore[assignment]
+                        obs = obs_new
                         done = terminated or truncated
                     else:  # old gym: obs, reward, done, info
                         obs_new, reward, done_result, _ = step_result
@@ -125,8 +125,7 @@ class PeriodicEvaluationCallback(BaseCallback):
             )
 
             # Update best
-            if mean_reward > self.best_mean_reward:
-                self.best_mean_reward = mean_reward
+            self.best_mean_reward = max(mean_reward, self.best_mean_reward)
 
             # Store history
             eval_result: dict[str, float | str] = {
@@ -150,7 +149,7 @@ class PeriodicEvaluationCallback(BaseCallback):
 
             # Save to file
             if self.log_path:
-                with open(self.log_path, "w") as f:
+                with self.log_path.open("w") as f:
                     json.dump(self.eval_history, f, indent=2)
 
         return True
@@ -341,13 +340,13 @@ class ManifestCallback(BaseCallback):
     def _load_manifest(self) -> list[Any]:
         """Load existing manifest or create empty."""
         if self.manifest_path.exists():
-            with open(self.manifest_path) as f:
+            with self.manifest_path.open() as f:
                 return json.load(f)  # type: ignore[no-any-return]
         return []
 
     def _save_manifest(self) -> None:
         """Save manifest to file."""
-        with open(self.manifest_path, "w") as f:
+        with self.manifest_path.open("w") as f:
             json.dump(self.manifest, f, indent=2)
 
     def _on_step(self) -> bool:

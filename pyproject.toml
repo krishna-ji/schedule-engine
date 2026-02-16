@@ -101,7 +101,7 @@ select = [
     "PTH",  # flake8-use-pathlib
     "PERF", # Perflint (performance anti-patterns)
     "PL",   # Pylint subset (errors, warnings, refactor)
-    "TCH",  # flake8-type-checking (move imports behind TYPE_CHECKING)
+    "TC",   # flake8-type-checking (move imports behind TYPE_CHECKING)
     "T20",  # flake8-print (catch stray prints)
     "PIE",  # flake8-pie (misc. lints)
     "RET",  # flake8-return (return statement issues)
@@ -121,6 +121,7 @@ ignore = [
     "PLR0911", # Too many return statements
     "PLR0912", # Too many branches
     "PLR0915", # Too many statements
+    "PLC0415", # Import not at top-level — lazy imports used intentionally
     "T201",    # print() found — allow for CLI/debug scripts
     "RET504",  # Unnecessary assignment before return
     "PLW2901", # Overwriting loop variable
@@ -133,6 +134,35 @@ unfixable = []
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Unused imports in __init__ files
 "test/**/*.py" = ["S101"] # Use of assert in tests
+# Relax rules for script directories
+"runs/*.py" = [
+    "N806",    # non-lowercase-variable-in-function (CONSTANTS are OK in scripts)
+    "F821",    # undefined-name (scripts may have dynamic imports)
+    "F401",    # unused-import (scripts may import for side effects)
+    "PLW0603", # global-statement (scripts may need globals)
+    "T201",    # print statements (scripts need output)
+    "PTH123",  # builtin-open (scripts can use open())
+    "RUF002", "RUF003", "RUF001",  # unicode chars (scripts may have special chars)
+    "B007",    # unused-loop-control-variable (scripts may have simple loops)
+    "PERF401", # manual-list-comprehension (scripts prioritize clarity)
+    "SIM102",  # collapsible-if (scripts prioritize clarity over compactness)
+]
+"configs/*.py" = [
+    "F821",    # undefined-name (config files may have dynamic refs)
+    "F401",    # unused-import
+    "T201",    # print statements
+    "PTH123",  # builtin-open
+    "RUF002", "RUF003", "RUF001",  # unicode chars
+]
+"scripts/*.py" = [
+    "N806", "F821", "F401", "PLW0603", "T201", "PTH123", 
+    "RUF002", "RUF003", "RUF001", "B007", "PERF401"
+]
+# Root level scripts
+"*.py" = [
+    "N806", "F821", "F401", "PLW0603", "T201", "PTH123",
+    "RUF002", "RUF003", "RUF001", "B007", "PERF401"
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
@@ -175,15 +205,64 @@ disallow_incomplete_defs = false
 ignore_missing_imports = true
 
 # --- Scope ---
-files = ["src"]
-explicit_package_bases = false
+files = [
+    "src", 
+    "tests", 
+    "configs", 
+    "runs", 
+    "scripts",
+    "*.py"
+]
+explicit_package_bases = true
 exclude = [
     "output/",
     "logs/",
     "notebooks/",
-    "configs/",
-    "scripts/",
-    "test/"
+]
+
+# Per-module type checking rules
+[[tool.mypy.overrides]]
+module = ["runs.*", "configs.*", "scripts.*"]
+# Relaxed rules for script directories
+ignore_missing_imports = true
+disable_error_code = [
+    "var-annotated", "attr-defined", "arg-type", "call-arg", 
+    "name-defined", "assignment", "no-any-return", "valid-type",
+    "unreachable", "union-attr", "return-value"
+]
+
+[[tool.mypy.overrides]]
+module = ["src.notebooks.*"]
+# Notebooks are often experimental code
+ignore_missing_imports = true
+disable_error_code = ["misc", "no-any-return", "arg-type", "attr-defined"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+# Relaxed rules for tests
+ignore_missing_imports = true
+disable_error_code = [
+    "attr-defined", "arg-type", "call-arg", "var-annotated",
+    "comparison-overlap", "list-item", "misc", "union-attr"
+]
+
+[[tool.mypy.overrides]]
+module = ["instance_config", "verify_schedule_index", "main"]
+# Root level files
+ignore_missing_imports = true
+disable_error_code = [
+    "var-annotated", "attr-defined", "arg-type", "call-arg", 
+    "name-defined", "assignment", "no-any-return", "valid-type",
+    "unreachable", "union-attr", "return-value"
+]
+
+[[tool.mypy.overrides]]
+module = ["*.py"]  # Root level files
+ignore_missing_imports = true
+disable_error_code = [
+    "var-annotated", "attr-defined", "arg-type", "call-arg", 
+    "name-defined", "assignment", "no-any-return", "valid-type",
+    "unreachable", "union-attr", "return-value"
 ]
 
 [[tool.mypy.overrides]]
@@ -229,11 +308,45 @@ disallow_incomplete_defs = true
 # Relaxed checking for complex GA/RL integration with DEAP's dynamic types
 [[tool.mypy.overrides]]
 module = ["src.ga.scheduler"]
-# Keep basic type checking but allow flexibility for DEAP/SB3 integration
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
-# Suppress common dynamic typing issues
-disable_error_code = ["attr-defined", "arg-type", "union-attr", "assignment"]
+disable_error_code = ["attr-defined", "arg-type", "union-attr", "assignment", "unreachable"]
+
+# RL gym env uses a custom Logger wrapper with non-standard API
+[[tool.mypy.overrides]]
+module = ["src.rl.gym_env.schedule_env"]
+disable_error_code = ["attr-defined", "call-arg", "unreachable"]
+
+# RL subsystem: dynamic SB3/gymnasium types
+[[tool.mypy.overrides]]
+module = ["src.rl.gym_env.action_space"]
+disable_error_code = ["attr-defined"]
+
+# Validator uses isinstance narrowing that mypy can't handle well
+[[tool.mypy.overrides]]
+module = ["src.io.validator", "src.io.export.violation_reporter"]
+disable_error_code = ["unreachable", "misc", "comparison-overlap"]
+
+# RL training modules with dynamic SB3 types
+[[tool.mypy.overrides]]
+module = [
+    "src.rl.training.callbacks",
+    "src.rl.training.trainer",
+    "src.rl.deployment.inference",
+    "src.rl.hybrid.hybrid_controller",
+]
+disable_error_code = ["unreachable", "unused-ignore"]
+
+# GA modules with unreachable after exhaustive match
+[[tool.mypy.overrides]]
+module = [
+    "src.ga.operators.fast_nsga2",
+    "src.ga.metrics.violation_recorder",
+    "src.ga.repair.selective_heuristic",
+    "src.ga.repair.break_repair",
+    "src.io.feasibility",
+]
+disable_error_code = ["unreachable"]
 
 # TODO: Complete type annotations for validation package
 # [[tool.mypy.overrides]]

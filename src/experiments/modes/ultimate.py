@@ -42,7 +42,6 @@ from __future__ import annotations
 import collections
 import copy
 import logging
-import math
 import random
 import time
 from typing import Any
@@ -370,7 +369,9 @@ class UltimateExperiment(BaseExperiment):
                     )
                     if not avail_ok:
                         for cand in self.data.context.instructors.values():
-                            q_courses = getattr(cand, "qualified_courses", set())
+                            q_courses: set[Any] = getattr(
+                                cand, "qualified_courses", set()
+                            )
                             if (
                                 course_key not in q_courses
                                 and g.course_id not in q_courses

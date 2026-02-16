@@ -359,12 +359,11 @@ def _interpret_effect_size(cohens_d: float) -> str:
     """Interpret Cohen's d effect size."""
     if cohens_d < 0.2:
         return "negligible"
-    elif cohens_d < 0.5:
+    if cohens_d < 0.5:
         return "small"
-    elif cohens_d < 0.8:
+    if cohens_d < 0.8:
         return "medium"
-    else:
-        return "large"
+    return "large"
 
 
 def calculate_generation_to_target(
