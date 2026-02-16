@@ -388,15 +388,15 @@ Applied in priority order by `repair_individual_unified()`:
 | Experiment | Configuration | Hard | Verdict |
 |-----------|---------------|:----:|---------|
 | v1 (baseline ILS) | 3 starts, 60 iters, greedy | **110** | **Baseline** |
-| v2 (+ SA acceptance) | + Simulated Annealing (T: 8→0.3) | 113 | ❌ **Worse** — SA drift counterproductive |
-| v3 (+ mixed perturbation) | + random/scatter/large perturb, no SA | 118 | ❌ **Worse** — destructive perturbations |
-| v4 (+ group reschedule per iter) | Group reschedule in every ILS iteration | 112 | ❌ **Minimal gain, slowed convergence** |
+| v2 (+ SA acceptance) | + Simulated Annealing (T: 8→0.3) | 113 |  **Worse** — SA drift counterproductive |
+| v3 (+ mixed perturbation) | + random/scatter/large perturb, no SA | 118 |  **Worse** — destructive perturbations |
+| v4 (+ group reschedule per iter) | Group reschedule in every ILS iteration | 112 |  **Minimal gain, slowed convergence** |
 | v4b (reschedule on stagnation only) | Group reschedule only every 10 stale iters | 112 | ≈ Neutral |
-| v5 (longer + more starts) | 5 starts, 200 iters, stagnation=50 | **85** | ✅ 5 starts found better basin |
-| v7 (tuned stagnation) | 5 starts, 300 iters, stagnation=30 | **87** | ✅ Faster restarts = more basins explored |
-| v8 (+ instructor reschedule) | + alternating group/instructor reschedule | **84** | ✅ Instructor reschedule helps |
-| v9 (+ improved restart) | + warm restart (10% perturb, 2 repair rounds) | **75** | ✅ **Best result** |
-| v10 (reschedule in Phase 1) | Reschedule passes in init | 164 (init) | ❌ **Counterproductive in init** |
+| v5 (longer + more starts) | 5 starts, 200 iters, stagnation=50 | **85** |  5 starts found better basin |
+| v7 (tuned stagnation) | 5 starts, 300 iters, stagnation=30 | **87** |  Faster restarts = more basins explored |
+| v8 (+ instructor reschedule) | + alternating group/instructor reschedule | **84** |  Instructor reschedule helps |
+| v9 (+ improved restart) | + warm restart (10% perturb, 2 repair rounds) | **75** |  **Best result** |
+| v10 (reschedule in Phase 1) | Reschedule passes in init | 164 (init) |  **Counterproductive in init** |
 
 ### 8.2 Key Ablation Insights
 

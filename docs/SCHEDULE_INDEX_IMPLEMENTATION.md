@@ -4,7 +4,7 @@
 
 Implemented **ScheduleIndex**, an external caching layer for schedule conflict detection that eliminates redundant map building in the GA constraint checking and repair operations.
 
-**Status**: ✅ Complete (all 5 TODOs finished)
+**Status**:  Complete (all 5 TODOs finished)
 
 **Expected Performance Gain**: 
 - 25× reduction in schedule map building operations
@@ -101,7 +101,7 @@ def _detect_full(individual, context):
 
 **File**: [`src/schedule_engine/ga/repair/selective.py`](../src/schedule_engine/ga/repair/selective.py) (uses detector.py)
 
-**Status**: ✅ Automatically optimized (uses detector.py which now uses ScheduleIndex)
+**Status**:  Automatically optimized (uses detector.py which now uses ScheduleIndex)
 
 **Repair Flow**:
 1. `repair_individual_unified(individual, context, selective=True)`  
@@ -150,14 +150,14 @@ def _detect_full(individual, context):
 **File**: [`tests/test_schedule_index.py`](../tests/test_schedule_index.py) (654 lines, 40+ tests)
 
 **Test Coverage**:
-- ✅ Basic operations (create, invalidate, rebuild)
-- ✅ Group conflict detection (HC1)
-- ✅ Room conflict detection (HC8)
-- ✅ Instructor conflict detection (HC2)
-- ✅ Caching behavior (lazy build, cache hit/miss)
-- ✅ Invalidation (explicit invalidation, rebuild after modifications)
-- ✅ Utility methods (count_violations, has_conflicts, get_violated_indices)
-- ✅ Complex scenarios (multi-gene conflicts, overlapping resources)
+-  Basic operations (create, invalidate, rebuild)
+-  Group conflict detection (HC1)
+-  Room conflict detection (HC8)
+-  Instructor conflict detection (HC2)
+-  Caching behavior (lazy build, cache hit/miss)
+-  Invalidation (explicit invalidation, rebuild after modifications)
+-  Utility methods (count_violations, has_conflicts, get_violated_indices)
+-  Complex scenarios (multi-gene conflicts, overlapping resources)
 
 **Test Structure**:
 ```python
@@ -287,7 +287,7 @@ new_conflicts = index.find_group_conflicts()  # Rebuilds automatically
 
 ## Design Decisions
 
-### ✅ Chosen: External Caching (ScheduleIndex)
+###  Chosen: External Caching (ScheduleIndex)
 
 **Rationale**:
 - Clean separation: SessionGene stays pure (no caching logic contamination)
@@ -314,7 +314,7 @@ ScheduleIndex (ephemeral cache) ← Created per detection/repair operation
 
 ---
 
-### ❌ Rejected: Gene-Level Tags
+###  Rejected: Gene-Level Tags
 
 **Why rejected** (from previous analysis):
 1. **Cascading invalidation problem**: Modifying gene A requires invalidating genes B, C, D that conflict with it
@@ -325,12 +325,12 @@ ScheduleIndex (ephemeral cache) ← Created per detection/repair operation
 **Gene tagging would require**:
 ```python
 class SessionGene:
-    conflicts_with: Set[int] = field(default_factory=set)  # ❌ Violates immutability
-    _valid: bool = True                                      # ❌ Hidden state
+    conflicts_with: Set[int] = field(default_factory=set)  #  Violates immutability
+    _valid: bool = True                                      #  Hidden state
     
     def mark_dirty(self):
         self._valid = False
-        # ❌ Need to mark ALL conflicting genes dirty too (cascading invalidation)
+        #  Need to mark ALL conflicting genes dirty too (cascading invalidation)
         for conflict_idx in self.conflicts_with:
             individual[conflict_idx].mark_dirty()
 ```
@@ -405,12 +405,12 @@ Reduction: 77.2% fewer builds!
 
 | File | Lines | Status | Description |
 |------|-------|--------|-------------|
-| `src/schedule_engine/ga/core/schedule_index.py` | 429 | ✅ New | Core ScheduleIndex implementation |
-| `src/schedule_engine/ga/repair/detector.py` | ~20 | ✅ Modified | Integrated ScheduleIndex into `_detect_full()` |
-| `src/schedule_engine/ga/repair/basic.py` | ~5 | ✅ Modified | Added ScheduleIndex import |
-| `tests/test_schedule_index.py` | 654 | ✅ New | Comprehensive test suite (40+ tests) |
-| `benchmarks/benchmark_schedule_index.py` | 450 | ✅ New | Performance benchmark suite |
-| `benchmarks/__init__.py` | 7 | ✅ New | Package initialization |
+| `src/schedule_engine/ga/core/schedule_index.py` | 429 |  New | Core ScheduleIndex implementation |
+| `src/schedule_engine/ga/repair/detector.py` | ~20 |  Modified | Integrated ScheduleIndex into `_detect_full()` |
+| `src/schedule_engine/ga/repair/basic.py` | ~5 |  Modified | Added ScheduleIndex import |
+| `tests/test_schedule_index.py` | 654 |  New | Comprehensive test suite (40+ tests) |
+| `benchmarks/benchmark_schedule_index.py` | 450 |  New | Performance benchmark suite |
+| `benchmarks/__init__.py` | 7 |  New | Package initialization |
 
 **Total**: 6 files, ~1,565 lines added/modified
 
@@ -552,14 +552,14 @@ def my_custom_constraint(individual, context):
 
 ## Conclusion
 
-✅ **ScheduleIndex implementation complete**
+ **ScheduleIndex implementation complete**
 
 **Deliverables**:
-1. ✅ Core ScheduleIndex class (429 lines, fully documented)
-2. ✅ Integration into detector.py (3× speedup verified)
-3. ✅ Integration into repair operations (selective mode optimized)
-4. ✅ Comprehensive test suite (40+ tests, 654 lines)
-5. ✅ Performance benchmark suite (450+ lines)
+1.  Core ScheduleIndex class (429 lines, fully documented)
+2.  Integration into detector.py (3× speedup verified)
+3.  Integration into repair operations (selective mode optimized)
+4.  Comprehensive test suite (40+ tests, 654 lines)
+5.  Performance benchmark suite (450+ lines)
 
 **Performance Gains**:
 - **Map builds**: 77% reduction (570 → 130 per generation)

@@ -618,14 +618,14 @@ These must monotonically improve (or maintain) fitness.
 
 | # | Test Case | Expected | Type |
 |---|-----------|-------|------|
-| RCA.1 | repair_group_overlaps ↔ HC1 | HC1.evaluate() should be 0 after repair | Intent |
-| RCA.2 | repair_instructor_conflicts ↔ HC2 | HC2.evaluate() should be 0 or decreased | Intent |
-| RCA.3 | repair_room_overlap ↔ HC3 | HC3.evaluate() should be 0 after repair | Intent |
-| RCA.4 | repair_instructor_qualifications ↔ HC4 | HC4.evaluate() should be 0 after repair | Intent |
-| RCA.5 | repair_room_type_mismatches ↔ HC5 | HC5.evaluate() should be 0 after repair | Intent |
-| RCA.6 | repair_instructor_availability ↔ HC6 | HC6.evaluate() should be 0 after repair | Intent |
-| RCA.7 | repair_room_availability ↔ HC7 | HC7.evaluate() should be 0 after repair | Intent |
-| RCA.8 | Full repair pipeline ↔ all HC | All hard constraints should be 0 after full repair | Intent |
+| RCA.1 | repair_group_overlaps  HC1 | HC1.evaluate() should be 0 after repair | Intent |
+| RCA.2 | repair_instructor_conflicts  HC2 | HC2.evaluate() should be 0 or decreased | Intent |
+| RCA.3 | repair_room_overlap  HC3 | HC3.evaluate() should be 0 after repair | Intent |
+| RCA.4 | repair_instructor_qualifications  HC4 | HC4.evaluate() should be 0 after repair | Intent |
+| RCA.5 | repair_room_type_mismatches  HC5 | HC5.evaluate() should be 0 after repair | Intent |
+| RCA.6 | repair_instructor_availability  HC6 | HC6.evaluate() should be 0 after repair | Intent |
+| RCA.7 | repair_room_availability  HC7 | HC7.evaluate() should be 0 after repair | Intent |
+| RCA.8 | Full repair pipeline  all HC | All hard constraints should be 0 after full repair | Intent |
 
 ---
 
@@ -670,9 +670,9 @@ These must monotonically improve (or maintain) fitness.
 | # | Bug | Test | Status |
 |---|-----|------|--------|
 | B.1 | `build_constraints()` weight=0 | `build_constraints(student_group_exclusivity_weight=0.0)` → weight should be 0, actually gets hard_weight | Document & test |
-| B.2 | Midday break ↔ lunch mismatch | `get_midday_break_quanta()` returns 1q, `StudentLunchBreak` needs 2 → always penalizes | Document & test |
+| B.2 | Midday break  lunch mismatch | `get_midday_break_quanta()` returns 1q, `StudentLunchBreak` needs 2 → always penalizes | Document & test |
 | B.3 | ViolationDetector self-overlap | `gene.num_quanta != gene.num_quanta` is always False | Document & test |
-| B.4 | ViolationDetector no hierarchy | Doesn't detect parent↔subgroup overlaps (BME1A↔BME1AB) | Document & test |
+| B.4 | ViolationDetector no hierarchy | Doesn't detect parentsubgroup overlaps (BME1ABME1AB) | Document & test |
 | B.5 | RepairPipeline.default() imports | Imports TimeSlotOperator etc. which don't exist | Document & test |
 | B.6 | Selective repair no-conflict-check | `repair_instructor_qualifications` selective doesn't verify new instructor isn't conflicting | Document & test |
 | B.7 | Constraint-guided room mutation | `_mutate_session()` 30% room change has no type/capacity check | Document & test |

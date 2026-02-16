@@ -7,7 +7,7 @@
 
 ---
 
-## ✅ Phase 1 Complete (February 9, 2026)
+##  Phase 1 Complete (February 9, 2026)
 
 **Results:**
 - Before: 163 files, 13 packages
@@ -25,7 +25,7 @@
 
 ---
 
-## ✅ Phase 2 Complete (February 9, 2026)
+##  Phase 2 Complete (February 9, 2026)
 
 **Decision:** Keep current ga/ subpackages structure (metrics/, heuristics/, operators/)
 
@@ -49,13 +49,13 @@ ga/
 
 ---
 
-## ✅ Phase 3 Complete (February 9, 2026)
+##  Phase 3 Complete (February 9, 2026)
 
 **Decision:** Keep io/export/ structure (already clean with facade `__init__.py`)
 
 ---
 
-## ✅ Phase 4 Complete (February 9, 2026)
+##  Phase 4 Complete (February 9, 2026)
 
 **Results:**
 - 3 files merged into `ga/population.py` (1,365 → ~1,850 lines)
@@ -70,7 +70,7 @@ ga/
 
 ---
 
-## ✅ Phase 5 Complete (February 10, 2026)
+##  Phase 5 Complete (February 10, 2026)
 
 **Results:**
 - `ga/evaluator/` subpackage (3 files, 134 lines) flattened to single `ga/evaluator.py`
@@ -94,7 +94,7 @@ ga/
 
 ---
 
-## 📊 Final State Summary
+##  Final State Summary
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
@@ -130,7 +130,7 @@ ga/
 
 ---
 
-## 🎯 Target Structure (Post-Consolidation)
+##  Target Structure (Post-Consolidation)
 
 ```
 schedule_engine/
@@ -160,7 +160,7 @@ schedule_engine/
 │   ├── hard.py              # All hard constraints
 │   ├── soft.py              # All soft constraints  
 │   ├── definitions.py       # Constraint registry
-│   └── evaluator.py         # ⬅️ MOVED from evaluation/
+│   └── evaluator.py         # ️ MOVED from evaluation/
 │
 ├── ga/                       # MAJOR CONSOLIDATION: 59 → 20 files
 │   ├── __init__.py
@@ -168,23 +168,23 @@ schedule_engine/
 │   ├── individual.py        # Individual representation
 │   │
 │   ├── population.py        # Population creation (merge hybrid_population)
-│   ├── population_factory.py # ⬅️ MOVED from population/
+│   ├── population_factory.py # ️ MOVED from population/
 │   │
 │   ├── crossover.py         # All crossover operators
 │   ├── mutation.py          # All mutation operators
 │   ├── selection.py         # Selection (fast_nsga2, constraint_aware)
 │   │
-│   ├── repair.py            # ⬅️ CONSOLIDATED from ga/operators/repair*.py (5 files → 1)
+│   ├── repair.py            # ️ CONSOLIDATED from ga/operators/repair*.py (5 files → 1)
 │   ├── repair_engine.py     # Core repair engine (keep)
-│   ├── repair_pipeline.py   # ⬅️ MOVED from operators/
+│   ├── repair_pipeline.py   # ️ MOVED from operators/
 │   │
-│   ├── local_search.py      # ⬅️ MERGE: local_search + intensive_local_search
+│   ├── local_search.py      # ️ MERGE: local_search + intensive_local_search
 │   ├── constraint_mutation.py # Constraint-aware mutation
 │   │
-│   ├── heuristics.py        # ⬅️ CONSOLIDATED from ga/heuristics/*.py (11 files → 1)
-│   ├── heuristic_repair.py  # ⬅️ CONSOLIDATED from ga/heuristics/repair/ (13 files → 1)
+│   ├── heuristics.py        # ️ CONSOLIDATED from ga/heuristics/*.py (11 files → 1)
+│   ├── heuristic_repair.py  # ️ CONSOLIDATED from ga/heuristics/repair/ (13 files → 1)
 │   │
-│   ├── metrics.py           # ⬅️ CONSOLIDATED from ga/metrics/ (7 files → 1)
+│   ├── metrics.py           # ️ CONSOLIDATED from ga/metrics/ (7 files → 1)
 │   ├── run_helpers.py       # Run helpers
 │   └── quanta_converter.py  # Time quantum conversion
 │
@@ -196,8 +196,8 @@ schedule_engine/
 │   ├── loader.py            # Data loading
 │   ├── exporter.py          # Schedule export
 │   ├── time_system.py       # QuantumTimeSystem
-│   ├── plots_ga.py          # ⬅️ CONSOLIDATED: all GA plots (12 files → 1)
-│   ├── plots_rl.py          # ⬅️ CONSOLIDATED: all RL plots
+│   ├── plots_ga.py          # ️ CONSOLIDATED: all GA plots (12 files → 1)
+│   ├── plots_rl.py          # ️ CONSOLIDATED: all RL plots
 │   └── thesis_style.py      # Thesis formatting
 │
 ├── experiments/              # 14 files - KEEP AS IS
@@ -205,7 +205,7 @@ schedule_engine/
 │
 └── utils/                    # CONSOLIDATE: 6 → 3 files
     ├── __init__.py
-    ├── logging.py           # ⬅️ MERGE: logging_config + event_tracker
+    ├── logging.py           # ️ MERGE: logging_config + event_tracker
     └── system.py            # System info
 ```
 
@@ -213,7 +213,7 @@ schedule_engine/
 
 ---
 
-## 📋 Phased Implementation Plan
+##  Phased Implementation Plan
 
 ### Phase 1: Delete Pure Facade Packages (30 min)
 **Risk**: Low | **Impact**: -4 packages, -20 files
@@ -371,7 +371,7 @@ Current structure under `io/export/`:
 
 ---
 
-## ⚡ Quick Win: Phase 1 Script
+##  Quick Win: Phase 1 Script
 
 ```bash
 #!/bin/bash
@@ -394,7 +394,7 @@ pytest tests/ -v --tb=short
 
 ---
 
-## 🎯 Priority Order
+##  Priority Order
 
 1. **Phase 1** (TODAY): Delete facades → -4 packages, clean structure
 2. **Phase 2.4** (NEXT): Consolidate metrics/ → easiest of the merges
@@ -404,7 +404,7 @@ pytest tests/ -v --tb=short
 
 ---
 
-## ✅ Success Criteria
+##  Success Criteria
 
 After all phases:
 - [x] File count reduced: 163 → 149 (-14 files)
@@ -416,7 +416,7 @@ After all phases:
 
 ---
 
-## 🚫 What NOT to Touch
+##  What NOT to Touch
 
 1. **rl/** - Separate paradigm, works well
 2. **domain/** - Core models, already clean
@@ -426,7 +426,7 @@ After all phases:
 
 ---
 
-## 📝 Import Path Changes Cheatsheet
+##  Import Path Changes Cheatsheet
 
 After consolidation, imports change from:
 
@@ -448,7 +448,7 @@ from schedule_engine.domain import Course, Room
 
 ---
 
-## 🔧 Phase 1 Implementation (Ready to Execute)
+##  Phase 1 Implementation (Ready to Execute)
 
 ### Step-by-Step Commands
 
@@ -525,7 +525,7 @@ from schedule_engine.rl.training.visualizer import load_tensorboard_data, ...
 
 ---
 
-## 📊 Expected Results After Phase 1
+##  Expected Results After Phase 1
 
 | Metric | Before | After |
 |--------|--------|-------|
@@ -534,8 +534,8 @@ from schedule_engine.rl.training.visualizer import load_tensorboard_data, ...
 | Max import depth | 5 | 4 |
 
 Deleted packages:
-- ✅ `operators/`
-- ✅ `population/`
-- ✅ `core/`
-- ✅ `output/`
-- ✅ `evaluation/`
+-  `operators/`
+-  `population/`
+-  `core/`
+-  `output/`
+-  `evaluation/`

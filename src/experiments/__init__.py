@@ -26,6 +26,7 @@ Usage:
 from src.experiments.base import BaseExperiment
 from src.experiments.modes.adaptive import AdaptiveExperiment
 from src.experiments.modes.baseline import BaselineExperiment
+from src.experiments.modes.cp_hybrid import CPHybridExperiment
 from src.experiments.modes.memetic import MemeticExperiment
 from src.experiments.modes.rl_guided import RLGuidedExperiment
 from src.experiments.modes.roundrobin import RoundRobinExperiment
@@ -39,6 +40,7 @@ __all__ = [
     "BaseExperiment",
     "BaseExporter",
     "BaselineExperiment",
+    "CPHybridExperiment",
     "MemeticExperiment",
     "RLExporter",
     "RLGuidedExperiment",

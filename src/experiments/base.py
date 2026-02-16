@@ -208,11 +208,15 @@ class BaseExperiment(ABC):
         # Clean console formatter: just level icon + message (no timestamps)
         console_formatter = logging.Formatter("%(message)s")
 
-        file_handler = logging.FileHandler(log_file)
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(file_formatter)
 
-        console_handler = logging.StreamHandler(sys.stdout)
+        # Use a UTF-8 stream to avoid UnicodeEncodeError on Windows (cp1252)
+        utf8_stdout = open(  # noqa: SIM115
+            sys.stdout.fileno(), mode="w", encoding="utf-8", closefd=False
+        )
+        console_handler = logging.StreamHandler(utf8_stdout)
         console_handler.setLevel(logging.INFO if self.verbose else logging.WARNING)
         console_handler.setFormatter(console_formatter)
 

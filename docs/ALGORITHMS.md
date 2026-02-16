@@ -150,12 +150,12 @@ function GREEDY_LOCAL_SEARCH(gene, individual, max_iterations):
 
 ### When to Use
 
-✅ **Good for:**
+ **Good for:**
 - Stagnation repair (quick fix attempts)
 - Large populations (must be fast)
 - Early generations (exploration phase)
 
-❌ **Bad for:**
+ **Bad for:**
 - Final optimization (may miss better neighbors)
 - Small populations (need thorough search)
 
@@ -241,12 +241,12 @@ function EXHAUSTIVE_LOCAL_SEARCH(gene, individual, max_neighborhood_size):
 
 ### When to Use
 
-✅ **Good for:**
+ **Good for:**
 - Fixed generations (3, 25) for intensive optimization
 - Elite individuals (worth the extra cost)
 - Final polishing phase
 
-❌ **Bad for:**
+ **Bad for:**
 - Every generation (too slow)
 - Early exploration (greedy is enough)
 
@@ -1175,14 +1175,14 @@ class AlgorithmMetrics:
 
 | Algorithm | Type | Speed | Escape Power | When to Use |
 |-----------|------|-------|--------------|-------------|
-| **Greedy LS** | Local | ⚡⚡⚡ | Low | Stagnation trigger, large pop |
-| **Exhaustive LS** | Local | ⚡ | Low | Elite individuals, final polish |
-| **Repairs** | Targeted | ⚡⚡⚡⚡ | None | After crossover/mutation |
-| **LNS-IGLS** | Destroy+Repair | ⚡⚡ | High | Severe conflicts |
-| **VND** | Multi-neighborhood | ⚡⚡ | Medium | Systematic improvement |
-| **ALNS** | Adaptive | ⚡⚡ | High | Unknown best strategy |
-| **ILS** | Perturb+Search | ⚡⚡ | Medium | Diversification needed |
-| **GLS** | Penalty-guided | ⚡⚡ | Medium | Feature-rich solutions |
+| **Greedy LS** | Local |  | Low | Stagnation trigger, large pop |
+| **Exhaustive LS** | Local |  | Low | Elite individuals, final polish |
+| **Repairs** | Targeted |  | None | After crossover/mutation |
+| **LNS-IGLS** | Destroy+Repair |  | High | Severe conflicts |
+| **VND** | Multi-neighborhood |  | Medium | Systematic improvement |
+| **ALNS** | Adaptive |  | High | Unknown best strategy |
+| **ILS** | Perturb+Search |  | Medium | Diversification needed |
+| **GLS** | Penalty-guided |  | Medium | Feature-rich solutions |
 
 ---
 
@@ -1268,12 +1268,12 @@ def _create_pure_random_gene(...):
 **Constraint Awareness:**
 | Constraint | Respected? | How |
 |------------|------------|-----|
-| HC3 (instructor qualification) | ✅ Yes | Only picks from `qualified_instructors` |
-| HC4 (room suitability) | ❌ No | Random room |
-| HC1 (group exclusivity) | ❌ No | Random time |
-| HC2 (instructor exclusivity) | ❌ No | Random time |
-| HC5 (instructor availability) | ❌ No | Random time |
-| HC8 (room exclusivity) | ❌ No | Random time |
+| HC3 (instructor qualification) |  Yes | Only picks from `qualified_instructors` |
+| HC4 (room suitability) |  No | Random room |
+| HC1 (group exclusivity) |  No | Random time |
+| HC2 (instructor exclusivity) |  No | Random time |
+| HC5 (instructor availability) |  No | Random time |
+| HC8 (room exclusivity) |  No | Random time |
 
 **Expected violations:** 600-800 hard constraint violations per individual
 
@@ -1302,12 +1302,12 @@ def create_session_gene_with_conflict_avoidance(...):
 **Constraint Awareness:**
 | Constraint | Respected? | How |
 |------------|------------|-----|
-| HC3 (instructor qualification) | ✅ Yes | `qualified_instructors` filter |
-| HC4 (room suitability) | ✅ Yes | `find_suitable_rooms()` |
-| HC1 (group exclusivity) | ✅ Yes | Tracks `group_schedule` |
-| HC2 (instructor exclusivity) | ✅ Yes | Tracks `instructor_schedule` |
-| HC5 (instructor availability) | ✅ Yes | `find_qualified_instructors_with_availability()` |
-| HC8 (room exclusivity) | ❌ Partial | Rooms not tracked across genes |
+| HC3 (instructor qualification) |  Yes | `qualified_instructors` filter |
+| HC4 (room suitability) |  Yes | `find_suitable_rooms()` |
+| HC1 (group exclusivity) |  Yes | Tracks `group_schedule` |
+| HC2 (instructor exclusivity) |  Yes | Tracks `instructor_schedule` |
+| HC5 (instructor availability) |  Yes | `find_qualified_instructors_with_availability()` |
+| HC8 (room exclusivity) |  Partial | Rooms not tracked across genes |
 
 **Expected violations:** 100-200 hard constraint violations per individual
 
@@ -1321,7 +1321,7 @@ Combines greedy construction (largest-degree-first) with random.
 
 ### Is the Initialization Optimal? Analysis
 
-#### What's Already Optimal ✅
+#### What's Already Optimal 
 
 1. **Immutable/Mutable Separation**
    - Course structure is correctly preserved
@@ -1352,7 +1352,7 @@ Combines greedy construction (largest-degree-first) with random.
 
 ---
 
-#### What's NOT Optimal (Room for Improvement) ⚠️
+#### What's NOT Optimal (Room for Improvement) ️
 
 ##### Issue 1: Room Exclusivity Not Tracked
 
@@ -1513,7 +1513,7 @@ def find_suitable_rooms(course, session_type, context, group_ids=None) -> list[R
 
 ---
 
-### Can You Squeeze More From Gene Structure? 🔧
+### Can You Squeeze More From Gene Structure? 
 
 #### Current Memory Usage
 
@@ -1532,7 +1532,7 @@ SessionGene = {
 
 #### Optimization Options
 
-##### Option A: Use `__slots__` (Already Done ✅)
+##### Option A: Use `__slots__` (Already Done )
 The `@dataclass(slots=True)` on Course shows you know about this.
 SessionGene could benefit from explicit `__slots__`:
 
@@ -1799,10 +1799,10 @@ class SessionGene:
 
 | Tag Type | Benefit | Implementation Cost | Memory Cost | Maintenance Risk | Verdict |
 |----------|---------|---------------------|-------------|------------------|---------|
-| **Violation Flags** | High (O(1) detection) | Medium | +6 bytes | HIGH (stale tags) | ⚠️ Maybe |
-| **History Tags** | Medium (diagnostics) | Low | +20 bytes | Medium | ❌ Skip |
-| **Priority Tags** | Medium (ordering) | High | +12 bytes | Medium | ❌ Skip |
-| **Cached Props** | Low (minor speedup) | Medium | Variable | Medium | ❌ Skip |
+| **Violation Flags** | High (O(1) detection) | Medium | +6 bytes | HIGH (stale tags) | ️ Maybe |
+| **History Tags** | Medium (diagnostics) | Low | +20 bytes | Medium |  Skip |
+| **Priority Tags** | Medium (ordering) | High | +12 bytes | Medium |  Skip |
+| **Cached Props** | Low (minor speedup) | Medium | Variable | Medium |  Skip |
 
 ---
 
@@ -2063,11 +2063,11 @@ def repair_individual_with_cache(individual, context):
 
 | Approach | Recommendation | Why |
 |----------|----------------|-----|
-| **Violation flags on gene** | ❌ NO | Stale tag risk outweighs benefits |
-| **History tags on gene** | ❌ NO | Low value, maintenance burden |
-| **Priority tags on gene** | ❌ NO | Can compute on-demand |
-| **External metadata dict** | ✅ Already done | `detect_violated_genes()` returns this |
-| **ScheduleIndex caching** | ✅ YES | High impact, low risk |
+| **Violation flags on gene** |  NO | Stale tag risk outweighs benefits |
+| **History tags on gene** |  NO | Low value, maintenance burden |
+| **Priority tags on gene** |  NO | Can compute on-demand |
+| **External metadata dict** |  Already done | `detect_violated_genes()` returns this |
+| **ScheduleIndex caching** |  YES | High impact, low risk |
 
 ---
 
@@ -2200,9 +2200,9 @@ def repair_individual_unified(individual, context, max_iterations=2, selective=T
 
 | Question | Answer |
 |----------|--------|
-| **Should you add tags to SessionGene?** | ❌ No - adds complexity, stale data risk |
-| **Is external metadata useful?** | ✅ Already implemented via `detect_violated_genes()` |
-| **What SHOULD you do?** | ✅ Add `ScheduleIndex` caching class |
+| **Should you add tags to SessionGene?** |  No - adds complexity, stale data risk |
+| **Is external metadata useful?** |  Already implemented via `detect_violated_genes()` |
+| **What SHOULD you do?** |  Add `ScheduleIndex` caching class |
 | **Expected benefit** | 3-5x speedup in repair/evaluation |
 | **Implementation effort** | ~2 hours |
 

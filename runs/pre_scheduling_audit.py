@@ -23,6 +23,7 @@ from collections import defaultdict
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from rich import box
 from rich.console import Console
@@ -91,7 +92,7 @@ def ok(msg: str) -> None:
 def warn(msg: str) -> None:
     global warn_count
     warn_count += 1
-    console.print(f"  [yellow]⚠[/yellow] {msg}")
+    console.print(f"  [yellow][/yellow] {msg}")
     report_lines.append(f"  [WARN] {msg}")
 
 
@@ -103,7 +104,7 @@ def fail(msg: str) -> None:
 
 
 def info(msg: str) -> None:
-    console.print(f"  [dim]ℹ {msg}[/dim]")
+    console.print(f"  [dim] {msg}[/dim]")
     report_lines.append(f"  [INFO] {msg}")
 
 
@@ -630,7 +631,7 @@ for ckey, course in courses.items():
 if asymmetric_refs:
     warn(f"{len(asymmetric_refs)} asymmetric qualification reference(s) found")
 else:
-    ok("All qualification references are symmetric (course↔instructor)")
+    ok("All qualification references are symmetric (courseinstructor)")
 
 # F4 – Groups referencing courses that don't exist in loaded data
 # (already filtered during load, but check raw)
@@ -819,10 +820,7 @@ info(f"Cohort pairs (for practical alignment): {len(store.cohort_pairs)}")
 # ════════════════════════════════════════════════════════════════════════
 section("I. CONSTRAINT SYSTEM OVERVIEW (what gets enforced)")
 
-from src.constraints.constraints import (
-    HARD_CONSTRAINT_CLASSES,
-    SOFT_CONSTRAINT_CLASSES,
-)
+from src.constraints.constraints import HARD_CONSTRAINT_CLASSES, SOFT_CONSTRAINT_CLASSES
 
 console.print("[bold]Hard Constraints (must be satisfied):[/bold]")
 for c in HARD_CONSTRAINT_CLASSES:

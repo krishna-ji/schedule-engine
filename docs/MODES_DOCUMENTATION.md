@@ -594,15 +594,15 @@ Tests PPO with different learning rates:
 
 | Mode | Local Search | Adaptive | Two-Phase | RL | Complexity |
 |------|--------------|----------|-----------|-------|------------|
-| A | ❌ | ❌ | ❌ | ❌ | Low |
-| B | ✅ | ❌ | ❌ | ❌ | Medium |
-| B1 | ✅ (budgeted) | ❌ | ❌ | ❌ | Medium |
-| B2 | ✅ | ✅ (constraint) | ❌ | ❌ | High |
-| B3 | ✅ | ❌ | ✅ | ❌ | Medium |
-| B4 | ✅ | ✅ | ✅ | ❌ | High |
-| C | ✅ | ❌ (round-robin) | ❌ | ❌ | Low |
-| D | ✅ | ✅ (ε-greedy) | ❌ | ❌ | Medium |
-| E | ✅ | ✅ | ❌ | ✅ (Q-learning) | High |
+| A |  |  |  |  | Low |
+| B |  |  |  |  | Medium |
+| B1 |  (budgeted) |  |  |  | Medium |
+| B2 |  |  (constraint) |  |  | High |
+| B3 |  |  |  |  | Medium |
+| B4 |  |  |  |  | High |
+| C |  |  (round-robin) |  |  | Low |
+| D |  |  (ε-greedy) |  |  | Medium |
+| E |  |  |  |  (Q-learning) | High |
 
 ---
 
