@@ -1,0 +1,3 @@
+Lets also have another folder:
+src/scheng2/
+and only keep bare mminimal baseeline code there:
