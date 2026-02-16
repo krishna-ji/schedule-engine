@@ -162,6 +162,9 @@ class CPHybridExperiment(BaseExperiment):
 
         Non-violated genes are intelligently frozen to ensure mutual consistency.
         If INFEASIBLE, adaptively reduces frozen ratio and retries.
+        
+        If too many genes are violated (>50% of total), skip CP repair and
+        rely on the full pipeline instead.
         """
         from src.ga.repair.cp.frozen_selector import select_consistent_frozen_genes
         from src.ga.repair.cp.solver import CPSATSolver, FrozenAssignment
@@ -173,6 +176,17 @@ class CPHybridExperiment(BaseExperiment):
 
         violated_indices = sorted(violations.keys())
         violated_set = set(violated_indices)
+        
+        # SKIP if too many violations (>50% of genes)
+        if len(violated_indices) > len(ind) * 0.5:
+            logger.info(
+                "Skipping CP quick repair: %d/%d genes violated (%.1f%%), "
+                "too many for quick repair",
+                len(violated_indices),
+                len(ind),
+                100.0 * len(violated_indices) / len(ind),
+            )
+            return ind  # Skip repair, rely on full pipeline
 
         # Candidate genes for freezing: all non-violated genes
         candidate_indices = [i for i in range(len(ind)) if i not in violated_set]
