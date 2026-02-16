@@ -4,14 +4,11 @@ Quick test to verify schedule.json and calendar.pdf generation.
 Runs with only 10 generations to complete quickly.
 """
 
-import sys
 from pathlib import Path
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.experiments import AdaptiveExperiment
+from src.experiments import AdaptiveExperiment
 
 # Quick test configuration
 SEED = 42

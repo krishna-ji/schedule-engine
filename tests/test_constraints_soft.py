@@ -14,12 +14,19 @@ Soft constraints:
 
 from __future__ import annotations
 
-import pathlib
-import sys
-
 import pytest
+from conftest import (
+    assert_constraint_positive,
+    assert_constraint_zero,
+    make_context,
+    make_course,
+    make_gene,
+    make_group,
+    make_instructor,
+    make_room,
+)
 
-from schedule_engine.constraints.constraints import (
+from src.constraints.constraints import (
     ALL_CONSTRAINTS,
     HARD_CONSTRAINT_CLASSES,
     SOFT_CONSTRAINT_CLASSES,
@@ -32,20 +39,8 @@ from schedule_engine.constraints.constraints import (
     StudentScheduleCompactness,
     build_constraints,
 )
-from schedule_engine.domain.timetable import Timetable
-from schedule_engine.io.time_system import QuantumTimeSystem
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from conftest import (
-    assert_constraint_positive,
-    assert_constraint_zero,
-    make_context,
-    make_course,
-    make_gene,
-    make_group,
-    make_instructor,
-    make_room,
-)
+from src.domain.timetable import Timetable
+from src.io.time_system import QuantumTimeSystem
 
 # SC1: StudentScheduleCompactness
 

@@ -13,13 +13,20 @@ Tests individual repair operators and the unified orchestration pipeline.
 from __future__ import annotations
 
 import copy
-import pathlib
-import sys
 
 import pytest
+from conftest import (
+    make_context,
+    make_course,
+    make_gene,
+    make_group,
+    make_instructor,
+    make_room,
+    structural_fields_preserved,
+)
 
-from schedule_engine.config import Config, init_config
-from schedule_engine.constraints.constraints import (
+from src.config import Config, init_config
+from src.constraints.constraints import (
     CourseCompleteness,
     InstructorExclusivity,
     InstructorQualifications,
@@ -28,8 +35,8 @@ from schedule_engine.constraints.constraints import (
     RoomSuitability,
     StudentGroupExclusivity,
 )
-from schedule_engine.domain.timetable import Timetable
-from schedule_engine.ga.repair.basic import (
+from src.domain.timetable import Timetable
+from src.ga.repair.basic import (
     repair_group_overlaps,
     repair_individual_unified,
     repair_instructor_availability,
@@ -39,17 +46,6 @@ from schedule_engine.ga.repair.basic import (
     repair_room_conflicts,
     repair_room_overlap_reassign,
     repair_room_type_mismatches,
-)
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from conftest import (
-    make_context,
-    make_course,
-    make_gene,
-    make_group,
-    make_instructor,
-    make_room,
-    structural_fields_preserved,
 )
 
 # R1: repair_instructor_availability — fix HC6

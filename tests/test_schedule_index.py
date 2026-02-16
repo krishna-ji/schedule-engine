@@ -9,8 +9,8 @@ Tests verify:
 """
 
 import pytest
-from schedule_engine.ga.core.schedule_index import ScheduleIndex, create_schedule_index
-from schedule_engine.domain.gene import SessionGene
+from src.ga.core.schedule_index import ScheduleIndex, create_schedule_index
+from src.domain.gene import SessionGene
 
 
 def create_test_gene(

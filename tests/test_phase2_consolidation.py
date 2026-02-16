@@ -22,12 +22,12 @@ class TestMetricsImports:
     """Verify all metrics can be imported from ga.metrics."""
 
     def test_hypervolume_import(self):
-        from schedule_engine.ga.metrics import calculate_hypervolume
+        from src.ga.metrics import calculate_hypervolume
 
         assert callable(calculate_hypervolume)
 
     def test_diversity_imports(self):
-        from schedule_engine.ga.metrics import (
+        from src.ga.metrics import (
             average_pairwise_diversity,
             individual_distance,
         )
@@ -36,7 +36,7 @@ class TestMetricsImports:
         assert callable(individual_distance)
 
     def test_pareto_metrics_imports(self):
-        from schedule_engine.ga.metrics import (
+        from src.ga.metrics import (
             calculate_generational_distance,
             calculate_inverted_generational_distance,
             calculate_spacing,
@@ -47,7 +47,7 @@ class TestMetricsImports:
         assert callable(calculate_spacing)
 
     def test_convergence_imports(self):
-        from schedule_engine.ga.metrics import (
+        from src.ga.metrics import (
             calculate_convergence_rate,
             detect_stagnation,
         )
@@ -56,12 +56,12 @@ class TestMetricsImports:
         assert callable(detect_stagnation)
 
     def test_violation_heatmap_import(self):
-        from schedule_engine.ga.metrics import ViolationHeatmap
+        from src.ga.metrics import ViolationHeatmap
 
         assert ViolationHeatmap is not None
 
     def test_violation_recorder_import(self):
-        from schedule_engine.ga.metrics import record_violations_to_heatmap
+        from src.ga.metrics import record_violations_to_heatmap
 
         assert callable(record_violations_to_heatmap)
 
@@ -70,25 +70,25 @@ class TestMetricsFunctionality:
     """Test that metrics functions work correctly."""
 
     def test_hypervolume_empty_front(self):
-        from schedule_engine.ga.metrics import calculate_hypervolume
+        from src.ga.metrics import calculate_hypervolume
 
         hv = calculate_hypervolume([], (10.0, 10.0))
         assert hv == 0
 
     def test_spacing_function_exists(self):
         """Verify spacing function is callable (full test needs DEAP individuals)."""
-        from schedule_engine.ga.metrics import calculate_spacing
+        from src.ga.metrics import calculate_spacing
 
         assert callable(calculate_spacing)
 
     def test_diversity_function_exists(self):
         """Verify diversity function is callable."""
-        from schedule_engine.ga.metrics import average_pairwise_diversity
+        from src.ga.metrics import average_pairwise_diversity
 
         assert callable(average_pairwise_diversity)
 
     def test_convergence_rate_returns_list(self):
-        from schedule_engine.ga.metrics import calculate_convergence_rate
+        from src.ga.metrics import calculate_convergence_rate
 
         history = [100.0, 80.0, 60.0, 50.0, 45.0]
         result = calculate_convergence_rate(history)
@@ -96,7 +96,7 @@ class TestMetricsFunctionality:
         assert isinstance(result, list)
 
     def test_stagnation_detection_returns_tuple(self):
-        from schedule_engine.ga.metrics import detect_stagnation
+        from src.ga.metrics import detect_stagnation
 
         history = [50.0, 50.0, 50.0, 50.0, 50.0]
         result = detect_stagnation(history, threshold=0.01, window=3)
@@ -106,7 +106,7 @@ class TestMetricsFunctionality:
         assert isinstance(result[0], bool)
 
     def test_violation_heatmap_creation(self):
-        from schedule_engine.ga.metrics import ViolationHeatmap
+        from src.ga.metrics import ViolationHeatmap
 
         heatmap = ViolationHeatmap()
         assert heatmap is not None
@@ -121,31 +121,31 @@ class TestHeuristicsLegacyAPI:
     """Test legacy function-based heuristics API."""
 
     def test_categories_constant(self):
-        from schedule_engine.ga.heuristics import CATEGORIES
+        from src.ga.heuristics import CATEGORIES
 
         assert isinstance(CATEGORIES, (list, tuple))
         assert len(CATEGORIES) > 0
 
     def test_heuristic_info_class(self):
-        from schedule_engine.ga.heuristics import HeuristicInfo
+        from src.ga.heuristics import HeuristicInfo
 
         assert HeuristicInfo is not None
 
     def test_get_all_heuristics(self):
-        from schedule_engine.ga.heuristics import get_all_heuristics
+        from src.ga.heuristics import get_all_heuristics
 
         heuristics = get_all_heuristics()
         assert isinstance(heuristics, list)
 
     def test_get_enabled_heuristics(self):
-        from schedule_engine.ga.heuristics import get_enabled_heuristics
+        from src.ga.heuristics import get_enabled_heuristics
 
         enabled = get_enabled_heuristics()
         # Returns dict of enabled heuristics
         assert isinstance(enabled, dict)
 
     def test_get_heuristic_by_name(self):
-        from schedule_engine.ga.heuristics import (
+        from src.ga.heuristics import (
             get_all_heuristics,
             get_heuristic_by_name,
         )
@@ -158,7 +158,7 @@ class TestHeuristicsLegacyAPI:
             assert found.name == name
 
     def test_get_heuristics_by_category(self):
-        from schedule_engine.ga.heuristics import CATEGORIES, get_heuristics_by_category
+        from src.ga.heuristics import CATEGORIES, get_heuristics_by_category
 
         if CATEGORIES:
             cat = CATEGORIES[0]
@@ -166,7 +166,7 @@ class TestHeuristicsLegacyAPI:
             assert isinstance(heuristics, list)
 
     def test_get_heuristic_statistics_template(self):
-        from schedule_engine.ga.heuristics import get_heuristic_statistics_template
+        from src.ga.heuristics import get_heuristic_statistics_template
 
         template = get_heuristic_statistics_template()
         assert isinstance(template, dict)
@@ -176,27 +176,27 @@ class TestHeuristicsOOPAPI:
     """Test new OOP heuristics API."""
 
     def test_heuristic_protocol(self):
-        from schedule_engine.ga.heuristics import Heuristic
+        from src.ga.heuristics import Heuristic
 
         assert Heuristic is not None
 
     def test_heuristic_base_class(self):
-        from schedule_engine.ga.heuristics import HeuristicBase
+        from src.ga.heuristics import HeuristicBase
 
         assert HeuristicBase is not None
 
     def test_function_heuristic_class(self):
-        from schedule_engine.ga.heuristics import FunctionHeuristic
+        from src.ga.heuristics import FunctionHeuristic
 
         assert FunctionHeuristic is not None
 
     def test_all_heuristics_list(self):
-        from schedule_engine.ga.heuristics import ALL_HEURISTICS
+        from src.ga.heuristics import ALL_HEURISTICS
 
         assert isinstance(ALL_HEURISTICS, (list, tuple))
 
     def test_category_lists(self):
-        from schedule_engine.ga.heuristics import (
+        from src.ga.heuristics import (
             CONSTRUCTION_HEURISTICS,
             DIVERSITY_HEURISTICS,
             IMPROVEMENT_HEURISTICS,
@@ -216,7 +216,7 @@ class TestHeuristicsOOPAPI:
             assert isinstance(lst, (list, tuple))
 
     def test_heuristic_names(self):
-        from schedule_engine.ga.heuristics import (
+        from src.ga.heuristics import (
             ENABLED_HEURISTIC_NAMES,
             HEURISTIC_NAMES,
         )
@@ -225,25 +225,25 @@ class TestHeuristicsOOPAPI:
         assert isinstance(ENABLED_HEURISTIC_NAMES, (list, tuple, set))
 
     def test_build_heuristics(self):
-        from schedule_engine.ga.heuristics import build_heuristics
+        from src.ga.heuristics import build_heuristics
 
         heuristics = build_heuristics()
         assert isinstance(heuristics, list)
 
     def test_get_all_heuristic_objects(self):
-        from schedule_engine.ga.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics import get_all_heuristic_objects
 
         objs = get_all_heuristic_objects()
         assert isinstance(objs, list)
 
     def test_get_heuristics_by_category_oop(self):
-        from schedule_engine.ga.heuristics import get_heuristics_by_category_oop
+        from src.ga.heuristics import get_heuristics_by_category_oop
 
         repair = get_heuristics_by_category_oop("repair")
         assert isinstance(repair, list)
 
     def test_get_heuristic_by_name_oop(self):
-        from schedule_engine.ga.heuristics import (
+        from src.ga.heuristics import (
             HEURISTIC_NAMES,
             get_heuristic_by_name_oop,
         )
@@ -263,49 +263,49 @@ class TestRepairHeuristicsImports:
     """Test repair heuristics can be imported."""
 
     def test_igls_repair_import(self):
-        from schedule_engine.ga.repair.igls import igls_repair
+        from src.ga.repair.igls import igls_repair
 
         assert callable(igls_repair)
 
     def test_greedy_repair_import(self):
-        from schedule_engine.ga.repair.greedy import greedy_repair
+        from src.ga.repair.greedy import greedy_repair
 
         assert callable(greedy_repair)
 
     def test_selective_repair_import(self):
-        from schedule_engine.ga.repair.selective_heuristic import selective_repair
+        from src.ga.repair.selective_heuristic import selective_repair
 
         assert callable(selective_repair)
 
     def test_lns_repair_import(self):
-        from schedule_engine.ga.repair.lns.repair import lns_repair
+        from src.ga.repair.lns.repair import lns_repair
 
         assert callable(lns_repair)
 
     def test_exhaustive_repair_import(self):
-        from schedule_engine.ga.repair.exhaustive import exhaustive_repair
+        from src.ga.repair.exhaustive import exhaustive_repair
 
         assert callable(exhaustive_repair)
 
     def test_memetic_repair_import(self):
-        from schedule_engine.ga.repair.memetic import memetic_repair
+        from src.ga.repair.memetic import memetic_repair
 
         assert callable(memetic_repair)
 
     def test_break_repair_import(self):
-        from schedule_engine.ga.repair.break_repair import repair_break_placement
+        from src.ga.repair.break_repair import repair_break_placement
 
         assert callable(repair_break_placement)
 
     def test_conflict_detection_import(self):
-        from schedule_engine.ga.repair.conflict_detection import (
+        from src.ga.repair.conflict_detection import (
             find_hard_conflict_sessions,
         )
 
         assert callable(find_hard_conflict_sessions)
 
     def test_lns_igls_import(self):
-        from schedule_engine.ga.repair.lns.operator import lns_igls_repair
+        from src.ga.repair.lns.operator import lns_igls_repair
 
         assert callable(lns_igls_repair)
 
@@ -319,18 +319,18 @@ class TestOperatorsImports:
     """Test all operators can be imported."""
 
     def test_mutation_imports(self):
-        from schedule_engine.ga.operators import mutate_gene, mutate_individual
+        from src.ga.operators import mutate_gene, mutate_individual
 
         assert callable(mutate_individual)
         assert callable(mutate_gene)
 
     def test_crossover_import(self):
-        from schedule_engine.ga.operators import crossover_course_group_aware
+        from src.ga.operators import crossover_course_group_aware
 
         assert callable(crossover_course_group_aware)
 
     def test_repair_imports(self):
-        from schedule_engine.ga.operators import (
+        from src.ga.operators import (
             repair_individual,
             repair_individual_selective,
             repair_individual_unified,
@@ -341,17 +341,17 @@ class TestOperatorsImports:
         assert callable(repair_individual_selective)
 
     def test_repair_engine_import(self):
-        from schedule_engine.ga.operators import RepairEngine
+        from src.ga.operators import RepairEngine
 
         assert RepairEngine is not None
 
     def test_violation_detector_import(self):
-        from schedule_engine.ga.operators import detect_violated_genes
+        from src.ga.operators import detect_violated_genes
 
         assert callable(detect_violated_genes)
 
     def test_repair_registry_imports(self):
-        from schedule_engine.ga.operators import (
+        from src.ga.operators import (
             get_all_repair_operators,
             get_enabled_repair_operators,
             get_repair_operator_function,
@@ -372,20 +372,20 @@ class TestOperatorsRegistry:
     """Test repair operator registry functionality."""
 
     def test_get_all_repair_operators(self):
-        from schedule_engine.ga.operators import get_all_repair_operators
+        from src.ga.operators import get_all_repair_operators
 
         operators = get_all_repair_operators()
         assert isinstance(operators, (list, tuple, dict))
 
     def test_get_enabled_repair_operators(self):
-        from schedule_engine.ga.operators import get_enabled_repair_operators
+        from src.ga.operators import get_enabled_repair_operators
 
         # This function requires config initialization
         # Just verify it's callable
         assert callable(get_enabled_repair_operators)
 
     def test_get_repair_statistics_template(self):
-        from schedule_engine.ga.operators import get_repair_statistics_template
+        from src.ga.operators import get_repair_statistics_template
 
         template = get_repair_statistics_template()
         assert isinstance(template, dict)
@@ -400,12 +400,12 @@ class TestEvaluatorImports:
     """Test evaluator subpackage imports."""
 
     def test_fitness_import(self):
-        from schedule_engine.ga.core.evaluator import evaluate
+        from src.ga.core.evaluator import evaluate
 
         assert callable(evaluate)
 
     def test_detailed_fitness_import(self):
-        from schedule_engine.ga.core.evaluator import evaluate_detailed
+        from src.ga.core.evaluator import evaluate_detailed
 
         assert callable(evaluate_detailed)
 
@@ -420,7 +420,7 @@ class TestCrossModuleIntegration:
 
     def test_repair_uses_violation_detector(self):
         """Verify repair operators can use violation detector."""
-        from schedule_engine.ga.operators import (
+        from src.ga.operators import (
             detect_violated_genes,
             repair_individual,
         )
@@ -430,13 +430,13 @@ class TestCrossModuleIntegration:
 
     def test_heuristics_include_repair(self):
         """Verify repair heuristics are part of heuristics registry."""
-        from schedule_engine.ga.heuristics import REPAIR_HEURISTICS
+        from src.ga.heuristics import REPAIR_HEURISTICS
 
         assert isinstance(REPAIR_HEURISTICS, (list, tuple))
 
     def test_metrics_with_population(self):
         """Verify metrics functions are callable."""
-        from schedule_engine.ga.metrics import calculate_spacing
+        from src.ga.metrics import calculate_spacing
 
         # Verify it's callable (full test needs DEAP individuals)
         assert callable(calculate_spacing)
@@ -451,41 +451,41 @@ class TestGAPackageTopLevel:
     """Test top-level ga/ exports."""
 
     def test_repair_pipeline_export(self):
-        from schedule_engine.ga import RepairPipeline
+        from src.ga import RepairPipeline
 
         assert RepairPipeline is not None
 
     def test_population_factory_export(self):
-        from schedule_engine.ga import PopulationFactory
+        from src.ga import PopulationFactory
 
         assert PopulationFactory is not None
 
     def test_ga_scheduler_export(self):
-        from schedule_engine.ga import GAScheduler
+        from src.ga import GAScheduler
 
         assert GAScheduler is not None
 
     def test_ga_config_export(self):
-        from schedule_engine.ga import GAConfig
+        from src.ga import GAConfig
 
         assert GAConfig is not None
 
     def test_ga_metrics_export(self):
-        from schedule_engine.ga import GAMetrics
+        from src.ga import GAMetrics
 
         assert GAMetrics is not None
 
     def test_get_creator_export(self):
-        from schedule_engine.ga import get_creator
+        from src.ga import get_creator
 
         assert callable(get_creator)
 
     def test_create_individual_export(self):
-        from schedule_engine.ga import create_individual
+        from src.ga import create_individual
 
         assert callable(create_individual)
 
     def test_session_gene_export(self):
-        from schedule_engine.ga import SessionGene
+        from src.ga import SessionGene
 
         assert SessionGene is not None

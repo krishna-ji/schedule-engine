@@ -14,7 +14,7 @@ import math
 
 import pytest
 
-from schedule_engine.ga.operators.fast_nsga2 import (
+from src.ga.operators.fast_nsga2 import (
     assign_crowding_distance,
     dominates,
     fast_nondominated_sort,
@@ -170,12 +170,8 @@ class TestRoundRobinSelector:
     def _make_data(self):
         """Create NotebookData-like object with qts, rooms, instructors, courses."""
         import pathlib
-        import sys
         from dataclasses import dataclass, field
 
-        from schedule_engine.io.time_system import QuantumTimeSystem
-
-        sys.path.insert(0, str(pathlib.Path(__file__).parent))
         from conftest import (
             make_context,
             make_course,
@@ -184,6 +180,8 @@ class TestRoundRobinSelector:
             make_instructor,
             make_room,
         )
+
+        from src.io.time_system import QuantumTimeSystem
 
         ctx = make_context(
             courses=[make_course("CS101", groups=["G1"], instructors=["I1", "I2"])],
@@ -223,7 +221,7 @@ class TestRoundRobinSelector:
 
     def test_cycles_through_all_operators(self):
         """After 3 applies, all 3 operators should have been used."""
-        from schedule_engine.ga.heuristics.strategies import RoundRobinSelector
+        from src.ga.heuristics.strategies import RoundRobinSelector
 
         selector = RoundRobinSelector()
         individual, data = self._make_data()
@@ -237,7 +235,7 @@ class TestRoundRobinSelector:
 
     def test_deterministic_order(self):
         """Same sequence of applies should produce same operator order."""
-        from schedule_engine.ga.heuristics.strategies import RoundRobinSelector
+        from src.ga.heuristics.strategies import RoundRobinSelector
 
         s1 = RoundRobinSelector()
         s2 = RoundRobinSelector()
@@ -254,13 +252,8 @@ class TestAdaptiveSelector:
     """Test adaptive selector probability properties."""
 
     def _make_data(self):
-        import pathlib
-        import sys
         from dataclasses import dataclass, field
 
-        from schedule_engine.io.time_system import QuantumTimeSystem
-
-        sys.path.insert(0, str(pathlib.Path(__file__).parent))
         from conftest import (
             make_context,
             make_course,
@@ -269,6 +262,8 @@ class TestAdaptiveSelector:
             make_instructor,
             make_room,
         )
+
+        from src.io.time_system import QuantumTimeSystem
 
         ctx = make_context(
             courses=[make_course("CS101", groups=["G1"], instructors=["I1", "I2"])],
@@ -306,7 +301,7 @@ class TestAdaptiveSelector:
         return individual, data
 
     def test_initial_probabilities_uniform(self):
-        from schedule_engine.ga.heuristics.strategies import AdaptiveSelector
+        from src.ga.heuristics.strategies import AdaptiveSelector
 
         selector = AdaptiveSelector()
         stats = selector.get_stats()
@@ -317,7 +312,7 @@ class TestAdaptiveSelector:
 
     def test_probabilities_sum_to_one(self):
         """Probabilities should always sum to 1.0."""
-        from schedule_engine.ga.heuristics.strategies import AdaptiveSelector
+        from src.ga.heuristics.strategies import AdaptiveSelector
 
         selector = AdaptiveSelector()
         individual, data = self._make_data()
@@ -330,7 +325,7 @@ class TestAdaptiveSelector:
 
     def test_min_probability_floor(self):
         """No probability should drop too far below min_prob (soft enforcement)."""
-        from schedule_engine.ga.heuristics.strategies import AdaptiveSelector
+        from src.ga.heuristics.strategies import AdaptiveSelector
 
         min_prob = 0.05
         selector = AdaptiveSelector(min_prob=min_prob)
@@ -354,14 +349,14 @@ class TestConstraintAlgebra:
 
     def test_constraint_weights_positive(self):
         """All constraint weights should be > 0."""
-        from schedule_engine.constraints.constraints import ALL_CONSTRAINTS
+        from src.constraints.constraints import ALL_CONSTRAINTS
 
         for c in ALL_CONSTRAINTS:
             assert c.weight > 0, f"{c.name} has weight {c.weight} <= 0"
 
     def test_hard_weights_larger_than_soft(self):
         """Hard constraint weights should be >= soft weights."""
-        from schedule_engine.constraints.constraints import (
+        from src.constraints.constraints import (
             HARD_CONSTRAINT_CLASSES,
             SOFT_CONSTRAINT_CLASSES,
         )
@@ -374,13 +369,7 @@ class TestConstraintAlgebra:
 
     def test_evaluate_returns_non_negative(self):
         """Every constraint.evaluate() should return >= 0."""
-        import pathlib
-        import sys
 
-        from schedule_engine.constraints.constraints import ALL_CONSTRAINTS
-        from schedule_engine.domain.timetable import Timetable
-
-        sys.path.insert(0, str(pathlib.Path(__file__).parent))
         from conftest import (
             make_context,
             make_course,
@@ -389,6 +378,9 @@ class TestConstraintAlgebra:
             make_instructor,
             make_room,
         )
+
+        from src.constraints.constraints import ALL_CONSTRAINTS
+        from src.domain.timetable import Timetable
 
         g = make_gene(
             course_id="CS101",
@@ -412,13 +404,7 @@ class TestConstraintAlgebra:
 
     def test_evaluation_deterministic(self):
         """Same timetable → same constraint values."""
-        import pathlib
-        import sys
 
-        from schedule_engine.constraints.constraints import ALL_CONSTRAINTS
-        from schedule_engine.domain.timetable import Timetable
-
-        sys.path.insert(0, str(pathlib.Path(__file__).parent))
         from conftest import (
             make_context,
             make_course,
@@ -427,6 +413,9 @@ class TestConstraintAlgebra:
             make_instructor,
             make_room,
         )
+
+        from src.constraints.constraints import ALL_CONSTRAINTS
+        from src.domain.timetable import Timetable
 
         g = make_gene(
             course_id="CS101",
@@ -458,7 +447,7 @@ class TestQuantumTimeSystem:
 
     def test_total_quanta_equals_sum_of_day_counts(self):
         """total_quanta should equal the sum of all day_quanta_count values."""
-        from schedule_engine.io.time_system import QuantumTimeSystem
+        from src.io.time_system import QuantumTimeSystem
 
         qts = QuantumTimeSystem()
         expected = sum(qts.day_quanta_count.values())
@@ -466,7 +455,7 @@ class TestQuantumTimeSystem:
 
     def test_quantum_to_day_roundtrip(self):
         """quantum → (day, time) → quantum should roundtrip via QTS methods."""
-        from schedule_engine.io.time_system import QuantumTimeSystem
+        from src.io.time_system import QuantumTimeSystem
 
         qts = QuantumTimeSystem()
         for q in range(qts.total_quanta):
@@ -478,7 +467,7 @@ class TestQuantumTimeSystem:
 
     def test_all_quanta_valid(self):
         """Every quantum 0..total-1 should decode to a valid day."""
-        from schedule_engine.io.time_system import QuantumTimeSystem
+        from src.io.time_system import QuantumTimeSystem
 
         qts = QuantumTimeSystem()
         operational_days = [d for d, c in qts.day_quanta_count.items() if c > 0]
@@ -488,7 +477,7 @@ class TestQuantumTimeSystem:
 
     def test_no_cross_day_overlap(self):
         """Quanta within one day should not overlap with another day's range."""
-        from schedule_engine.io.time_system import QuantumTimeSystem
+        from src.io.time_system import QuantumTimeSystem
 
         qts = QuantumTimeSystem()
         day_ranges = {}

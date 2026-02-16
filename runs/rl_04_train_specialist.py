@@ -14,22 +14,19 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.rl.helpers import (
+from src.rl.helpers import (
     build_notebook_config,
     create_env,
     load_context,
     set_global_seed,
 )
-from schedule_engine.rl.multi_agent.agent_coordinator import AgentCoordinator
+from src.rl.multi_agent.agent_coordinator import AgentCoordinator
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:

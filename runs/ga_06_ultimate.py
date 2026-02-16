@@ -26,14 +26,11 @@ Usage:
 """
 
 import logging
-import sys
 from pathlib import Path
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.experiments import UltimateExperiment
+from src.experiments import UltimateExperiment
 
 # ── PRODUCTION CONFIGURATION ─────────────────────────────────────────
 
@@ -41,10 +38,10 @@ from schedule_engine.experiments import UltimateExperiment
 SEED = 42
 
 # GA Core Parameters (used by BaseExperiment for toolbox setup)
-POP_SIZE = 1         # ILS is single-solution; pop_size=1 for init
-NGEN = 300           # Used as upper bound for ILS iterations tracking
-CXPB = 0.15          # Not used by ILS, but required by BaseExperiment
-MUTPB = 0.4          # Not used by ILS, but required by BaseExperiment
+POP_SIZE = 1  # ILS is single-solution; pop_size=1 for init
+NGEN = 300  # Used as upper bound for ILS iterations tracking
+CXPB = 0.15  # Not used by ILS, but required by BaseExperiment
+MUTPB = 0.4  # Not used by ILS, but required by BaseExperiment
 FITNESS_WEIGHTS = (-1.0, -1.0)  # (hard, soft) minimize both
 
 # Data Paths
@@ -57,22 +54,22 @@ CLOSING_TIME = "17:00"
 CLOSED_DAYS = ["Saturday"]
 
 # Logging
-LOG_INTERVAL = 1     # Log every ILS iteration (thesis granularity)
+LOG_INTERVAL = 1  # Log every ILS iteration (thesis granularity)
 VERBOSE = True
 
 # ── Mode F Specific: ILS Pipeline ────────────────────────────────────
 
 # Phase 1: Multi-start initialisation
-N_STARTS = 5                   # Number of random starts
-REPAIR_LS_ROUNDS = 5           # det-repair+gene-LS rounds per start
+N_STARTS = 5  # Number of random starts
+REPAIR_LS_ROUNDS = 5  # det-repair+gene-LS rounds per start
 
 # Phase 2: Iterated Local Search
-ILS_ITERATIONS = 300           # Main ILS iterations
-PERTURB_FRAC = 0.15            # Perturb 15% of best Hard as n_perturb
-PERTURB_MIN = 10               # Min genes to perturb
+ILS_ITERATIONS = 300  # Main ILS iterations
+PERTURB_FRAC = 0.15  # Perturb 15% of best Hard as n_perturb
+PERTURB_MIN = 10  # Min genes to perturb
 
 # Diversification
-STAGNATION_RESTART = 30        # Restart after this many stale iterations
+STAGNATION_RESTART = 30  # Restart after this many stale iterations
 
 # RepairEngine (used in each ILS iteration)
 ENGINE_MAX_STEPS = 20

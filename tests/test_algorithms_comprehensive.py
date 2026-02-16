@@ -17,30 +17,27 @@ Covers everything discussed and implemented:
 from __future__ import annotations
 
 import copy
-import pathlib
 import random
-import sys
 import time
 
 import pytest
 
-from schedule_engine.config import Config, init_config
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.domain.timetable import Timetable
-from schedule_engine.ga.core.schedule_index import ScheduleIndex, create_schedule_index
+from src.config import Config, init_config
+from src.domain.gene import SessionGene
+from src.domain.timetable import Timetable
+from src.ga.core.schedule_index import ScheduleIndex, create_schedule_index
 
 
 def _ensure_config():
     """Initialize config if not already done."""
     try:
-        from schedule_engine.config import get_config
+        from src.config import get_config
 
         get_config()
     except RuntimeError:
         init_config(Config(repair=dict(enabled=True, heuristics={})))
 
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
     make_context,
     make_course,
@@ -358,7 +355,7 @@ class TestDetectorScheduleIndexIntegration:
 
     def test_detector_finds_group_overlap(self):
         """Detector correctly identifies group overlap via ScheduleIndex."""
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_conflicting_individual()
         violations = detect_violated_genes(individual, ctx, strategy="full")
@@ -371,7 +368,7 @@ class TestDetectorScheduleIndexIntegration:
 
     def test_detector_finds_room_conflict(self):
         """Detector identifies room conflicts."""
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_multi_conflict_individual()
         violations = detect_violated_genes(individual, ctx, strategy="full")
@@ -381,7 +378,7 @@ class TestDetectorScheduleIndexIntegration:
 
     def test_detector_finds_instructor_conflict(self):
         """Detector identifies instructor conflicts."""
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_multi_conflict_individual()
         violations = detect_violated_genes(individual, ctx, strategy="full")
@@ -391,7 +388,7 @@ class TestDetectorScheduleIndexIntegration:
 
     def test_detector_clean_schedule_no_overlap_violations(self):
         """Clean schedule should have no overlap-type violations."""
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_clean_individual()
         violations = detect_violated_genes(individual, ctx, strategy="full")
@@ -404,7 +401,7 @@ class TestDetectorScheduleIndexIntegration:
 
     def test_detector_hybrid_combines_fast_and_full(self):
         """Hybrid strategy should include both fast and full results."""
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_conflicting_individual()
         violations = detect_violated_genes(individual, ctx, strategy="hybrid")
@@ -415,7 +412,7 @@ class TestDetectorScheduleIndexIntegration:
 
     def test_detector_fast_only_structural(self):
         """Fast strategy only checks structural issues, not conflicts."""
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_conflicting_individual()
         violations = detect_violated_genes(individual, ctx, strategy="fast")
@@ -434,7 +431,7 @@ class TestVNDBehavior:
     """Test VND meta-heuristic detailed behavior."""
 
     def test_vnd_returns_nonneg_int(self):
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = _make_conflicting_individual()
         result = variable_neighborhood_descent(individual, ctx, max_iterations=2)
@@ -443,7 +440,7 @@ class TestVNDBehavior:
 
     def test_vnd_preserves_structural_fields(self):
         """VND must NEVER modify course_id, course_type, group_ids, num_quanta."""
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = _make_conflicting_individual()
         before = [copy.deepcopy(g) for g in individual]
@@ -456,8 +453,8 @@ class TestVNDBehavior:
 
     def test_vnd_never_worsens_hard_constraints(self):
         """VND should not increase hard constraint violations."""
-        from schedule_engine.constraints.constraints import StudentGroupExclusivity
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.constraints.constraints import StudentGroupExclusivity
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = _make_conflicting_individual()
         pre = StudentGroupExclusivity().evaluate(Timetable(individual, ctx))
@@ -469,7 +466,7 @@ class TestVNDBehavior:
 
     def test_vnd_max_neighborhoods_limits_exploration(self):
         """max_neighborhoods=1 should only try first neighborhood."""
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = _make_conflicting_individual()
         # With max_neighborhoods=1, only kempe chain is tried
@@ -480,7 +477,7 @@ class TestVNDBehavior:
 
     def test_vnd_on_clean_individual(self):
         """VND on conflict-free individual should return 0 improvements."""
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = _make_clean_individual()
         result = variable_neighborhood_descent(individual, ctx, max_iterations=2)
@@ -496,7 +493,7 @@ class TestILSBehavior:
     """Test ILS meta-heuristic behavior."""
 
     def test_ils_returns_nonneg_int(self):
-        from schedule_engine.ga.heuristics.meta import iterated_local_search
+        from src.ga.heuristics.meta import iterated_local_search
 
         individual, ctx = _make_conflicting_individual()
         result = iterated_local_search(individual, ctx, num_iterations=2)
@@ -505,7 +502,7 @@ class TestILSBehavior:
 
     def test_ils_preserves_gene_count(self):
         """ILS should never add or remove genes."""
-        from schedule_engine.ga.heuristics.meta import iterated_local_search
+        from src.ga.heuristics.meta import iterated_local_search
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -514,7 +511,7 @@ class TestILSBehavior:
 
     def test_ils_preserves_structural_fields(self):
         """ILS must preserve immutable gene fields."""
-        from schedule_engine.ga.heuristics.meta import iterated_local_search
+        from src.ga.heuristics.meta import iterated_local_search
 
         individual, ctx = _make_conflicting_individual()
         before = [copy.deepcopy(g) for g in individual]
@@ -525,7 +522,7 @@ class TestILSBehavior:
 
     def test_ils_with_zero_perturbation(self):
         """ILS with zero perturbation strength should still run."""
-        from schedule_engine.ga.heuristics.meta import iterated_local_search
+        from src.ga.heuristics.meta import iterated_local_search
 
         individual, ctx = _make_conflicting_individual()
         result = iterated_local_search(
@@ -543,7 +540,7 @@ class TestALNSBehavior:
     """Test ALNS meta-heuristic behavior."""
 
     def test_alns_returns_nonneg_int(self):
-        from schedule_engine.ga.heuristics.meta import adaptive_large_neighborhood
+        from src.ga.heuristics.meta import adaptive_large_neighborhood
 
         individual, ctx = _make_conflicting_individual()
         result = adaptive_large_neighborhood(individual, ctx, num_iterations=2)
@@ -551,7 +548,7 @@ class TestALNSBehavior:
         assert result >= 0
 
     def test_alns_preserves_gene_count(self):
-        from schedule_engine.ga.heuristics.meta import adaptive_large_neighborhood
+        from src.ga.heuristics.meta import adaptive_large_neighborhood
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -559,7 +556,7 @@ class TestALNSBehavior:
         assert len(individual) == before_len
 
     def test_alns_preserves_structural_fields(self):
-        from schedule_engine.ga.heuristics.meta import adaptive_large_neighborhood
+        from src.ga.heuristics.meta import adaptive_large_neighborhood
 
         individual, ctx = _make_conflicting_individual()
         before = [copy.deepcopy(g) for g in individual]
@@ -570,7 +567,7 @@ class TestALNSBehavior:
 
     def test_alns_on_clean_individual(self):
         """ALNS on clean schedule should not break it."""
-        from schedule_engine.ga.heuristics.meta import adaptive_large_neighborhood
+        from src.ga.heuristics.meta import adaptive_large_neighborhood
 
         individual, ctx = _make_clean_individual()
         result = adaptive_large_neighborhood(individual, ctx, num_iterations=2)
@@ -586,7 +583,7 @@ class TestGLSBehavior:
     """Test GLS meta-heuristic behavior."""
 
     def test_gls_returns_nonneg_int(self):
-        from schedule_engine.ga.heuristics.meta import guided_local_search
+        from src.ga.heuristics.meta import guided_local_search
 
         individual, ctx = _make_conflicting_individual()
         result = guided_local_search(individual, ctx, num_iterations=2)
@@ -594,7 +591,7 @@ class TestGLSBehavior:
         assert result >= 0
 
     def test_gls_preserves_gene_count(self):
-        from schedule_engine.ga.heuristics.meta import guided_local_search
+        from src.ga.heuristics.meta import guided_local_search
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -602,7 +599,7 @@ class TestGLSBehavior:
         assert len(individual) == before_len
 
     def test_gls_preserves_structural_fields(self):
-        from schedule_engine.ga.heuristics.meta import guided_local_search
+        from src.ga.heuristics.meta import guided_local_search
 
         individual, ctx = _make_conflicting_individual()
         before = [copy.deepcopy(g) for g in individual]
@@ -613,7 +610,7 @@ class TestGLSBehavior:
 
     def test_gls_penalty_factor_affects_behavior(self):
         """Different penalty factors should not crash."""
-        from schedule_engine.ga.heuristics.meta import guided_local_search
+        from src.ga.heuristics.meta import guided_local_search
 
         individual, ctx = _make_conflicting_individual()
         r1 = guided_local_search(individual, ctx, num_iterations=2, penalty_factor=0.01)
@@ -635,7 +632,7 @@ class TestMetaHelpers:
     """Test helper functions used by meta-heuristics."""
 
     def test_simple_fitness_returns_numeric(self):
-        from schedule_engine.ga.heuristics.meta import _simple_fitness
+        from src.ga.heuristics.meta import _simple_fitness
 
         individual, ctx = _make_conflicting_individual()
         fitness = _simple_fitness(individual, ctx)
@@ -644,7 +641,7 @@ class TestMetaHelpers:
 
     def test_simple_fitness_clean_is_lower(self):
         """Clean individual should have lower fitness (violations) than conflicting."""
-        from schedule_engine.ga.heuristics.meta import _simple_fitness
+        from src.ga.heuristics.meta import _simple_fitness
 
         clean, ctx_clean = _make_clean_individual()
         conflicting, ctx_conf = _make_conflicting_individual()
@@ -655,7 +652,7 @@ class TestMetaHelpers:
 
     def test_select_operator_adaptive(self):
         """Roulette wheel selection should return valid operator name."""
-        from schedule_engine.ga.heuristics.meta import _select_operator_adaptive
+        from src.ga.heuristics.meta import _select_operator_adaptive
 
         scores = {"op_a": 3.0, "op_b": 1.0, "op_c": 0.5}
         for _ in range(50):
@@ -664,14 +661,14 @@ class TestMetaHelpers:
 
     def test_select_operator_adaptive_zero_scores(self):
         """Zero scores should still return a valid operator."""
-        from schedule_engine.ga.heuristics.meta import _select_operator_adaptive
+        from src.ga.heuristics.meta import _select_operator_adaptive
 
         scores = {"op_a": 0.0, "op_b": 0.0, "op_c": 0.0}
         selected = _select_operator_adaptive(scores)
         assert selected in scores
 
     def test_simple_fitness_with_penalties(self):
-        from schedule_engine.ga.heuristics.meta import _simple_fitness_with_penalties
+        from src.ga.heuristics.meta import _simple_fitness_with_penalties
 
         individual, ctx = _make_conflicting_individual()
         # Keys match what GLS uses: (course_id, time_quantum/room_id/instructor_id)
@@ -694,7 +691,7 @@ class TestImprovementHeuristics:
     """Test individual improvement operators."""
 
     def test_kempe_chain_returns_int(self):
-        from schedule_engine.ga.heuristics.improvement import kempe_chain
+        from src.ga.heuristics.improvement import kempe_chain
 
         individual, ctx = _make_conflicting_individual()
         result = kempe_chain(individual, ctx, max_iterations=3)
@@ -702,7 +699,7 @@ class TestImprovementHeuristics:
         assert result >= 0
 
     def test_ejection_chain_returns_int(self):
-        from schedule_engine.ga.heuristics.improvement import ejection_chain
+        from src.ga.heuristics.improvement import ejection_chain
 
         individual, ctx = _make_conflicting_individual()
         result = ejection_chain(individual, ctx, max_iterations=3)
@@ -710,7 +707,7 @@ class TestImprovementHeuristics:
         assert result >= 0
 
     def test_variable_depth_search_returns_int(self):
-        from schedule_engine.ga.heuristics.improvement import variable_depth_search
+        from src.ga.heuristics.improvement import variable_depth_search
 
         individual, ctx = _make_conflicting_individual()
         result = variable_depth_search(individual, ctx, max_depth=2, max_iterations=2)
@@ -718,7 +715,7 @@ class TestImprovementHeuristics:
         assert result >= 0
 
     def test_kempe_preserves_gene_count(self):
-        from schedule_engine.ga.heuristics.improvement import kempe_chain
+        from src.ga.heuristics.improvement import kempe_chain
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -726,7 +723,7 @@ class TestImprovementHeuristics:
         assert len(individual) == before_len
 
     def test_ejection_preserves_gene_count(self):
-        from schedule_engine.ga.heuristics.improvement import ejection_chain
+        from src.ga.heuristics.improvement import ejection_chain
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -746,7 +743,7 @@ class TestPerturbationBehavior:
         return _make_conflicting_individual()
 
     def test_random_swap_preserves_immutables(self):
-        from schedule_engine.ga.heuristics.perturbation import random_swap
+        from src.ga.heuristics.perturbation import random_swap
 
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
@@ -757,7 +754,7 @@ class TestPerturbationBehavior:
             assert b.group_ids == a.group_ids
 
     def test_temporal_shift_preserves_immutables(self):
-        from schedule_engine.ga.heuristics.perturbation import temporal_shift
+        from src.ga.heuristics.perturbation import temporal_shift
 
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
@@ -769,7 +766,7 @@ class TestPerturbationBehavior:
             assert b.num_quanta == a.num_quanta
 
     def test_room_shuffle_only_changes_room(self):
-        from schedule_engine.ga.heuristics.perturbation import room_shuffle
+        from src.ga.heuristics.perturbation import room_shuffle
 
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
@@ -782,7 +779,7 @@ class TestPerturbationBehavior:
             assert b.num_quanta == a.num_quanta
 
     def test_instructor_reassign_only_changes_instructor(self):
-        from schedule_engine.ga.heuristics.perturbation import instructor_reassign
+        from src.ga.heuristics.perturbation import instructor_reassign
 
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
@@ -805,8 +802,8 @@ class TestBasicRepairOperators:
     """Test individual repair operators from basic.py."""
 
     def test_repair_group_overlaps_reduces_violations(self):
-        from schedule_engine.constraints.constraints import StudentGroupExclusivity
-        from schedule_engine.ga.repair.basic import repair_group_overlaps
+        from src.constraints.constraints import StudentGroupExclusivity
+        from src.ga.repair.basic import repair_group_overlaps
 
         individual, ctx = _make_conflicting_individual()
         pre = StudentGroupExclusivity().evaluate(Timetable(individual, ctx))
@@ -816,8 +813,8 @@ class TestBasicRepairOperators:
         assert isinstance(fixes, int)
 
     def test_repair_room_conflicts_reduces_violations(self):
-        from schedule_engine.constraints.constraints import RoomExclusivity
-        from schedule_engine.ga.repair.basic import repair_room_conflicts
+        from src.constraints.constraints import RoomExclusivity
+        from src.ga.repair.basic import repair_room_conflicts
 
         individual, ctx = _make_multi_conflict_individual()
         pre = RoomExclusivity().evaluate(Timetable(individual, ctx))
@@ -827,8 +824,8 @@ class TestBasicRepairOperators:
         assert isinstance(fixes, int)
 
     def test_repair_instructor_conflicts_reduces_violations(self):
-        from schedule_engine.constraints.constraints import InstructorExclusivity
-        from schedule_engine.ga.repair.basic import repair_instructor_conflicts
+        from src.constraints.constraints import InstructorExclusivity
+        from src.ga.repair.basic import repair_instructor_conflicts
 
         individual, ctx = _make_multi_conflict_individual()
         pre = InstructorExclusivity().evaluate(Timetable(individual, ctx))
@@ -839,7 +836,7 @@ class TestBasicRepairOperators:
 
     def test_repair_preserves_structural_invariants(self):
         """All repair operators must preserve course_id, course_type, group_ids, num_quanta."""
-        from schedule_engine.ga.repair.basic import repair_group_overlaps
+        from src.ga.repair.basic import repair_group_overlaps
 
         individual, ctx = _make_conflicting_individual()
         before = [copy.deepcopy(g) for g in individual]
@@ -861,7 +858,7 @@ class TestUnifiedRepair:
         _ensure_config()
 
     def test_unified_returns_stats_dict(self):
-        from schedule_engine.ga.repair.basic import repair_individual_unified
+        from src.ga.repair.basic import repair_individual_unified
 
         individual, ctx = _make_conflicting_individual()
         stats = repair_individual_unified(individual, ctx)
@@ -870,21 +867,21 @@ class TestUnifiedRepair:
         assert "total_fixes" in stats
 
     def test_unified_selective_mode(self):
-        from schedule_engine.ga.repair.basic import repair_individual_unified
+        from src.ga.repair.basic import repair_individual_unified
 
         individual, ctx = _make_conflicting_individual()
         stats = repair_individual_unified(individual, ctx, selective=True)
         assert isinstance(stats, dict)
 
     def test_unified_full_mode(self):
-        from schedule_engine.ga.repair.basic import repair_individual_unified
+        from src.ga.repair.basic import repair_individual_unified
 
         individual, ctx = _make_conflicting_individual()
         stats = repair_individual_unified(individual, ctx, selective=False)
         assert isinstance(stats, dict)
 
     def test_unified_on_clean_individual(self):
-        from schedule_engine.ga.repair.basic import repair_individual_unified
+        from src.ga.repair.basic import repair_individual_unified
 
         individual, ctx = _make_clean_individual()
         stats = repair_individual_unified(individual, ctx)
@@ -892,7 +889,7 @@ class TestUnifiedRepair:
         assert isinstance(stats["total_fixes"], int)
 
     def test_unified_preserves_gene_count(self):
-        from schedule_engine.ga.repair.basic import repair_individual_unified
+        from src.ga.repair.basic import repair_individual_unified
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -912,7 +909,7 @@ class TestIGLSRepair:
         _ensure_config()
 
     def test_igls_returns_int(self):
-        from schedule_engine.ga.repair.igls import igls_repair
+        from src.ga.repair.igls import igls_repair
 
         individual, ctx = _make_conflicting_individual()
         result = igls_repair(individual, ctx, max_iterations=2)
@@ -920,7 +917,7 @@ class TestIGLSRepair:
         assert result >= 0
 
     def test_igls_preserves_gene_count(self):
-        from schedule_engine.ga.repair.igls import igls_repair
+        from src.ga.repair.igls import igls_repair
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -928,7 +925,7 @@ class TestIGLSRepair:
         assert len(individual) == before_len
 
     def test_igls_preserves_structural_fields(self):
-        from schedule_engine.ga.repair.igls import igls_repair
+        from src.ga.repair.igls import igls_repair
 
         individual, ctx = _make_conflicting_individual()
         before = [copy.deepcopy(g) for g in individual]
@@ -939,7 +936,7 @@ class TestIGLSRepair:
 
     def test_igls_selective_vs_full(self):
         """Both selective and full modes should work."""
-        from schedule_engine.ga.repair.igls import igls_repair
+        from src.ga.repair.igls import igls_repair
 
         ind1, ctx1 = _make_conflicting_individual()
         r1 = igls_repair(ind1, ctx1, selective=True)
@@ -960,7 +957,7 @@ class TestLNSTrigger:
     """Test LNS trigger conditions."""
 
     def test_trigger_on_interval(self):
-        from schedule_engine.ga.repair.lns.operator import should_trigger_lns_repair
+        from src.ga.repair.lns.operator import should_trigger_lns_repair
 
         assert (
             should_trigger_lns_repair(
@@ -973,7 +970,7 @@ class TestLNSTrigger:
         )
 
     def test_no_trigger_off_interval(self):
-        from schedule_engine.ga.repair.lns.operator import should_trigger_lns_repair
+        from src.ga.repair.lns.operator import should_trigger_lns_repair
 
         assert (
             should_trigger_lns_repair(
@@ -986,7 +983,7 @@ class TestLNSTrigger:
         )
 
     def test_trigger_on_stagnation(self):
-        from schedule_engine.ga.repair.lns.operator import should_trigger_lns_repair
+        from src.ga.repair.lns.operator import should_trigger_lns_repair
 
         assert (
             should_trigger_lns_repair(
@@ -999,7 +996,7 @@ class TestLNSTrigger:
         )
 
     def test_no_trigger_below_stagnation_threshold(self):
-        from schedule_engine.ga.repair.lns.operator import should_trigger_lns_repair
+        from src.ga.repair.lns.operator import should_trigger_lns_repair
 
         assert (
             should_trigger_lns_repair(
@@ -1012,7 +1009,7 @@ class TestLNSTrigger:
         )
 
     def test_trigger_on_forced_generation(self):
-        from schedule_engine.ga.repair.lns.operator import should_trigger_lns_repair
+        from src.ga.repair.lns.operator import should_trigger_lns_repair
 
         assert (
             should_trigger_lns_repair(
@@ -1027,7 +1024,7 @@ class TestLNSTrigger:
 
     def test_no_trigger_gen_zero(self):
         """Generation 0 with no stagnation or forced gens should not trigger."""
-        from schedule_engine.ga.repair.lns.operator import should_trigger_lns_repair
+        from src.ga.repair.lns.operator import should_trigger_lns_repair
 
         assert (
             should_trigger_lns_repair(
@@ -1049,7 +1046,7 @@ class TestLNSStats:
     """Test LNS statistics tracking."""
 
     def test_stats_initialization(self):
-        from schedule_engine.ga.repair.lns.operator import LNSRepairStats
+        from src.ga.repair.lns.operator import LNSRepairStats
 
         stats = LNSRepairStats()
         assert stats.total_attempts == 0
@@ -1057,7 +1054,7 @@ class TestLNSStats:
         assert stats.failed_repairs == 0
 
     def test_stats_repr(self):
-        from schedule_engine.ga.repair.lns.operator import LNSRepairStats
+        from src.ga.repair.lns.operator import LNSRepairStats
 
         stats = LNSRepairStats()
         stats.total_attempts = 10
@@ -1067,7 +1064,7 @@ class TestLNSStats:
         assert "70.0%" in repr_str
 
     def test_global_stats_reset(self):
-        from schedule_engine.ga.repair.lns.operator import (
+        from src.ga.repair.lns.operator import (
             get_lns_stats,
             reset_lns_stats,
         )
@@ -1088,7 +1085,7 @@ class TestRepairEngine:
     """Test the RL-ready RepairEngine."""
 
     def _make_engine(self):
-        from schedule_engine.ga.repair.engine import RepairEngine
+        from src.ga.repair.engine import RepairEngine
 
         individual, ctx = _make_multi_conflict_individual()
 
@@ -1125,7 +1122,7 @@ class TestRepairEngine:
         assert all(isinstance(a, str) for a in actions)
 
     def test_engine_repair_returns_stats(self):
-        from schedule_engine.ga.repair.engine import RepairStats
+        from src.ga.repair.engine import RepairStats
 
         engine, individual, _ = self._make_engine()
         stats = engine.repair_individual(individual)
@@ -1133,7 +1130,7 @@ class TestRepairEngine:
         assert stats.steps >= 0
 
     def test_engine_step_returns_result(self):
-        from schedule_engine.ga.repair.engine import RepairStepResult
+        from src.ga.repair.engine import RepairStepResult
 
         engine, individual, _ = self._make_engine()
         result = engine.step(individual)
@@ -1150,7 +1147,7 @@ class TestRepairPolicies:
     """Test repair engine selection policies."""
 
     def test_round_robin_cycles(self):
-        from schedule_engine.ga.repair.engine import RoundRobinPolicy
+        from src.ga.repair.engine import RoundRobinPolicy
 
         operators = ["op_a", "op_b", "op_c"]
         policy = RoundRobinPolicy(operators)
@@ -1159,7 +1156,7 @@ class TestRepairPolicies:
         assert selections == ["op_a", "op_b", "op_c", "op_a", "op_b", "op_c"]
 
     def test_epsilon_greedy_explores(self):
-        from schedule_engine.ga.repair.engine import EpsilonGreedyPolicy
+        from src.ga.repair.engine import EpsilonGreedyPolicy
 
         operators = ["op_a", "op_b", "op_c"]
         policy = EpsilonGreedyPolicy(operators, epsilon=1.0)  # Full exploration
@@ -1177,7 +1174,7 @@ class TestRepairPolicies:
         LEAST negative delta (smallest reduction) appears 'best' in raw scores.
         We design stats so op_b has the clear highest score.
         """
-        from schedule_engine.ga.repair.engine import EpsilonGreedyPolicy
+        from src.ga.repair.engine import EpsilonGreedyPolicy
 
         operators = ["op_a", "op_b", "op_c"]
         policy = EpsilonGreedyPolicy(operators, epsilon=0.0)
@@ -1205,7 +1202,7 @@ class TestRepairDataClasses:
     """Test data classes used by repair engine."""
 
     def test_repair_candidate_creation(self):
-        from schedule_engine.ga.repair.engine import RepairCandidate
+        from src.ga.repair.engine import RepairCandidate
 
         c = RepairCandidate(gene_idx=5, new_start=10)
         assert c.gene_idx == 5
@@ -1214,7 +1211,7 @@ class TestRepairDataClasses:
         assert c.new_instructor_id is None
 
     def test_repair_step_result_creation(self):
-        from schedule_engine.ga.repair.engine import RepairStepResult
+        from src.ga.repair.engine import RepairStepResult
 
         r = RepairStepResult(
             applied=True,
@@ -1228,7 +1225,7 @@ class TestRepairDataClasses:
         assert r.delta_hard == -2.0
 
     def test_repair_stats_record(self):
-        from schedule_engine.ga.repair.engine import RepairStats, RepairStepResult
+        from src.ga.repair.engine import RepairStats, RepairStepResult
 
         stats = RepairStats()
         result = RepairStepResult(
@@ -1246,7 +1243,7 @@ class TestRepairDataClasses:
         assert stats.total_delta_hard == -2.0
 
     def test_repair_stats_tracks_by_operator(self):
-        from schedule_engine.ga.repair.engine import RepairStats, RepairStepResult
+        from src.ga.repair.engine import RepairStats, RepairStepResult
 
         stats = RepairStats()
         for _ in range(3):
@@ -1285,7 +1282,7 @@ class TestLocalSearch:
     """Test gene-level local search operators."""
 
     def test_greedy_optimization_returns_tuple(self):
-        from schedule_engine.ga.operators.local_search import optimize_gene_greedy
+        from src.ga.operators.local_search import optimize_gene_greedy
 
         individual, ctx = _make_conflicting_individual()
         gene = individual[0]
@@ -1294,7 +1291,7 @@ class TestLocalSearch:
         assert len(result) == 2
 
     def test_exhaustive_optimization_returns_tuple(self):
-        from schedule_engine.ga.operators.local_search import optimize_gene_exhaustive
+        from src.ga.operators.local_search import optimize_gene_exhaustive
 
         individual, ctx = _make_conflicting_individual()
         gene = individual[0]
@@ -1306,7 +1303,7 @@ class TestLocalSearch:
 
     def test_greedy_never_worsens_gene(self):
         """Greedy search should only accept improvements."""
-        from schedule_engine.ga.operators.local_search import (
+        from src.ga.operators.local_search import (
             _count_gene_violations,
             optimize_gene_greedy,
         )
@@ -1324,7 +1321,7 @@ class TestLocalSearch:
 
     def test_exhaustive_returns_best_neighbor(self):
         """Exhaustive should return the best among all evaluated neighbors."""
-        from schedule_engine.ga.operators.local_search import optimize_gene_exhaustive
+        from src.ga.operators.local_search import optimize_gene_exhaustive
 
         individual, ctx = _make_conflicting_individual()
         gene = individual[0]
@@ -1347,7 +1344,7 @@ class TestConstructionHeuristics:
         strict=True,
     )
     def test_largest_degree_first_returns_genes(self):
-        from schedule_engine.ga.heuristics.construction import largest_degree_first
+        from src.ga.heuristics.construction import largest_degree_first
 
         ctx = make_context(
             courses=[
@@ -1367,7 +1364,7 @@ class TestConstructionHeuristics:
         assert all(isinstance(g, SessionGene) for g in individual)
 
     def test_most_constrained_first_returns_genes(self):
-        from schedule_engine.ga.heuristics.construction import most_constrained_first
+        from src.ga.heuristics.construction import most_constrained_first
 
         ctx = make_context(
             courses=[
@@ -1397,7 +1394,7 @@ class TestScheduleIndexDetectorCrossValidation:
 
     def test_index_and_detector_agree_on_group_conflicts(self):
         """ScheduleIndex.find_group_conflicts() and detector should find same violations."""
-        from schedule_engine.ga.repair.detector import _detect_full
+        from src.ga.repair.detector import _detect_full
 
         individual, ctx = _make_conflicting_individual()
 
@@ -1422,7 +1419,7 @@ class TestScheduleIndexDetectorCrossValidation:
 
     def test_index_and_detector_agree_on_room_conflicts(self):
         individual, ctx = _make_multi_conflict_individual()
-        from schedule_engine.ga.repair.detector import _detect_full
+        from src.ga.repair.detector import _detect_full
 
         index = ScheduleIndex.from_individual(individual)
         index_room = set(index.find_room_conflicts().keys())
@@ -1436,7 +1433,7 @@ class TestScheduleIndexDetectorCrossValidation:
 
     def test_index_and_detector_agree_on_instructor_conflicts(self):
         individual, ctx = _make_multi_conflict_individual()
-        from schedule_engine.ga.repair.detector import _detect_full
+        from src.ga.repair.detector import _detect_full
 
         index = ScheduleIndex.from_individual(individual)
         index_instr = set(index.find_instructor_conflicts().keys())
@@ -1483,7 +1480,7 @@ class TestGreedyRepairWrapper:
     """Test greedy_repair wrapper from greedy.py."""
 
     def test_greedy_repair_returns_int(self):
-        from schedule_engine.ga.repair.greedy import greedy_repair
+        from src.ga.repair.greedy import greedy_repair
 
         individual, ctx = _make_conflicting_individual()
         result = greedy_repair(individual, ctx, max_iterations=2)
@@ -1491,7 +1488,7 @@ class TestGreedyRepairWrapper:
         assert result >= 0
 
     def test_greedy_repair_preserves_gene_count(self):
-        from schedule_engine.ga.repair.greedy import greedy_repair
+        from src.ga.repair.greedy import greedy_repair
 
         individual, ctx = _make_conflicting_individual()
         before_len = len(individual)
@@ -1508,7 +1505,7 @@ class TestViolationState:
     """Test ViolationState data class."""
 
     def test_violation_state_creation(self):
-        from schedule_engine.ga.repair.engine import ViolationState
+        from src.ga.repair.engine import ViolationState
 
         state = ViolationState(
             hard=5.0,
@@ -1538,7 +1535,7 @@ class TestEndToEndIntegration:
 
     def test_schedule_index_used_in_repair_detection(self):
         """Verify that repair pipeline uses ScheduleIndex internally."""
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_multi_conflict_individual()
         violations = detect_violated_genes(individual, ctx, strategy="full")
@@ -1554,8 +1551,8 @@ class TestEndToEndIntegration:
 
     def test_repair_then_detect_reduces_violations(self):
         """Repair → detect should show fewer violations."""
-        from schedule_engine.ga.repair.basic import repair_individual_unified
-        from schedule_engine.ga.repair.detector import detect_violated_genes
+        from src.ga.repair.basic import repair_individual_unified
+        from src.ga.repair.detector import detect_violated_genes
 
         individual, ctx = _make_multi_conflict_individual()
         pre_violations = detect_violated_genes(individual, ctx, strategy="full")
@@ -1572,7 +1569,7 @@ class TestEndToEndIntegration:
 
     def test_vnd_then_detect_consistency(self):
         """VND improvement → ScheduleIndex verification."""
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = _make_conflicting_individual()
 
@@ -1592,7 +1589,7 @@ class TestEndToEndIntegration:
 
     def test_full_pipeline_clean_to_conflicting_to_repaired(self):
         """Clean → introduce conflict → repair → verify fewer violations."""
-        from schedule_engine.ga.repair.basic import repair_individual_unified
+        from src.ga.repair.basic import repair_individual_unified
 
         individual, ctx = _make_clean_individual()
         index = ScheduleIndex.from_individual(individual)

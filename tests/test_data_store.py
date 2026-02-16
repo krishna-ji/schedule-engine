@@ -17,7 +17,7 @@ class TestDataStoreFromJson:
 
     @pytest.fixture(scope="class")
     def store(self):
-        from schedule_engine.io.data_store import DataStore
+        from src.io.data_store import DataStore
 
         return DataStore.from_json(DATA_DIR)
 
@@ -69,12 +69,12 @@ class TestDataStoreToContext:
 
     @pytest.fixture(scope="class")
     def store(self):
-        from schedule_engine.io.data_store import DataStore
+        from src.io.data_store import DataStore
 
         return DataStore.from_json(DATA_DIR)
 
     def test_context_type(self, store):
-        from schedule_engine.domain.types import SchedulingContext
+        from src.domain.types import SchedulingContext
 
         ctx = store.to_context()
         assert isinstance(ctx, SchedulingContext)
@@ -97,12 +97,12 @@ class TestDataStoreSerialization:
 
     @pytest.fixture(scope="class")
     def store(self):
-        from schedule_engine.io.data_store import DataStore
+        from src.io.data_store import DataStore
 
         return DataStore.from_json(DATA_DIR)
 
     def test_round_trip(self, store):
-        from schedule_engine.io.data_store import DataStore
+        from src.io.data_store import DataStore
 
         d = store.to_dict()
         store2 = DataStore.from_dict(d)
@@ -129,43 +129,43 @@ class TestMergeCohortPairs:
     """Unit tests for cohort pair deduplication."""
 
     def test_empty_inputs(self):
-        from schedule_engine.io.data_store import _merge_cohort_pairs
+        from src.io.data_store import _merge_cohort_pairs
 
         assert _merge_cohort_pairs([], []) == []
 
     def test_dedup_same_pair(self):
-        from schedule_engine.io.data_store import _merge_cohort_pairs
+        from src.io.data_store import _merge_cohort_pairs
 
         pairs = [("A", "B"), ("A", "B")]
         result = _merge_cohort_pairs(pairs, [])
         assert len(result) == 1
 
     def test_dedup_reversed_pair(self):
-        from schedule_engine.io.data_store import _merge_cohort_pairs
+        from src.io.data_store import _merge_cohort_pairs
 
         result = _merge_cohort_pairs([("A", "B")], [("B", "A")])
         assert len(result) == 1
 
     def test_case_insensitive_dedup(self):
-        from schedule_engine.io.data_store import _merge_cohort_pairs
+        from src.io.data_store import _merge_cohort_pairs
 
         result = _merge_cohort_pairs([("Grp-A", "Grp-B")], [("grp-a", "grp-b")])
         assert len(result) == 1
 
     def test_strips_whitespace(self):
-        from schedule_engine.io.data_store import _merge_cohort_pairs
+        from src.io.data_store import _merge_cohort_pairs
 
         result = _merge_cohort_pairs([("  A ", " B  ")], [])
         assert result == [("A", "B")]
 
     def test_skips_empty_strings(self):
-        from schedule_engine.io.data_store import _merge_cohort_pairs
+        from src.io.data_store import _merge_cohort_pairs
 
         result = _merge_cohort_pairs([("A", ""), ("", "B")], [])
         assert result == []
 
     def test_merges_derived_and_configured(self):
-        from schedule_engine.io.data_store import _merge_cohort_pairs
+        from src.io.data_store import _merge_cohort_pairs
 
         result = _merge_cohort_pairs([("A", "B")], [("C", "D")])
         assert len(result) == 2

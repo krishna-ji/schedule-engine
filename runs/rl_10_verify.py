@@ -15,15 +15,12 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.rl.helpers import build_notebook_config
+from src.rl.helpers import build_notebook_config
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:
@@ -84,7 +81,7 @@ def main() -> None:
 
     # Check ScheduleEnv
     try:
-        from schedule_engine.rl import ScheduleEnv
+        from src.rl import ScheduleEnv
 
         component_status["ScheduleEnv"] = "✓ Available"
     except ImportError as e:
@@ -92,7 +89,7 @@ def main() -> None:
 
     # Check PPO agent
     try:
-        from schedule_engine.rl.agents import create_ppo_agent
+        from src.rl.agents import create_ppo_agent
 
         component_status["PPO Agent"] = "✓ Available"
     except ImportError as e:
@@ -100,7 +97,7 @@ def main() -> None:
 
     # Check DQN agent
     try:
-        from schedule_engine.rl.agents import create_dqn_agent
+        from src.rl.agents import create_dqn_agent
 
         component_status["DQN Agent"] = "✓ Available"
     except ImportError as e:
@@ -108,7 +105,7 @@ def main() -> None:
 
     # Check Random agent
     try:
-        from schedule_engine.rl.agents import RandomAgent
+        from src.rl.agents import RandomAgent
 
         component_status["Random Agent"] = "✓ Available"
     except ImportError as e:
@@ -116,7 +113,7 @@ def main() -> None:
 
     # Check AgentCoordinator
     try:
-        from schedule_engine.rl.multi_agent.agent_coordinator import AgentCoordinator
+        from src.rl.multi_agent.agent_coordinator import AgentCoordinator
 
         component_status["AgentCoordinator"] = "✓ Available"
     except ImportError as e:
@@ -124,7 +121,7 @@ def main() -> None:
 
     # Check RewardCalculator
     try:
-        from schedule_engine.rl.gym_env.reward_calculator import RewardCalculator
+        from src.rl.gym_env.reward_calculator import RewardCalculator
 
         component_status["RewardCalculator"] = "✓ Available"
     except ImportError as e:
@@ -158,7 +155,7 @@ RL Experiment Scripts (01-10) Status:
   rl_10: Summary (this script)
 
 All scripts are now STANDALONE with:
-  ✓ Imports from schedule_engine/notebooks/
+  ✓ Imports from src/notebooks/
   ✓ File-based logging
   ✓ Timestamped output directories
   ✓ JSON results export

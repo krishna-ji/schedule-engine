@@ -6,18 +6,7 @@ known bugs (dead self-overlap check, no hierarchy awareness).
 
 from __future__ import annotations
 
-import pathlib
-import sys
-
 import pytest
-
-from schedule_engine.ga.repair.detector import (
-    _detect_fast,
-    _detect_full,
-    detect_violated_genes,
-)
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
     make_context,
     make_course,
@@ -25,6 +14,12 @@ from conftest import (
     make_group,
     make_instructor,
     make_room,
+)
+
+from src.ga.repair.detector import (
+    _detect_fast,
+    _detect_full,
+    detect_violated_genes,
 )
 
 

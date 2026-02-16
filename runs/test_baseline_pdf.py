@@ -3,13 +3,11 @@
 Quick test for ga_01_baseline - 10 generations to verify PDF export.
 """
 
-import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.experiments import BaselineExperiment
+from src.experiments import BaselineExperiment
 
 # Quick test configuration
 SEED = 42

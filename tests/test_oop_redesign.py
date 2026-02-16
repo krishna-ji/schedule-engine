@@ -15,13 +15,13 @@ from __future__ import annotations
 
 import pytest
 
-from schedule_engine.domain.course import Course
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.domain.group import Group
-from schedule_engine.domain.instructor import Instructor
-from schedule_engine.domain.room import Room
-from schedule_engine.domain.timetable import Timetable
-from schedule_engine.domain.types import SchedulingContext
+from src.domain.course import Course
+from src.domain.gene import SessionGene
+from src.domain.group import Group
+from src.domain.instructor import Instructor
+from src.domain.room import Room
+from src.domain.timetable import Timetable
+from src.domain.types import SchedulingContext
 
 # Shared fixtures
 
@@ -137,26 +137,26 @@ class TestConstraintProtocol:
     """Tests for constraint protocol compliance and registries."""
 
     def test_constraint_is_runtime_checkable(self):
-        from schedule_engine.constraints import Constraint
+        from src.constraints import Constraint
 
         assert hasattr(Constraint, "__protocol_attrs__") or hasattr(
             Constraint, "_is_runtime_protocol"
         )
 
     def test_hard_constraints_have_correct_kind(self):
-        from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES
+        from src.constraints import HARD_CONSTRAINT_CLASSES
 
         for c in HARD_CONSTRAINT_CLASSES:
             assert c.kind == "hard", f"{c.name} has kind={c.kind}"
 
     def test_soft_constraints_have_correct_kind(self):
-        from schedule_engine.constraints import SOFT_CONSTRAINT_CLASSES
+        from src.constraints import SOFT_CONSTRAINT_CLASSES
 
         for c in SOFT_CONSTRAINT_CLASSES:
             assert c.kind == "soft", f"{c.name} has kind={c.kind}"
 
     def test_all_constraints_is_union(self):
-        from schedule_engine.constraints import (
+        from src.constraints import (
             ALL_CONSTRAINTS,
             HARD_CONSTRAINT_CLASSES,
             SOFT_CONSTRAINT_CLASSES,
@@ -167,19 +167,19 @@ class TestConstraintProtocol:
         )
 
     def test_all_constraints_have_unique_names(self):
-        from schedule_engine.constraints import ALL_CONSTRAINTS
+        from src.constraints import ALL_CONSTRAINTS
 
         names = [c.name for c in ALL_CONSTRAINTS]
         assert len(names) == len(set(names)), f"Duplicate names: {names}"
 
     def test_all_constraints_have_positive_weight(self):
-        from schedule_engine.constraints import ALL_CONSTRAINTS
+        from src.constraints import ALL_CONSTRAINTS
 
         for c in ALL_CONSTRAINTS:
             assert c.weight > 0, f"{c.name} has weight={c.weight}"
 
     def test_all_constraints_have_evaluate(self):
-        from schedule_engine.constraints import ALL_CONSTRAINTS
+        from src.constraints import ALL_CONSTRAINTS
 
         for c in ALL_CONSTRAINTS:
             assert callable(
@@ -188,7 +188,7 @@ class TestConstraintProtocol:
 
     def test_exclusivity_constraints_use_timetable_indexes(self):
         """The 3 exclusivity constraints should return 0 for non-overlapping genes."""
-        from schedule_engine.constraints import (
+        from src.constraints import (
             InstructorExclusivity,
             RoomExclusivity,
             StudentGroupExclusivity,
@@ -203,7 +203,7 @@ class TestConstraintProtocol:
         assert RoomExclusivity().evaluate(tt) == 0
 
     def test_exclusivity_detects_group_conflict(self):
-        from schedule_engine.constraints import StudentGroupExclusivity
+        from src.constraints import StudentGroupExclusivity
 
         ctx = _conflict_context()
         # Two genes for same group at same time
@@ -215,12 +215,12 @@ class TestConstraintProtocol:
         assert StudentGroupExclusivity().evaluate(tt) > 0
 
     def test_known_hard_constraint_count(self):
-        from schedule_engine.constraints import HARD_CONSTRAINT_CLASSES
+        from src.constraints import HARD_CONSTRAINT_CLASSES
 
         assert len(HARD_CONSTRAINT_CLASSES) == 8
 
     def test_known_soft_constraint_count(self):
-        from schedule_engine.constraints import SOFT_CONSTRAINT_CLASSES
+        from src.constraints import SOFT_CONSTRAINT_CLASSES
 
         assert len(SOFT_CONSTRAINT_CLASSES) == 6
 
@@ -232,27 +232,27 @@ class TestEvaluator:
     """Tests for the unified Evaluator class."""
 
     def test_import(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         assert Evaluator is not None
 
     def test_evaluator_default_constraints(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         assert len(ev.hard) == 8
         assert len(ev.soft) == 6
 
     def test_evaluator_custom_constraints(self):
-        from schedule_engine.constraints import StudentGroupExclusivity
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import StudentGroupExclusivity
+        from src.constraints import Evaluator
 
         ev = Evaluator(constraints=[StudentGroupExclusivity()])
         assert len(ev.hard) == 1
         assert len(ev.soft) == 0
 
     def test_fitness_returns_two_floats(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -264,7 +264,7 @@ class TestEvaluator:
         assert isinstance(result[1], (int, float))
 
     def test_fitness_from_timetable(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -274,7 +274,7 @@ class TestEvaluator:
         assert isinstance(result, tuple) and len(result) == 2
 
     def test_breakdown_returns_dict(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -284,7 +284,7 @@ class TestEvaluator:
         assert len(bd) == 14  # 8 hard + 6 soft
 
     def test_breakdown_from_timetable(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -294,7 +294,7 @@ class TestEvaluator:
         assert len(bd) == 14
 
     def test_hard_breakdown_only_hard(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -303,7 +303,7 @@ class TestEvaluator:
         assert len(hb) == 8
 
     def test_soft_breakdown_only_soft(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -312,7 +312,7 @@ class TestEvaluator:
         assert len(sb) == 6
 
     def test_evaluate_all_returns_four_elements(self):
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -328,7 +328,7 @@ class TestEvaluator:
 
     def test_no_group_conflict_gives_zero_exclusivity(self):
         """Single gene -> zero group/instructor/room exclusivity violations."""
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -340,7 +340,7 @@ class TestEvaluator:
 
     def test_conflict_gives_nonzero_exclusivity(self):
         """Two overlapping genes for same group -> nonzero penalty."""
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _conflict_context()
@@ -353,7 +353,7 @@ class TestEvaluator:
 
     def test_fitness_consistency(self):
         """fitness() == fitness_from_timetable() on same data."""
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -371,17 +371,17 @@ class TestRepairPipeline:
     """Structural tests for the RepairPipeline class."""
 
     def test_import(self):
-        from schedule_engine.ga import RepairPipeline
+        from src.ga import RepairPipeline
 
         assert RepairPipeline is not None
 
     def test_pipeline_has_repair_method(self):
-        from schedule_engine.ga import RepairPipeline
+        from src.ga import RepairPipeline
 
         assert callable(getattr(RepairPipeline, "repair", None))
 
     def test_pipeline_has_default_factory(self):
-        from schedule_engine.ga import RepairPipeline
+        from src.ga import RepairPipeline
 
         assert callable(getattr(RepairPipeline, "default", None))
 
@@ -393,19 +393,19 @@ class TestPopulationFactory:
     """Structural tests for the PopulationFactory class."""
 
     def test_import(self):
-        from schedule_engine.ga import PopulationFactory
+        from src.ga import PopulationFactory
 
         assert PopulationFactory is not None
 
     def test_factory_has_methods(self):
-        from schedule_engine.ga import PopulationFactory
+        from src.ga import PopulationFactory
 
         assert callable(getattr(PopulationFactory, "create_population", None))
         assert callable(getattr(PopulationFactory, "random_individual", None))
         assert callable(getattr(PopulationFactory, "greedy_individual", None))
 
     def test_factory_stores_context(self):
-        from schedule_engine.ga import PopulationFactory
+        from src.ga import PopulationFactory
 
         ctx = _simple_context()
         factory = PopulationFactory(ctx)
@@ -419,26 +419,26 @@ class TestBaseExperimentIntegration:
     """Tests for BaseExperiment using PopulationFactory."""
 
     def test_base_experiment_imports(self):
-        from schedule_engine.experiments.base import BaseExperiment
-        from schedule_engine.ga import PopulationFactory
+        from src.experiments.base import BaseExperiment
+        from src.ga import PopulationFactory
 
         assert BaseExperiment is not None
         assert PopulationFactory is not None
 
     def test_base_experiment_has_population_factory_property(self):
-        from schedule_engine.experiments.base import BaseExperiment
+        from src.experiments.base import BaseExperiment
 
         assert hasattr(BaseExperiment, "population_factory")
 
     def test_population_factory_has_required_methods(self):
-        from schedule_engine.ga import PopulationFactory
+        from src.ga import PopulationFactory
 
         assert callable(getattr(PopulationFactory, "create_population", None))
         assert callable(getattr(PopulationFactory, "random_individual", None))
         assert callable(getattr(PopulationFactory, "greedy_individual", None))
 
     def test_population_factory_strategies(self):
-        from schedule_engine.ga import PopulationFactory
+        from src.ga import PopulationFactory
 
         # Test that _smart_population, _hybrid_population, _pure_random_population exist
         assert callable(getattr(PopulationFactory, "_smart_population", None))
@@ -482,7 +482,7 @@ class TestCrossPhaseIntegration:
 
     def test_constraint_evaluates_via_timetable(self):
         """Phase 1 (Timetable) + Phase 2 (Constraint) integration."""
-        from schedule_engine.constraints import StudentGroupExclusivity
+        from src.constraints import StudentGroupExclusivity
 
         ctx = _simple_context()
         genes = [_make_gene()]
@@ -492,7 +492,7 @@ class TestCrossPhaseIntegration:
 
     def test_evaluator_uses_constraints_on_timetable(self):
         """Phase 1 + Phase 2 + Phase 3 integration."""
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -503,8 +503,8 @@ class TestCrossPhaseIntegration:
 
     def test_evaluator_breakdown_names_match_constraints(self):
         # All constraint names appear in breakdown dict.
-        from schedule_engine.constraints import ALL_CONSTRAINTS
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import ALL_CONSTRAINTS
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()
@@ -514,7 +514,7 @@ class TestCrossPhaseIntegration:
 
     def test_evaluate_all_totals_match_fitness(self):
         # evaluate_all() totals should match fitness().
-        from schedule_engine.constraints import Evaluator
+        from src.constraints import Evaluator
 
         ev = Evaluator()
         ctx = _simple_context()

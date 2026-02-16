@@ -19,13 +19,10 @@ Categories:
 from __future__ import annotations
 
 import json
-import sys
 from collections import defaultdict
 from pathlib import Path
 
-# ── project root on sys.path ──
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from rich import box
 from rich.console import Console
@@ -33,7 +30,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from schedule_engine.io.data_store import DataStore
+from src.io.data_store import DataStore
 
 console = Console(width=120)
 
@@ -823,7 +820,7 @@ info(f"Cohort pairs (for practical alignment): {len(store.cohort_pairs)}")
 # ════════════════════════════════════════════════════════════════════════
 section("I. CONSTRAINT SYSTEM OVERVIEW (what gets enforced)")
 
-from schedule_engine.constraints.constraints import (
+from src.constraints.constraints import (
     HARD_CONSTRAINT_CLASSES,
     SOFT_CONSTRAINT_CLASSES,
 )

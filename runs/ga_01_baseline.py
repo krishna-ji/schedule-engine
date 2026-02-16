@@ -13,14 +13,11 @@ Usage:
     python runs/ga_01_baseline.py
 """
 
-import sys
 from pathlib import Path
 
-# Add src/ to path so schedule_engine is importable without pip install
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.experiments import BaselineExperiment
+from src.experiments import BaselineExperiment
 
 # ── PRODUCTION CONFIGURATION ─────────────────────────────────────────
 

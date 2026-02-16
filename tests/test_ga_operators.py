@@ -9,29 +9,9 @@ Tests crossover, mutation, and NSGA-II selection operators:
 from __future__ import annotations
 
 import copy
-import pathlib
 import random
-import sys
 
 import pytest
-
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.ga.operators.crossover import crossover_course_group_aware
-from schedule_engine.ga.operators.fast_nsga2 import (
-    assign_crowding_distance,
-    compare_nsga2,
-    dominates,
-    fast_nondominated_sort,
-    sel_nsga2_fast,
-)
-from schedule_engine.ga.operators.mutation import (
-    find_suitable_rooms_for_course,
-    mutate_gene,
-    mutate_individual,
-    mutate_time_quanta,
-)
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
     make_context,
     make_course,
@@ -40,6 +20,22 @@ from conftest import (
     make_instructor,
     make_room,
     structural_fields_preserved,
+)
+
+from src.domain.gene import SessionGene
+from src.ga.operators.crossover import crossover_course_group_aware
+from src.ga.operators.fast_nsga2 import (
+    assign_crowding_distance,
+    compare_nsga2,
+    dominates,
+    fast_nondominated_sort,
+    sel_nsga2_fast,
+)
+from src.ga.operators.mutation import (
+    find_suitable_rooms_for_course,
+    mutate_gene,
+    mutate_individual,
+    mutate_time_quanta,
 )
 
 # Helper: Fake fitness for NSGA-II tests
@@ -217,7 +213,7 @@ class TestCrossover:
 
     def test_time_bounds_clipped(self):
         """Start quanta should be clipped to valid range after swap."""
-        from schedule_engine.io.time_system import QuantumTimeSystem
+        from src.io.time_system import QuantumTimeSystem
 
         qts = QuantumTimeSystem()
         # Gene at very end of range

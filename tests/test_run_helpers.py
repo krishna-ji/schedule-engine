@@ -10,13 +10,13 @@ class TestRunHelpersDeadCodeRemoval:
 
     def test_create_detailed_evaluator_removed(self):
         """create_detailed_evaluator should no longer exist."""
-        import schedule_engine.ga.run_helpers as rh
+        import src.ga.run_helpers as rh
 
         assert not hasattr(rh, "create_detailed_evaluator")
 
     def test_create_detailed_evaluator_not_importable(self):
         with pytest.raises(ImportError):
-            from schedule_engine.ga.run_helpers import (
+            from src.ga.run_helpers import (
                 create_detailed_evaluator,
             )  # noqa: F401
 
@@ -45,7 +45,7 @@ class TestRunHelpersPublicAPI:
         ],
     )
     def test_symbol_exists(self, symbol):
-        import schedule_engine.ga.run_helpers as rh
+        import src.ga.run_helpers as rh
 
         assert hasattr(rh, symbol), f"{symbol} missing from run_helpers"
 
@@ -57,7 +57,7 @@ class TestRunHelpersWrappers:
         """course_aware_crossover should call crossover_course_group_aware."""
         import inspect
 
-        from schedule_engine.ga.run_helpers import course_aware_crossover
+        from src.ga.run_helpers import course_aware_crossover
 
         source = inspect.getsource(course_aware_crossover)
         assert "crossover_course_group_aware" in source
@@ -66,7 +66,7 @@ class TestRunHelpersWrappers:
         """smart_mutation should call mutate_individual."""
         import inspect
 
-        from schedule_engine.ga.run_helpers import smart_mutation
+        from src.ga.run_helpers import smart_mutation
 
         source = inspect.getsource(smart_mutation)
         assert "mutate_individual" in source

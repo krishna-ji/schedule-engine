@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from rich.console import Console
-
-# Add src/ to path for local package imports
-project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root / "src"))
 
 console = Console()
 
@@ -125,8 +120,8 @@ def main() -> int:
 
     console.print("\n[yellow]Starting RL-guided GA run...[/yellow]\n")
 
-    from schedule_engine.config.loader import dict_to_pydantic
-    from schedule_engine.workflows.standard_run import run_standard_workflow
+    from src.config.loader import dict_to_pydantic
+    from src.workflows.standard_run import run_standard_workflow
 
     agent_type = "ppo"
     metadata_path = latest_model.with_suffix(".json")

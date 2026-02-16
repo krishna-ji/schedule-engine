@@ -3,13 +3,11 @@
 Compare all 3 initialization strategies: smart, hybrid, random
 """
 
-import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.experiments import BaselineExperiment
+from src.experiments import BaselineExperiment
 
 # Test config - same for all strategies
 SEED = 42
@@ -32,7 +30,7 @@ for strategy in strategies:
     print(f"\n{'='*60}")
     print(f"RUNNING: {strategy.upper()} initialization")
     print(f"{'='*60}\n")
-    
+
     exp = BaselineExperiment(
         seed=SEED,
         pop_size=POP_SIZE,
@@ -50,7 +48,7 @@ for strategy in strategies:
         verbose=VERBOSE,
     )
     exp.run()
-    
+
     # Store results from experiment's internal stats
     results[strategy] = {
         "hard": exp._stats.min_hard[-1] if exp._stats.min_hard else None,
@@ -59,21 +57,21 @@ for strategy in strategies:
         "output_dir": str(exp.output_dir),
     }
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("INITIALIZATION STRATEGY COMPARISON RESULTS")
-print("="*60)
+print("=" * 60)
 print(f"\nConfig: pop={POP_SIZE}, ngen={NGEN}, seed={SEED}\n")
 print(f"{'Strategy':<12} {'Hard':<12} {'Soft':<12} {'Time (s)':<12}")
-print("-"*48)
+print("-" * 48)
 for strategy, data in results.items():
-    hard = data['hard']
-    soft = data['soft']
+    hard = data["hard"]
+    soft = data["soft"]
     time_s = f"{data['time']:.1f}"
     print(f"{strategy:<12} {hard:<12} {soft:<12} {time_s:<12}")
 
 # Find winner
-best_hard = min(results.items(), key=lambda x: x[1]['hard'])
-best_soft = min(results.items(), key=lambda x: x[1]['soft'])
-print("\n" + "-"*48)
+best_hard = min(results.items(), key=lambda x: x[1]["hard"])
+best_soft = min(results.items(), key=lambda x: x[1]["soft"])
+print("\n" + "-" * 48)
 print(f"Best hard violations: {best_hard[0]} ({best_hard[1]['hard']})")
 print(f"Best soft violations: {best_soft[0]} ({best_soft[1]['soft']})")

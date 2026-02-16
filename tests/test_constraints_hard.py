@@ -17,26 +17,7 @@ Hard constraints:
 
 from __future__ import annotations
 
-import pathlib
-
-# conftest.py is auto-loaded by pytest; import helpers via sys.path
-import sys
-
 import pytest
-
-from schedule_engine.constraints.constraints import (
-    CourseCompleteness,
-    InstructorExclusivity,
-    InstructorQualifications,
-    InstructorTimeAvailability,
-    RoomExclusivity,
-    RoomSuitability,
-    RoomTimeAvailability,
-    StudentGroupExclusivity,
-)
-from schedule_engine.domain.timetable import Timetable
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
     assert_constraint_positive,
     assert_constraint_zero,
@@ -50,6 +31,18 @@ from conftest import (
     make_violation_free_timetable,
 )
 
+from src.constraints.constraints import (
+    CourseCompleteness,
+    InstructorExclusivity,
+    InstructorQualifications,
+    InstructorTimeAvailability,
+    RoomExclusivity,
+    RoomSuitability,
+    RoomTimeAvailability,
+    StudentGroupExclusivity,
+)
+from src.domain.timetable import Timetable
+
 # Cross-constraint sanity check
 
 
@@ -60,7 +53,7 @@ class TestHardConstraintSanity:
         """make_violation_free_timetable() must have 0 penalty for EVERY hard constraint.
         This catches infrastructure bugs (e.g., rooms with wrong default availability).
         """
-        from schedule_engine.constraints.constraints import HARD_CONSTRAINT_CLASSES
+        from src.constraints.constraints import HARD_CONSTRAINT_CLASSES
 
         tt, _ctx = make_violation_free_timetable()
         for c in HARD_CONSTRAINT_CLASSES:

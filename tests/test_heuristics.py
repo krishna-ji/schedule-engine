@@ -13,22 +13,9 @@ Tests heuristic registries, individual heuristic behaviors, and key invariants:
 from __future__ import annotations
 
 import copy
-import pathlib
 import random
-import sys
 
 import pytest
-
-from schedule_engine.config import Config, init_config
-from schedule_engine.constraints.constraints import (
-    InstructorExclusivity,
-    RoomExclusivity,
-    StudentGroupExclusivity,
-)
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.domain.timetable import Timetable
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
     make_context,
     make_course,
@@ -39,6 +26,15 @@ from conftest import (
     structural_fields_preserved,
 )
 
+from src.config import Config, init_config
+from src.constraints.constraints import (
+    InstructorExclusivity,
+    RoomExclusivity,
+    StudentGroupExclusivity,
+)
+from src.domain.gene import SessionGene
+from src.domain.timetable import Timetable
+
 # Heuristic Registries (OOP + Legacy)
 
 
@@ -46,13 +42,13 @@ class TestOOPRegistry:
     """Test the OOP heuristic registry (heuristics.py)."""
 
     def test_total_heuristic_count(self):
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         all_h = get_all_heuristic_objects()
         assert len(all_h) == 26, f"Expected 26 heuristics, got {len(all_h)}"
 
     def test_all_names_unique(self):
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         all_h = get_all_heuristic_objects()
         names = [h.name for h in all_h]
@@ -61,7 +57,7 @@ class TestOOPRegistry:
         ), f"Duplicate names: {[n for n in names if names.count(n) > 1]}"
 
     def test_categories_correct(self):
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         VALID = {
             "construction",
@@ -76,7 +72,7 @@ class TestOOPRegistry:
             assert h.category in VALID, f"{h.name} has invalid category {h.category}"
 
     def test_category_counts(self):
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         all_h = get_all_heuristic_objects()
         counts = {}
@@ -91,7 +87,7 @@ class TestOOPRegistry:
 
     def test_enabled_defaults(self):
         """21 of 26 should be enabled by default."""
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         all_h = get_all_heuristic_objects()
         enabled = [h for h in all_h if h.enabled]
@@ -99,7 +95,7 @@ class TestOOPRegistry:
 
     def test_disabled_heuristics(self):
         """5 specific heuristics should be disabled by default."""
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         disabled_expected = {
             "multi_perturbation",
@@ -115,19 +111,19 @@ class TestOOPRegistry:
         ), f"Disabled mismatch: expected {disabled_expected}, got {disabled_actual}"
 
     def test_lookup_by_name(self):
-        from schedule_engine.ga.heuristics.heuristics import get_heuristic_by_name_oop
+        from src.ga.heuristics.heuristics import get_heuristic_by_name_oop
 
         h = get_heuristic_by_name_oop("kempe_chain")
         assert h is not None
         assert h.category == "improvement"
 
     def test_lookup_nonexistent(self):
-        from schedule_engine.ga.heuristics.heuristics import get_heuristic_by_name_oop
+        from src.ga.heuristics.heuristics import get_heuristic_by_name_oop
 
         assert get_heuristic_by_name_oop("nonexistent_heuristic") is None
 
     def test_category_lookup(self):
-        from schedule_engine.ga.heuristics.heuristics import (
+        from src.ga.heuristics.heuristics import (
             get_heuristics_by_category_oop,
         )
 
@@ -135,7 +131,7 @@ class TestOOPRegistry:
         assert len(construction) == 3
 
     def test_build_heuristics_all_disabled(self):
-        from schedule_engine.ga.heuristics.heuristics import build_heuristics
+        from src.ga.heuristics.heuristics import build_heuristics
 
         h = build_heuristics(
             enable_construction=False,
@@ -148,7 +144,7 @@ class TestOOPRegistry:
         assert len(h) == 0
 
     def test_build_heuristics_selective(self):
-        from schedule_engine.ga.heuristics.heuristics import build_heuristics
+        from src.ga.heuristics.heuristics import build_heuristics
 
         h = build_heuristics(
             enable_construction=True,
@@ -162,7 +158,7 @@ class TestOOPRegistry:
         assert all(hh.category == "construction" for hh in h)
 
     def test_all_have_apply_method(self):
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         all_h = get_all_heuristic_objects()
         for h in all_h:
@@ -173,18 +169,18 @@ class TestLegacyRegistry:
     """Test the legacy flat heuristic registry (all_heuristics.py)."""
 
     def test_total_count(self):
-        from schedule_engine.ga.heuristics.all_heuristics import get_all_heuristics
+        from src.ga.heuristics.all_heuristics import get_all_heuristics
 
         assert len(get_all_heuristics()) == 26
 
     def test_unique_names(self):
-        from schedule_engine.ga.heuristics.all_heuristics import get_all_heuristics
+        from src.ga.heuristics.all_heuristics import get_all_heuristics
 
         names = [h.name for h in get_all_heuristics()]
         assert len(names) == len(set(names))
 
     def test_categories_tuple(self):
-        from schedule_engine.ga.heuristics.all_heuristics import CATEGORIES
+        from src.ga.heuristics.all_heuristics import CATEGORIES
 
         assert CATEGORIES == (
             "construction",
@@ -196,34 +192,34 @@ class TestLegacyRegistry:
         )
 
     def test_get_enabled_heuristics_default(self):
-        from schedule_engine.ga.heuristics.all_heuristics import get_enabled_heuristics
+        from src.ga.heuristics.all_heuristics import get_enabled_heuristics
 
         enabled = get_enabled_heuristics()
         assert len(enabled) == 21
 
     def test_get_enabled_by_category(self):
-        from schedule_engine.ga.heuristics.all_heuristics import get_enabled_heuristics
+        from src.ga.heuristics.all_heuristics import get_enabled_heuristics
 
         construction = get_enabled_heuristics("construction")
         assert len(construction) == 3
 
     def test_lookup_by_name(self):
-        from schedule_engine.ga.heuristics.all_heuristics import get_heuristic_by_name
+        from src.ga.heuristics.all_heuristics import get_heuristic_by_name
 
         h = get_heuristic_by_name("random_swap")
         assert h is not None
         assert h.category == "perturbation"
 
     def test_all_have_callable_function(self):
-        from schedule_engine.ga.heuristics.all_heuristics import get_all_heuristics
+        from src.ga.heuristics.all_heuristics import get_all_heuristics
 
         for h in get_all_heuristics():
             assert callable(h.function), f"{h.name} has non-callable function"
 
     def test_consistency_with_oop(self):
         """Both registries should have the same heuristic names."""
-        from schedule_engine.ga.heuristics.all_heuristics import get_all_heuristics
-        from schedule_engine.ga.heuristics.heuristics import get_all_heuristic_objects
+        from src.ga.heuristics.all_heuristics import get_all_heuristics
+        from src.ga.heuristics.heuristics import get_all_heuristic_objects
 
         legacy_names = {h.name for h in get_all_heuristics()}
         oop_names = {h.name for h in get_all_heuristic_objects()}
@@ -274,14 +270,14 @@ class TestPerturbation:
         return [g1, g2, g3], ctx
 
     def test_random_swap_returns_int(self):
-        from schedule_engine.ga.heuristics.perturbation import random_swap
+        from src.ga.heuristics.perturbation import random_swap
 
         individual, ctx = self._make_individual_and_ctx()
         result = random_swap(individual, ctx, num_swaps=1)
         assert isinstance(result, int)
 
     def test_random_swap_preserves_course_ids(self):
-        from schedule_engine.ga.heuristics.perturbation import random_swap
+        from src.ga.heuristics.perturbation import random_swap
 
         individual, ctx = self._make_individual_and_ctx()
         before_ids = [g.course_id for g in individual]
@@ -290,7 +286,7 @@ class TestPerturbation:
         assert before_ids == after_ids
 
     def test_random_swap_preserves_group_ids(self):
-        from schedule_engine.ga.heuristics.perturbation import random_swap
+        from src.ga.heuristics.perturbation import random_swap
 
         individual, ctx = self._make_individual_and_ctx()
         before_groups = [tuple(g.group_ids) for g in individual]
@@ -299,7 +295,7 @@ class TestPerturbation:
         assert before_groups == after_groups
 
     def test_random_swap_preserves_durations(self):
-        from schedule_engine.ga.heuristics.perturbation import random_swap
+        from src.ga.heuristics.perturbation import random_swap
 
         individual, ctx = self._make_individual_and_ctx()
         before_dur = [g.num_quanta for g in individual]
@@ -308,7 +304,7 @@ class TestPerturbation:
         assert before_dur == after_dur
 
     def test_temporal_shift_modifies_time(self):
-        from schedule_engine.ga.heuristics.perturbation import temporal_shift
+        from src.ga.heuristics.perturbation import temporal_shift
 
         individual, ctx = self._make_individual_and_ctx()
         before_times = [g.start_quanta for g in individual]
@@ -320,7 +316,7 @@ class TestPerturbation:
         assert before_times != after_times or True  # May still be same if slots invalid
 
     def test_temporal_shift_preserves_structure(self):
-        from schedule_engine.ga.heuristics.perturbation import temporal_shift
+        from src.ga.heuristics.perturbation import temporal_shift
 
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
@@ -331,7 +327,7 @@ class TestPerturbation:
             assert b.num_quanta == a.num_quanta
 
     def test_room_shuffle_preserves_structure(self):
-        from schedule_engine.ga.heuristics.perturbation import room_shuffle
+        from src.ga.heuristics.perturbation import room_shuffle
 
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
@@ -343,7 +339,7 @@ class TestPerturbation:
             assert b.start_quanta == a.start_quanta
 
     def test_instructor_reassign_preserves_structure(self):
-        from schedule_engine.ga.heuristics.perturbation import instructor_reassign
+        from src.ga.heuristics.perturbation import instructor_reassign
 
         individual, ctx = self._make_individual_and_ctx()
         before = [copy.deepcopy(g) for g in individual]
@@ -399,7 +395,7 @@ class TestImprovement:
         return [g1, g2, g3], ctx
 
     def test_kempe_chain_returns_int(self):
-        from schedule_engine.ga.heuristics.improvement import kempe_chain
+        from src.ga.heuristics.improvement import kempe_chain
 
         individual, ctx = self._make_conflicting()
         result = kempe_chain(individual, ctx, max_iterations=2)
@@ -408,7 +404,7 @@ class TestImprovement:
 
     def test_kempe_chain_never_worsens(self):
         """ALGORITHM: kempe_chain should never increase hard violations."""
-        from schedule_engine.ga.heuristics.improvement import kempe_chain
+        from src.ga.heuristics.improvement import kempe_chain
 
         individual, ctx = self._make_conflicting()
 
@@ -422,7 +418,7 @@ class TestImprovement:
         assert post <= pre, f"Kempe worsened: {pre} → {post}"
 
     def test_kempe_chain_preserves_structure(self):
-        from schedule_engine.ga.heuristics.improvement import kempe_chain
+        from src.ga.heuristics.improvement import kempe_chain
 
         individual, ctx = self._make_conflicting()
         before = [(g.course_id, tuple(g.group_ids), g.num_quanta) for g in individual]
@@ -431,7 +427,7 @@ class TestImprovement:
         assert before == after
 
     def test_ejection_chain_returns_int(self):
-        from schedule_engine.ga.heuristics.improvement import ejection_chain
+        from src.ga.heuristics.improvement import ejection_chain
 
         individual, ctx = self._make_conflicting()
         result = ejection_chain(individual, ctx, max_iterations=2)
@@ -439,7 +435,7 @@ class TestImprovement:
         assert result >= 0
 
     def test_variable_depth_search_returns_int(self):
-        from schedule_engine.ga.heuristics.improvement import variable_depth_search
+        from src.ga.heuristics.improvement import variable_depth_search
 
         individual, ctx = self._make_conflicting()
         result = variable_depth_search(individual, ctx, max_depth=2, max_iterations=2)
@@ -491,14 +487,14 @@ class TestMeta:
         return [g1, g2, g3], ctx
 
     def test_vnd_returns_int(self):
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = self._make_individual_and_ctx()
         result = variable_neighborhood_descent(individual, ctx, max_iterations=2)
         assert isinstance(result, int)
 
     def test_vnd_preserves_structure(self):
-        from schedule_engine.ga.heuristics.meta import variable_neighborhood_descent
+        from src.ga.heuristics.meta import variable_neighborhood_descent
 
         individual, ctx = self._make_individual_and_ctx()
         before = [(g.course_id, tuple(g.group_ids), g.num_quanta) for g in individual]
@@ -507,14 +503,14 @@ class TestMeta:
         assert before == after
 
     def test_ils_returns_int(self):
-        from schedule_engine.ga.heuristics.meta import iterated_local_search
+        from src.ga.heuristics.meta import iterated_local_search
 
         individual, ctx = self._make_individual_and_ctx()
         result = iterated_local_search(individual, ctx, num_iterations=2)
         assert isinstance(result, int)
 
     def test_alns_returns_int(self):
-        from schedule_engine.ga.heuristics.meta import adaptive_large_neighborhood
+        from src.ga.heuristics.meta import adaptive_large_neighborhood
 
         individual, ctx = self._make_individual_and_ctx()
         result = adaptive_large_neighborhood(individual, ctx, num_iterations=2)
@@ -528,7 +524,7 @@ class TestHeuristicUtils:
     """Test utility functions used by heuristics."""
 
     def test_get_course_for_gene(self):
-        from schedule_engine.ga.heuristics.utils import get_course_for_gene
+        from src.ga.heuristics.utils import get_course_for_gene
 
         g = make_gene(course_id="CS101")
         ctx = make_context(courses=[make_course("CS101")])
@@ -538,7 +534,7 @@ class TestHeuristicUtils:
         assert course.course_id == "CS101"
 
     def test_get_course_for_gene_missing(self):
-        from schedule_engine.ga.heuristics.utils import get_course_for_gene
+        from src.ga.heuristics.utils import get_course_for_gene
 
         g = make_gene(course_id="MISSING")
         ctx = make_context(courses=[make_course("CS101")])
@@ -546,21 +542,21 @@ class TestHeuristicUtils:
             get_course_for_gene(ctx, g)
 
     def test_get_room_feature(self):
-        from schedule_engine.ga.heuristics.utils import get_room_feature
+        from src.ga.heuristics.utils import get_room_feature
 
         room = make_room("R1", features="lab")
         feat = get_room_feature(room)
         assert feat == "lab"
 
     def test_is_instructor_available_full_time(self):
-        from schedule_engine.ga.heuristics.utils import is_instructor_available
+        from src.ga.heuristics.utils import is_instructor_available
 
         inst = make_instructor("I1")
         # Full-time instructor: all quanta available
         assert is_instructor_available(inst, [0, 1, 2]) is True
 
     def test_estimate_session_student_count(self):
-        from schedule_engine.ga.heuristics.utils import estimate_session_student_count
+        from src.ga.heuristics.utils import estimate_session_student_count
 
         g = make_gene(course_id="CS101", group_ids=["G1"])
         ctx = make_context(

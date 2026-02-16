@@ -14,17 +14,14 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.rl.helpers import run_ablation
+from src.rl.helpers import run_ablation
 
 
 def setup_logging(output_dir: Path) -> logging.Logger:

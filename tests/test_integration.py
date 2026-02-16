@@ -11,30 +11,9 @@ End-to-end pipeline tests verifying component interplay:
 from __future__ import annotations
 
 import copy
-import pathlib
 import random
-import sys
 
 import pytest
-
-from schedule_engine.config import Config, init_config
-from schedule_engine.constraints.constraints import (
-    CourseCompleteness,
-    InstructorExclusivity,
-    InstructorQualifications,
-    RoomExclusivity,
-    RoomSuitability,
-    StudentGroupExclusivity,
-    build_constraints,
-)
-from schedule_engine.constraints.evaluator import Evaluator
-from schedule_engine.domain.timetable import Timetable
-from schedule_engine.ga.operators.crossover import crossover_course_group_aware
-from schedule_engine.ga.operators.fast_nsga2 import sel_nsga2_fast
-from schedule_engine.ga.operators.mutation import mutate_gene, mutate_individual
-from schedule_engine.ga.repair.basic import repair_individual_unified
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from conftest import (
     make_context,
     make_course,
@@ -43,6 +22,23 @@ from conftest import (
     make_instructor,
     make_room,
 )
+
+from src.config import Config, init_config
+from src.constraints.constraints import (
+    CourseCompleteness,
+    InstructorExclusivity,
+    InstructorQualifications,
+    RoomExclusivity,
+    RoomSuitability,
+    StudentGroupExclusivity,
+    build_constraints,
+)
+from src.constraints.evaluator import Evaluator
+from src.domain.timetable import Timetable
+from src.ga.operators.crossover import crossover_course_group_aware
+from src.ga.operators.fast_nsga2 import sel_nsga2_fast
+from src.ga.operators.mutation import mutate_gene, mutate_individual
+from src.ga.repair.basic import repair_individual_unified
 
 
 def _init():
@@ -356,7 +352,7 @@ class TestRepairEngine:
     """Test OOP RepairEngine with policies."""
 
     def _make_engine(self, policy="round_robin"):
-        from schedule_engine.ga.repair.engine import RepairEngine
+        from src.ga.repair.engine import RepairEngine
 
         ctx = _make_medium_scenario()
         evaluator = Evaluator()

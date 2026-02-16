@@ -12,13 +12,13 @@ from __future__ import annotations
 
 import pytest
 
-from schedule_engine.domain.course import Course
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.domain.group import Group
-from schedule_engine.domain.instructor import Instructor
-from schedule_engine.domain.room import Room
-from schedule_engine.domain.timetable import ConflictPair, Timetable
-from schedule_engine.domain.types import SchedulingContext
+from src.domain.course import Course
+from src.domain.gene import SessionGene
+from src.domain.group import Group
+from src.domain.instructor import Instructor
+from src.domain.room import Room
+from src.domain.timetable import ConflictPair, Timetable
+from src.domain.types import SchedulingContext
 
 # Fixtures
 
@@ -501,7 +501,7 @@ class TestDailyWithQTS:
 
     @pytest.fixture()
     def qts(self):
-        from schedule_engine.io.time_system import QuantumTimeSystem
+        from src.io.time_system import QuantumTimeSystem
 
         return QuantumTimeSystem()
 

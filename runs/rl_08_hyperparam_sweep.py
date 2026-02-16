@@ -15,16 +15,13 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from schedule_engine.rl.helpers import (
+from src.rl.helpers import (
     build_notebook_config,
     create_env,
     evaluate_agent,
@@ -75,9 +72,7 @@ def main() -> None:
     # Paths
     TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
     DATA_DIR = PROJECT_ROOT / "data"
-    OUTPUT_DIR = (
-        PROJECT_ROOT / "output" / "rl_08_hyperparam_sweep" / TIMESTAMP
-    )
+    OUTPUT_DIR = PROJECT_ROOT / "output" / "rl_08_hyperparam_sweep" / TIMESTAMP
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Setup logging

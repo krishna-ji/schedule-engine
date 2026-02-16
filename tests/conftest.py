@@ -18,14 +18,14 @@ from __future__ import annotations
 
 import pytest
 
-from schedule_engine.domain.course import Course
-from schedule_engine.domain.gene import SessionGene
-from schedule_engine.domain.group import Group
-from schedule_engine.domain.instructor import Instructor
-from schedule_engine.domain.room import Room
-from schedule_engine.domain.timetable import Timetable
-from schedule_engine.domain.types import SchedulingContext
-from schedule_engine.io.time_system import QuantumTimeSystem
+from src.domain.course import Course
+from src.domain.gene import SessionGene
+from src.domain.group import Group
+from src.domain.instructor import Instructor
+from src.domain.room import Room
+from src.domain.timetable import Timetable
+from src.domain.types import SchedulingContext
+from src.io.time_system import QuantumTimeSystem
 
 # ---------------------------------------------------------------------------
 # Factory functions — use these directly in tests
@@ -292,14 +292,14 @@ def structural_fields_preserved(before: SessionGene, after: SessionGene) -> bool
 
 def count_hard_violations(timetable: Timetable) -> float:
     """Sum all hard constraint violations for a timetable."""
-    from schedule_engine.constraints.constraints import HARD_CONSTRAINT_CLASSES
+    from src.constraints.constraints import HARD_CONSTRAINT_CLASSES
 
     return sum(c.evaluate(timetable) for c in HARD_CONSTRAINT_CLASSES)
 
 
 def count_soft_violations(timetable: Timetable) -> float:
     """Sum all soft constraint violations for a timetable."""
-    from schedule_engine.constraints.constraints import SOFT_CONSTRAINT_CLASSES
+    from src.constraints.constraints import SOFT_CONSTRAINT_CLASSES
 
     return sum(c.evaluate(timetable) for c in SOFT_CONSTRAINT_CLASSES)
 
