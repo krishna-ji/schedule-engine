@@ -107,13 +107,11 @@ class TestNewPackageStructure:
         """experiments.output has export functionality."""
         from src.experiments.output.base import BaseExporter
         from src.experiments.output.repair_exporter import RepairExporter
-        from src.experiments.output.reporting import generate_reports
         from src.experiments.output.rl_exporter import RLExporter
 
         assert BaseExporter is not None
         assert RepairExporter is not None
         assert RLExporter is not None
-        assert callable(generate_reports)
 
     def test_output_plots_ga(self):
         """io.export has GA plotting functions."""
