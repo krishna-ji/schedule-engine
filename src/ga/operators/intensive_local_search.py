@@ -445,40 +445,10 @@ def apply_selective_probabilistic(
     """
     Apply selective repair probabilistically.
 
-    Used for post-mutation cleanup. Only repairs violated genes,
-    and only applies to a fraction of individuals (not all).
-
-    Args:
-        individual: Single individual to potentially repair
-        context: Scheduling context
-        apply_probability: Probability of applying repair (0.3 = 30%)
-
-    Returns:
-        Tuple of (individual, was_repaired)
-        - individual: Potentially repaired individual
-        - was_repaired: Whether repair was applied
+    Deprecated — repair logic removed, replaced by CP-SAT decomposed approach.
+    Returns the individual unmodified.
     """
-    import random
-
-    # Probabilistic gate
-    if random.random() > apply_probability:
-        return individual, False
-
-    # Apply selective repair (violations only)
-    from src.ga.repair.basic import repair_individual_unified
-    from src.ga.repair.detector import detect_violated_genes
-
-    violations = detect_violated_genes(individual, context, strategy="hybrid")
-
-    if not violations:
-        return individual, False  # No violations, nothing to repair
-
-    # Apply repair (pass max_iterations and selective as separate args)
-    stats = repair_individual_unified(
-        individual, context, max_iterations=3, selective=True
-    )
-
-    return individual, stats.get("total_fixes", 0) > 0
+    return individual, False
 
 
 if __name__ == "__main__":

@@ -252,75 +252,8 @@ def _lazy_meta():
 
 
 def _lazy_repair():
-    from src.ga.repair.break_repair import repair_break_placement
-    from src.ga.repair.exhaustive import exhaustive_repair
-    from src.ga.repair.greedy import greedy_repair
-    from src.ga.repair.igls import igls_repair
-    from src.ga.repair.lns.repair import lns_repair
-    from src.ga.repair.memetic import memetic_repair
-    from src.ga.repair.selective_heuristic import selective_repair
-
-    return [
-        HeuristicInfo(
-            name="igls_repair",
-            function=igls_repair,
-            description="Iterative Greedy Local Search repair for constraint violations",
-            category="repair",
-            priority=1,
-            modifies_individual=True,
-        ),
-        HeuristicInfo(
-            name="greedy_repair",
-            function=greedy_repair,
-            description="Fast greedy repair with first-improving moves",
-            category="repair",
-            priority=2,
-            modifies_individual=True,
-        ),
-        HeuristicInfo(
-            name="selective_repair",
-            function=selective_repair,
-            description="Selective repair targeting only violated genes for efficiency",
-            category="repair",
-            priority=3,
-            modifies_individual=True,
-        ),
-        HeuristicInfo(
-            name="lns_repair",
-            function=lns_repair,
-            description="Large Neighborhood Search repair with IGLS subproblem solving",
-            category="repair",
-            priority=4,
-            modifies_individual=True,
-        ),
-        HeuristicInfo(
-            name="exhaustive_repair",
-            function=exhaustive_repair,
-            description="Exhaustive steepest-descent repair (very intensive)",
-            category="repair",
-            priority=5,
-            enabled_by_default=False,
-            modifies_individual=True,
-        ),
-        HeuristicInfo(
-            name="memetic_repair",
-            function=memetic_repair,
-            description="Memetic repair (intensive IGLS on elite individuals)",
-            category="repair",
-            priority=6,
-            enabled_by_default=False,
-            requires_population=True,
-            modifies_individual=True,
-        ),
-        HeuristicInfo(
-            name="repair_break_placement",
-            function=repair_break_placement,
-            description="Moves sessions to ensure break windows are respected",
-            category="repair",
-            priority=9,
-            modifies_individual=True,
-        ),
-    ]
+    """Legacy repair heuristics removed — CP-SAT decomposition replaces them."""
+    return []
 
 
 # Public API

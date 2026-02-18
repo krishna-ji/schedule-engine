@@ -1,0 +1,610 @@
+
+Non-schedulable or missing courses skipped
+  AM651: BAM6A, BAM6B (non-schedulable)
+  AM652: BAM6A, BAM6B (non-schedulable)
+  AM653: BAM6A, BAM6B (non-schedulable)
+  AM654: BAM6A, BAM6B (non-schedulable)
+  AM751: BAM8A, BAM8B (non-schedulable)
+  AM765: BAM8A, BAM8B (non-schedulable)
+  AM785: BAM8A, BAM8B (non-schedulable)
+  AR651: BAR6A, BAR6B (non-schedulable)
+  AR652: BAR6A, BAR6B (non-schedulable)
+  AR654: BAR6A, BAR6B (non-schedulable)
+  AR751: BAR8A, BAR8B (non-schedulable)
+  AR752: BAR8A, BAR8B (non-schedulable)
+  AR753: BAR8A, BAR8B (non-schedulable)
+  AR765: BAR8A, BAR8B (non-schedulable)
+  AR851: BAR10A, BAR10B (non-schedulable)
+  CE651: BCE6A, BCE6B, BCE6C, BCE6D, BCE6E, BCE6F (non-schedulable)
+  CE652: BCE6A, BCE6B, BCE6C, BCE6D, BCE6E, BCE6F (non-schedulable)
+  CE653: BCE6A, BCE6B, BCE6C, BCE6D, BCE6E, BCE6F (non-schedulable)
+  CE654: BCE6A, BCE6B, BCE6C, BCE6D, BCE6E, BCE6F (non-schedulable)
+  CE655: BCE6A, BCE6B, BCE6C, BCE6D, BCE6E, BCE6F (non-schedulable)
+  CE656: BCE6A, BCE6B, BCE6C, BCE6D, BCE6E, BCE6F (non-schedulable)
+  CE658: BAR6A, BAR6B (non-schedulable)
+  CE659: BAR6A, BAR6B (non-schedulable)
+  CE751: BCE8A, BCE8B, BCE8C, BCE8D, BCE8E, BCE8F (non-schedulable)
+  CE752: BAM8A, BAM8B, BCE8A, BCE8B, BCE8C, BCE8D, BCE8E, BCE8F, BCT8A, BCT8B, 
+BEI8A, BEI8B, BME8A, BME8B (non-schedulable)
+  CE753: BCE8A, BCE8B, BCE8C, BCE8D, BCE8E, BCE8F (non-schedulable)
+  CE754: BCE8A, BCE8B, BCE8C, BCE8D, BCE8E, BCE8F (non-schedulable)
+  CE757: BAM8A, BAM8B, BME8A, BME8B (non-schedulable)
+  CE761: BAR8A, BAR8B (non-schedulable)
+  CE765: BCE8A, BCE8B, BCE8C, BCE8D, BCE8E, BCE8F (non-schedulable)
+  CE785: BCE8A, BCE8B, BCE8C, BCE8D, BCE8E, BCE8F (non-schedulable)
+  CT651: BCT6A, BCT6B (non-schedulable)
+  CT652: BCT6A, BCT6B (non-schedulable)
+  CT654: BCT6A, BCT6B (non-schedulable)
+  CT655: BCT6A, BCT6B, BEI6A, BEI6B (non-schedulable)
+  CT656: BCT6A, BCT6B (non-schedulable)
+  CT657: BEI6A, BEI6B (non-schedulable)
+  CT658: BEI6A, BEI6B (non-schedulable)
+  CT751: BCT8A, BCT8B, BEI8A, BEI8B (non-schedulable)
+  CT753: BCT8A, BCT8B (non-schedulable)
+  CT754: BCT8A, BCT8B (non-schedulable)
+  ENIE 203: BIE3A, BIE3B (non-schedulable)
+  ENIE 305: BIE5A, BIE5B (non-schedulable)
+  EX653: BEI6A, BEI6B (non-schedulable)
+  EX654: BEI6A, BEI6B (non-schedulable)
+  EX655: BCT6A, BCT6B (non-schedulable)
+  EX656: BEI6A, BEI6B (non-schedulable)
+  EX756: BEI8A, BEI8B (non-schedulable)
+  EX757: BEI8A, BEI8B (non-schedulable)
+  IE651: BIE6A, BIE6B (non-schedulable)
+  IE652: BIE6A, BIE6B (non-schedulable)
+  IE653: BIE6A, BIE6B (non-schedulable)
+  IE654: BIE6A, BIE6B (non-schedulable)
+  IE655: BIE6A, BIE6B (non-schedulable)
+  IE671: BIE6A, BIE6B (non-schedulable)
+  IE751: BIE8A, BIE8B (non-schedulable)
+  IE752: BIE8A, BIE8B (non-schedulable)
+  ME651: BME6A, BME6B (non-schedulable)
+  ME652: BAM6A, BAM6B, BME6A, BME6B (non-schedulable)
+  ME653: BME6A, BME6B (non-schedulable)
+  ME654: BME6A, BME6B (non-schedulable)
+  ME655: BME6A, BME6B (non-schedulable)
+  ME751: BME8A, BME8B (non-schedulable)
+  ME760: BAR8A, BAR8B (non-schedulable)
+  ME765: BME8A, BME8B (non-schedulable)
+  ME785: BME8A, BME8B (non-schedulable)
+  SH651: BAM6A, BAM6B, BCE6A, BCE6B, BCE6C, BCE6D, BCE6E, BCE6F, BIE6A, BIE6B, 
+BME6A, BME6B (non-schedulable)
+  SH652: BAR6A, BAR6B (non-schedulable)
+  SH653: BAR6A, BAR6B (non-schedulable)
+  SH655: BEI6A, BEI6B (non-schedulable)
+  SH754: BAR8A, BAR8B (non-schedulable)
+  216 enrollments skipped (Survey Camp, Industrial Attachment, etc.)
+
+
+feasibility analysis
+
+[!ok] Room Feature Bottleneck
+  All required room features have sufficient availability [!ok]
+
+[!ok] Instructor Qualification Bottleneck
+  All 159 courses have sufficient qualified instructor availability [!ok]
+
+[!ok] Instructor Workload vs Availability
+  Demand: 500 quanta, Supply: 4700 quanta [!ok] (Utilization: 10.6%)
+
+[!ok] Specific Lab Feature Availability
+  All 38 specific lab features found in rooms; 3 only on lecture rooms 
+(warning) [!ok]
+
+[!ok] Group Pigeonhole Problem
+  All 92 groups have feasible course loads [!ok] (Max utilization: 97.6%)
+
+
+summary
+
++-----------------------+
+| Total Checks      | 5 |
+| Passed            | 5 |
+| Failed            | 0 |
+| Critical Failures | 0 |
++-----------------------+
+
+[!ok] problem is feasible
+  all critical checks passed. GA should find a solution.
+  note: this doesn't guarantee a perfect solution exists
+
+Available quanta: 42
+Day ranges:
+  Sunday: offset=0, count=7, range=[0, 7)
+  Monday: offset=7, count=7, range=[7, 14)
+  Tuesday: offset=14, count=7, range=[14, 21)
+  Wednesday: offset=21, count=7, range=[21, 28)
+  Thursday: offset=28, count=7, range=[28, 35)
+  Friday: offset=35, count=7, range=[35, 42)
+
+Hybrid initialization: 0 greedy, 0 smart, 1 random
+
+============================================================
+CHUNK: BCE-sem1 (44 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 189: ENCE 102 (theory) ù only 2 usable instructors
+      groups=['BCE1A', 'BCE1B', 'BCE1C', 'BCE1D', 'BCE1E', 'BCE1F'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 196: ENCE 103 (theory) ù only 2 usable instructors
+      groups=['BCE1A', 'BCE1B', 'BCE1C', 'BCE1D', 'BCE1E', 'BCE1F'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 211: ENEE 103 (theory) ù only 2 usable instructors
+      groups=['BCE1A', 'BCE1B', 'BCE1C', 'BCE1D', 'BCE1E', 'BCE1F'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 212: ENEE 103 (theory) ù only 2 usable instructors
+      groups=['BCE1A', 'BCE1B', 'BCE1C', 'BCE1D', 'BCE1E', 'BCE1F'], dur=2q, rooms=52, valid_starts=36
+
+  Group capacity analysis (42 quanta available):
+    BCE1A: 19 genes, 36q / 42q (86%) !! TIGHT
+    BCE1B: 19 genes, 36q / 42q (86%) !! TIGHT
+    BCE1C: 19 genes, 36q / 42q (86%) !! TIGHT
+    BCE1D: 19 genes, 36q / 42q (86%) !! TIGHT
+    BCE1E: 19 genes, 36q / 42q (86%) !! TIGHT
+    BCE1F: 19 genes, 36q / 42q (86%) !! TIGHT
+
+  Instructor demand:
+    I101: 8 genes, FT
+    I105: 8 genes, PT(23q)
+    I112: 8 genes, PT(31q)
+    I115: 3 genes, FT
+    I118: 8 genes, PT(8q)
+    I120: 8 genes, PT(5q)
+    I122: 8 genes, PT(8q)
+    I124: 8 genes, PT(5q)
+    I130: 3 genes, FT
+    I138: 6 genes, FT
+    I140: 3 genes, FT
+    I146: 7 genes, FT
+    I149: 7 genes, PT(6q)
+    I151: 3 genes, PT(4q)
+    I161: 7 genes, PT(3q)
+    I164: 6 genes, FT
+    I170: 4 genes, PT(10q)
+    I216: 8 genes, FT
+    I221: 8 genes, PT(9q)
+    I222: 6 genes, FT
+    I231: 6 genes, FT
+    I235: 6 genes, FT
+    I257: 6 genes, PT(11q)
+    I263: 3 genes, FT
+    I264: 3 genes, FT
+    I269: 3 genes, FT
+    I273: 6 genes, FT
+    I276: 3 genes, FT
+    I35: 8 genes, PT(13q)
+    I37: 8 genes, PT(13q)
+    I41: 6 genes, PT(8q)
+    I43: 8 genes, PT(10q)
+    I75: 6 genes, PT(18q)
+    I79: 6 genes, PT(11q)
+    I96: 2 genes, PT(3q)
+    I97: 8 genes, FT
+
+============================================================
+CHUNK: BCT-sem3 (21 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 373: ENCT 201 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 374: ENCT 201 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 377: ENCT 202 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 378: ENCT 202 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 379: ENCT 202 (practical) ù only 2 usable instructors
+      groups=['BCT3A'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 380: ENCT 202 (practical) ù only 2 usable instructors
+      groups=['BCT3B'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 381: ENCT 203 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 382: ENCT 203 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 383: ENEX 201 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 384: ENEX 201 (theory) ù only 1 usable instructors
+      groups=['BCT3A', 'BCT3B'], dur=2q, rooms=52, valid_starts=36
+
+  Group capacity analysis (42 quanta available):
+    BCT3A: 17 genes, 34q / 42q (81%)
+    BCT3B: 17 genes, 34q / 42q (81%)
+
+  Instructor demand:
+    I111: 4 genes, FT
+    I115: 3 genes, FT
+    I130: 3 genes, FT
+    I131: 2 genes, PT(12q)
+    I140: 3 genes, FT
+    I233: 4 genes, PT(3q)
+    I235: 4 genes, FT
+    I241: 4 genes, PT(21q)
+    I247: 2 genes, PT(4q)
+    I254: 4 genes, PT(5q)
+    I263: 3 genes, FT
+    I269: 3 genes, FT
+    I274: 4 genes, FT
+    I276: 3 genes, FT
+    I38: 4 genes, PT(12q)
+    I85: 2 genes, PT(5q)
+
+============================================================
+CHUNK: BCT-sem5 (22 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 417: ENCT 301 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 418: ENCT 301 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 419: ENCT 301 (practical) ù only 2 usable instructors
+      groups=['BCT5A'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 420: ENCT 301 (practical) ù only 2 usable instructors
+      groups=['BCT5B'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 421: ENCT 302 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 422: ENCT 302 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 423: ENCT 302 (practical) ù only 2 usable instructors
+      groups=['BCT5A'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 424: ENCT 302 (practical) ù only 2 usable instructors
+      groups=['BCT5B'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 425: ENCT 303 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 426: ENCT 303 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 427: ENCT 303 (practical) ù only 2 usable instructors
+      groups=['BCT5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 428: ENCT 303 (practical) ù only 2 usable instructors
+      groups=['BCT5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 429: ENCT 304 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 430: ENCT 304 (theory) ù only 1 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 431: ENCT 304 (practical) ù only 2 usable instructors
+      groups=['BCT5A'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 432: ENCT 304 (practical) ù only 2 usable instructors
+      groups=['BCT5B'], dur=3q, rooms=23, valid_starts=30
+  !! GENE 435: ENCT 325-344 (practical) ù only 2 usable instructors
+      groups=['BCT5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 436: ENCT 325-344 (practical) ù only 2 usable instructors
+      groups=['BCT5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 437: ENSH 304 (theory) ù only 2 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 438: ENSH 304 (theory) ù only 2 usable instructors
+      groups=['BCT5A', 'BCT5B'], dur=2q, rooms=52, valid_starts=36
+
+  Group capacity analysis (42 quanta available):
+    BCT5A: 17 genes, 35q / 42q (83%)
+    BCT5B: 17 genes, 35q / 42q (83%)
+
+  Instructor demand:
+    I112: 6 genes, PT(31q)
+    I191: 4 genes, PT(15q)
+    I211: 4 genes, FT
+    I246: 2 genes, PT(6q)
+    I248: 4 genes, PT(4q)
+    I39: 4 genes, FT
+    I45: 2 genes, PT(9q)
+    I76: 4 genes, FT
+
+============================================================
+CHUNK: BCT-sem8 (10 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 465: CT 765 07 (theory) ù only 1 usable instructors
+      groups=['BCT8A', 'BCT8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 466: CT 765 07 (theory) ù only 1 usable instructors
+      groups=['BCT8A', 'BCT8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 467: CT 765 07 (practical) ù only 2 usable instructors
+      groups=['BCT8A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 468: CT 765 07 (practical) ù only 2 usable instructors
+      groups=['BCT8B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 469: CT 785 03 (theory) ù only 2 usable instructors
+      groups=['BCT8A', 'BCT8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 470: CT 785 03 (theory) ù only 2 usable instructors
+      groups=['BCT8A', 'BCT8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 473: CT755 (practical) ù only 2 usable instructors
+      groups=['BCT8A'], dur=6q, rooms=23, valid_starts=12
+  !! GENE 474: CT755 (practical) ù only 2 usable instructors
+      groups=['BCT8B'], dur=6q, rooms=23, valid_starts=12
+
+  Group capacity analysis (42 quanta available):
+
+  Instructor demand:
+    I110: 4 genes, PT(6q)
+    I244: 4 genes, PT(3q)
+    I283: 4 genes, FT
+    I75: 2 genes, PT(18q)
+
+============================================================
+CHUNK: BEI-sem3 (23 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 394: ENCT 201 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 395: ENCT 201 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 398: ENEE 204 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 399: ENEE 204 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 400: ENEE 204 (practical) ù only 2 usable instructors
+      groups=['BEI3A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 401: ENEE 204 (practical) ù only 2 usable instructors
+      groups=['BEI3B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 402: ENEX 201 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 403: ENEX 201 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 406: ENEX 202 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 407: ENEX 202 (theory) ù only 1 usable instructors
+      groups=['BEI3A', 'BEI3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 408: ENEX 202 (practical) ù only 2 usable instructors
+      groups=['BEI3A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 409: ENEX 202 (practical) ù only 2 usable instructors
+      groups=['BEI3B'], dur=1q, rooms=23, valid_starts=42
+
+  Group capacity analysis (42 quanta available):
+    BEI3A: 18 genes, 33q / 42q (79%)
+    BEI3B: 18 genes, 33q / 42q (79%)
+
+  Instructor demand:
+    I115: 3 genes, FT
+    I130: 3 genes, FT
+    I131: 2 genes, PT(12q)
+    I140: 3 genes, FT
+    I233: 4 genes, PT(3q)
+    I241: 4 genes, PT(21q)
+    I242: 2 genes, PT(3q)
+    I254: 4 genes, PT(5q)
+    I263: 3 genes, FT
+    I269: 3 genes, FT
+    I274: 4 genes, FT
+    I276: 3 genes, FT
+    I277: 4 genes, FT
+    I38: 4 genes, PT(12q)
+    I40: 2 genes, PT(4q)
+    I85: 2 genes, PT(5q)
+
+============================================================
+CHUNK: BEI-sem5 (22 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 439: ENCT 305 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 440: ENCT 305 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 441: ENCT 305 (practical) ù only 2 usable instructors
+      groups=['BEI5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 442: ENCT 305 (practical) ù only 2 usable instructors
+      groups=['BEI5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 443: ENEX 301 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 444: ENEX 301 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 445: ENEX 301 (practical) ù only 2 usable instructors
+      groups=['BEI5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 446: ENEX 301 (practical) ù only 2 usable instructors
+      groups=['BEI5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 447: ENEX 302 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 448: ENEX 302 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 449: ENEX 302 (practical) ù only 2 usable instructors
+      groups=['BEI5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 450: ENEX 302 (practical) ù only 2 usable instructors
+      groups=['BEI5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 451: ENEX 303 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 452: ENEX 303 (theory) ù only 1 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 453: ENEX 303 (practical) ù only 2 usable instructors
+      groups=['BEI5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 454: ENEX 303 (practical) ù only 2 usable instructors
+      groups=['BEI5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 455: ENEX 325-344 (theory) ù only 2 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 456: ENEX 325-344 (theory) ù only 2 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 459: ENSH 304 (theory) ù only 2 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 460: ENSH 304 (theory) ù only 2 usable instructors
+      groups=['BEI5A', 'BEI5B'], dur=2q, rooms=52, valid_starts=36
+
+  Group capacity analysis (42 quanta available):
+
+  Instructor demand:
+    I103: 4 genes, PT(11q)
+    I111: 4 genes, FT
+    I191: 4 genes, PT(15q)
+    I230: 6 genes, FT
+    I240: 8 genes, PT(12q)
+    I274: 4 genes, FT
+    I39: 4 genes, FT
+
+============================================================
+CHUNK: BEI-sem8 (14 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 475: CT 765 07 (theory) ù only 1 usable instructors
+      groups=['BEI8A', 'BEI8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 476: CT 765 07 (theory) ù only 1 usable instructors
+      groups=['BEI8A', 'BEI8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 477: CT 765 07 (practical) ù only 2 usable instructors
+      groups=['BEI8A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 478: CT 765 07 (practical) ù only 2 usable instructors
+      groups=['BEI8B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 479: CT 785 03 (theory) ù only 2 usable instructors
+      groups=['BEI8A', 'BEI8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 480: CT 785 03 (theory) ù only 2 usable instructors
+      groups=['BEI8A', 'BEI8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 483: CT 80X XX (theory) ù only 1 usable instructors
+      groups=['BEI8A', 'BEI8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 484: CT 80X XX (theory) ù only 1 usable instructors
+      groups=['BEI8A', 'BEI8B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 485: CT 80X XX (practical) ù only 1 usable instructors
+      groups=['BEI8A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 486: CT 80X XX (practical) ù only 1 usable instructors
+      groups=['BEI8B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 487: EX755 (practical) ù only 2 usable instructors
+      groups=['BEI8A'], dur=6q, rooms=23, valid_starts=12
+  !! GENE 488: EX755 (practical) ù only 2 usable instructors
+      groups=['BEI8B'], dur=6q, rooms=23, valid_starts=12
+
+  Group capacity analysis (42 quanta available):
+
+  Instructor demand:
+    I110: 4 genes, PT(6q)
+    I211: 4 genes, FT
+    I244: 4 genes, PT(3q)
+    I283: 4 genes, FT
+    I75: 2 genes, PT(18q)
+
+============================================================
+CHUNK: BIE-sem3 (21 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 510: ENIE 202 (theory) ù only 1 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 511: ENIE 202 (theory) ù only 1 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 512: ENME 201 (theory) ù only 2 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 513: ENME 201 (theory) ù only 2 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 516: ENME 202 (theory) ù only 2 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 517: ENME 202 (theory) ù only 2 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 520: ENME 205 (theory) ù only 2 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 521: ENME 205 (theory) ù only 2 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 524: ENME 206 (theory) ù only 1 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 525: ENME 206 (theory) ù only 1 usable instructors
+      groups=['BIE3A', 'BIE3B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 526: ENME 206 (practical) ù only 2 usable instructors
+      groups=['BIE3A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 527: ENME 206 (practical) ù only 2 usable instructors
+      groups=['BIE3B'], dur=1q, rooms=23, valid_starts=42
+
+  Group capacity analysis (42 quanta available):
+    BIE3A: 17 genes, 31q / 42q (74%)
+    BIE3B: 17 genes, 31q / 42q (74%)
+
+  Instructor demand:
+    I115: 3 genes, FT
+    I130: 3 genes, FT
+    I140: 3 genes, FT
+    I169: 4 genes, FT
+    I17: 4 genes, FT
+    I193: 2 genes, PT(10q)
+    I195: 2 genes, PT(4q)
+    I206: 4 genes, FT
+    I21: 4 genes, FT
+    I263: 3 genes, FT
+    I269: 3 genes, FT
+    I276: 3 genes, FT
+    I74: 4 genes, PT(5q)
+
+============================================================
+CHUNK: BIE-sem5 (18 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 531: ENIE 301 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 532: ENIE 301 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 533: ENIE 302 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 534: ENIE 302 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 535: ENIE 325-334 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 536: ENIE 325-334 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 537: ENIE 325-334 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=1q, rooms=52, valid_starts=42
+  !! GENE 538: ENIE 325-334 (practical) ù only 2 usable instructors
+      groups=['BIE5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 539: ENIE 325-334 (practical) ù only 2 usable instructors
+      groups=['BIE5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 543: ENME 309 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 544: ENME 309 (theory) ù only 1 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 545: ENME 309 (practical) ù only 2 usable instructors
+      groups=['BIE5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 546: ENME 309 (practical) ù only 2 usable instructors
+      groups=['BIE5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 547: ENSH 304 (theory) ù only 2 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 548: ENSH 304 (theory) ù only 2 usable instructors
+      groups=['BIE5A', 'BIE5B'], dur=2q, rooms=52, valid_starts=36
+
+  Group capacity analysis (42 quanta available):
+
+  Instructor demand:
+    I14: 3 genes, FT
+    I169: 5 genes, FT
+    I192: 3 genes, PT(7q)
+    I193: 3 genes, PT(10q)
+    I270: 4 genes, FT
+    I33: 2 genes, PT(4q)
+
+============================================================
+CHUNK: BME-sem5 (22 genes) ù KNOWN INFEASIBLE
+============================================================
+  !! GENE 88: ENEE 307 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 89: ENEE 307 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 90: ENEE 307 (practical) ù only 2 usable instructors
+      groups=['BME5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 91: ENEE 307 (practical) ù only 2 usable instructors
+      groups=['BME5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 92: ENME 301 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 93: ENME 301 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 96: ENME 302 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 97: ENME 302 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 98: ENME 302 (practical) ù only 2 usable instructors
+      groups=['BME5A'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 99: ENME 302 (practical) ù only 2 usable instructors
+      groups=['BME5B'], dur=1q, rooms=23, valid_starts=42
+  !! GENE 103: ENME 304 (theory) ù only 2 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 104: ENME 304 (theory) ù only 2 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 105: ENSH 301 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  !! GENE 106: ENSH 301 (theory) ù only 1 usable instructors
+      groups=['BME5A', 'BME5B'], dur=2q, rooms=52, valid_starts=36
+  *** GENE 107: ENSH 301 (practical) ù NO USABLE INSTRUCTORS! (2 qualified: 0 FT, 0 PT-ok, 2 PT-blocked)
+      groups=['BME5A'], dur=3q, rooms=23, valid_starts=30
+      instr I78: avail_quanta=4, valid_starts_for_course=0
+      instr I104: avail_quanta=7, valid_starts_for_course=0
+  *** GENE 108: ENSH 301 (practical) ù NO USABLE INSTRUCTORS! (2 qualified: 0 FT, 0 PT-ok, 2 PT-blocked)
+      groups=['BME5B'], dur=3q, rooms=23, valid_starts=30
+      instr I78: avail_quanta=4, valid_starts_for_course=0
+      instr I104: avail_quanta=7, valid_starts_for_course=0
+  !! GENE 109: ENSH 303 (theory) ù only 2 usable instructors
+      groups=['BME5A', 'BME5B'], dur=1q, rooms=52, valid_starts=42
+
+  Group capacity analysis (42 quanta available):
+    BME5A: 18 genes, 32q / 42q (76%)
+    BME5B: 18 genes, 32q / 42q (76%)
+
+  Instructor demand:
+    I104: 2 genes, PT(7q)
+    I14: 3 genes, FT
+    I18: 4 genes, FT
+    I192: 3 genes, PT(7q)
+    I193: 3 genes, PT(10q)
+    I268: 5 genes, FT
+    I71: 4 genes, FT
+
+
+============================================================
+WORKING CHUNKS (for comparison)
+============================================================
+  BAM-sem1: 21 genes, max_group_load=36/42q, zero_instr_genes=0
+  BAM-sem3: 24 genes, max_group_load=32/42q, zero_instr_genes=0
+  BME-sem1: 20 genes, max_group_load=36/42q, zero_instr_genes=0
+  BME-sem3: 23 genes, max_group_load=31/42q, zero_instr_genes=0
+  BCT-sem1: 22 genes, max_group_load=36/42q, zero_instr_genes=0
+  BEI-sem1: 22 genes, max_group_load=36/42q, zero_instr_genes=0
+  BIE-sem1: 21 genes, max_group_load=36/42q, zero_instr_genes=0

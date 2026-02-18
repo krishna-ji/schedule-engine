@@ -133,6 +133,7 @@ class CPSATSolver:
         soft_objective: bool = False,
         deviation_weight: int = 1,
         compactness_weight: int = 2,
+        relax_availability: bool = False,
     ) -> None:
         self.ctx = ctx
         self.family_map = family_map
@@ -141,6 +142,7 @@ class CPSATSolver:
         self.soft_objective = soft_objective
         self.deviation_weight = deviation_weight
         self.compactness_weight = compactness_weight
+        self.relax_availability = relax_availability
 
         # Pre-compute per-course suitable rooms + qualified instructors
         self._suitable_rooms: dict[tuple[str, str], list[str]] = {}
@@ -401,6 +403,14 @@ class CPSATSolver:
                 model.add_no_overlap(ivs)
 
         # ── 5. HC6 — Part-time Instructor Availability ──────────────
+        #   When relax_availability=True, HC6 becomes a SOFT penalty
+        #   (AVAIL_PENALTY per violation) instead of a hard block.
+        #   This prevents structural infeasibility when ALL qualified
+        #   instructors for a course are part-time with incompatible
+        #   availability windows.
+
+        AVAIL_PENALTY = 50  # Heavy penalty for using unavailable instructor
+        avail_violation_vars: list[Any] = []
 
         for gi in gene_indices:
             dur = dur_map[gi]
@@ -414,7 +424,14 @@ class CPSATSolver:
                     if all((sq + d) in instr.available_quanta for d in range(dur))
                 ]
                 if not ok_starts:
-                    model.add(instr_idxs[gi] != li)
+                    if self.relax_availability:
+                        # Soft: allow but penalize using this instructor
+                        b = model.new_bool_var(f"avp{gi}i{li}")
+                        model.add(instr_idxs[gi] == li).only_enforce_if(b)
+                        model.add(instr_idxs[gi] != li).only_enforce_if(b.negated())
+                        avail_violation_vars.append(b)
+                    else:
+                        model.add(instr_idxs[gi] != li)
                 else:
                     b = model.new_bool_var(f"av{gi}i{li}")
                     model.add(instr_idxs[gi] == li).only_enforce_if(b)
@@ -453,6 +470,10 @@ class CPSATSolver:
                 model.add(room_idxs[gi] >= n_suit).only_enforce_if(is_fb)
                 model.add(room_idxs[gi] < n_suit).only_enforce_if(is_fb.negated())
                 obj_terms.append(ROOM_SUIT_WEIGHT * is_fb)
+
+        # 6a″. Availability violation penalty (soft HC6)
+        for v in avail_violation_vars:
+            obj_terms.append(AVAIL_PENALTY * v)
 
         # 6b. Soft-constraint objectives (compactness)
         if self.soft_objective and gene_indices:

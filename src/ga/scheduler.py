@@ -31,8 +31,6 @@ from rich.text import Text
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from stable_baselines3.common.base_class import BaseAlgorithm
-
     from src.domain.types import SchedulingContext
 
 from src.config import get_config
@@ -434,11 +432,8 @@ class GAScheduler:
         self._enabled_hard_constraints = HARD_CONSTRAINT_CLASSES
         self._enabled_soft_constraints = SOFT_CONSTRAINT_CLASSES
 
-        # RL INTEGRATION: Components for hyper-heuristic control
+        # RL INTEGRATION: Removed — replaced by CP-SAT decomposed approach
         self.rl_enabled = False
-        self.rl_controller: Any | None = None  # HybridController (RL integration)
-        self.rl_state_encoder: Any | None = None  # StateEncoder (RL integration)
-        self.rl_action_mapper: Any | None = None  # ActionMapper (RL integration)
 
         # HEURISTIC TRACKING: Round-robin tracking and detailed statistics
         from src.ga.heuristics.tracker import HeuristicTracker
@@ -550,288 +545,23 @@ class GAScheduler:
         )
 
     def _init_rl(self) -> bool:
-        """
-        Initialize RL components for hyper-heuristic control.
+        """RL integration removed — replaced by CP-SAT decomposed approach."""
+        return False
 
-        Returns:
-            True if RL initialized successfully, False otherwise
-        """
-        rl_config = self._cfg.rl
-
-        # Allow runtime overrides for RL mode/model selection (e.g., rl-inference)
-        rl_mode = os.getenv("RL_MODE") or rl_config.mode
-        model_path_override = os.getenv("RL_AGENT_MODEL_PATH")
-        model_path_value = model_path_override or rl_config.agent.model_path
-
-        # Allow runtime overrides for RL mode/model selection (e.g., rl-inference)
-        rl_mode = os.getenv("RL_MODE") or rl_config.mode
-        model_path_override = os.getenv("RL_AGENT_MODEL_PATH")
-        model_path_value = model_path_override or rl_config.agent.model_path
-
-        # Check if RL is enabled in configuration
-        if not rl_config.enabled:
-            return False
-
-        # Check mode (must be 'inference' or 'hybrid' for GA integration)
-        if rl_mode in {"rl_primary", "rl_fallback", "rl_assisted"}:
-            rl_mode = "inference"  # Backward compatibility for legacy naming
-
-        if rl_mode not in ["inference", "hybrid"]:
-            console.print(
-                f"[yellow]RL mode '{rl_mode}' not compatible with "
-                f"GA integration[/yellow]"
-            )
-            console.print(
-                "[dim]   Use mode 'inference' or 'hybrid' for production runs[/dim]"
-            )
-            return False
-
-        resolved_model_path = self._resolve_rl_model_path(model_path_value)
-        if resolved_model_path is None:
-            return False
-
-        try:
-            # Import RL components (lazy import to avoid dependency issues)
-            from src.rl.deployment.inference import RLInference
-            from src.rl.deployment.model_loader import ModelLoader
-            from src.rl.gym_env.action_space import ActionMapper
-            from src.rl.gym_env.state_encoder import StateEncoder
-            from src.rl.hybrid.hybrid_controller import (
-                FallbackStrategy,
-                HybridController,
-                HybridMode,
-            )
-
-            console.print("[cyan]Initializing RL Components...[/cyan]")
-
-            # Initialize state encoder
-            self.rl_state_encoder = StateEncoder(
-                max_generations=self.config.generations,
-                history_size=rl_config.environment.observation_history_size,
-                normalize=True,
-            )
-            console.print("   [green][!ok][/green] StateEncoder initialized")
-
-            # Initialize action mapper
-            self.rl_action_mapper = ActionMapper(use_config=True)
-            console.print(
-                f"   [green][!ok][/green] ActionMapper initialized "
-                f"({self.rl_action_mapper.n_actions} actions)"
-            )
-
-            # Load trained model
-            # Initialize model loader and load model
-            loader = ModelLoader(cache_models=True)
-            model: BaseAlgorithm = loader.load_model(
-                str(resolved_model_path), agent_type=rl_config.agent.type
-            )
-            console.print(
-                f"   [green][!ok][/green] Model loaded: {rl_config.agent.type.upper()}"
-            )
-
-            # Initialize inference engine
-            inference_engine = RLInference(
-                model=model,
-                timeout_ms=rl_config.inference.timeout_ms,
-            )
-
-            # Initialize hybrid controller
-            hybrid_mode = HybridMode(rl_config.hybrid.mode)
-            fallback_strategy = FallbackStrategy(rl_config.hybrid.fallback_strategy)
-            enable_action_masking = getattr(
-                rl_config.hybrid, "enable_action_masking", True
-            )
-
-            self.rl_controller = HybridController(
-                rl_inference=inference_engine,
-                mode=hybrid_mode,
-                fallback_strategy=fallback_strategy,
-                rl_probability=rl_config.hybrid.rl_probability,
-                enable_action_masking=enable_action_masking,
-            )
-            console.print(
-                f"   [green][!ok][/green] HybridController initialized "
-                f"(mode: {rl_config.hybrid.mode})"
-            )
-
-            self.rl_enabled = True
-            console.print("[green]RL Integration: ENABLED[/green]")
-            return True
-
-        except ImportError as e:
-            console.print(f"[yellow]RL components not available: {e}[/yellow]")
-            console.print(
-                "[dim]   Install RL dependencies: "
-                "uv add gymnasium stable-baselines3[/dim]"
-            )
-            return False
-        except FileNotFoundError as e:
-            console.print(f"[yellow]RL model not found: {e}[/yellow]")
-            console.print(
-                "[dim]   Train model first: "
-                "python -m src.rl.training.train_script[/dim]"
-            )
-            return False
-        except Exception as e:
-            console.print(f"[red]RL initialization failed: {e}[/red]")
-            logger.exception("RL initialization error")
-            return False
+    def _apply_rl_operators(self, gen: int) -> None:
+        """RL operators removed — replaced by CP-SAT decomposed approach."""
+        return
 
     @staticmethod
     def _find_latest_rl_model(models_dir: Path) -> Path | None:
-        """Locate the most recent RL model in the given directory."""
-
-        if not models_dir.exists():
-            return None
-
-        model_files = sorted(
-            models_dir.glob("*.zip"),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
-        return model_files[0] if model_files else None
+        """Deprecated — RL removed."""
+        return None
 
     def _resolve_rl_model_path(
         self, model_path_value: str | Path | None
     ) -> Path | None:
-        """Resolve RL model path with fallbacks and user-friendly messaging."""
-
-        if model_path_value:
-            candidate = Path(model_path_value)
-            if candidate.is_file():
-                return candidate
-
-            console.print(f"[yellow]RL model not found at: {candidate}[/yellow]")
-
-        latest_model = self._find_latest_rl_model(Path("models/rl_agents"))
-        if latest_model:
-            console.print(f"   [dim]Using latest model: {latest_model}[/dim]")
-            return latest_model
-
-        console.print(
-            "[red]No RL model available. Train an agent first (uv run train-rl --prod)[/red]"
-        )
+        """Deprecated — RL removed."""
         return None
-
-    def _apply_rl_operators(self, gen: int) -> None:
-        """
-        Apply RL-selected heuristics to population.
-
-        Uses trained RL agent to select and apply adaptive operators
-        based on current population state.
-
-        Args:
-            gen: Current generation number
-        """
-        if not self.rl_enabled or not self.rl_controller:
-            return
-
-        # Encode current state
-        state = self.rl_state_encoder.encode(  # type: ignore[union-attr]
-            population=self.population,
-            current_generation=gen,
-            generations_without_improvement=self.stagnation_counter,
-        )
-
-        # Get valid actions for current state
-        valid_actions = self.rl_action_mapper.enabled_actions  # type: ignore[union-attr]
-
-        # Select action using RL controller (with fallback)
-        action_id = self.rl_controller.select_action(
-            state=state,
-            valid_actions=valid_actions,
-            deterministic=True,  # Use deterministic policy for production
-        )
-
-        # DEBUG: Log RL decision
-        action_info = self.rl_action_mapper.get_action_info(action_id)
-        if action_info:
-            logger.debug(f" RL selected: {action_info.name} (action_id={action_id})")
-
-        # Record heuristic application for state tracking
-        self.rl_state_encoder.record_heuristic_application(action_id)
-
-        # Apply selected heuristic to population
-        try:
-            # Get action info to determine heuristic type
-
-            # Apply heuristic in parallel to top N individuals for 10-16x speedup
-            # (improvement heuristics benefit from parallel application)
-            if action_info and action_info.category == "improvement":
-                # Select top 4-8 individuals based on population size
-                num_targets = min(8, max(4, len(self.population) // 25))
-                top_individuals = tools.selBest(self.population, num_targets)
-                before_fitness = [tuple(ind.fitness.values) for ind in top_individuals]
-
-                logger.debug(
-                    f"Gen {gen}: RL applying '{action_info.name}' to "
-                    f"{num_targets} individuals in parallel"
-                )
-
-                heuristic_func = action_info.function
-                if heuristic_func:
-                    parallel_executor = get_parallel_executor()
-                    parallel_results = parallel_executor.apply_parallel(
-                        heuristic_func=heuristic_func,
-                        individuals=top_individuals,
-                        context=self.context,
-                    )
-                    for individual, result in zip(
-                        top_individuals, parallel_results or [], strict=True
-                    ):
-                        if isinstance(result, list):
-                            individual[:] = result
-                    modified_individuals = top_individuals
-                else:
-                    modified_individuals = []
-                modified_before = before_fitness
-            else:
-                # For non-improvement heuristics, use single best individual
-                best_ind = tools.selBest(self.population, 1)[0]
-                modified_before = [tuple(best_ind.fitness.values)]
-
-                # Apply action and get modified individual(s)
-                modified_ind, success = self.rl_action_mapper.apply_action(
-                    action=action_id,
-                    individual=best_ind,
-                    context=self.context,
-                    population=self.population,
-                    generation=gen,
-                )
-                modified_individuals = [modified_ind] if success else []
-
-            # Evaluate modified individuals
-            if modified_individuals:
-                fitness_values = list(
-                    self.toolbox.map(self.toolbox.evaluate, modified_individuals)
-                )
-                for ind, fit in zip(modified_individuals, fitness_values, strict=True):
-                    ind.fitness.values = fit
-                if action_info:
-                    for before, fit in zip(
-                        modified_before, fitness_values, strict=True
-                    ):
-                        self._record_heuristic_stat(
-                            action_info.name,
-                            self._is_improvement(before, fit),
-                        )
-            elif action_info:
-                self._record_heuristic_stat(action_info.name, False)
-
-                # Log action application (optional)
-                rl_config = self._cfg.rl
-                if rl_config.logging.log_heuristic_usage:
-                    action_info = self.rl_action_mapper.get_action_info(action_id)
-                    action_name = (
-                        action_info.name if action_info else f"action_{action_id}"
-                    )
-                    logger.debug(
-                        f"Gen {gen}: RL applied '{action_name}' "
-                        f"(modified {len(modified_individuals)} individuals)"
-                    )
-
-        except Exception as e:
-            logger.warning(f"RL action application failed at gen {gen}: {e}")
 
     def _setup_heuristic_rotation(self) -> None:
         """
@@ -2391,95 +2121,15 @@ class GAScheduler:
                 f"replace={_replace_prep_time:.3f}s)[/dim]"
             )
 
-        # RL INTEGRATION: Apply RL-selected heuristics
-        if self.rl_enabled:
-            profiler.start_phase("rl_ops")
-            self._apply_rl_operators(gen)
-            profiler.end_phase()
-            event_tracker.add("rl_operators_applied")
-        # ROUND-ROBIN: Apply heuristics in fixed rotation (when RL disabled)
-        elif len(self.heuristic_tracker.heuristic_order) > 0:
+        # ROUND-ROBIN: Apply heuristics in fixed rotation
+        if len(self.heuristic_tracker.heuristic_order) > 0:
             profiler.start_phase("roundrobin_heuristics")
             self._apply_round_robin_heuristics(gen)
             profiler.end_phase()
             event_tracker.add("roundrobin_heuristic_applied")
 
-        # Memetic mode: Apply intensive local search to elite individuals
-        if repair_config.get("enabled", False) and repair_config.get(
-            "memetic_mode", False
-        ):
-            from src.ga.repair.basic import repair_individual_unified
-
-            event_tracker.add("memetic_repair_applied")
-
-            # Use selective mode from config
-            selective_mode = repair_config.get("selective_mode", True)
-
-            elite_percentage = repair_config.get("elite_percentage", 0.2)
-            elite_count = max(1, int(elite_percentage * len(self.population)))
-            elite_individuals = tools.selBest(self.population, elite_count)
-
-            profiler.start_phase("repair_memetic", items_to_process=elite_count)
-            for individual in elite_individuals:
-                stats = repair_individual_unified(
-                    individual,
-                    self.context,
-                    max_iterations=repair_config.get("memetic_iterations", 5),
-                    selective=selective_mode,
-                )
-
-                # Track memetic repairs
-                total_fixes = stats.get("total_fixes", 0)
-                if total_fixes > 0:
-                    generation_repair_stats["individuals_repaired"] += 1
-                    generation_repair_stats["memetic_repairs"] += total_fixes
-
-                # Invalidate fitness after repair
-                del individual.fitness.values
-
-                # Aggregate all memetic stats with proper key mapping
-                self._accumulate_repair_stats(generation_repair_stats, stats)
-
-            # Re-evaluate elite after memetic repair
-            # Use toolbox.map for parallel evaluation when pool is available
-            fitness_values = list(
-                self.toolbox.map(self.toolbox.evaluate, elite_individuals)
-            )
-            for ind, fit in zip(elite_individuals, fitness_values, strict=True):
-                ind.fitness.values = fit
-            profiler.end_phase()
-
         # Finalize generation repair totals
-        # Sum category fixes (after key mapping) plus phase-specific counts
-        category_total = (
-            generation_repair_stats["instructor_availability_fixes"]
-            + generation_repair_stats["overlap_fixes"]
-            + generation_repair_stats["room_fixes"]
-            + generation_repair_stats["instructor_conflict_fixes"]
-            + generation_repair_stats["qualification_fixes"]
-            + generation_repair_stats["room_type_fixes"]
-            + generation_repair_stats["clustering_fixes"]
-            + generation_repair_stats["session_count_fixes"]
-        )
-        phase_total = (
-            generation_repair_stats["crossover_repairs"]
-            + generation_repair_stats["mutation_repairs"]
-            + generation_repair_stats["memetic_repairs"]
-        )
-        generation_repair_stats["total_fixes"] = max(category_total, phase_total)
-        # HEURISTIC TOOLBOX ARCHITECTURE (Nov 2025)
-        # ALL repair/improvement operations are now unified heuristics:
-        #   - igls_repair, lns_repair, selective_repair, exhaustive_search
-        #   - Applied via round-robin rotation OR RL-guided selection
-        #   - No hardcoded generation triggers - mode-specific config
-        #   - Managed through heuristics.repair.* in configs
-        #
-        # Legacy hardcoded triggers REMOVED:
-        #    Exhaustive search at gens [3, 25] - use heuristic
-        #    LNS periodic trigger every 50 gens - use heuristic
-        #    Stagnation-triggered repairs - migrate to heuristics (future)
-        #
-        # Enable via src.config loader overrides (heuristics.repair.*)
+        generation_repair_stats["total_fixes"] = 0
         # Store generation repair stats
         self.metrics.repair_stats.append(generation_repair_stats)
 

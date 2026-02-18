@@ -379,86 +379,12 @@ def _create_meta_heuristics(**params: Any) -> list[Heuristic]:
 
 
 def _create_repair_heuristics(**params: Any) -> list[Heuristic]:
-    """Create repair heuristics with optional parameters."""
-    from src.ga.repair.break_repair import repair_break_placement
-    from src.ga.repair.exhaustive import exhaustive_repair
-    from src.ga.repair.greedy import greedy_repair
-    from src.ga.repair.igls import igls_repair
-    from src.ga.repair.lns.repair import lns_repair
-    from src.ga.repair.memetic import memetic_repair
-    from src.ga.repair.selective_heuristic import selective_repair
+    """Create repair heuristics with optional parameters.
 
-    # Extract configurable params
-    igls_max_iterations = params.get("igls_max_iterations", 100)
-    lns_destroy_fraction = params.get("lns_destroy_fraction", 0.2)
-    lns_max_iterations = params.get("lns_max_iterations", 50)
-    greedy_max_moves = params.get("greedy_max_moves", 20)
-
-    return [
-        FunctionHeuristic(
-            name="igls_repair",
-            function=igls_repair,
-            category="repair",
-            priority=1,
-            description="Iterative Greedy Local Search repair",
-            modifies_individual=True,
-            max_iterations=igls_max_iterations,
-        ),
-        FunctionHeuristic(
-            name="greedy_repair",
-            function=greedy_repair,
-            category="repair",
-            priority=2,
-            description="Fast greedy repair with first-improving moves",
-            modifies_individual=True,
-            max_moves=greedy_max_moves,
-        ),
-        FunctionHeuristic(
-            name="selective_repair",
-            function=selective_repair,
-            category="repair",
-            priority=3,
-            description="Selective repair targeting only violated genes",
-            modifies_individual=True,
-        ),
-        FunctionHeuristic(
-            name="lns_repair",
-            function=lns_repair,
-            category="repair",
-            priority=4,
-            description="Large Neighborhood Search repair",
-            modifies_individual=True,
-            destroy_fraction=lns_destroy_fraction,
-            max_iterations=lns_max_iterations,
-        ),
-        FunctionHeuristic(
-            name="exhaustive_repair",
-            function=exhaustive_repair,
-            category="repair",
-            priority=5,
-            enabled=False,
-            description="Exhaustive steepest-descent repair",
-            modifies_individual=True,
-        ),
-        FunctionHeuristic(
-            name="memetic_repair",
-            function=memetic_repair,
-            category="repair",
-            priority=6,
-            enabled=False,
-            description="Memetic repair on elite individuals",
-            requires_population=True,
-            modifies_individual=True,
-        ),
-        FunctionHeuristic(
-            name="repair_break_placement",
-            function=repair_break_placement,
-            category="repair",
-            priority=9,
-            description="Move sessions to ensure break windows",
-            modifies_individual=True,
-        ),
-    ]
+    Legacy repair modules have been removed in favour of CP-SAT
+    decomposed optimisation.  Returns an empty list.
+    """
+    return []
 
 
 # FACTORY

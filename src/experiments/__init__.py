@@ -28,12 +28,10 @@ from src.experiments.modes.adaptive import AdaptiveExperiment
 from src.experiments.modes.baseline import BaselineExperiment
 from src.experiments.modes.cp_hybrid import CPHybridExperiment
 from src.experiments.modes.memetic import MemeticExperiment
-from src.experiments.modes.rl_guided import RLGuidedExperiment
 from src.experiments.modes.roundrobin import RoundRobinExperiment
 from src.experiments.modes.ultimate import UltimateExperiment
 from src.experiments.output.base import BaseExporter
 from src.experiments.output.repair_exporter import RepairExporter
-from src.experiments.output.rl_exporter import RLExporter
 
 __all__ = [
     "AdaptiveExperiment",
@@ -42,8 +40,6 @@ __all__ = [
     "BaselineExperiment",
     "CPHybridExperiment",
     "MemeticExperiment",
-    "RLExporter",
-    "RLGuidedExperiment",
     "RepairExporter",
     "RoundRobinExperiment",
     "UltimateExperiment",
