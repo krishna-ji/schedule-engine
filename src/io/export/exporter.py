@@ -428,23 +428,6 @@ def _save_json_schedule_as_pdf(
             spine.set_edgecolor(_BORDER_COLOR)
             spine.set_linewidth(1.0)
 
-        # ── Legend ──
-        handles = []
-        for cname, col in sorted(color_map.items()):
-            handles.append(mpatches.Patch(facecolor=col, edgecolor="#666", label=cname))
-        if handles:
-            ax.legend(
-                handles=handles,
-                loc="upper center",
-                bbox_to_anchor=(0.5, -0.04),
-                ncol=min(len(handles), 4),
-                fontsize=8,
-                frameon=True,
-                fancybox=True,
-                shadow=False,
-                edgecolor="#CCCCCC",
-            )
-
         plt.tight_layout()
         pdf.savefig(fig, bbox_inches="tight")
         plt.close(fig)
