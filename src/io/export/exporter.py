@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -135,33 +136,29 @@ def _save_schedule_as_json(
     return full_path
 
 
-def _save_json_schedule_as_pdf(
-    json_path: str,
-    output_pdf_path: str,
-    quantum_minutes: int,
-    start_hour: int,
-    end_hour: int,
-) -> None:
-    """Converts a structured JSON schedule into a calendar-style PDF.
+def _get_operating_bounds(
+    qts: QuantumTimeSystem | None,
+) -> tuple[int, int, list[str]]:
+    """Derive start_hour, end_hour, and active day names from QTS.
 
-    Creates a multi-page PDF with one calendar page per group. Sessions are
-    color-coded by course and merged when they are consecutive.
-
-    Args:
-        json_path (str): Path to the input JSON schedule file.
-        output_pdf_path (str): Path where the PDF will be saved.
-        quantum_minutes (int): Time granularity in minutes for merging sessions.
-        start_hour (int): Earliest hour shown on the calendar (e.g., 7 for 07:00).
-        end_hour (int): Latest hour shown on the calendar (e.g., 20 for 20:00).
-
-    Note:
-        - Uses matplotlib to generate calendar grids
-        - Each course gets a unique color from the tab20 colormap
-        - Sessions are automatically merged if they are consecutive
-        - PDF contains one page per student group
+    Falls back to EXCAL constants when QTS is unavailable.
     """
+    if qts is None:
+        all_days = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+        ]
+        return EXCAL_START_HOUR, EXCAL_END_HOUR, all_days
 
-    days = [
+    min_hour = 23
+    max_hour = 0
+    active_days: list[str] = []
+    for day in [
         "Sunday",
         "Monday",
         "Tuesday",
@@ -169,36 +166,110 @@ def _save_json_schedule_as_pdf(
         "Thursday",
         "Friday",
         "Saturday",
-    ]
-    day_idx = {day: i for i, day in enumerate(days)}
+    ]:
+        hours = qts.operating_hours.get(day)
+        if hours is None:
+            continue
+        active_days.append(day)
+        open_str, close_str = hours
+        oh, om = map(int, open_str.split(":"))
+        ch, cm = map(int, close_str.split(":"))
+        min_hour = min(min_hour, oh)
+        max_hour = max(max_hour, ch + (1 if cm > 0 else 0))
+
+    if not active_days:
+        all_days = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+        ]
+        return EXCAL_START_HOUR, EXCAL_END_HOUR, all_days
+
+    return min_hour, max_hour, active_days
+
+
+# ── Colour palette ────────────────────────────────────────────────────
+_THEORY_COLORS = [
+    "#A8C6FA",  # soft blue
+    "#B5D8B5",  # sage green
+    "#C4B7D7",  # lavender
+    "#F9D7A0",  # peach
+    "#A8E0D1",  # mint
+    "#D4C5F9",  # lilac
+    "#B8DFF0",  # sky
+    "#C9E8B2",  # lime
+]
+_PRACTICAL_COLORS = [
+    "#F4A6A0",  # coral
+    "#F2C6A0",  # apricot
+    "#F7B7D2",  # pink
+    "#E6A8D7",  # orchid
+    "#F0B8B8",  # salmon
+    "#F5C7B8",  # melon
+]
+
+
+def _build_rich_color_map(course_ids: set[tuple[str, str]]) -> dict[str, str]:
+    """Assign distinct pastel colours per course, separated by type."""
+    cmap: dict[str, str] = {}
+    ti, pi = 0, 0
+    for label, ctype in sorted(course_ids):
+        if ctype == "practical" or "(PR)" in label:
+            cmap[label] = _PRACTICAL_COLORS[pi % len(_PRACTICAL_COLORS)]
+            pi += 1
+        else:
+            cmap[label] = _THEORY_COLORS[ti % len(_THEORY_COLORS)]
+            ti += 1
+    return cmap
+
+
+# ── Day-header colours ────────────────────────────────────────────────
+_DAY_HEADER_BG = "#2C3E6B"  # dark navy
+_DAY_HEADER_FG = "#FFFFFF"
+_GRID_LINE_COLOR = "#D0D0D0"
+_ALT_ROW_COLOR = "#F7F8FA"
+_BORDER_COLOR = "#888888"
+
+
+def _save_json_schedule_as_pdf(
+    json_path: str,
+    output_pdf_path: str,
+    quantum_minutes: int,
+    start_hour: int,
+    end_hour: int,
+    *,
+    qts: QuantumTimeSystem | None = None,
+) -> None:
+    """Converts a structured JSON schedule into a calendar-style PDF.
+
+    Creates a multi-page PDF with one calendar page per group. Sessions are
+    color-coded by course and merged when they are consecutive.  The calendar
+    shows only operational hours and active days.
+    """
+    # Derive actual bounds from QTS (fall back to args)
+    auto_start, auto_end, active_days = _get_operating_bounds(qts)
+    start_hour = auto_start
+    end_hour = auto_end
+
+    day_idx = {day: i for i, day in enumerate(active_days)}
+    num_days = len(active_days)
+    num_hours = end_hour - start_hour
     time_format = "%H:%M"
 
     def to_float(time_str: str) -> float:
-        """Convert time string to float hours.
-
-        Args:
-            time_str (str): Time in HH:MM format.
-
-        Returns:
-            float: Time as decimal hours (e.g., 14:30 -> 14.5).
-        """
         t = datetime.strptime(time_str, time_format)
         return t.hour + t.minute / 60.0
 
     def merge_sessions(sessions: list[dict]) -> list[dict]:
-        """Merge consecutive sessions with the same label and day.
-
-        Args:
-            sessions (List[Dict]): List of session dictionaries.
-
-        Returns:
-            List[Dict]: Merged sessions list.
-        """
-        merged = []
+        merged: list[dict] = []
         sessions.sort(key=lambda x: (x["day"], x["start"]))
         i = 0
         while i < len(sessions):
-            s = sessions[i]
+            s = dict(sessions[i])
             j = i + 1
             while j < len(sessions):
                 n = sessions[j]
@@ -218,26 +289,87 @@ def _save_json_schedule_as_pdf(
     def plot_schedule(
         sessions: list[dict], group_name: str, pdf: Any, color_map: dict[str, str]
     ) -> None:
-        """Plot a weekly schedule for a specific group.
-
-        Args:
-            sessions (List[Dict]): Sessions for this group.
-            group_name (str): Name of the student group.
-            pdf (PdfPages): PDF writer object.
-            color_map (Dict[str, str]): Mapping of course IDs to hex colors.
-        """
         sessions = merge_sessions(sessions)
 
-        fig, ax = plt.subplots(figsize=(14, 10))
-        ax.set_title(f"Routine for {group_name}", fontsize=16, pad=20)
-        ax.set_xlim(0, len(days))
-        ax.set_ylim(end_hour, start_hour)
-        ax.set_xticks(range(len(days)))
-        ax.set_xticklabels(days, fontsize=10)
-        ax.set_yticks(range(start_hour, end_hour + 1))
-        ax.set_yticklabels([f"{h:02d}:00" for h in range(start_hour, end_hour + 1)])
-        ax.grid(True, which="both", linestyle="--", linewidth=0.5)
+        # ── Landscape A4-ish figure ──
+        fig_w = max(11, num_days * 2.4)
+        fig_h = max(6, num_hours * 0.95 + 2.0)
+        fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+        fig.patch.set_facecolor("#FFFFFF")
+        ax.set_facecolor("#FFFFFF")
 
+        # ── Title ──
+        ax.set_title(
+            f"Weekly Schedule — {group_name}",
+            fontsize=18,
+            fontweight="bold",
+            color="#2C3E6B",
+            pad=28,
+        )
+
+        # Axes limits
+        ax.set_xlim(0, num_days)
+        ax.set_ylim(end_hour, start_hour)
+
+        # ── Day column headers (coloured bar) ──
+        for i, day in enumerate(active_days):
+            ax.add_patch(
+                mpatches.FancyBboxPatch(
+                    (i, start_hour - 0.65),
+                    1.0,
+                    0.6,
+                    boxstyle="round,pad=0.02",
+                    facecolor=_DAY_HEADER_BG,
+                    edgecolor="none",
+                    clip_on=False,
+                )
+            )
+            ax.text(
+                i + 0.5,
+                start_hour - 0.35,
+                day,
+                ha="center",
+                va="center",
+                fontsize=11,
+                fontweight="bold",
+                color=_DAY_HEADER_FG,
+                clip_on=False,
+            )
+
+        # Remove default x-axis ticks (we drew our own headers)
+        ax.set_xticks([])
+
+        # ── Y-axis: time labels ──
+        ax.set_yticks(range(start_hour, end_hour + 1))
+        ax.set_yticklabels(
+            [f"{h:02d}:00" for h in range(start_hour, end_hour + 1)],
+            fontsize=10,
+            fontweight="medium",
+            color="#333333",
+        )
+        ax.tick_params(axis="y", length=0, pad=8)
+
+        # ── Alternating row shading ──
+        for h in range(start_hour, end_hour):
+            if (h - start_hour) % 2 == 0:
+                ax.add_patch(
+                    plt.Rectangle(
+                        (0, h),
+                        num_days,
+                        1,
+                        facecolor=_ALT_ROW_COLOR,
+                        edgecolor="none",
+                        zorder=0,
+                    )
+                )
+
+        # ── Grid lines ──
+        for h in range(start_hour, end_hour + 1):
+            ax.axhline(y=h, color=_GRID_LINE_COLOR, linewidth=0.6, zorder=1)
+        for d in range(num_days + 1):
+            ax.axvline(x=d, color=_GRID_LINE_COLOR, linewidth=0.6, zorder=1)
+
+        # ── Session blocks ──
         for session in sessions:
             day = session["day"]
             if day not in day_idx:
@@ -249,33 +381,34 @@ def _save_json_schedule_as_pdf(
             course_base = session.get("course_base", label)
             color = color_map.get(course_base, "#CCCCCC")
 
-            rect = plt.Rectangle(
-                (x + 0.05, y),
-                0.9,
-                height,
-                edgecolor="black",
+            # Rounded rectangle
+            block = mpatches.FancyBboxPatch(
+                (x + 0.06, y + 0.03),
+                0.88,
+                height - 0.06,
+                boxstyle="round,pad=0.04",
                 facecolor=color,
-                linewidth=1.2,
+                edgecolor="#444444",
+                linewidth=1.0,
+                zorder=3,
             )
-            ax.add_patch(rect)
+            ax.add_patch(block)
 
-            # Split label into course and instructor for multi-line display
+            # ── Text inside block ──
             if ", " in label:
                 course_part, instructor_part = label.split(", ", 1)
-
-                # Wrap course name if too long (max ~20 chars per line)
-                wrapped_course = textwrap.fill(
-                    course_part, width=20, break_long_words=False
-                )
-
-                # Combine wrapped course with instructor on separate line
-                display_text = f"{wrapped_course}\n{instructor_part}"
-                # Use smaller font for better fit with multiple lines
-                font_size = 6
+                wrapped = textwrap.fill(course_part, width=18, break_long_words=False)
+                display_text = f"{wrapped}\n{instructor_part}"
             else:
-                # Wrap single label text if needed
-                display_text = textwrap.fill(label, width=20, break_long_words=False)
-                font_size = 7
+                display_text = textwrap.fill(label, width=18, break_long_words=False)
+
+            # Dynamic font size based on block height
+            if height >= 2.0:
+                fs = 9
+            elif height >= 1.0:
+                fs = 8
+            else:
+                fs = 7
 
             ax.text(
                 x + 0.5,
@@ -283,25 +416,47 @@ def _save_json_schedule_as_pdf(
                 display_text,
                 ha="center",
                 va="center",
-                fontsize=font_size,
-                color="black",
-                wrap=True,
+                fontsize=fs,
+                fontweight="semibold",
+                color="#1a1a1a",
                 multialignment="center",
+                zorder=4,
+            )
+
+        # ── Outer border ──
+        for spine in ax.spines.values():
+            spine.set_edgecolor(_BORDER_COLOR)
+            spine.set_linewidth(1.0)
+
+        # ── Legend ──
+        handles = []
+        for cname, col in sorted(color_map.items()):
+            handles.append(mpatches.Patch(facecolor=col, edgecolor="#666", label=cname))
+        if handles:
+            ax.legend(
+                handles=handles,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.04),
+                ncol=min(len(handles), 4),
+                fontsize=8,
+                frameon=True,
+                fancybox=True,
+                shadow=False,
+                edgecolor="#CCCCCC",
             )
 
         plt.tight_layout()
         pdf.savefig(fig, bbox_inches="tight")
         plt.close(fig)
 
-    # Load JSON
+    # ── Load JSON ──
     with Path(json_path).open() as f:
         data = json.load(f)
 
-    group_sessions = defaultdict(list)
+    group_sessions: dict[str, list[dict]] = defaultdict(list)
     course_ids: set[tuple[str, str]] = set()
 
     for entry in data:
-        # Handle both old format (group_id) and new format (group_ids)
         group_ids = entry.get(
             "group_ids", [entry.get("group_id")] if entry.get("group_id") else []
         )
@@ -310,13 +465,12 @@ def _save_json_schedule_as_pdf(
         course_type = entry.get("course_type", "theory")
         course_ids.add((course_label, course_type))
 
-        # Add session to all groups in the list
         for day, times in entry["time"].items():
             for s in times:
                 start = to_float(s["start"])
                 end = to_float(s["end"])
                 for group in group_ids:
-                    if group:  # Skip None values
+                    if group:
                         label = course_label
                         if instructor_label:
                             label = f"{label}, {instructor_label}"
@@ -331,18 +485,12 @@ def _save_json_schedule_as_pdf(
                             }
                         )
 
-    # Assign colors based on course type: blue for theory, red for practical
-    color_map = {}
-    for course_label, c_type in course_ids:
-        if c_type == "practical" or "(PR)" in course_label:
-            color_map[course_label] = "#F16A6A"  # Red for practical
-        else:
-            color_map[course_label] = "#8888F7"  # Blue for theory
+    color_map = _build_rich_color_map(course_ids)
 
     # Save PDF
     with PdfPages(output_pdf_path) as pdf:
-        for group_id, sessions in group_sessions.items():
-            plot_schedule(sessions, group_id, pdf, color_map)
+        for group_id in sorted(group_sessions):
+            plot_schedule(group_sessions[group_id], group_id, pdf, color_map)
 
     print(f" PDF saved as '{output_pdf_path}'")
 
@@ -395,6 +543,7 @@ def export_everything(
             quantum_minutes=EXCAL_QUANTUM_MINUTES,
             start_hour=EXCAL_START_HOUR,
             end_hour=EXCAL_END_HOUR,
+            qts=qts,
         )
     else:
         # Parallel export (2x faster)
@@ -414,6 +563,7 @@ def export_everything(
                 quantum_minutes=EXCAL_QUANTUM_MINUTES,
                 start_hour=EXCAL_START_HOUR,
                 end_hour=EXCAL_END_HOUR,
+                qts=qts,
             )
             return pdf_path
 

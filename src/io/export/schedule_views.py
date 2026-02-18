@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -45,10 +46,59 @@ DAYS = [
 ]
 DAY_IDX = {d: i for i, d in enumerate(DAYS)}
 
+# Visual constants
+_DAY_HEADER_BG = "#2C3E6B"
+_DAY_HEADER_FG = "#FFFFFF"
+_GRID_LINE_COLOR = "#D0D0D0"
+_ALT_ROW_COLOR = "#F7F8FA"
+_BORDER_COLOR = "#888888"
+
+# Pastel palettes
+_THEORY_COLORS = [
+    "#A8C6FA",
+    "#B5D8B5",
+    "#C4B7D7",
+    "#F9D7A0",
+    "#A8E0D1",
+    "#D4C5F9",
+    "#B8DFF0",
+    "#C9E8B2",
+]
+_PRACTICAL_COLORS = [
+    "#F4A6A0",
+    "#F2C6A0",
+    "#F7B7D2",
+    "#E6A8D7",
+    "#F0B8B8",
+    "#F5C7B8",
+]
+
 
 def _to_float(time_str: str) -> float:
     t = datetime.strptime(time_str, "%H:%M")
     return t.hour + t.minute / 60.0
+
+
+def _get_operating_bounds(
+    qts: Any | None,
+) -> tuple[int, int, list[str]]:
+    """Derive start_hour, end_hour, and active day names from QTS."""
+    if qts is None:
+        return 7, 20, list(DAYS)
+    min_h, max_h = 23, 0
+    active: list[str] = []
+    for day in DAYS:
+        hours = qts.operating_hours.get(day)
+        if hours is None:
+            continue
+        active.append(day)
+        oh, _ = map(int, hours[0].split(":"))
+        ch, cm = map(int, hours[1].split(":"))
+        min_h = min(min_h, oh)
+        max_h = max(max_h, ch + (1 if cm > 0 else 0))
+    if not active:
+        return 7, 20, list(DAYS)
+    return min_h, max_h, active
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -87,47 +137,114 @@ def _draw_calendar(
     end_hour: int,
     color_map: dict[str, str],
     quantum_minutes: int = 15,
+    *,
+    active_days: list[str] | None = None,
 ) -> None:
-    """Draw session rectangles on an axes with a weekly grid."""
+    """Draw session rectangles on an axes with a polished weekly grid."""
     sessions = _merge_sessions(sessions, quantum_minutes)
 
-    ax.set_xlim(0, len(DAYS))
-    ax.set_ylim(end_hour, start_hour)
-    ax.set_xticks(range(len(DAYS)))
-    ax.set_xticklabels(DAYS, fontsize=8)
-    ax.set_yticks(range(start_hour, end_hour + 1))
-    ax.set_yticklabels([f"{h:02d}:00" for h in range(start_hour, end_hour + 1)])
-    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
+    if active_days is None:
+        active_days = list(DAYS)
+    day_idx = {d: i for i, d in enumerate(active_days)}
+    num_days = len(active_days)
+    num_hours = end_hour - start_hour
 
+    ax.set_xlim(0, num_days)
+    ax.set_ylim(end_hour, start_hour)
+
+    # ── Day column headers (coloured bar) ──
+    for i, day in enumerate(active_days):
+        ax.add_patch(
+            mpatches.FancyBboxPatch(
+                (i, start_hour - 0.65),
+                1.0,
+                0.6,
+                boxstyle="round,pad=0.02",
+                facecolor=_DAY_HEADER_BG,
+                edgecolor="none",
+                clip_on=False,
+            )
+        )
+        ax.text(
+            i + 0.5,
+            start_hour - 0.35,
+            day,
+            ha="center",
+            va="center",
+            fontsize=10,
+            fontweight="bold",
+            color=_DAY_HEADER_FG,
+            clip_on=False,
+        )
+    ax.set_xticks([])
+
+    # ── Y-axis ──
+    ax.set_yticks(range(start_hour, end_hour + 1))
+    ax.set_yticklabels(
+        [f"{h:02d}:00" for h in range(start_hour, end_hour + 1)],
+        fontsize=9,
+        fontweight="medium",
+        color="#333333",
+    )
+    ax.tick_params(axis="y", length=0, pad=8)
+
+    # ── Alternating row shading ──
+    for h in range(start_hour, end_hour):
+        if (h - start_hour) % 2 == 0:
+            ax.add_patch(
+                plt.Rectangle(
+                    (0, h),
+                    num_days,
+                    1,
+                    facecolor=_ALT_ROW_COLOR,
+                    edgecolor="none",
+                    zorder=0,
+                )
+            )
+
+    # ── Grid lines ──
+    for h in range(start_hour, end_hour + 1):
+        ax.axhline(y=h, color=_GRID_LINE_COLOR, linewidth=0.6, zorder=1)
+    for d in range(num_days + 1):
+        ax.axvline(x=d, color=_GRID_LINE_COLOR, linewidth=0.6, zorder=1)
+
+    # ── Session blocks ──
     for sess in sessions:
         day = sess["day"]
-        if day not in DAY_IDX:
+        if day not in day_idx:
             continue
-        x = DAY_IDX[day]
+        x = day_idx[day]
         y = sess["start"]
         h = sess["end"] - sess["start"]
         label = sess["label"]
         course_base = sess.get("course_base", label)
         color = color_map.get(course_base, "#CCCCCC")
 
-        rect = plt.Rectangle(
-            (x + 0.05, y),
-            0.9,
-            h,
-            edgecolor="black",
+        block = mpatches.FancyBboxPatch(
+            (x + 0.06, y + 0.03),
+            0.88,
+            h - 0.06,
+            boxstyle="round,pad=0.04",
             facecolor=color,
+            edgecolor="#444444",
             linewidth=1.0,
+            zorder=3,
         )
-        ax.add_patch(rect)
+        ax.add_patch(block)
 
         # Multi-line text
         if ", " in label:
             parts = label.split(", ", 1)
             wrapped = textwrap.fill(parts[0], width=18, break_long_words=False)
             display = f"{wrapped}\n{parts[1]}"
-            fs = 5.5
         else:
             display = textwrap.fill(label, width=18, break_long_words=False)
+
+        if h >= 2.0:
+            fs = 8.5
+        elif h >= 1.0:
+            fs = 7.5
+        else:
             fs = 6.5
 
         ax.text(
@@ -137,21 +254,33 @@ def _draw_calendar(
             ha="center",
             va="center",
             fontsize=fs,
-            color="black",
+            fontweight="semibold",
+            color="#1a1a1a",
             multialignment="center",
+            zorder=4,
         )
+
+    # ── Border ──
+    for spine in ax.spines.values():
+        spine.set_edgecolor(_BORDER_COLOR)
+        spine.set_linewidth(1.0)
 
 
 def _draw_availability_bands(
     ax: plt.Axes,
     avail_ranges: dict[str, list[tuple[int, int]]],
     qts: QuantumTimeSystem,
+    *,
+    active_days: list[str] | None = None,
 ) -> None:
     """Draw light-green availability bands behind the calendar."""
+    if active_days is None:
+        active_days = list(DAYS)
+    day_idx = {d: i for i, d in enumerate(active_days)}
     for day_name, ranges in avail_ranges.items():
-        if day_name not in DAY_IDX:
+        if day_name not in day_idx:
             continue
-        x = DAY_IDX[day_name]
+        x = day_idx[day_name]
         for start_q, end_q in ranges:
             _, start_time = qts.quanta_to_time(start_q)
             # end_q is exclusive — back up by 1 for the last quantum end
@@ -292,8 +421,8 @@ def generate_instructor_schedules_pdf(
     qts: QuantumTimeSystem,
     output_path: str,
     *,
-    start_hour: int = 7,
-    end_hour: int = 20,
+    start_hour: int = 10,
+    end_hour: int = 17,
     filename: str = "instructor_schedules.pdf",
 ) -> str:
     """Generate a multi-page PDF with one calendar page per instructor.
@@ -308,6 +437,11 @@ def generate_instructor_schedules_pdf(
     out.mkdir(parents=True, exist_ok=True)
     pdf_path = str(out / filename)
 
+    # Auto-detect operating bounds from QTS
+    auto_start, auto_end, active_days = _get_operating_bounds(qts)
+    start_hour, end_hour = auto_start, auto_end
+    num_days = len(active_days)
+    num_hours = end_hour - start_hour
     # Collect sessions per instructor
     inst_sessions: dict[str, list[CourseSession]] = defaultdict(list)
     for s in sessions:
@@ -329,7 +463,11 @@ def generate_instructor_schedules_pdf(
             my_sessions = inst_sessions.get(iid, [])
             my_viol = viol.get(iid, {})
 
-            fig, ax = plt.subplots(figsize=(14, 10))
+            fig_w = max(11, num_days * 2.4)
+            fig_h = max(6, num_hours * 0.95 + 2.5)
+            fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+            fig.patch.set_facecolor("#FFFFFF")
+            ax.set_facecolor("#FFFFFF")
 
             # ── Header ──
             avail_text = _format_instructor_availability(inst, qts)
@@ -350,17 +488,32 @@ def generate_instructor_schedules_pdf(
                 f"Availability: {avail_text}\n"
                 f"Sessions: {n_sessions}   Quanta: {total_quanta}   {viol_line}"
             )
-            ax.set_title(title, fontsize=11, pad=24, loc="left", family="monospace")
+            ax.set_title(
+                title,
+                fontsize=12,
+                fontweight="bold",
+                pad=28,
+                loc="left",
+                family="monospace",
+                color="#2C3E6B",
+            )
 
             # ── Availability bands ──
             avail_ranges = inst.get_available_quanta_ranges(qts)
-            _draw_availability_bands(ax, avail_ranges, qts)
+            _draw_availability_bands(ax, avail_ranges, qts, active_days=active_days)
 
             # ── Sessions ──
             cal_sessions = _sessions_to_cal(
                 my_sessions, qts, courses, label_mode="instructor"
             )
-            _draw_calendar(ax, cal_sessions, start_hour, end_hour, color_map)
+            _draw_calendar(
+                ax,
+                cal_sessions,
+                start_hour,
+                end_hour,
+                color_map,
+                active_days=active_days,
+            )
 
             plt.tight_layout()
             pdf.savefig(fig, bbox_inches="tight")
@@ -378,8 +531,8 @@ def generate_room_schedules_pdf(
     output_path: str,
     *,
     groups: dict[str, Any] | None = None,
-    start_hour: int = 7,
-    end_hour: int = 20,
+    start_hour: int = 10,
+    end_hour: int = 17,
     filename: str = "room_schedules.pdf",
 ) -> str:
     """Generate a multi-page PDF with one calendar page per room.
@@ -392,6 +545,12 @@ def generate_room_schedules_pdf(
     out = Path(output_path)
     out.mkdir(parents=True, exist_ok=True)
     pdf_path = str(out / filename)
+
+    # Auto-detect operating bounds from QTS
+    auto_start, auto_end, active_days = _get_operating_bounds(qts)
+    start_hour, end_hour = auto_start, auto_end
+    num_days = len(active_days)
+    num_hours = end_hour - start_hour
 
     # Collect sessions per room
     room_sessions: dict[str, list[CourseSession]] = defaultdict(list)
@@ -413,7 +572,11 @@ def generate_room_schedules_pdf(
             my_sessions = room_sessions.get(rid, [])
             my_viol = viol.get(rid, {})
 
-            fig, ax = plt.subplots(figsize=(14, 10))
+            fig_w = max(11, num_days * 2.4)
+            fig_h = max(6, num_hours * 0.95 + 2.5)
+            fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+            fig.patch.set_facecolor("#FFFFFF")
+            ax.set_facecolor("#FFFFFF")
 
             # ── Header ──
             features_str = room.room_features or "—"
@@ -442,13 +605,28 @@ def generate_room_schedules_pdf(
                 f"Sessions: {n_sessions}   Quanta: {total_quanta}/"
                 f"{total_avail} ({util_pct:.0f}%)   {viol_line}"
             )
-            ax.set_title(title, fontsize=11, pad=24, loc="left", family="monospace")
+            ax.set_title(
+                title,
+                fontsize=12,
+                fontweight="bold",
+                pad=28,
+                loc="left",
+                family="monospace",
+                color="#2C3E6B",
+            )
 
             # ── Sessions ──
             cal_sessions = _sessions_to_cal(
                 my_sessions, qts, courses, label_mode="room"
             )
-            _draw_calendar(ax, cal_sessions, start_hour, end_hour, color_map)
+            _draw_calendar(
+                ax,
+                cal_sessions,
+                start_hour,
+                end_hour,
+                color_map,
+                active_days=active_days,
+            )
 
             plt.tight_layout()
             pdf.savefig(fig, bbox_inches="tight")
@@ -479,13 +657,16 @@ def _course_display(
 def _build_color_map(
     course_ids: set[tuple[str, str]],
 ) -> dict[str, str]:
-    """Assign colors: blue for theory, red for practical."""
+    """Assign distinct pastel colours per course, separated by type."""
     cmap: dict[str, str] = {}
-    for label, ctype in course_ids:
+    ti, pi = 0, 0
+    for label, ctype in sorted(course_ids):
         if ctype == "practical" or "(PR)" in label:
-            cmap[label] = "#F16A6A"
+            cmap[label] = _PRACTICAL_COLORS[pi % len(_PRACTICAL_COLORS)]
+            pi += 1
         else:
-            cmap[label] = "#8888F7"
+            cmap[label] = _THEORY_COLORS[ti % len(_THEORY_COLORS)]
+            ti += 1
     return cmap
 
 
