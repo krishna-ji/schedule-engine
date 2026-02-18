@@ -19,6 +19,7 @@ genes=379  frozen=170   → INFEASIBLE in ~0.7s
 ```
 
 **Hard violation breakdown** (pre-fix):
+
 - `instructor_time_availability`: **196 violations** ← Biggest issue
 - `room_exclusivity`: 162-189
 - `student_group_exclusivity`: 118-119
@@ -34,14 +35,16 @@ genes=379  frozen=170   → INFEASIBLE in ~0.7s
 **Purpose**: Intelligently select genes to freeze while ensuring mutual consistency.
 
 **Key Features**:
-- ✅ **Validates instructor availability** before freezing (CRITICAL)
-- ✅ **Validates room suitability** before freezing
-- ✅ **Checks instructor exclusivity** (no two frozen genes use same instructor at same time)
-- ✅ **Checks room exclusivity** (no two frozen genes use same room at same time)
-- ✅ **Checks group exclusivity** (no two frozen genes teach same group at same time)
-- ✅ **Respects max_frozen_ratio** to limit frozen set size
+
+- **Validates instructor availability** before freezing (CRITICAL)
+- **Validates room suitability** before freezing
+- **Checks instructor exclusivity** (no two frozen genes use same instructor at same time)
+- **Checks room exclusivity** (no two frozen genes use same room at same time)
+- **Checks group exclusivity** (no two frozen genes teach same group at same time)
+- **Respects max_frozen_ratio** to limit frozen set size
 
 **Algorithm**:
+
 ```python
 def select_consistent_frozen_genes(genes, candidate_indices, ctx, max_frozen_ratio=0.5):
     frozen_indices = []
@@ -87,11 +90,13 @@ def select_consistent_frozen_genes(genes, candidate_indices, ctx, max_frozen_rat
 ### 2. Updated `cp_hybrid.py` — Quick Repair
 
 **Changes**:
+
 - Replaced naive freezing (`freeze all non-violated genes`) with intelligent selection
 - Added **adaptive retry** with decreasing frozen ratios: `[0.5, 0.25, 0.1, 0.0]`
 - If INFEASIBLE at ratio=0.5, retry with ratio=0.25, then 0.1, then 0.0 (no freezing)
 
 **Before** (lines 175-179):
+
 ```python
 # Freeze all non-violated genes
 frozen = [
@@ -102,6 +107,7 @@ frozen = [
 ```
 
 **After**:
+
 ```python
 # Adaptive retry: start with max_frozen_ratio=0.5, reduce if INFEASIBLE
 frozen_ratios = [0.5, 0.25, 0.1, 0.0]
@@ -120,6 +126,7 @@ for ratio in frozen_ratios:
 ```
 
 **Impact**:
+
 - If frozen set causes INFEASIBLE, solver automatically retries with fewer constraints
 - Last resort: freeze nothing (ratio=0.0) → always has a fallback
 
@@ -128,10 +135,12 @@ for ratio in frozen_ratios:
 ### 3. Updated `pipeline.py` — Full Repair (Bridge + Cluster)
 
 **Changes**:
+
 - **Bridge validation**: After solving bridge genes, validate them with `select_consistent_frozen_genes`
 - **Coordination pass**: Use frozen selector instead of freezing all non-violated genes
 
 **Bridge Validation** (lines 161-206):
+
 ```python
 if global_result.success:
     # Apply CP results to a temporary chromosome
@@ -155,6 +164,7 @@ if global_result.success:
 ```
 
 **Coordination Pass** (lines 234-268):
+
 ```python
 # Candidates for freezing: non-violated genes
 candidate_indices = [i for i in range(len(repaired)) if i not in violated_set]
@@ -170,7 +180,8 @@ coord_frozen = [FrozenAssignment.from_gene(i, repaired[i]) for i in safe_frozen_
 
 ## Expected Improvements
 
-### Before Fix:
+### Before Fix
+
 ```
 CP-SAT: status=INFEASIBLE  wall=0.6s  genes=372  frozen=177
 CP-SAT: status=INFEASIBLE  wall=0.9s  genes=366  frozen=183
@@ -179,7 +190,8 @@ Cluster ARCH: status=INFEASIBLE  genes=46  frozen=20
 Cluster BAM+...: status=INFEASIBLE  genes=483  frozen=20
 ```
 
-### After Fix:
+### After Fix
+
 ```
 Selected 85/372 candidate genes to freeze (15.5% of total)
 CP-SAT: status=FEASIBLE  wall=1.2s  genes=372  frozen=85
@@ -192,6 +204,7 @@ Cluster BAM+...: status=FEASIBLE  genes=483  frozen=18
 ```
 
 **Key Metrics Expected to Drop**:
+
 - `instructor_time_availability`: **196 → 0** (never freeze unavailable instructors)
 - `room_suitability`: **24 → 0** (never freeze unsuitable rooms)
 - `instructor_exclusivity`: **61 → 0** (validate frozen set consistency)
@@ -202,21 +215,24 @@ Cluster BAM+...: status=FEASIBLE  genes=483  frozen=18
 
 ## Testing
 
-### Quick Smoke Test:
+### Quick Smoke Test
+
 ```bash
 cd /home/krishna/Desktop/schedule-engine.worktrees/copilot-worktree-2026-02-16T21-01-54
 python3 -m py_compile src/ga/repair/cp/frozen_selector.py \
                         src/experiments/modes/cp_hybrid.py \
                         src/ga/repair/cp/pipeline.py
-# ✅ All files compile successfully
+#  All files compile successfully
 ```
 
-### Full Test:
+### Full Test
+
 ```bash
 python3 runs/ga_07_cp_hybrid.py
 ```
 
 **Expected Log Output**:
+
 ```
 Phase 1: CP-SAT repairing initial population...
   Selected 87/549 candidate genes to freeze (15.8% of total)
@@ -258,11 +274,11 @@ This fix addresses **all 6 priority issues** from your analysis:
 
 | Priority | Issue | Fix |
 |----------|-------|-----|
-| **P0** | Frozen set has mutual conflicts | ✅ `select_consistent_frozen_genes` validates exclusivity |
-| **P0** | Freezing instructor-unavailable genes | ✅ Checks `instructor.available_quanta` before freezing |
-| **P0** | Freezing room-unsuitable genes | ✅ Checks `is_room_suitable_for_course` before freezing |
-| **P1** | No fallback when INFEASIBLE | ✅ Adaptive retry with frozen_ratios=[0.5, 0.25, 0.1, 0.0] |
-| **P1** | Bridge genes incompatible with clusters | ✅ Bridge validation with frozen selector |
-| **P2** | GA ignores instructor availability | ⚠️ Requires GA mutation changes (separate fix) |
+| **P0** | Frozen set has mutual conflicts |  `select_consistent_frozen_genes` validates exclusivity |
+| **P0** | Freezing instructor-unavailable genes |  Checks `instructor.available_quanta` before freezing |
+| **P0** | Freezing room-unsuitable genes |  Checks `is_room_suitable_for_course` before freezing |
+| **P1** | No fallback when INFEASIBLE |  Adaptive retry with frozen_ratios=[0.5, 0.25, 0.1, 0.0] |
+| **P1** | Bridge genes incompatible with clusters |  Bridge validation with frozen selector |
+| **P2** | GA ignores instructor availability | ️ Requires GA mutation changes (separate fix) |
 
-**Status**: Ready to test with `python3 runs/ga_07_cp_hybrid.py` 🚀
+**Status**: Ready to test with `python3 runs/ga_07_cp_hybrid.py`

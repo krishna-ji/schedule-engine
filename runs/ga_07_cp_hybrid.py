@@ -59,11 +59,11 @@ VERBOSE = True
 
 # -- CP-SAT Parameters ---------------------------------------------------
 
-CP_TIMEOUT = 10  # seconds per quick repair (violated genes only)
-CP_TIMEOUT_FULL = 60  # seconds for full pipeline (global + cluster)
+CP_TIMEOUT = 15  # seconds per quick repair (inc. full-rebuild mode)
+CP_TIMEOUT_FULL = 120  # seconds for full pipeline (global + cluster)
 CP_NUM_WORKERS = 8  # CP-SAT threads per model
 CP_MIN_SHARED_COURSES = 2  # clustering threshold
-CP_FULL_INTERVAL = 10  # full pipeline every N generations
+CP_FULL_INTERVAL = 5  # full pipeline every N generations (was 10)
 CP_SOFT_OBJECTIVE = True  # include soft constraints in CP objective
 
 # GA Selection

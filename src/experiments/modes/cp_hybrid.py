@@ -158,13 +158,14 @@ class CPHybridExperiment(BaseExperiment):
         ind: list,
         family_map: dict[str, set[str]],
     ) -> list:
-        """Run a quick CP-SAT repair on violated genes only.
+        """Run a quick CP-SAT repair on violated genes.
 
-        Non-violated genes are intelligently frozen to ensure mutual consistency.
+        Strategy adapts based on violation rate:
+        - Low  (<50%): fix only violated genes, freeze consistent non-violated
+        - High (50-95%): solve ALL genes with NO frozen constraints (fresh solve)
+        - Very high (>95%): skip (truly hopeless, let GA evolve first)
+
         If INFEASIBLE, adaptively reduces frozen ratio and retries.
-        
-        If too many genes are violated (>50% of total), skip CP repair and
-        rely on the full pipeline instead.
         """
         from src.ga.repair.cp.frozen_selector import select_consistent_frozen_genes
         from src.ga.repair.cp.solver import CPSATSolver, FrozenAssignment
@@ -176,19 +177,61 @@ class CPHybridExperiment(BaseExperiment):
 
         violated_indices = sorted(violations.keys())
         violated_set = set(violated_indices)
-        
-        # SKIP if too many violations (>50% of genes)
-        if len(violated_indices) > len(ind) * 0.5:
+        viol_ratio = len(violated_indices) / len(ind) if ind else 1.0
+
+        # SKIP only if nearly all genes are violated (>95%)
+        if viol_ratio > 0.95:
             logger.info(
                 "Skipping CP quick repair: %d/%d genes violated (%.1f%%), "
                 "too many for quick repair",
                 len(violated_indices),
                 len(ind),
-                100.0 * len(violated_indices) / len(ind),
+                100.0 * viol_ratio,
             )
-            return ind  # Skip repair, rely on full pipeline
+            return ind
 
-        # Candidate genes for freezing: all non-violated genes
+        # HIGH violation mode (>=50%): use decomposed pipeline
+        # instead of monolithic solve (too many genes for single CP model)
+        if viol_ratio >= 0.50:
+            logger.debug(
+                "CP pipeline-rebuild mode: %d/%d genes violated (%.1f%%)",
+                len(violated_indices),
+                len(ind),
+                100.0 * viol_ratio,
+            )
+            from src.ga.repair.cp.pipeline import CPRepairPipeline
+
+            pipeline = CPRepairPipeline(
+                timeout_global=max(30, self.cp_timeout),  # coordination needs more time
+                timeout_cluster=self.cp_timeout,
+                num_workers=self.cp_num_workers,
+                min_shared_courses=self.cp_min_shared_courses,
+                soft_objective=False,  # speed: skip soft in rebuild
+                max_cluster_genes=200,  # bigger chunks, fewer cross-chunk conflicts
+            )
+
+            repaired, cp_stats = pipeline.repair(
+                ind,
+                self.data.context,
+                family_map,
+            )
+            self._cp_quick_repairs += 1
+
+            if cp_stats.success or cp_stats.residual_hard < len(violated_indices):
+                self._cp_quick_success += 1
+                logger.debug(
+                    "CP pipeline-rebuild: residual_hard=%.0f (was %d violated)",
+                    cp_stats.residual_hard,
+                    len(violated_indices),
+                )
+                return repaired
+
+            logger.debug(
+                "CP pipeline-rebuild failed: residual_hard=%.0f", cp_stats.residual_hard
+            )
+            return ind
+
+        # LOW violation mode (<50%): fix only violated genes, freeze good ones
         candidate_indices = [i for i in range(len(ind)) if i not in violated_set]
 
         solver = CPSATSolver(
@@ -232,14 +275,13 @@ class CPHybridExperiment(BaseExperiment):
                         ratio,
                     )
                     return repaired
-                else:
-                    # OPTIMAL/FEASIBLE but no solution — return original
-                    logger.debug(
-                        "CP repair status=%s with %d frozen genes",
-                        result.status,
-                        len(frozen_indices),
-                    )
-                    return ind
+                # OPTIMAL/FEASIBLE but no solution — return original
+                logger.debug(
+                    "CP repair status=%s with %d frozen genes",
+                    result.status,
+                    len(frozen_indices),
+                )
+                return ind
 
             # INFEASIBLE — try with fewer frozen genes
             logger.debug(
@@ -269,7 +311,7 @@ class CPHybridExperiment(BaseExperiment):
 
         pipeline = CPRepairPipeline(
             timeout_global=self.cp_timeout_full,
-            timeout_cluster=self.cp_timeout,
+            timeout_cluster=max(self.cp_timeout_full // 2, self.cp_timeout),
             num_workers=self.cp_num_workers,
             min_shared_courses=self.cp_min_shared_courses,
             soft_objective=self.cp_soft_objective,
@@ -323,8 +365,40 @@ class CPHybridExperiment(BaseExperiment):
 
         pop = self.create_initial_population()
 
+        # Phase 1a: Seed one individual via full CP pipeline (decomposed)
+        # This gives the GA at least one high-quality starting point.
+        self.logger.info("Phase 1a: CP-SAT seeding one individual (pipeline)...")
+        from src.ga.repair.cp.pipeline import CPRepairPipeline as _Pipeline
+
+        seed_pipeline = _Pipeline(
+            timeout_global=self.cp_timeout_full,
+            timeout_cluster=max(self.cp_timeout_full // 2, self.cp_timeout),
+            num_workers=self.cp_num_workers,
+            min_shared_courses=self.cp_min_shared_courses,
+            soft_objective=False,  # speed: hard feasibility first
+        )
+        seed_repaired, seed_stats = seed_pipeline.repair(
+            list(pop[0]),
+            self.data.context,
+            family_map,
+        )
+        if seed_stats.success or seed_stats.residual_hard < len(pop[0]):
+            pop[0][:] = seed_repaired
+            pop[0].fitness.values = self.evaluate(pop[0])
+            self.logger.info(
+                "Phase 1a: CP seed -> Hard=%.0f Soft=%.0f (residual=%.0f)",
+                pop[0].fitness.values[0],
+                pop[0].fitness.values[1],
+                seed_stats.residual_hard,
+            )
+        else:
+            self.logger.warning(
+                "Phase 1a: CP seed failed (residual_hard=%.0f)",
+                seed_stats.residual_hard,
+            )
+
         # CP-repair every individual in the initial population
-        self.logger.info("Phase 1: CP-SAT repairing initial population...")
+        self.logger.info("Phase 1b: CP-SAT repairing initial population...")
         for i, ind in enumerate(pop):
             repaired = self._cp_repair_quick(list(ind), family_map)
             ind[:] = repaired

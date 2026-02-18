@@ -279,6 +279,12 @@ class CPSATSolver:
         # penalty.  Index into rooms_for[gi] — indices >= n_suitable are
         # type-compatible fallbacks that incur a penalty.
         n_suitable_for: dict[int, int] = {}
+        # Track how many qualified instructors each gene has (for penalty)
+        n_qualified_for: dict[int, int] = {}
+        # Genes excluded from the CP model (impossible duration, etc.)
+        skipped_indices: set[int] = set()
+        # Effective gene indices (only those included in the model)
+        effective_indices: list[int] = []
 
         for gi in gene_indices:
             g = genes[gi]
@@ -286,22 +292,70 @@ class CPSATSolver:
             dur = g.num_quanta
             dur_map[gi] = dur
 
+            # HC7: Valid time slots — skip genes that cannot fit in any day
+            vs = self._valid_starts(dur)
+            if not vs:
+                logger.debug(
+                    "Skipping gene %d (%s-%s, dur=%d): no valid start quanta",
+                    gi,
+                    g.course_id,
+                    g.course_type,
+                    dur,
+                )
+                skipped_indices.add(gi)
+                continue
+
+            effective_indices.append(gi)
+
             # HC5: Room suitability — use type-compatible rooms as domain
             # (suitable rooms first, then type-compatible fallbacks).
-            # This prevents structural infeasibility when exact-suitable
-            # rooms are over-subscribed.
+            # CAP at MAX_ROOM_DOMAIN to limit model complexity.
+            MAX_ROOM_DOMAIN = 20
             suitable = self._suitable_rooms.get(ckey, [])
             type_compat = self._type_compat_rooms.get(ckey, [])
             sr = type_compat if type_compat else all_rooms
+            # Ensure current room is in domain for warm-start feasibility
+            if g.room_id and g.room_id not in sr:
+                sr = [g.room_id, *sr]
+            if len(sr) > MAX_ROOM_DOMAIN:
+                # Keep suitable rooms first, then cap with fallbacks
+                sr = sr[:MAX_ROOM_DOMAIN]
+                # Ensure current assignment stays in domain
+                if g.room_id and g.room_id not in sr:
+                    sr[-1] = g.room_id
             rooms_for[gi] = sr
-            n_suitable_for[gi] = len(suitable)
+            n_suitable_for[gi] = min(len(suitable), len(sr))
 
             # HC4: Instructor qualification → restrict instr domain
-            qi = self._qual_instrs.get(ckey, []) or all_instrs
+            # If qualified instructors are scarce, add a small random
+            # sample as fallback (capped at MAX_INSTR_DOMAIN total)
+            # to prevent structural infeasibility while keeping model
+            # complexity manageable.
+            MAX_INSTR_DOMAIN = 15
+            qi = self._qual_instrs.get(ckey, []) or all_instrs[:MAX_INSTR_DOMAIN]
+            n_qualified_for[gi] = len(qi)
+            if len(qi) < MAX_INSTR_DOMAIN:
+                qi_set = set(qi)
+                # Ensure current instructor is in domain
+                if g.instructor_id and g.instructor_id not in qi_set:
+                    qi = [*qi, g.instructor_id]
+                    qi_set.add(g.instructor_id)
+                # Add deterministic fallback instructors up to cap
+                # Use course key as seed so fallbacks are consistent across calls
+                remaining = [iid for iid in all_instrs if iid not in qi_set]
+                need = MAX_INSTR_DOMAIN - len(qi)
+                if need > 0 and remaining:
+                    import random as _rng
+
+                    local_rng = _rng.Random(hash(ckey))
+                    qi = qi + local_rng.sample(remaining, min(need, len(remaining)))
+            elif len(qi) > MAX_INSTR_DOMAIN:
+                # Even qualified pool is large — cap it
+                qi = qi[:MAX_INSTR_DOMAIN]
+                if g.instructor_id and g.instructor_id not in qi:
+                    qi[-1] = g.instructor_id
             instrs_for[gi] = qi
 
-            # HC7: Valid time slots
-            vs = self._valid_starts(dur) or avail_quanta
             starts[gi] = model.new_int_var_from_domain(
                 cp_model.Domain.from_values(vs), f"s{gi}"
             )
@@ -318,6 +372,13 @@ class CPSATSolver:
                     model.add_hint(room_idxs[gi], sr.index(g.room_id))
                 if g.instructor_id in qi:
                     model.add_hint(instr_idxs[gi], qi.index(g.instructor_id))
+
+        if skipped_indices:
+            logger.info(
+                "Skipped %d/%d genes (impossible duration for day length)",
+                len(skipped_indices),
+                len(gene_indices),
+            )
 
         # ── 2. HC1 — Student Group Exclusivity ──────────────────────
         #    For every group in a gene's group_ids, all intervals mapped
@@ -337,7 +398,7 @@ class CPSATSolver:
             for gid in gids:
                 group_ivs.setdefault(gid, []).append(iv)
 
-        for gi in gene_indices:
+        for gi in effective_indices:
             _add_group_iv(genes[gi].group_ids, intervals[gi])
 
         for fa in frozen:
@@ -356,7 +417,7 @@ class CPSATSolver:
 
         instr_opt_ivs: dict[str, list[Any]] = {}
 
-        for gi in gene_indices:
+        for gi in effective_indices:
             for li, iid in enumerate(instrs_for[gi]):
                 b = model.new_bool_var(f"is{gi}i{li}")
                 model.add(instr_idxs[gi] == li).only_enforce_if(b)
@@ -380,7 +441,7 @@ class CPSATSolver:
 
         room_opt_ivs: dict[str, list[Any]] = {}
 
-        for gi in gene_indices:
+        for gi in effective_indices:
             for li, rid in enumerate(rooms_for[gi]):
                 b = model.new_bool_var(f"rs{gi}r{li}")
                 model.add(room_idxs[gi] == li).only_enforce_if(b)
@@ -402,7 +463,7 @@ class CPSATSolver:
 
         # ── 5. HC6 — Part-time Instructor Availability ──────────────
 
-        for gi in gene_indices:
+        for gi in effective_indices:
             dur = dur_map[gi]
             for li, iid in enumerate(instrs_for[gi]):
                 instr = self.ctx.instructors.get(iid)
@@ -433,9 +494,9 @@ class CPSATSolver:
         obj_terms: list[Any] = []
 
         # 6a. Deviation from warm start
-        if warm_start and gene_indices:
+        if warm_start and effective_indices:
             ub = max(avail_quanta) + 1 if avail_quanta else 35
-            for gi in gene_indices:
+            for gi in effective_indices:
                 d = model.new_int_var(0, ub, f"dv{gi}")
                 model.add_abs_equality(d, starts[gi] - genes[gi].start_quanta)
                 obj_terms.append(self.deviation_weight * d)
@@ -445,7 +506,7 @@ class CPSATSolver:
         #    [suitable ... type_compat ...] so indices >= n_suitable mean
         #    a fallback room is used.
         ROOM_SUIT_WEIGHT = 10
-        for gi in gene_indices:
+        for gi in effective_indices:
             n_suit = n_suitable_for[gi]
             n_total = len(rooms_for[gi])
             if 0 < n_suit < n_total:
@@ -454,8 +515,22 @@ class CPSATSolver:
                 model.add(room_idxs[gi] < n_suit).only_enforce_if(is_fb.negated())
                 obj_terms.append(ROOM_SUIT_WEIGHT * is_fb)
 
+        # 6a″. Instructor qualification penalty — prefer qualified instructors
+        #    over fallback instructors.  instrs_for[gi] is ordered
+        #    [qualified ... fallback ...] so indices >= n_qualified mean
+        #    a fallback instructor is used.
+        INSTR_QUAL_WEIGHT = 50
+        for gi in effective_indices:
+            n_qual = n_qualified_for[gi]
+            n_total_i = len(instrs_for[gi])
+            if 0 < n_qual < n_total_i:
+                is_unqual = model.new_bool_var(f"iqfb{gi}")
+                model.add(instr_idxs[gi] >= n_qual).only_enforce_if(is_unqual)
+                model.add(instr_idxs[gi] < n_qual).only_enforce_if(is_unqual.negated())
+                obj_terms.append(INSTR_QUAL_WEIGHT * is_unqual)
+
         # 6b. Soft-constraint objectives (compactness)
-        if self.soft_objective and gene_indices:
+        if self.soft_objective and effective_indices:
             max_q = max(avail_quanta) + 1 if avail_quanta else 35
 
             # -- Group compactness: minimise span per group --
@@ -465,7 +540,7 @@ class CPSATSolver:
             group_gene_map: dict[str, list[int]] = {}
             group_frozen_bounds: dict[str, tuple[int, int]] = {}
 
-            for gi in gene_indices:
+            for gi in effective_indices:
                 for gid in genes[gi].group_ids:
                     group_gene_map.setdefault(gid, []).append(gi)
 
@@ -504,7 +579,7 @@ class CPSATSolver:
             instr_gene_map: dict[str, list[int]] = {}
             instr_frozen_bounds: dict[str, tuple[int, int]] = {}
 
-            for gi in gene_indices:
+            for gi in effective_indices:
                 for li, iid in enumerate(instrs_for[gi]):
                     instr_gene_map.setdefault(iid, []).append(gi)
 
@@ -551,16 +626,17 @@ class CPSATSolver:
         sname = solver.status_name(status)
 
         logger.info(
-            "CP-SAT: status=%s  wall=%.1fs  genes=%d  frozen=%d",
+            "CP-SAT: status=%s  wall=%.1fs  genes=%d  frozen=%d  skipped=%d",
             sname,
             wall,
-            len(gene_indices),
+            len(effective_indices),
             len(frozen),
+            len(skipped_indices),
         )
 
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             asgn: dict[int, tuple[str, str, int]] = {}
-            for gi in gene_indices:
+            for gi in effective_indices:
                 sq = solver.value(starts[gi])
                 ri = solver.value(room_idxs[gi])
                 ii = solver.value(instr_idxs[gi])
