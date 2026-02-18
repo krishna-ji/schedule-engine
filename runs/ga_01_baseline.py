@@ -27,7 +27,7 @@ from src.experiments import BaselineExperiment
 SEED = 42
 
 # GA Core Parameters
-POP_SIZE = 100  # Population size (larger = more diversity)
+POP_SIZE = 10  # Population size (larger = more diversity)
 NGEN = 2000  # Number of generations
 CXPB = 0.9  # Crossover probability
 MUTPB = 0.2  # Mutation probability

@@ -240,9 +240,7 @@ def mutate_individual(
             new_quanta = mutate_time_quanta(
                 gene, course, context, individual=individual
             )
-            from src.ga.core.quanta_converter import (
-                quanta_list_to_contiguous,
-            )
+            from src.ga.core.quanta_converter import quanta_list_to_contiguous
 
             start_q, num_q = quanta_list_to_contiguous(new_quanta)
 
@@ -286,3 +284,103 @@ def mutate_individual(
                 num_quanta=num_q,
             )
     return (individual,)
+
+
+def mutate_gene_spreading(
+    gene: SessionGene,
+    gene_idx: int,
+    domain_store: "GeneDomainStore",
+    tracker: "UsageTracker",
+    individual: list[SessionGene],
+    context: SchedulingContext,
+) -> SessionGene:
+    """Mutate a single gene using domain buckets + usage-aware spreading.
+
+    Instead of ``random.choice()`` from recomputed lists, this:
+    1. Reads pre-computed domain (instructors, rooms, valid_starts)
+    2. Removes old gene from tracker
+    3. Picks LEAST-LOADED instructor, time, room (conflict-aware)
+    4. Adds new gene to tracker
+
+    Returns a NEW SessionGene (does NOT mutate in-place).
+    """
+    from src.ga.core.domain_store import GeneDomainStore
+    from src.ga.core.usage_tracker import UsageTracker
+
+    domain = domain_store.get_domain(gene_idx)
+
+    # Temporarily remove gene from usage tracking
+    tracker.remove_gene(gene)
+
+    # --- INSTRUCTOR: least-loaded qualified ---
+    new_instructor = tracker.pick_least_used_instructor(domain.instructors)
+    if not new_instructor:
+        new_instructor = gene.instructor_id
+
+    # --- TIME: group-free → instructor-free → least-loaded ---
+    blocked: set[int] = set()
+    gene_groups = set(gene.group_ids)
+    family_map = context.family_map or {}
+    expanded_groups: set[str] = set(gene.group_ids)
+    for gid in gene.group_ids:
+        expanded_groups.update(family_map.get(gid, set()))
+
+    for j, other in enumerate(individual):
+        if j == gene_idx:
+            continue
+        if expanded_groups & set(other.group_ids):
+            for q in range(other.start_quanta, other.start_quanta + other.num_quanta):
+                blocked.add(q)
+        if other.instructor_id == new_instructor:
+            for q in range(other.start_quanta, other.start_quanta + other.num_quanta):
+                blocked.add(q)
+
+    free_starts = domain_store.narrow_time_domain(gene_idx, blocked)
+    if not free_starts:
+        free_starts = domain.valid_starts  # allow conflicts if nothing free
+
+    # Narrow by instructor native availability (part-time schedule)
+    free_starts = domain_store.instructor_available_starts(
+        gene_idx, new_instructor, free_starts if free_starts else None
+    )
+    if not free_starts:
+        free_starts = domain.valid_starts
+
+    new_start = tracker.pick_least_used_start(
+        free_starts,
+        gene.num_quanta,
+        top_k=5,
+    )
+    if new_start is None:
+        new_start = gene.start_quanta  # keep current if everything failed
+
+    # --- ROOM: free at new time, least-loaded ---
+    room_free = [
+        r
+        for r in domain.rooms
+        if all(
+            tracker.room_load.get(r, {}).get(q, 0) == 0
+            for q in range(new_start, new_start + gene.num_quanta)
+        )
+    ]
+    room_pool = room_free if room_free else domain.rooms
+    new_room = tracker.pick_least_used_room(
+        room_pool if room_pool else [gene.room_id],
+        new_start,
+        gene.num_quanta,
+    )
+    if not new_room:
+        new_room = gene.room_id
+
+    new_gene = SessionGene(
+        course_id=gene.course_id,
+        course_type=gene.course_type,
+        instructor_id=new_instructor,
+        group_ids=gene.group_ids,
+        room_id=new_room,
+        start_quanta=new_start,
+        num_quanta=gene.num_quanta,
+    )
+
+    tracker.add_gene(new_gene)
+    return new_gene

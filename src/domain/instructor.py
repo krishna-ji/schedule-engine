@@ -129,13 +129,12 @@ class Instructor:
         """Get all operating hours as available ranges for full-time instructors."""
         ranges: defaultdict[str, list[tuple[int, int]]] = defaultdict(list)
 
-        for day, hours in time_system.operating_hours.items():
-            if hours is None:
+        for day in time_system.DAY_NAMES:
+            offset = time_system.day_quanta_offset.get(day)
+            count = time_system.day_quanta_count.get(day)
+            if offset is None or count is None or count == 0:
                 continue
-
-            start = time_system.time_to_quanta(day, hours[0])
-            end = time_system.time_to_quanta(day, hours[1])
-            ranges[day].append((start, end))
+            ranges[day].append((offset, offset + count))
 
         return dict(ranges)
 

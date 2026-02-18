@@ -15,6 +15,7 @@ from __future__ import annotations
 from src.ga.repair.basic import repair_individual, repair_individual_unified
 from src.ga.repair.detector import detect_violated_genes
 from src.ga.repair.engine import RepairEngine
+from src.ga.repair.group_clash_repair import repair_group_clashes
 from src.ga.repair.pipeline import RepairPipeline
 from src.ga.repair.selective import repair_individual_selective
 from src.ga.repair.wrappers import (
@@ -43,4 +44,6 @@ __all__ = [
     "repair_individual_unified",
     # Registry (decorator-based)
     "repair_operator",
+    # Fast structural repairs
+    "repair_group_clashes",
 ]

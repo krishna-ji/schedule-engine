@@ -129,26 +129,49 @@ class BaseExporter:
                 parallel=True,
             )
             self.logger.info("Exported schedule.json and calendar.pdf")
+
+            # 3. Instructor & Room schedule PDFs (debug views)
+            from src.io.export.schedule_views import (
+                generate_instructor_schedules_pdf,
+                generate_room_schedules_pdf,
+            )
+
+            generate_instructor_schedules_pdf(
+                sessions=decoded_schedule,
+                instructors=self.data.instructors,
+                courses=self.data.courses,
+                qts=self.data.qts,
+                output_path=str(self.output_dir),
+            )
+            generate_room_schedules_pdf(
+                sessions=decoded_schedule,
+                rooms=self.data.rooms,
+                courses=self.data.courses,
+                qts=self.data.qts,
+                output_path=str(self.output_dir),
+                groups=self.data.groups,
+            )
+            self.logger.info("Exported instructor_schedules.pdf and room_schedules.pdf")
         except Exception:
             self.logger.warning("Could not export schedule", exc_info=True)
 
     def _export_plots(self, final_pop: list[Any], stats: EvolutionStats) -> None:
         """Generate and save diagnostic plots."""
         try:
-            from src.io.export.plothard import \
-                plot_hard_constraint_violation_over_generation
+            from src.io.export.plothard import (
+                plot_hard_constraint_violation_over_generation,
+            )
             from src.io.export.plotpareto import plot_pareto_front
-            from src.io.export.plotsoft import \
-                plot_soft_constraint_violation_over_generation
+            from src.io.export.plotsoft import (
+                plot_soft_constraint_violation_over_generation,
+            )
 
             plot_dir = str(self.plots_dir)
 
             plot_hard_constraint_violation_over_generation(
                 [int(v) for v in stats.min_hard], plot_dir
             )
-            plot_soft_constraint_violation_over_generation(
-                stats.min_soft, plot_dir
-            )
+            plot_soft_constraint_violation_over_generation(stats.min_soft, plot_dir)
             plot_pareto_front(final_pop, plot_dir)
 
             self.logger.debug("Saved diagnostic plots → %s", plot_dir)

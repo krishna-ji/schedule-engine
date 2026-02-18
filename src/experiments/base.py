@@ -374,6 +374,25 @@ class BaseExperiment(ABC):
                 self.toolbox.mutate(ind)
                 del ind.fitness.values
 
+    def apply_group_repair(
+        self,
+        offspring: list[Any],
+    ) -> None:
+        """Repair group-time clashes in-place for all offspring.
+
+        This is a lightweight structural repair that guarantees zero (or
+        near-zero) group overlaps after crossover/mutation.  Runs in O(G·Q)
+        per individual and is safe to call in every mode.
+        """
+        from src.ga.repair.group_clash_repair import repair_group_clashes
+
+        ctx = self.data.to_context()
+        for ind in offspring:
+            repair_group_clashes(ind, ctx)
+            # Any repaired gene invalidates fitness
+            if ind.fitness.valid:
+                del ind.fitness.values
+
     def evaluate_offspring(
         self,
         offspring: list[Any],

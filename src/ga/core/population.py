@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from src.domain.gene import SessionGene
+from src.ga.core.domain_store import GeneDomainStore, build_domain_store_for_context
 from src.ga.core.individual import create_individual
+from src.ga.core.usage_tracker import UsageTracker
 from src.utils.console_service import get_console
 from src.utils.parallel_worker import get_worker_context, init_worker
 from src.utils.system_info import get_cpu_count
@@ -666,46 +668,14 @@ def generate_course_group_aware_population(
 
     # For small populations or debugging, use sequential generation
     if n < 10 or not parallel or num_workers == 1:
-        # SEQUENTIAL: Original behavior
+        # SEQUENTIAL: Spreading-aware initialization
         population = []
         for individual_idx in range(n):
-            genes = []
-            used_quanta: set[int] = set()
-            instructor_schedule: dict[str, set[int]] = {}
-            group_schedule: dict[str, set[int]] = {}
-
-            for course_id, group_ids in course_group_pairs:
-                course = context.courses.get(course_id)
-                if not course:
-                    continue
-
-                session_type = course.course_type
-
-                # Break into subsessions: theory → multiple 2-quanta blocks, practical → single session
-                subsession_durations = get_subsession_durations(
-                    course.quanta_per_week, session_type
-                )
-
-                # Create one SessionGene per subsession
-                for _subsession_idx, num_quanta in enumerate(subsession_durations):
-                    # BUG FIX: Pass full course_id tuple for qualified instructor lookup
-                    # course_id is already the tuple (course_code, course_type) from course_group_pairs
-                    session_gene = create_session_gene_with_conflict_avoidance(
-                        course_id,  # Pass full tuple for instructor qualification matching
-                        group_ids,
-                        session_type,
-                        num_quanta,
-                        course,
-                        context,
-                        used_quanta,
-                        instructor_schedule,
-                        group_schedule,
-                    )
-                    if session_gene:
-                        genes.append(session_gene)
-
-            if genes:
-                population.append(create_individual(genes))
+            ind = _create_individual_with_spreading(
+                course_group_pairs, context, silent=silent
+            )
+            if ind is not None:
+                population.append(ind)
             elif not silent:
                 print(f"Warning: Individual {individual_idx + 1} has no genes!")
 
@@ -752,6 +722,171 @@ def generate_course_group_aware_population(
             print("Warning: Failed to generate any individuals!")
 
     return population
+
+
+def _create_individual_with_spreading(
+    course_group_pairs: list[CourseGroupPair],
+    context: SchedulingContext,
+    *,
+    silent: bool = True,
+) -> Individual | None:
+    """Create one individual using usage-aware spreading.
+
+    For each gene we:
+    1. Pick the LEAST-LOADED qualified instructor
+    2. Pick a time-start where groups + instructor are FREE and time-load is lowest
+    3. Pick a room that is FREE at the chosen time and least-loaded overall
+
+    This replaces the old ``random.choice()`` pattern that caused clustering.
+    """
+    from src.domain.gene import SessionGene, get_time_system
+    from src.ga.core.quanta_converter import quanta_list_to_contiguous
+
+    qts = get_time_system()
+    domain_store = GeneDomainStore(context, qts)
+    tracker = UsageTracker()
+
+    # Pre-compute day boundaries for valid-start generation
+    # (reuse the store's internal data)
+
+    genes: list[SessionGene] = []
+    gene_idx = 0
+
+    for course_id, group_ids in course_group_pairs:
+        course = context.courses.get(course_id)
+        if not course:
+            continue
+
+        session_type = course.course_type
+        subsession_durations = get_subsession_durations(
+            course.quanta_per_week, session_type
+        )
+
+        for num_quanta in subsession_durations:
+            # Build a temporary "phantom" gene so we can compute its domain
+            # We'll replace inst/room/time below
+            phantom = SessionGene(
+                course_id=course_id[0] if isinstance(course_id, tuple) else course_id,
+                course_type=(
+                    course_id[1] if isinstance(course_id, tuple) else session_type
+                ),
+                instructor_id=list(context.instructors.keys())[0],
+                group_ids=list(group_ids),
+                room_id=list(context.rooms.keys())[0],
+                start_quanta=0,
+                num_quanta=num_quanta,
+            )
+            domain_store.refresh_domain(gene_idx, phantom)
+            domain = domain_store.get_domain(gene_idx)
+
+            # --- INSTRUCTOR: least-loaded qualified ---
+            instructor_id = tracker.pick_least_used_instructor(domain.instructors)
+
+            # --- TIME: cascading narrowing with graceful fallback ---
+            # Priority: instructor-available + group-free + inst-free > group-free + inst-free > group-free > avail > any
+            avail_starts = domain_store.instructor_available_starts(
+                gene_idx, instructor_id
+            )
+            all_starts = domain.valid_starts
+
+            # Try ideal: avail ∩ group-free ∩ instructor-free
+            pool = avail_starts if avail_starts else all_starts
+            grp_free = tracker.group_free_starts(
+                group_ids,
+                pool,
+                num_quanta,
+                family_map=context.family_map or None,
+            )
+            candidates = (
+                tracker.instructor_free_starts(
+                    instructor_id,
+                    grp_free if grp_free else pool,
+                    num_quanta,
+                )
+                if grp_free
+                else []
+            )
+
+            if not candidates:
+                # Fallback 1: group-free from full domain (ignore inst availability)
+                grp_free_full = tracker.group_free_starts(
+                    group_ids,
+                    all_starts,
+                    num_quanta,
+                    family_map=context.family_map or None,
+                )
+                candidates = (
+                    tracker.instructor_free_starts(
+                        instructor_id,
+                        grp_free_full if grp_free_full else all_starts,
+                        num_quanta,
+                    )
+                    if grp_free_full
+                    else []
+                )
+
+            if not candidates:
+                # Fallback 2: just group-free (allow instructor double-book over avail conflict)
+                candidates = (
+                    grp_free_full
+                    if grp_free_full
+                    else (avail_starts if avail_starts else all_starts)
+                )
+
+            start_quanta = tracker.pick_least_used_start(
+                candidates,
+                num_quanta,
+                top_k=5,
+            )
+            if start_quanta is None:
+                # Final fallback: random from available
+                if context.available_quanta:
+                    max_s = len(context.available_quanta) - num_quanta
+                    start_quanta = context.available_quanta[
+                        random.randint(0, max(0, max_s))
+                    ]
+                else:
+                    start_quanta = 0
+
+            # --- ROOM: free at chosen time, then least-loaded ---
+            room_free = [
+                r
+                for r in domain.rooms
+                if all(
+                    tracker.room_load.get(r, {}).get(q, 0) == 0
+                    for q in range(start_quanta, start_quanta + num_quanta)
+                )
+            ]
+            room_pool = room_free if room_free else domain.rooms
+            room_id = tracker.pick_least_used_room(
+                room_pool if room_pool else list(context.rooms.keys()),
+                start_quanta,
+                num_quanta,
+            )
+
+            actual_course_id = (
+                course_id[0] if isinstance(course_id, tuple) else course_id
+            )
+            actual_course_type = (
+                course_id[1] if isinstance(course_id, tuple) else session_type
+            )
+
+            gene = SessionGene(
+                course_id=actual_course_id,
+                course_type=actual_course_type,
+                instructor_id=instructor_id,
+                group_ids=list(group_ids),
+                room_id=room_id,
+                start_quanta=start_quanta,
+                num_quanta=num_quanta,
+            )
+            genes.append(gene)
+            tracker.add_gene(gene)
+            gene_idx += 1
+
+    if genes:
+        return create_individual(genes)
+    return None
 
 
 def extract_course_group_relationships(

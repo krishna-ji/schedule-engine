@@ -65,6 +65,9 @@ class BaselineExperiment(BaseExperiment):
             # Mutation
             self.apply_mutation(offspring)
 
+            # Structural group-clash repair (fast, O(G·Q) per individual)
+            self.apply_group_repair(offspring)
+
             # Evaluate
             self.evaluate_offspring(offspring)
 
