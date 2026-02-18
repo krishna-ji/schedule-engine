@@ -135,7 +135,11 @@ def track_nsga_metrics(
     stats: EvolutionStats,
     data: NotebookData,
 ) -> None:
-    """Track NSGA-II metrics for the current generation."""
+    """Track NSGA-II metrics for the current generation.
+
+    Computes ``sortNondominated`` once and shares the result across all
+    metric functions to avoid redundant O(P²) Pareto sorts.
+    """
     from deap import tools
 
     from src.ga.metrics import average_pairwise_diversity
@@ -156,6 +160,11 @@ def track_nsga_metrics(
 
     _init_detailed_metrics(stats)
 
+    # ── Compute Pareto front ONCE (O(P²)) and reuse everywhere ──
+    pareto_front = tools.sortNondominated(
+        population, len(population), first_front_only=True
+    )[0]
+
     stats.diversity.append(average_pairwise_diversity(population))
 
     if stats.hypervolume_ref_point is None:
@@ -163,29 +172,32 @@ def track_nsga_metrics(
             population, margin=0.1
         )
     stats.hypervolume.append(
-        calculate_hypervolume(population, stats.hypervolume_ref_point)
+        calculate_hypervolume(
+            population, stats.hypervolume_ref_point, pareto_front=pareto_front
+        )
     )
 
-    stats.spacing.append(calculate_spacing(population))
-    stats.pareto_front_size.append(get_pareto_front_size(population))
+    stats.spacing.append(calculate_spacing(population, pareto_front=pareto_front))
+    stats.pareto_front_size.append(
+        get_pareto_front_size(population, pareto_front=pareto_front)
+    )
     stats.feasibility_rate.append(calculate_constraint_satisfaction_rate(population))
 
     if not stats.reference_front:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
         import copy
 
         stats.reference_front = [copy.deepcopy(ind) for ind in pareto_front]
 
     if stats.reference_front:
         stats.igd.append(
-            calculate_inverted_generational_distance(population, stats.reference_front)
+            calculate_inverted_generational_distance(
+                population, stats.reference_front, pareto_front=pareto_front
+            )
         )
     else:
         stats.igd.append(0.0)
 
-    stats.spread.append(calculate_spread(population))
+    stats.spread.append(calculate_spread(population, pareto_front=pareto_front))
 
     best = tools.selBest(population, 1)[0]
     breakdown = get_constraint_breakdown(list(best), data)

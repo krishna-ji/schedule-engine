@@ -22,7 +22,9 @@ from pymoo.indicators.hv import HV
 
 
 def calculate_hypervolume(
-    population: list, ref_point: tuple[float, float] | None = None
+    population: list,
+    ref_point: tuple[float, float] | None = None,
+    pareto_front: list | None = None,
 ) -> float:
     """
     Calculate hypervolume indicator for a population's Pareto front using pymoo.
@@ -55,10 +57,11 @@ def calculate_hypervolume(
     if not population:
         return 0.0
 
-    # Extract Pareto front (non-dominated solutions only)
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    # Extract Pareto front (reuse pre-computed front if available)
+    if pareto_front is None:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
 
     if not pareto_front:
         return 0.0

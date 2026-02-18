@@ -59,11 +59,12 @@ def constraint_guided_mutation(
         context.rooms,
     )
 
-    # Find sessions with violations
-    violating_indices = _find_violating_sessions(decoded, context)
+    # Find sessions with violations (returns {gene_idx: violation_type})
+    violations = _find_violating_sessions(decoded, context)
 
     # Repair multiple violating genes per call (not just 1)
     # This makes mutation strong enough to overcome crossover disruption
+    violating_indices = list(violations.keys())
     max_repairs = min(len(violating_indices), max(3, len(violating_indices) // 5))
     targeted = 0
     rand_mut = 0
@@ -73,8 +74,14 @@ def constraint_guided_mutation(
         repair_targets = random.sample(violating_indices, max_repairs)
         for target_idx in repair_targets:
             if random.random() < 0.8:
+                vtype = violations[target_idx]
                 _mutate_session_spreading(
-                    individual, target_idx, context, domain_store, tracker
+                    individual,
+                    target_idx,
+                    context,
+                    domain_store,
+                    tracker,
+                    force_component=vtype,
                 )
                 targeted += 1
             else:
@@ -97,52 +104,87 @@ def constraint_guided_mutation(
 
 def _find_violating_sessions(
     decoded_sessions: list[CourseSession], context: SchedulingContext
-) -> list[int]:
+) -> dict[int, str]:
     """
     Identify indices of sessions causing hard constraint violations.
 
-    Checks:
-    - Group overlaps (double-booking)
-    - Room conflicts (double-booking)
-    - Instructor conflicts (double-booking)
-    - Instructor qualification mismatches
+    Uses O(N) index-based detection instead of O(N²) all-pairs scanning.
 
-    NOTE: Availability checks removed (see COMPLETE_AVAILABILITY_REMOVAL.md)
+    Checks:
+    - Group overlaps (double-booking)      → "time"
+    - Room conflicts (double-booking)       → "room"
+    - Instructor conflicts (double-booking) → "time"
+    - Instructor qualification mismatches   → "instructor"
+    - Room suitability (type + features)    → "room"
+    - Instructor time availability          → "time"
 
     Returns:
-        List of integer indices into decoded_sessions
+        Dict mapping gene index → violation category ("time", "room", "instructor")
     """
-    violating = []
+    from collections import defaultdict
+
+    violations: dict[int, str] = {}
+
+    # ── O(N) indexed clash detection ──────────────────────────────
+    # Build occupancy maps: entity → quantum → list[session_idx]
+    group_occ: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(list))
+    room_occ: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(list))
+    inst_occ: dict[str, dict[int, list[int]]] = defaultdict(lambda: defaultdict(list))
 
     for idx, session in enumerate(decoded_sessions):
-        # Check group overlaps
-        if _has_group_overlap(session, decoded_sessions, idx):
-            violating.append(idx)
+        for q in session.session_quanta:
+            for gid in session.group_ids:
+                group_occ[gid][q].append(idx)
+            room_occ[session.room_id][q].append(idx)
+            inst_occ[session.instructor_id][q].append(idx)
+
+    # Detect clashes: any quantum with >1 session is a conflict
+    for _gid, q_map in group_occ.items():
+        for _q, indices in q_map.items():
+            if len(indices) > 1:
+                for i in indices:
+                    violations.setdefault(i, "time")
+
+    for _rid, q_map in room_occ.items():
+        for _q, indices in q_map.items():
+            if len(indices) > 1:
+                for i in indices:
+                    violations.setdefault(i, "room")
+
+    for _iid, q_map in inst_occ.items():
+        for _q, indices in q_map.items():
+            if len(indices) > 1:
+                for i in indices:
+                    violations.setdefault(i, "time")
+
+    # ── O(N) per-gene checks ─────────────────────────────────────
+    for idx, session in enumerate(decoded_sessions):
+        if idx in violations:
             continue
 
-        # Check room conflicts
-        if _has_room_conflict(session, decoded_sessions, idx):
-            violating.append(idx)
-            continue
-
-        # Check instructor conflicts
-        if _has_instructor_conflict(session, decoded_sessions, idx):
-            violating.append(idx)
-            continue
-
-        # Check instructor qualification
+        # Instructor qualification
         if not _is_instructor_qualified(session, context):
-            violating.append(idx)
+            violations[idx] = "instructor"
             continue
 
-    return violating
+        # Room suitability (type + specific features)
+        if not _is_room_suitable(session, context):
+            violations[idx] = "room"
+            continue
+
+        # Instructor time availability
+        if not _is_instructor_available(session, context):
+            violations[idx] = "time"
+
+    return violations
 
 
 def _is_instructor_qualified(
     session: CourseSession, context: SchedulingContext
 ) -> bool:
     """Check if instructor is qualified to teach the course."""
-    course = context.courses.get(session.course_id)  # type: ignore[call-overload]
+    course_key = (session.course_id, session.course_type)
+    course = context.courses.get(course_key)  # type: ignore[call-overload]
     if not course:
         return True  # Unknown course, assume OK
 
@@ -152,6 +194,53 @@ def _is_instructor_qualified(
 
     # Check if instructor is in the qualified list
     return session.instructor_id in course.qualified_instructor_ids
+
+
+def _is_room_suitable(session: CourseSession, context: SchedulingContext) -> bool:
+    """Check if the assigned room is suitable for the course type and features."""
+    from src.utils.room_compatibility import is_room_suitable_for_course
+
+    course_key = (
+        (session.course_id, session.course_type)
+        if isinstance(session.course_id, str)
+        else session.course_id
+    )
+    course = context.courses.get(course_key)  # type: ignore[call-overload]
+    if not course:
+        return True
+
+    room = context.rooms.get(session.room_id)
+    if not room:
+        return True
+
+    required = getattr(course, "required_room_features", "lecture")
+    room_type = getattr(room, "room_features", "lecture")
+    req_str = (required if isinstance(required, str) else str(required)).lower().strip()
+    room_str = (
+        (room_type if isinstance(room_type, str) else str(room_type)).lower().strip()
+    )
+    course_lab_feats = getattr(course, "specific_lab_features", None)
+    room_spec_feats = getattr(room, "specific_features", None)
+
+    return is_room_suitable_for_course(
+        req_str, room_str, course_lab_feats, room_spec_feats
+    )
+
+
+def _is_instructor_available(
+    session: CourseSession, context: SchedulingContext
+) -> bool:
+    """Check if instructor is available during the session's time slots."""
+    instructor = context.instructors.get(session.instructor_id)
+    if not instructor:
+        return True
+
+    available = getattr(instructor, "available_quanta", None)
+    if not available:
+        return True  # No availability info means always available
+
+    available_set = set(available) if not isinstance(available, set) else available
+    return all(q in available_set for q in session.session_quanta)
 
 
 def _has_group_overlap(
@@ -213,10 +302,18 @@ def _mutate_session_spreading(
     context: SchedulingContext,
     domain_store: "GeneDomainStore",
     tracker: "UsageTracker",
+    force_component: str | None = None,
 ) -> None:
     """Mutate a gene in-place using domain buckets + usage-aware spreading.
 
-    Strategy (weighted random):
+    Args:
+        force_component: If set, forces mutation of this component:
+            "time"       → change time (+ room secondarily)
+            "room"       → change room
+            "instructor" → change instructor (+ time secondarily)
+            None         → weighted random (default)
+
+    Default strategy (weighted random):
     - 40% chance: change time (least-used conflict-free)
     - 30% chance: change room (free at current time, least-loaded)
     - 20% chance: change instructor (least-loaded qualified)
@@ -224,7 +321,16 @@ def _mutate_session_spreading(
     """
     gene = individual[gene_idx]
     domain = domain_store.get_domain(gene_idx)
-    mutation_type = random.random()
+
+    # When force_component is set, bias heavily toward that component
+    if force_component == "room":
+        mutation_type = 0.5  # → room branch
+    elif force_component == "time":
+        mutation_type = 0.95  # → change ALL (time + room) for clash resolution
+    elif force_component == "instructor":
+        mutation_type = 0.75  # → instructor branch
+    else:
+        mutation_type = random.random()
 
     # Remove gene from tracker before re-assigning
     tracker.remove_gene(gene)

@@ -25,7 +25,7 @@ from pymoo.indicators.igd import IGD
 from scipy.spatial.distance import pdist, squareform
 
 
-def calculate_spacing(population: list) -> float:
+def calculate_spacing(population: list, pareto_front: list | None = None) -> float:
     """
     Calculate spacing metric for Pareto front uniformity.
 
@@ -38,23 +38,22 @@ def calculate_spacing(population: list) -> float:
 
     Args:
         population: List of DEAP individuals with fitness.values
+        pareto_front: Pre-computed Pareto front (avoids redundant sort).
+            If None, computed from population.
 
     Returns:
         float: Spacing value. Lower is better. 0 = perfectly uniform distribution.
                Returns 0 if front has < 2 solutions.
-
-    Example:
-        >>> spacing = calculate_spacing(population)
-        >>> print(f"Spacing: {spacing:.4f} (lower is better)")
 
     Reference:
         Schott, J. R. (1995). Fault Tolerant Design Using Single and
         Multicriteria Genetic Algorithm Optimization.
     """
     # Extract Pareto front (non-dominated solutions only)
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    if pareto_front is None:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
 
     if len(pareto_front) < 2:
         return 0.0
@@ -76,7 +75,11 @@ def calculate_spacing(population: list) -> float:
     return float(spacing)
 
 
-def calculate_generational_distance(population: list, reference_front: list) -> float:
+def calculate_generational_distance(
+    population: list,
+    reference_front: list,
+    pareto_front: list | None = None,
+) -> float:
     """
     Calculate Generational Distance (GD) to reference Pareto front using pymoo.
 
@@ -109,10 +112,11 @@ def calculate_generational_distance(population: list, reference_front: list) -> 
     if not population or not reference_front:
         return float("inf")
 
-    # Extract Pareto fronts
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    # Extract Pareto front (reuse pre-computed front if available)
+    if pareto_front is None:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
 
     if not pareto_front:
         return float("inf")
@@ -128,7 +132,9 @@ def calculate_generational_distance(population: list, reference_front: list) -> 
 
 
 def calculate_inverted_generational_distance(
-    population: list, reference_front: list
+    population: list,
+    reference_front: list,
+    pareto_front: list | None = None,
 ) -> float:
     """
     Calculate Inverted Generational Distance (IGD) to reference Pareto front using pymoo.
@@ -166,10 +172,11 @@ def calculate_inverted_generational_distance(
     if not population or not reference_front:
         return float("inf")
 
-    # Extract Pareto front
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    # Extract Pareto front (reuse pre-computed front if available)
+    if pareto_front is None:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
 
     if not pareto_front:
         return float("inf")
@@ -184,7 +191,7 @@ def calculate_inverted_generational_distance(
     return float(igd)
 
 
-def calculate_spread(population: list) -> float:
+def calculate_spread(population: list, pareto_front: list | None = None) -> float:
     """
     Calculate spread (delta, Δ) metric for Pareto front extent and distribution.
 
@@ -212,10 +219,11 @@ def calculate_spread(population: list) -> float:
         Deb, K., Pratap, A., Agarwal, S., & Meyarivan, T. (2002). A Fast and
         Elitist Multiobjective Genetic Algorithm: NSGA-II.
     """
-    # Extract Pareto front
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    # Extract Pareto front (reuse pre-computed front if available)
+    if pareto_front is None:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
 
     if len(pareto_front) < 2:
         return 1.0
@@ -263,7 +271,11 @@ def calculate_spread(population: list) -> float:
     return float(spread)
 
 
-def calculate_epsilon_indicator(population: list, reference_front: list) -> float:
+def calculate_epsilon_indicator(
+    population: list,
+    reference_front: list,
+    pareto_front: list | None = None,
+) -> float:
     """
     Calculate additive epsilon indicator (ε+) for algorithm comparison.
 
@@ -299,10 +311,11 @@ def calculate_epsilon_indicator(population: list, reference_front: list) -> floa
     if not population or not reference_front:
         return float("inf")
 
-    # Extract Pareto front
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    # Extract Pareto front (reuse pre-computed front if available)
+    if pareto_front is None:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
 
     if not pareto_front:
         return float("inf")
@@ -365,7 +378,7 @@ def calculate_ideal_point_distance(population: list) -> float:
     return float(min_distance)
 
 
-def get_pareto_front_size(population: list) -> int:
+def get_pareto_front_size(population: list, pareto_front: list | None = None) -> int:
     """
     Count number of non-dominated solutions in final Pareto front.
 
@@ -373,19 +386,17 @@ def get_pareto_front_size(population: list) -> int:
 
     Args:
         population: List of DEAP individuals
+        pareto_front: Pre-computed Pareto front (avoids redundant sort).
 
     Returns:
         int: Number of solutions in first Pareto front
-
-    Example:
-        >>> size = get_pareto_front_size(population)
-        >>> print(f"Pareto front contains {size} solutions")
     """
     if not population:
         return 0
 
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    if pareto_front is None:
+        pareto_front = tools.sortNondominated(
+            population, len(population), first_front_only=True
+        )[0]
 
     return len(pareto_front)

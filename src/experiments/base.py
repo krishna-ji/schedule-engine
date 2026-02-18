@@ -18,6 +18,8 @@ Subclasses implement:
 from __future__ import annotations
 
 import logging
+import multiprocessing
+import os
 import random
 import sys
 import time
@@ -154,6 +156,7 @@ class BaseExperiment(ABC):
         self._evaluate: Callable[[list], tuple[float, float]] | None = None
         self._toolbox: base.Toolbox | None = None
         self._population_factory: PopulationFactory | None = None
+        self._pool: multiprocessing.Pool | None = None
         self._final_pop: list[Any] | None = None
         self._stats: EvolutionStats | None = None
         self._best_individual: list | None = None
@@ -287,8 +290,34 @@ class BaseExperiment(ABC):
         """Setup PopulationFactory using SchedulingContext."""
         self._population_factory = PopulationFactory(
             context=self.data.to_context(),
-            parallel=False,  # DEAP handles parallelism
+            parallel=self.pop_size >= 10,  # Use parallel for non-trivial pops
         )
+
+    # -------------------- Multiprocessing --------------------
+
+    def _setup_pool(self) -> None:
+        """Create multiprocessing pool for parallel fitness evaluation.
+
+        Workers load data from disk once via ``init_worker`` so the heavy
+        ``SchedulingContext`` is never pickled per-call.
+        """
+        from src.utils.parallel_worker import init_worker
+        from src.utils.system_info import get_cpu_count
+
+        n_workers = min(get_cpu_count(), max(2, self.pop_size))
+        self._pool = multiprocessing.Pool(
+            processes=n_workers,
+            initializer=init_worker,
+            initargs=(str(self.data_dir), self.seed),
+        )
+        self.logger.debug("Multiprocessing pool created: %d workers", n_workers)
+
+    def _shutdown_pool(self) -> None:
+        """Cleanly shut down the multiprocessing pool."""
+        if self._pool is not None:
+            self._pool.terminate()
+            self._pool.join()
+            self._pool = None
 
     @property
     def population_factory(self) -> PopulationFactory:
@@ -349,8 +378,7 @@ class BaseExperiment(ABC):
     def create_initial_population(self) -> list[Any]:
         """Create and evaluate initial population."""
         pop: list[Any] = self.toolbox.population(n=self.pop_size)
-        for ind in pop:
-            ind.fitness.values = self.evaluate(ind)
+        self.evaluate_offspring(pop)  # Uses parallel pool when available
         return pop
 
     def apply_crossover(
@@ -397,9 +425,24 @@ class BaseExperiment(ABC):
         self,
         offspring: list[Any],
     ) -> None:
-        """Evaluate offspring with invalid fitness."""
-        for ind in offspring:
-            if not ind.fitness.valid:
+        """Evaluate offspring with invalid fitness.
+
+        Uses multiprocessing pool when available for parallel evaluation.
+        """
+        invalid = [ind for ind in offspring if not ind.fitness.valid]
+        if not invalid:
+            return
+
+        if self._pool is not None and len(invalid) >= 4:
+            # Parallel evaluation via worker pool
+            from src.ga.scheduler import _worker_evaluate
+
+            results = self._pool.map(_worker_evaluate, invalid)
+            for ind, fit in zip(invalid, results):
+                ind.fitness.values = fit
+        else:
+            # Sequential fallback (small batches or no pool)
+            for ind in invalid:
                 ind.fitness.values = self.evaluate(ind)
 
     def record_generation_stats(
@@ -557,6 +600,7 @@ class BaseExperiment(ABC):
         self._load_data()
         self._create_evaluator()
         self._setup_population_factory()
+        self._setup_pool()
         self._setup_toolbox()
 
         # Run mode-specific evolution
@@ -564,7 +608,10 @@ class BaseExperiment(ABC):
         console.print()
         self.logger.debug("Starting %s evolution...", self._get_experiment_name())
         self._init_seeds()  # Reset seeds before evolution
-        self._final_pop, self._stats = self._run_evolution()
+        try:
+            self._final_pop, self._stats = self._run_evolution()
+        finally:
+            self._shutdown_pool()
 
         # Completion summary
         elapsed = self._stats.elapsed_time

@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-GA Baseline: Pure NSGA-II (No Repair)
+GA Baseline: Pure NSGA-II
 
-Pure NSGA-II baseline - No enhancements, no repair heuristics, no RL guidance.
+Pure NSGA-II with constraint-guided mutation, group-clash repair, and
+parallel fitness evaluation.  No local search, no RL guidance.
 This script is the foundation for comparing all other modes.
-
-WARNING: Random mutation is 100% destructive on good solutions.
-         This mode cannot improve beyond what initialization provides.
-         Use ga_memetic or ga_repair_* modes for actual optimization.
 
 Usage:
     python runs/ga_01_baseline.py
@@ -21,17 +18,16 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.experiments import BaselineExperiment
 
-# ── PRODUCTION CONFIGURATION ─────────────────────────────────────────
+# ── CONFIGURATION ─────────────────────────────────────────────────────
 
-# Reproducibility
 SEED = 42
 
 # GA Core Parameters
-POP_SIZE = 10  # Population size (larger = more diversity)
+POP_SIZE = 50  # Population size (50 gives healthy diversity for ~550 genes)
 NGEN = 2000  # Number of generations
 CXPB = 0.9  # Crossover probability
-MUTPB = 0.2  # Mutation probability
-FITNESS_WEIGHTS = (-1.0, -1.0)  # (hard, soft) - negative = minimize
+MUTPB = 0.3  # Mutation probability (raised: guided mutation is targeted)
+FITNESS_WEIGHTS = (-1.0, -1.0)  # (hard, soft) — minimize both
 
 # Data Paths
 DATA_DIR = PROJECT_ROOT / "data"
@@ -51,7 +47,7 @@ VERBOSE = True
 
 
 def main() -> None:
-    """Run GA Baseline: Pure NSGA-II (no repair)."""
+    """Run GA Baseline: Pure NSGA-II."""
     exp = BaselineExperiment(
         seed=SEED,
         pop_size=POP_SIZE,
