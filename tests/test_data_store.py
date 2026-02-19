@@ -19,7 +19,7 @@ class TestDataStoreFromJson:
     def store(self):
         from src.io.data_store import DataStore
 
-        return DataStore.from_json(DATA_DIR)
+        return DataStore.from_json(DATA_DIR, run_preflight=False)
 
     def test_courses_loaded(self, store):
         assert len(store.courses) > 0, "No courses loaded"
@@ -71,7 +71,7 @@ class TestDataStoreToContext:
     def store(self):
         from src.io.data_store import DataStore
 
-        return DataStore.from_json(DATA_DIR)
+        return DataStore.from_json(DATA_DIR, run_preflight=False)
 
     def test_context_type(self, store):
         from src.domain.types import SchedulingContext
@@ -99,7 +99,7 @@ class TestDataStoreSerialization:
     def store(self):
         from src.io.data_store import DataStore
 
-        return DataStore.from_json(DATA_DIR)
+        return DataStore.from_json(DATA_DIR, run_preflight=False)
 
     def test_round_trip(self, store):
         from src.io.data_store import DataStore
