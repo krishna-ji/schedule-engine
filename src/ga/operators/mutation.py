@@ -1,8 +1,16 @@
-import random
+from __future__ import annotations
 
-from src.domain.course import Course
+import random
+from collections import Counter
+from typing import TYPE_CHECKING
+
 from src.domain.gene import SessionGene
-from src.domain.types import Individual, SchedulingContext
+
+if TYPE_CHECKING:
+    from src.domain.course import Course
+    from src.domain.types import Individual, SchedulingContext
+    from src.ga.core.domain_store import GeneDomainStore
+    from src.ga.core.usage_tracker import UsageTracker
 
 
 def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
@@ -289,8 +297,8 @@ def mutate_individual(
 def mutate_gene_spreading(
     gene: SessionGene,
     gene_idx: int,
-    domain_store: "GeneDomainStore",
-    tracker: "UsageTracker",
+    domain_store: GeneDomainStore,
+    tracker: UsageTracker,
     individual: list[SessionGene],
     context: SchedulingContext,
 ) -> SessionGene:
@@ -319,7 +327,6 @@ def mutate_gene_spreading(
 
     # --- TIME: group-free → instructor-free → least-loaded ---
     blocked: set[int] = set()
-    gene_groups = set(gene.group_ids)
     family_map = context.family_map or {}
     expanded_groups: set[str] = set(gene.group_ids)
     for gid in gene.group_ids:
@@ -359,7 +366,7 @@ def mutate_gene_spreading(
         r
         for r in domain.rooms
         if all(
-            tracker.room_load.get(r, {}).get(q, 0) == 0
+            tracker.room_load.get(r, Counter()).get(q, 0) == 0
             for q in range(new_start, new_start + gene.num_quanta)
         )
     ]

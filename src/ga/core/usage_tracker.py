@@ -295,7 +295,7 @@ class UsageTracker:
         vals = list(self.time_load.values())
         mean = sum(vals) / len(vals)
         variance = sum((v - mean) ** 2 for v in vals) / len(vals)
-        return variance**0.5
+        return float(variance**0.5)
 
     def instructor_load_std(self) -> float:
         """Std-dev of per-instructor total load."""
@@ -304,7 +304,7 @@ class UsageTracker:
         vals = list(self.instructor_total.values())
         mean = sum(vals) / len(vals)
         variance = sum((v - mean) ** 2 for v in vals) / len(vals)
-        return variance**0.5
+        return float(variance**0.5)
 
     def summary(self) -> dict[str, float]:
         """Quick diagnostics dict."""

@@ -276,13 +276,13 @@ class GeneDomainStore:
         for day_offset, day_count in self._day_bounds:
             if num_quanta <= day_count:
                 # Normal case: block fits in one day
-                for s in range(day_offset, day_offset + day_count - num_quanta + 1):
-                    result.append(s)
-            else:
-                # Multi-day session (e.g. 30-quanta practical): start at day boundary
-                # but only if the block doesn't overflow the total quantum range
-                if day_offset + num_quanta <= total:
-                    result.append(day_offset)
+                result.extend(
+                    range(day_offset, day_offset + day_count - num_quanta + 1)
+                )
+            # Multi-day session (e.g. 30-quanta practical): start at day boundary
+            # but only if the block doesn't overflow the total quantum range
+            elif day_offset + num_quanta <= total:
+                result.append(day_offset)
 
         return result
 

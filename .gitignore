@@ -42,3 +42,4 @@ build/
 # suggest/
 .agents/
 .idea/
+*.pkl

@@ -156,7 +156,7 @@ class BaseExperiment(ABC):
         self._evaluate: Callable[[list], tuple[float, float]] | None = None
         self._toolbox: base.Toolbox | None = None
         self._population_factory: PopulationFactory | None = None
-        self._pool: multiprocessing.Pool | None = None
+        self._pool: multiprocessing.pool.Pool | None = None
         self._final_pop: list[Any] | None = None
         self._stats: EvolutionStats | None = None
         self._best_individual: list | None = None
@@ -438,7 +438,7 @@ class BaseExperiment(ABC):
             from src.ga.scheduler import _worker_evaluate
 
             results = self._pool.map(_worker_evaluate, invalid)
-            for ind, fit in zip(invalid, results):
+            for ind, fit in zip(invalid, results, strict=False):
                 ind.fitness.values = fit
         else:
             # Sequential fallback (small batches or no pool)

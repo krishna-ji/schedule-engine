@@ -142,6 +142,7 @@ def train_agent(
         Tuple of (agent, training_time_seconds).
     """
     agent_type = agent_type.lower()
+    agent: Any
     if agent_type == "ppo":
         agent = create_ppo_agent(env=env, seed=seed, verbose=0, **agent_kwargs)
     elif agent_type == "dqn":

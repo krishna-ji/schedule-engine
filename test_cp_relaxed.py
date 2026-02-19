@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Production CP-SAT test with relaxed config."""
+
 import logging
 import sys
 from pathlib import Path

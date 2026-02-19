@@ -15,12 +15,20 @@ Strategy:
 Expected Impact: 20-30% faster convergence to zero violations.
 """
 
-import random
+from __future__ import annotations
 
-from src.domain.gene import SessionGene
-from src.domain.session import CourseSession
-from src.domain.types import Individual, SchedulingContext
+import random
+from collections import Counter
+from typing import TYPE_CHECKING
+
 from src.io.decoder import decode_individual
+
+if TYPE_CHECKING:
+    from src.domain.gene import SessionGene
+    from src.domain.session import CourseSession
+    from src.domain.types import Individual, SchedulingContext
+    from src.ga.core.domain_store import GeneDomainStore
+    from src.ga.core.usage_tracker import UsageTracker
 
 
 def constraint_guided_mutation(
@@ -139,20 +147,20 @@ def _find_violating_sessions(
             inst_occ[session.instructor_id][q].append(idx)
 
     # Detect clashes: any quantum with >1 session is a conflict
-    for _gid, q_map in group_occ.items():
-        for _q, indices in q_map.items():
+    for q_map in group_occ.values():
+        for indices in q_map.values():
             if len(indices) > 1:
                 for i in indices:
                     violations.setdefault(i, "time")
 
-    for _rid, q_map in room_occ.items():
-        for _q, indices in q_map.items():
+    for q_map in room_occ.values():
+        for indices in q_map.values():
             if len(indices) > 1:
                 for i in indices:
                     violations.setdefault(i, "room")
 
-    for _iid, q_map in inst_occ.items():
-        for _q, indices in q_map.items():
+    for q_map in inst_occ.values():
+        for indices in q_map.values():
             if len(indices) > 1:
                 for i in indices:
                     violations.setdefault(i, "time")
@@ -184,7 +192,7 @@ def _is_instructor_qualified(
 ) -> bool:
     """Check if instructor is qualified to teach the course."""
     course_key = (session.course_id, session.course_type)
-    course = context.courses.get(course_key)  # type: ignore[call-overload]
+    course = context.courses.get(course_key)
     if not course:
         return True  # Unknown course, assume OK
 
@@ -205,7 +213,7 @@ def _is_room_suitable(session: CourseSession, context: SchedulingContext) -> boo
         if isinstance(session.course_id, str)
         else session.course_id
     )
-    course = context.courses.get(course_key)  # type: ignore[call-overload]
+    course = context.courses.get(course_key)
     if not course:
         return True
 
@@ -300,8 +308,8 @@ def _mutate_session_spreading(
     individual: list[SessionGene],
     gene_idx: int,
     context: SchedulingContext,
-    domain_store: "GeneDomainStore",
-    tracker: "UsageTracker",
+    domain_store: GeneDomainStore,
+    tracker: UsageTracker,
     force_component: str | None = None,
 ) -> None:
     """Mutate a gene in-place using domain buckets + usage-aware spreading.
@@ -387,7 +395,7 @@ def _mutate_session_spreading(
             r
             for r in domain.rooms
             if all(
-                tracker.room_load.get(r, {}).get(q, 0) == 0
+                tracker.room_load.get(r, Counter()).get(q, 0) == 0
                 for q in range(start, start + gene.num_quanta)
             )
         ]
@@ -417,7 +425,7 @@ def _mutate_session_spreading(
                 if picked:
                     return picked
         picked = tracker.pick_least_used_instructor(domain.instructors)
-        return picked if picked else gene.instructor_id
+        return str(picked) if picked else gene.instructor_id
 
     if mutation_type < 0.4:
         new_start = _pick_time()

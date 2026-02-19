@@ -78,7 +78,6 @@ def basic_context():
 
 
 class TestGeneDomainStore:
-
     def test_build_domains_instructor_bucket(self, basic_context, qts):
         store = GeneDomainStore(basic_context, qts)
         gene = make_gene("CS101", "theory", "I1", ["G1"], "R1", start=0, duration=2)
@@ -168,7 +167,6 @@ class TestGeneDomainStore:
 
 
 class TestUsageTracker:
-
     def test_add_and_remove_gene(self):
         tracker = UsageTracker()
         gene = make_gene("CS101", "theory", "I1", ["G1"], "R1", start=0, duration=2)
@@ -282,7 +280,6 @@ class TestUsageTracker:
 
 
 class TestSpreadingIntegration:
-
     def test_spreading_produces_lower_time_std(self, basic_context, qts):
         """Core test: tracker-guided assignment should spread time slots
         more evenly than pure random.choice."""
@@ -293,7 +290,7 @@ class TestSpreadingIntegration:
         # --- Random baseline ---
         random_genes = []
         for _ in range(n_genes):
-            start = random.choice(range(0, 40))
+            start = random.choice(range(40))
             inst = random.choice(["I1", "I2"])
             room = random.choice(["R1", "R2", "R3"])
             random_genes.append(
@@ -322,11 +319,11 @@ class TestSpreadingIntegration:
             domain = store.get_domain(i)
 
             inst = spread_tracker.pick_least_used_instructor(domain.instructors)
-            start = spread_tracker.pick_least_used_start(
+            spread_start: int | None = spread_tracker.pick_least_used_start(
                 domain.valid_starts, num_quanta, top_k=3
             )
             room = spread_tracker.pick_least_used_room(
-                domain.rooms, start or 0, num_quanta
+                domain.rooms, spread_start or 0, num_quanta
             )
 
             gene = make_gene(
@@ -335,7 +332,7 @@ class TestSpreadingIntegration:
                 inst,
                 ["G1"],
                 room,
-                start=start or 0,
+                start=spread_start or 0,
                 duration=num_quanta,
             )
             spread_genes.append(gene)

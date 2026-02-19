@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import random
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -770,9 +771,9 @@ def _create_individual_with_spreading(
                 course_type=(
                     course_id[1] if isinstance(course_id, tuple) else session_type
                 ),
-                instructor_id=list(context.instructors.keys())[0],
+                instructor_id=next(iter(context.instructors.keys())),
                 group_ids=list(group_ids),
-                room_id=list(context.rooms.keys())[0],
+                room_id=next(iter(context.rooms.keys())),
                 start_quanta=0,
                 num_quanta=num_quanta,
             )
@@ -853,7 +854,7 @@ def _create_individual_with_spreading(
                 r
                 for r in domain.rooms
                 if all(
-                    tracker.room_load.get(r, {}).get(q, 0) == 0
+                    tracker.room_load.get(r, Counter()).get(q, 0) == 0
                     for q in range(start_quanta, start_quanta + num_quanta)
                 )
             ]

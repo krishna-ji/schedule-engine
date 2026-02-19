@@ -25,8 +25,8 @@ __all__ = ["repair_group_clashes"]
 
 
 def repair_group_clashes(
-    individual: list["SessionGene"],
-    context: "SchedulingContext",
+    individual: list[SessionGene],
+    context: SchedulingContext,
     *,
     max_attempts: int = 3,
 ) -> int:
@@ -54,8 +54,8 @@ def repair_group_clashes(
 
 
 def _repair_pass(
-    individual: list["SessionGene"],
-    context: "SchedulingContext",
+    individual: list[SessionGene],
+    context: SchedulingContext,
     family_map: dict[str, set[str]],
 ) -> int:
     """One sweep: detect clashes, shift offending genes."""
@@ -94,16 +94,18 @@ def _repair_pass(
 
     def _get_valid_starts(num_quanta: int) -> list[int]:
         if num_quanta not in valid_starts_cache:
-            starts = []
+            starts: list[int] = []
             total = qts.total_quanta if qts else 42
+            if qts is None:
+                valid_starts_cache[num_quanta] = starts
+                return starts
             for day in qts.DAY_NAMES:
                 off = qts.day_quanta_offset.get(day)
                 cnt = qts.day_quanta_count.get(day, 0)
                 if off is None or cnt <= 0:
                     continue
                 if num_quanta <= cnt:
-                    for s in range(off, off + cnt - num_quanta + 1):
-                        starts.append(s)
+                    starts.extend(range(off, off + cnt - num_quanta + 1))
                 elif off + num_quanta <= total:
                     starts.append(off)
             valid_starts_cache[num_quanta] = starts
@@ -128,9 +130,9 @@ def _repair_pass(
 
 
 def _find_group_free_start(
-    individual: list["SessionGene"],
+    individual: list[SessionGene],
     gene_idx: int,
-    gene: "SessionGene",
+    gene: SessionGene,
     family_map: dict[str, set[str]],
     valid_starts: list[int],
 ) -> int | None:
@@ -151,11 +153,7 @@ def _find_group_free_start(
             continue
         other_groups = set(other.group_ids)
         # Check literal overlap (what the constraint measures)
-        if other_groups & set(gene.group_ids):
-            for q in range(other.start_quanta, other.start_quanta + other.num_quanta):
-                blocked_quanta.add(q)
-        # Also check family overlap (prevents cascading issues)
-        elif other_groups & expanded_groups:
+        if other_groups & set(gene.group_ids) or other_groups & expanded_groups:
             for q in range(other.start_quanta, other.start_quanta + other.num_quanta):
                 blocked_quanta.add(q)
 

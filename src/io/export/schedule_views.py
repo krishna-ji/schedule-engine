@@ -147,7 +147,6 @@ def _draw_calendar(
         active_days = list(DAYS)
     day_idx = {d: i for i, d in enumerate(active_days)}
     num_days = len(active_days)
-    num_hours = end_hour - start_hour
 
     ax.set_xlim(0, num_days)
     ax.set_ylim(end_hour, start_hour)
@@ -321,10 +320,9 @@ def _compute_instructor_violations(
         for q in s.session_quanta:
             occ[s.instructor_id][q] += 1
 
-    for iid in instructors:
+    for iid, inst in instructors.items():
         dbl = sum(max(0, c - 1) for c in occ.get(iid, {}).values())
         # Availability
-        inst = instructors[iid]
         avail_v = 0
         if not inst.is_full_time:
             for s in sessions:
