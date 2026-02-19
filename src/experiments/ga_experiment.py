@@ -99,6 +99,28 @@ class GAExperiment(BaseExperiment):
 
     # ── Core execution ─────────────────────────────────────────────
 
+    def _load_data(self) -> tuple[Any, Any, Any]:
+        """Load scheduling data and save feasibility report to output dir.
+
+        Returns (store, ctx, qts).
+        """
+        from src.io.data_store import DataStore
+        from src.io.time_system import QuantumTimeSystem
+
+        store = DataStore.from_json(str(self.data_dir))
+        ctx = store.to_context()
+        qts = QuantumTimeSystem()
+
+        # Save feasibility report to the timestamped output folder
+        if store.feasibility_report is not None:
+            from src.io.feasibility import generate_feasibility_report_file
+
+            report_path = self.output_dir / "feasibility_report.txt"
+            generate_feasibility_report_file(store.feasibility_report, str(report_path))
+            self.logger.info(f"Feasibility report → {report_path}")
+
+        return store, ctx, qts
+
     def _execute(self) -> dict[str, Any]:
         from pymoo.optimize import minimize
 
@@ -106,6 +128,21 @@ class GAExperiment(BaseExperiment):
         from src.pipeline.scheduling_problem import create_problem
 
         pkl_path = self._ensure_pkl()
+        _store, ctx, qts = self._load_data()
+
+        # Apply tutorial-practical fix consistent with pkl build
+        with open(pkl_path, "rb") as f:
+            pkl_data = pickle.load(f)
+        if pkl_data.get("fix_tutorial_practicals", False):
+            for course in ctx.courses.values():
+                lab_feats = getattr(course, "specific_lab_features", None)
+                if lab_feats:
+                    feats_lower = [
+                        (f if isinstance(f, str) else str(f)).lower().strip()
+                        for f in lab_feats
+                    ]
+                    if any(f in ("lecture hall", "seminar room") for f in feats_lower):
+                        course.specific_lab_features = []
 
         n_offsprings = int(self.pop_size * self.n_offsprings_mult)
         self.logger.info(
@@ -114,7 +151,7 @@ class GAExperiment(BaseExperiment):
             f"cx={self.crossover_prob}  mut={self.mutation_event_prob}"
         )
 
-        prob = create_problem(pkl_path)
+        prob = create_problem(pkl_path, ctx=ctx, qts=qts)
         algo = create_algorithm(
             pkl_path=pkl_path,
             pop_size=self.pop_size,

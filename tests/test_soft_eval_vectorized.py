@@ -195,9 +195,9 @@ class TestSoftEvalEquivalence:
         from scipy.stats import spearmanr
 
         corr, _ = spearmanr(S_vec, S_oop)
-        assert corr > 0.9 or np.isnan(corr), (
-            f"Ranking correlation too low: {corr:.3f}\nVec: {S_vec}\nOOP: {S_oop}"
-        )
+        assert corr > 0.9 or np.isnan(
+            corr
+        ), f"Ranking correlation too low: {corr:.3f}\nVec: {S_vec}\nOOP: {S_oop}"
 
 
 @skip_no_pkl
@@ -237,6 +237,6 @@ class TestSoftEvalPerformance:
         )
 
         # At minimum, vectorized should not be significantly slower
-        assert t_vec < t_loop * 2, (
-            f"Vectorized is slower than loop: {t_vec:.4f}s vs {t_loop:.4f}s"
-        )
+        assert (
+            t_vec < t_loop * 2
+        ), f"Vectorized is slower than loop: {t_vec:.4f}s vs {t_loop:.4f}s"

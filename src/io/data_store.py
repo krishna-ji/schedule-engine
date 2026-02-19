@@ -59,6 +59,7 @@ class DataStore:
     rooms: dict[str, Room]
     qts: QuantumTimeSystem
     cohort_pairs: list[tuple[str, str]] = field(default_factory=list)
+    feasibility_report: Any = field(default=None, repr=False)
 
     # Factory
 
@@ -162,6 +163,7 @@ class DataStore:
             is_feasible, report = check_feasibility(
                 courses, instructors, rooms, groups, qts
             )
+            store.feasibility_report = report
             if not is_feasible:
                 raise InfeasibleProblemError(report)
 
