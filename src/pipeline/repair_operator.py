@@ -12,7 +12,6 @@ Uses incremental occupancy maps for O(duration) conflict checks instead of O(E).
 
 import pickle
 from collections import defaultdict
-from pathlib import Path
 
 import numpy as np
 
@@ -526,10 +525,11 @@ class SchedulingRepair:
             return None  # full-time
 
         dur = self.events[event_idx]["num_quanta"]
-        valid = []
-        for s in self.allowed_starts[event_idx]:
-            if all(q in slots for q in range(s, s + dur)):
-                valid.append(s)
+        valid = [
+            s
+            for s in self.allowed_starts[event_idx]
+            if all(q in slots for q in range(s, s + dur))
+        ]
         self._inst_time_cache[key] = valid
         return valid
 

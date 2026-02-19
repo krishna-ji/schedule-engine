@@ -13,22 +13,20 @@ simplified numeric soft penalty.
 from __future__ import annotations
 
 import pickle
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .encoding import EncodingSpec, chromosome_views
-from .fast_evaluator import fast_evaluate_hard
-from .fast_evaluator_batch import (
-    BatchEvalData,
-    fast_evaluate_hard_batch,
-    prepare_batch_data,
-)
 from .fast_evaluator_vectorized import (
     VectorizedEvalData,
     fast_evaluate_hard_vectorized,
     prepare_vectorized_data,
+)
+from .soft_evaluator_vectorized import (
+    SoftVectorizedData,
+    eval_soft_vectorized,
+    prepare_soft_vectorized_data,
 )
 
 if TYPE_CHECKING:
@@ -37,8 +35,8 @@ if TYPE_CHECKING:
 
 try:
     from pymoo.core.problem import Problem
-except ImportError:
-    raise ImportError("pymoo is required: pip install pymoo>=0.6")
+except ImportError as err:
+    raise ImportError("pymoo is required: pip install pymoo>=0.6") from err
 
 
 # Hard constraint names in canonical order
@@ -80,8 +78,6 @@ class SchedulingProblem(Problem):
         pkl_path: str = "events_with_domains.pkl",
         ctx: SchedulingContext | None = None,
         qts: QuantumTimeSystem | None = None,
-        *,
-        vectorized: bool = True,
     ):
         with open(pkl_path, "rb") as f:
             self.pkl_data: dict = pickle.load(f)
@@ -107,11 +103,10 @@ class SchedulingProblem(Problem):
 
             self._evaluator = Evaluator()
 
-        # Precomputed evaluation data
-        self._vectorized = vectorized
-        self._batch_data: BatchEvalData = prepare_batch_data(self.pkl_data)
-        self._vec_data: VectorizedEvalData | None = (
-            prepare_vectorized_data(self.pkl_data) if vectorized else None
+        # Precomputed evaluation data — always vectorized (canonical path)
+        self._vec_data: VectorizedEvalData = prepare_vectorized_data(self.pkl_data)
+        self._soft_data: SoftVectorizedData = prepare_soft_vectorized_data(
+            self.pkl_data
         )
 
         super().__init__(
@@ -136,20 +131,21 @@ class SchedulingProblem(Problem):
         """
         pop_size = x.shape[0]
 
-        # ---- Hard constraints ----
-        if self._vectorized and self._vec_data is not None:
-            G = fast_evaluate_hard_vectorized(x, self._vec_data)
-        else:
-            G = fast_evaluate_hard_batch(x, self._batch_data)
+        # ---- Hard constraints (vectorized, canonical) ----
+        G = fast_evaluate_hard_vectorized(x, self._vec_data)
 
         # ---- Objectives ----
         F = np.zeros((pop_size, 2))
         F[:, 0] = G.sum(axis=1)  # total hard penalty
 
-        # ---- Soft evaluation (per-individual, only when available) ----
-        if self._evaluator is not None and self.ctx is not None:
-            for i in range(pop_size):
-                F[i, 1] = self._evaluate_soft(x[i].astype(int))
+        # ---- Soft evaluation (vectorized over full population) ----
+        F[:, 1] = eval_soft_vectorized(x, self._soft_data)
+
+        # ---- Optional: OOP soft eval fallback (legacy, per-individual) ----
+        # Uncomment to use original Evaluator instead of vectorized:
+        # if self._evaluator is not None and self.ctx is not None:
+        #     for i in range(pop_size):
+        #         F[i, 1] = self._evaluate_soft(x[i].astype(int))
 
         out["F"] = F
         out["G"] = G
@@ -208,7 +204,7 @@ def create_problem(
             with open(pkl_path, "rb") as f:
                 pkl_data = pickle.load(f)
             if pkl_data.get("fix_tutorial_practicals", False):
-                for _key, course in ctx.courses.items():
+                for course in ctx.courses.values():
                     lab_feats = getattr(course, "specific_lab_features", None)
                     if lab_feats:
                         feats_lower = [

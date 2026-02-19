@@ -350,7 +350,6 @@ class BitsetSchedulingRepair:
 
         # Pre-compute numpy array of allowed rooms for vectorized lookup
         ar = np.array(ar_list, dtype=np.intp)
-        n_rooms = len(ar)
         ia = self.inst_avail_arr
         ra = self.room_avail_arr
 
@@ -528,10 +527,11 @@ class BitsetSchedulingRepair:
             return None
 
         dur = self.events[event_idx]["num_quanta"]
-        valid = []
-        for s in self.allowed_starts[event_idx]:
-            if all(q in slots for q in range(s, s + dur)):
-                valid.append(s)
+        valid = [
+            s
+            for s in self.allowed_starts[event_idx]
+            if all(q in slots for q in range(s, s + dur))
+        ]
         self._inst_time_cache[key] = valid
         return valid
 

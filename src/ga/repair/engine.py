@@ -566,7 +566,7 @@ class RepairEngine:
         self.log_steps = log_steps
         self.log_candidates = log_candidates
 
-        self.operators = list(
+        self.operators: list[RepairOperator] = list(
             operators
             or [
                 MoveTimeOperator(),
@@ -574,7 +574,9 @@ class RepairEngine:
                 ReassignInstructorOperator(),
             ]
         )
-        self.operator_map = {op.name: op for op in self.operators}
+        self.operator_map: dict[str, RepairOperator] = {
+            op.name: op for op in self.operators
+        }
 
         if policy == "round_robin":
             self.policy: RoundRobinPolicy | EpsilonGreedyPolicy = RoundRobinPolicy(

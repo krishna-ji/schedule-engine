@@ -127,14 +127,14 @@ class DataStore:
         for g in groups.values():
             enrolled_codes.update(g.enrolled_courses)
 
-        all_courses = load_courses(str(data_dir / "Course.json"))
+        all_courses, skipped_courses = load_courses(str(data_dir / "Course.json"))
         courses = {k: c for k, c in all_courses.items() if k[0] in enrolled_codes}
 
         instructors = load_instructors(str(data_dir / "Instructors.json"), qts)
         rooms = load_rooms(str(data_dir / "Rooms.json"), qts)
 
         # ---- relationships ----
-        link_courses_and_groups(courses, groups)
+        link_courses_and_groups(courses, groups, skipped_courses=skipped_courses)
         link_courses_and_instructors(courses, instructors)
 
         # ---- cohort pairs ----
@@ -157,10 +157,7 @@ class DataStore:
 
         # ---- PREFLIGHT: Feasibility gate (runs on every code path) ----
         if run_preflight:
-            from src.io.feasibility import (
-                InfeasibleProblemError,
-                check_feasibility,
-            )
+            from src.io.feasibility import InfeasibleProblemError, check_feasibility
 
             is_feasible, report = check_feasibility(
                 courses, instructors, rooms, groups, qts

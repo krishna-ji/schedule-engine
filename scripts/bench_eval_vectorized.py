@@ -77,7 +77,10 @@ def main():
     E = len(data["events"])
     rng = np.random.default_rng(42)
 
-    from src.pipeline.fast_evaluator_batch import fast_evaluate_hard_batch, prepare_batch_data
+    from src.pipeline.fast_evaluator_batch import (
+        fast_evaluate_hard_batch,
+        prepare_batch_data,
+    )
     from src.pipeline.fast_evaluator_vectorized import (
         fast_evaluate_hard_vectorized,
         prepare_vectorized_data,

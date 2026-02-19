@@ -180,9 +180,9 @@ class TestConstraintProtocol:
         from src.constraints import ALL_CONSTRAINTS
 
         for c in ALL_CONSTRAINTS:
-            assert callable(
-                getattr(c, "evaluate", None)
-            ), f"{c.name} missing evaluate()"
+            assert callable(getattr(c, "evaluate", None)), (
+                f"{c.name} missing evaluate()"
+            )
 
     def test_exclusivity_constraints_use_timetable_indexes(self):
         """The 3 exclusivity constraints should return 0 for non-overlapping genes."""

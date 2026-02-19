@@ -296,9 +296,9 @@ class TestRepairInstructorConflicts:
         if fixes > 0:
             tt = Timetable(individual, ctx)
             post_penalty = InstructorExclusivity().evaluate(tt)
-            assert (
-                post_penalty < pre_penalty
-            ), "Repair should reduce instructor conflicts"
+            assert post_penalty < pre_penalty, (
+                "Repair should reduce instructor conflicts"
+            )
 
     def test_structural_preservation(self):
         g1 = make_gene(course_id="CS101", instructor_id="I1", start=0, duration=2)
@@ -537,6 +537,6 @@ class TestRepairIndividualUnified:
             ]
         )
 
-        assert (
-            post_violations <= pre_violations
-        ), f"Repair worsened violations: {pre_violations} → {post_violations}"
+        assert post_violations <= pre_violations, (
+            f"Repair worsened violations: {pre_violations} → {post_violations}"
+        )

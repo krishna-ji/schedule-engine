@@ -13,7 +13,6 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.pipeline.fast_evaluator import fast_conflict_evaluator
 from src.domain.gene import SessionGene
 from src.domain.timetable import Timetable
 from src.domain.types import SchedulingContext
@@ -26,6 +25,7 @@ from src.io.data_loader import (
     load_rooms,
 )
 from src.io.time_system import QuantumTimeSystem
+from src.pipeline.fast_evaluator import fast_conflict_evaluator
 
 
 def debug_single_individual():
@@ -36,11 +36,11 @@ def debug_single_individual():
     print("Loading data...")
     data_path = PROJECT_ROOT / "data"
     qts = QuantumTimeSystem()
-    courses = load_courses(str(data_path / "Course.json"))
+    courses, skipped_courses = load_courses(str(data_path / "Course.json"))
     groups = load_groups(str(data_path / "Groups.json"), qts)
     instructors = load_instructors(str(data_path / "Instructors.json"), qts)
     rooms = load_rooms(str(data_path / "Rooms.json"), qts)
-    link_courses_and_groups(courses, groups)
+    link_courses_and_groups(courses, groups, skipped_courses=skipped_courses)
     link_courses_and_instructors(courses, instructors)
     context = SchedulingContext(
         courses, groups, instructors, rooms, available_quanta=list(range(42))

@@ -78,7 +78,7 @@ if violations:
         available_quanta = len(ctx.available_quanta)
         print(f"Total quanta needed: {total_quanta_needed}")
         print(f"Available quanta: {available_quanta}")
-        print(f"Utilization: {100*total_quanta_needed/available_quanta:.1f}%")
+        print(f"Utilization: {100 * total_quanta_needed / available_quanta:.1f}%")
 
         # Check instructor availability mismatches
         part_time_conflicts = 0

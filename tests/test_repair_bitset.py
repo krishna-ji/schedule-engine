@@ -97,9 +97,9 @@ class TestBitsetRepairEquivalence:
         v_bs = _total_violations(x_bs, pkl_data)
 
         # Bitset repair should be no worse than 2x original
-        assert v_bs <= max(
-            2 * v_orig, v_orig + 30
-        ), f"seed={seed}: orig={v_orig}, bitset={v_bs}"
+        assert v_bs <= max(2 * v_orig, v_orig + 30), (
+            f"seed={seed}: orig={v_orig}, bitset={v_bs}"
+        )
 
 
 class TestConstructFeasible:
@@ -219,7 +219,7 @@ class TestOffspringRepair:
 
         successes = 0
         n_trials = 10
-        for trial in range(n_trials):
+        for _trial in range(n_trials):
             offspring = self._perturb(parent, k, pkl_data, rng)
             repaired = repairer_bs.repair(offspring)
             rep_v = _total_violations(repaired, pkl_data)
@@ -228,6 +228,6 @@ class TestOffspringRepair:
                 successes += 1
 
         # At least 60% of trials should meet tolerance
-        assert (
-            successes >= n_trials * 0.6
-        ), f"k={k}: only {successes}/{n_trials} met tolerance"
+        assert successes >= n_trials * 0.6, (
+            f"k={k}: only {successes}/{n_trials} met tolerance"
+        )

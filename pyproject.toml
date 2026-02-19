@@ -126,6 +126,20 @@ ignore = [
     "T201",    # print() found — allow for CLI/debug scripts
     "RET504",  # Unnecessary assignment before return
     "PLW2901", # Overwriting loop variable
+    "N806",    # Uppercase variable in function — numpy convention (X, G, F, N, E)
+    "N803",    # Uppercase argument name — numpy convention (X, G, F)
+    "N802",    # Uppercase function name — used by pymoo overrides (_do)
+    "N817",    # CamelCase imported as acronym
+    "PLW0603", # global statement — used in audit/CLI scripts
+    "RUF002",  # Ambiguous unicode in docstring (en-dash)
+    "RUF003",  # Ambiguous unicode in comment (multiplication sign)
+    "RUF001",  # Ambiguous unicode in string
+    "RUF059",  # Unused unpacked variable — intentional destructuring
+    "A005",    # Module shadows stdlib — src/io is intentional
+    "PTH123",  # builtin open() — acceptable in scripts & data loading
+    "PTH120",  # os.path.dirname — acceptable
+    "PTH119",  # os.path.basename — acceptable
+    "PTH100",  # os.path.abspath — acceptable
 ]
 
 # Allow autofix for all enabled rules
@@ -136,8 +150,27 @@ unfixable = []
 "__init__.py" = ["F401"]
 "tests/**/*.py" = ["S101"]
 # Relaxed rules for scripts, runs, configs, and root-level files
-"runs/*.py" = ["N806", "F821", "F401", "PLW0603", "T201", "PTH123", "B007", "PERF401", "SIM102"]
-"scripts/*.py" = ["N806", "F821", "F401", "PLW0603", "T201", "PTH123", "B007", "PERF401"]
+"runs/*.py" = [
+    "N806",
+    "F821",
+    "F401",
+    "PLW0603",
+    "T201",
+    "PTH123",
+    "B007",
+    "PERF401",
+    "SIM102",
+]
+"scripts/*.py" = [
+    "N806",
+    "F821",
+    "F401",
+    "PLW0603",
+    "T201",
+    "PTH123",
+    "B007",
+    "PERF401",
+]
 "configs/*.py" = ["F821", "F401", "T201", "PTH123"]
 "solve.py" = ["T201", "PTH123"]
 
@@ -199,15 +232,27 @@ disable_error_code = [
 module = ["tests.*"]
 ignore_missing_imports = true
 disable_error_code = [
-    "attr-defined", "arg-type", "call-arg", "var-annotated",
-    "comparison-overlap", "list-item", "misc", "union-attr",
+    "attr-defined",
+    "arg-type",
+    "call-arg",
+    "var-annotated",
+    "comparison-overlap",
+    "list-item",
+    "misc",
+    "union-attr",
 ]
 
 # Strict typing for core library modules
 [[tool.mypy.overrides]]
 module = [
-    "src.utils.*", "src.config.*", "src.constants", "src.exceptions",
-    "src.domain.*", "src.io.*", "src.constraints.*", "src.metrics.*",
+    "src.utils.*",
+    "src.config.*",
+    "src.constants",
+    "src.exceptions",
+    "src.domain.*",
+    "src.io.*",
+    "src.constraints.*",
+    "src.metrics.*",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
@@ -222,7 +267,12 @@ module = [
     "src.rl.deployment.inference",
     "src.rl.hybrid.hybrid_controller",
 ]
-disable_error_code = ["attr-defined", "call-arg", "unreachable", "unused-ignore"]
+disable_error_code = [
+    "attr-defined",
+    "call-arg",
+    "unreachable",
+    "unused-ignore",
+]
 
 # isinstance narrowing mypy can't handle
 [[tool.mypy.overrides]]
@@ -238,3 +288,8 @@ module = [
     "src.io.feasibility",
 ]
 disable_error_code = ["unreachable"]
+
+# Experiment runner — dynamic pkl data access
+[[tool.mypy.overrides]]
+module = ["src.experiments.*"]
+disable_error_code = ["index", "attr-defined", "union-attr", "assignment"]

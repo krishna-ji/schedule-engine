@@ -14,7 +14,6 @@ Usage:
 from __future__ import annotations
 
 import random
-from collections import Counter
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -77,7 +76,7 @@ def _repair_pass(
     # --- 2. Identify clashing gene indices ---
     # For each conflict, keep the FIRST gene and mark the rest for repair
     needs_repair: set[int] = set()
-    for key, idxs in group_occ.items():
+    for idxs in group_occ.values():
         if len(idxs) > 1:
             # Keep the first, mark the rest
             for idx in idxs[1:]:

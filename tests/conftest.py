@@ -237,13 +237,13 @@ def assert_constraint_positive(
     """Assert that a constraint evaluates to > 0, optionally checking exact value."""
     penalty = constraint.evaluate(timetable)
     if expected is not None:
-        assert (
-            penalty == expected
-        ), f"{constraint.name}: expected penalty={expected}, got {penalty}. {msg}"
+        assert penalty == expected, (
+            f"{constraint.name}: expected penalty={expected}, got {penalty}. {msg}"
+        )
     else:
-        assert (
-            penalty > 0
-        ), f"{constraint.name}: expected positive penalty, got 0. {msg}"
+        assert penalty > 0, (
+            f"{constraint.name}: expected positive penalty, got 0. {msg}"
+        )
 
 
 def genes_differ_only_in(

@@ -29,8 +29,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.domain.course import Course
-    from src.domain.group import Group
     from src.domain.types import SchedulingContext
 
 __all__ = [

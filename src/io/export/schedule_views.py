@@ -732,16 +732,16 @@ def _sessions_to_cal(
         # Convert quanta to day/time
         schedule = qts.decode_schedule(set(s.session_quanta))
         for day_name, slots in schedule.items():
-            for slot in slots:
-                result.append(
-                    {
-                        "day": day_name,
-                        "start": _to_float(slot["start"]),
-                        "end": _to_float(slot["end"]),
-                        "label": label,
-                        "course_base": course_label,
-                        "course_type": s.course_type,
-                    }
-                )
+            result.extend(
+                {
+                    "day": day_name,
+                    "start": _to_float(slot["start"]),
+                    "end": _to_float(slot["end"]),
+                    "label": label,
+                    "course_base": course_label,
+                    "course_type": s.course_type,
+                }
+                for slot in slots
+            )
 
     return result

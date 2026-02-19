@@ -99,21 +99,21 @@ def analyze_real_domain_sizes():
         print("SUITABLE ROOMS (real suitability + capacity):")
         print(f"  Min: {min(suitable_rooms_counts)}")
         print(f"  Max: {max(suitable_rooms_counts)}")
-        print(f"  Avg: {sum(suitable_rooms_counts)/len(suitable_rooms_counts):.1f}")
+        print(f"  Avg: {sum(suitable_rooms_counts) / len(suitable_rooms_counts):.1f}")
         print()
 
         print("QUALIFIED INSTRUCTORS (real qualification check):")
         print(f"  Min: {min(qualified_instructors_counts)}")
         print(f"  Max: {max(qualified_instructors_counts)}")
         print(
-            f"  Avg: {sum(qualified_instructors_counts)/len(qualified_instructors_counts):.1f}"
+            f"  Avg: {sum(qualified_instructors_counts) / len(qualified_instructors_counts):.1f}"
         )
         print()
 
         print("ALLOWED START TIMES (considering duration):")
         print(f"  Min: {min(allowed_start_times)}")
         print(f"  Max: {max(allowed_start_times)}")
-        print(f"  Avg: {sum(allowed_start_times)/len(allowed_start_times):.1f}")
+        print(f"  Avg: {sum(allowed_start_times) / len(allowed_start_times):.1f}")
         print()
 
         # Show distribution of constraints
@@ -125,13 +125,13 @@ def analyze_real_domain_sizes():
         tight_time = sum(1 for count in allowed_start_times if count <= 10)
 
         print(
-            f"Events with ≤5 suitable rooms: {tight_rooms}/100 ({100*tight_rooms/100:.0f}%)"
+            f"Events with ≤5 suitable rooms: {tight_rooms}/100 ({100 * tight_rooms / 100:.0f}%)"
         )
         print(
-            f"Events with ≤2 qualified instructors: {tight_instructors}/100 ({100*tight_instructors/100:.0f}%)"
+            f"Events with ≤2 qualified instructors: {tight_instructors}/100 ({100 * tight_instructors / 100:.0f}%)"
         )
         print(
-            f"Events with ≤10 start time options: {tight_time}/100 ({100*tight_time/100:.0f}%)"
+            f"Events with ≤10 start time options: {tight_time}/100 ({100 * tight_time / 100:.0f}%)"
         )
 
     except Exception as e:

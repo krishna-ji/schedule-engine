@@ -598,9 +598,9 @@ class TestBuildConstraints:
         )
         for c in constraints:
             if c.name == "student_group_exclusivity":
-                assert (
-                    c.weight == 0.0
-                ), "weight=0.0 should be respected (not fall back to hard_weight)"
+                assert c.weight == 0.0, (
+                    "weight=0.0 should be respected (not fall back to hard_weight)"
+                )
 
     def test_custom_params_forwarded(self):
         constraints = build_constraints(

@@ -114,9 +114,9 @@ def decode(x: np.ndarray) -> list[GeneAssignment]:
     Returns:
         List of E GeneAssignment tuples.
     """
-    assert (
-        x.ndim == 1 and len(x) % 3 == 0
-    ), f"Expected 1-D array with len%3==0, got shape={x.shape}"
+    assert x.ndim == 1 and len(x) % 3 == 0, (
+        f"Expected 1-D array with len%3==0, got shape={x.shape}"
+    )
     E = len(x) // 3
     return [
         GeneAssignment(

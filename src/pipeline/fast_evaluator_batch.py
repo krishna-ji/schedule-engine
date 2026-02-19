@@ -1,5 +1,10 @@
 """Batch fast evaluator using bitset occupancy (uint64, T=42).
 
+.. deprecated::
+    This module is superseded by ``fast_evaluator_vectorized.py`` which is
+    4-5× faster.  Retained for equivalence testing only.  The hot-path in
+    ``SchedulingProblem._evaluate()`` no longer calls this module.
+
 Exposes:
     fast_evaluate_hard_batch(X, data) -> G
         X: shape (N, 3E) interleaved chromosome matrix
@@ -29,16 +34,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .bitset_time import (
-    FULL_MASK,
-    ZERO,
-    T,
-    build_availability_masks,
-    mask_from_interval,
-    mask_from_quanta,
-    overlap_count,
-    popcount,
-)
+from .bitset_time import FULL_MASK, T, mask_from_interval, mask_from_quanta
 
 # Pre-compute mask LUT: _MASK_LUT[dur][start] = uint64 mask
 # dur in [0..max_dur], start in [0..T-1]

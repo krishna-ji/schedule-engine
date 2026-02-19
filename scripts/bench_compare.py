@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 import time
@@ -219,17 +220,15 @@ def run_deap(pop_size: int, n_gen: int, seed: int) -> dict:
                 child = list(p1)
 
             if stdlib_random.random() < 0.3:
-                try:
+                with contextlib.suppress(Exception):
                     child, _stats = constraint_guided_mutation(child, ctx)
-                except Exception:
-                    pass
 
             offspring.append(child)
 
         off_scores = _eval_pop(offspring)
 
         # Merge & truncation select (simple elitist)
-        combined = list(zip(pop + offspring, scores + off_scores))
+        combined = list(zip(pop + offspring, scores + off_scores, strict=False))
         combined.sort(key=lambda x: (x[1][0], x[1][1]))
         combined = combined[:pop_size]
         pop = [p for p, _ in combined]

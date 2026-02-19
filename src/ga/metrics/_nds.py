@@ -10,16 +10,18 @@ plain (hard, soft) tuples, and returns the first Pareto front as a list.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 def _default_fitness(ind: Any) -> tuple[float, ...]:
     """Extract fitness using the ``fitness.values`` protocol."""
-    return ind.fitness.values  # type: ignore[union-attr]
+    return ind.fitness.values  # type: ignore[no-any-return]
 
 
 def get_pareto_front(

@@ -412,5 +412,5 @@ def calculate_area_under_curve(metric_history: list[float]) -> float:
         return 0.0
 
     # Trapezoidal integration
-    auc = np.trapz(metric_history)
+    auc = np.trapezoid(metric_history)
     return float(auc)

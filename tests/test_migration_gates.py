@@ -6,7 +6,6 @@ Run: pytest tests/test_migration_gates.py -v
 
 from __future__ import annotations
 
-import pickle
 import sys
 from pathlib import Path
 
@@ -40,7 +39,7 @@ def ctx_qts(pkl_data):
 
         # Apply the same tutorial-practical fix used when the pkl was built
         if pkl_data.get("fix_tutorial_practicals", False):
-            for _key, course in ctx.courses.items():
+            for course in ctx.courses.values():
                 lab_feats = getattr(course, "specific_lab_features", None)
                 if lab_feats:
                     feats_lower = [
@@ -106,11 +105,11 @@ class TestEvaluatorEquivalence:
     N = 10  # Reduced for CI speed; validate_migration.py tests 50
 
     def test_equivalence_on_random_individuals(self, pkl_data, ctx_qts):
-        from src.pipeline.build_events import _make_event_key
-        from src.pipeline.fast_evaluator import fast_evaluate_hard
         from src.constraints.evaluator import Evaluator
         from src.domain.timetable import Timetable
         from src.ga.core.population import generate_pure_random_population
+        from src.pipeline.build_events import _make_event_key
+        from src.pipeline.fast_evaluator import fast_evaluate_hard
 
         ctx, qts = ctx_qts
         events = pkl_data["events"]
@@ -163,11 +162,11 @@ class TestEvaluatorEquivalence:
                 room_avail,
             )
 
-            for cn in constraint_names:
-                if orig.get(cn, 0) != fast.get(cn, 0):
-                    mismatches.append(
-                        f"Ind#{idx} {cn}: orig={orig.get(cn,0)} fast={fast.get(cn,0)}"
-                    )
+            mismatches.extend(
+                f"Ind#{idx} {cn}: orig={orig.get(cn, 0)} fast={fast.get(cn, 0)}"
+                for cn in constraint_names
+                if orig.get(cn, 0) != fast.get(cn, 0)
+            )
 
         assert mismatches == [], "Equivalence mismatches:\n" + "\n".join(mismatches)
 
@@ -181,9 +180,9 @@ class TestEventKeyIntegrity:
     def test_keys_are_sorted(self, pkl_data):
         keys = pkl_data["event_keys"]
         for i in range(len(keys) - 1):
-            assert (
-                keys[i] <= keys[i + 1]
-            ), f"Keys not sorted at {i}: {keys[i]} > {keys[i+1]}"
+            assert keys[i] <= keys[i + 1], (
+                f"Keys not sorted at {i}: {keys[i]} > {keys[i + 1]}"
+            )
 
     def test_keys_match_events(self, pkl_data):
         events = pkl_data["events"]
@@ -208,12 +207,12 @@ class TestEventKeyIntegrity:
     def test_no_zero_room_domains(self, pkl_data):
         """After tutorial-practical fix, no event should have 0 suitable rooms."""
         for i, ar in enumerate(pkl_data["allowed_rooms"]):
-            assert (
-                len(ar) > 0
-            ), f"Event {i} has 0 suitable rooms: {pkl_data['events'][i]}"
+            assert len(ar) > 0, (
+                f"Event {i} has 0 suitable rooms: {pkl_data['events'][i]}"
+            )
 
     def test_no_zero_instructor_domains(self, pkl_data):
         for i, ai in enumerate(pkl_data["allowed_instructors"]):
-            assert (
-                len(ai) > 0
-            ), f"Event {i} has 0 qualified instructors: {pkl_data['events'][i]}"
+            assert len(ai) > 0, (
+                f"Event {i} has 0 qualified instructors: {pkl_data['events'][i]}"
+            )

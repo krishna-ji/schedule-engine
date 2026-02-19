@@ -13,14 +13,12 @@ import pickle
 
 import numpy as np
 
-from .encoding import chromosome_views
-
 try:
     from pymoo.core.crossover import Crossover
     from pymoo.core.mutation import Mutation
     from pymoo.core.sampling import Sampling
-except ImportError:
-    raise ImportError("pymoo is required: pip install pymoo>=0.6")
+except ImportError as err:
+    raise ImportError("pymoo is required: pip install pymoo>=0.6") from err
 
 from .repair_operator import SchedulingRepair
 
@@ -41,7 +39,6 @@ class ConstructiveSampling(Sampling):
         self.repairer = SchedulingRepair(pkl_path)
 
     def _do(self, problem, n_samples, **kwargs):
-        import sys
         import time as _time
 
         X = np.zeros((n_samples, problem.n_var), dtype=int)
@@ -51,8 +48,7 @@ class ConstructiveSampling(Sampling):
             X[i] = self.repairer.construct_feasible(rng)
             elapsed = _time.perf_counter() - t0
             print(
-                f"\r  Constructive sampling: {i + 1}/{n_samples} "
-                f"({elapsed:.1f}s)",
+                f"\r  Constructive sampling: {i + 1}/{n_samples} ({elapsed:.1f}s)",
                 end="",
                 flush=True,
             )

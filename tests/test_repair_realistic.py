@@ -25,12 +25,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
 
+from src.ga.core.population import generate_pure_random_population
+from src.io.data_store import DataStore
 from src.pipeline.build_events import _make_event_key
 from src.pipeline.fast_evaluator import fast_evaluate_hard
 from src.pipeline.repair_operator import SchedulingRepair
-from src.ga.core.population import generate_pure_random_population
-from src.io.data_store import DataStore
-from src.io.time_system import QuantumTimeSystem
 
 # ---------------------------------------------------------------------------
 # Config
@@ -143,8 +142,8 @@ def main():
     )
     print(f"  Structural floor: {structural_floor} (events with 0 suitable rooms)")
     print("  Pass criteria:")
-    print(f"    1. >={FLOOR_THRESHOLD*100:.0f}% reach hard<={structural_floor}")
-    print(f"    2. Median hard reduction >={REDUCTION_THRESHOLD*100:.0f}%")
+    print(f"    1. >={FLOOR_THRESHOLD * 100:.0f}% reach hard<={structural_floor}")
+    print(f"    2. Median hard reduction >={REDUCTION_THRESHOLD * 100:.0f}%")
     print("=" * 70)
 
     # Step A: Generate base individual and repair it to get a "decent" starting point
@@ -226,7 +225,7 @@ def main():
         if i % 50 == 0:
             print(
                 f"  [{i:3d}/{N_OFFSPRING}] mutations={n_mut} pre={pre} -> post={post} "
-                f"floor_ok={floor_feasible}/{i+1} ({(t_end-t_start)*1000:.0f}ms)"
+                f"floor_ok={floor_feasible}/{i + 1} ({(t_end - t_start) * 1000:.0f}ms)"
             )
 
     # Step C: Compute statistics
@@ -256,20 +255,20 @@ def main():
     )
     print("Reduction %:")
     print(
-        f"  min={reductions.min()*100:.1f}%  median={median_reduction*100:.1f}%  "
-        f"p95={np.percentile(reductions, 95)*100:.1f}%  max={reductions.max()*100:.1f}%"
+        f"  min={reductions.min() * 100:.1f}%  median={median_reduction * 100:.1f}%  "
+        f"p95={np.percentile(reductions, 95) * 100:.1f}%  max={reductions.max() * 100:.1f}%"
     )
     print("Repair timing:")
     print(
-        f"  mean={mean_repair_ms:.1f}ms  max={max(repair_times)*1000:.1f}ms  "
+        f"  mean={mean_repair_ms:.1f}ms  max={max(repair_times) * 1000:.1f}ms  "
         f"total={sum(repair_times):.1f}s for {N_OFFSPRING} individuals"
     )
     print()
     print(
         f"Floor-feasible (hard<={structural_floor}): "
-        f"{floor_feasible}/{N_OFFSPRING} = {floor_rate*100:.1f}%"
+        f"{floor_feasible}/{N_OFFSPRING} = {floor_rate * 100:.1f}%"
     )
-    print(f"Median reduction: {median_reduction*100:.1f}%")
+    print(f"Median reduction: {median_reduction * 100:.1f}%")
 
     # Verdicts
     print()
@@ -278,12 +277,12 @@ def main():
     pass_reduction = median_reduction >= REDUCTION_THRESHOLD
 
     print(
-        f"Criterion 1 (>={FLOOR_THRESHOLD*100:.0f}% floor-feasible): "
-        f"{'PASS' if pass_floor else 'FAIL'} ({floor_rate*100:.1f}%)"
+        f"Criterion 1 (>={FLOOR_THRESHOLD * 100:.0f}% floor-feasible): "
+        f"{'PASS' if pass_floor else 'FAIL'} ({floor_rate * 100:.1f}%)"
     )
     print(
-        f"Criterion 2 (median reduction >={REDUCTION_THRESHOLD*100:.0f}%): "
-        f"{'PASS' if pass_reduction else 'FAIL'} ({median_reduction*100:.1f}%)"
+        f"Criterion 2 (median reduction >={REDUCTION_THRESHOLD * 100:.0f}%): "
+        f"{'PASS' if pass_reduction else 'FAIL'} ({median_reduction * 100:.1f}%)"
     )
 
     overall = pass_floor and pass_reduction

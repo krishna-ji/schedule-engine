@@ -35,7 +35,7 @@ CLOSED_DAYS = ["Saturday"]
 
 # Day-specific operating hours (if needed)
 # Example: {"Friday": {"opening": "10:00", "closing": "14:00"}}
-DAY_OVERRIDES = {}
+DAY_OVERRIDES: dict[str, dict[str, str]] = {}
 # CONSTRAINT PENALTIES (Baseline weights - can override in run files)
 # These are starting points. Tune in individual run files if needed.
 

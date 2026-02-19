@@ -843,7 +843,7 @@ def _check_specific_lab_features(
         for d in mismatch_details:
             samples = ", ".join(d["sample_courses"])
             recommendations.append(
-                f"  • '{d['feature']}': {d['reason']} " f"— e.g. {samples}"
+                f"  • '{d['feature']}': {d['reason']} — e.g. {samples}"
             )
     if passed and not type_mismatch_features:
         recommendations.append(
