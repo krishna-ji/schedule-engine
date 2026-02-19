@@ -232,7 +232,9 @@ def run_ablation(
     for trial in range(trials):
         trial_seed = seed + trial * 101
         set_global_seed(trial_seed)
-        config = build_notebook_config(seed=trial_seed, overrides={"pop_size": pop_size})
+        config = build_notebook_config(
+            seed=trial_seed, overrides={"pop_size": pop_size}
+        )
         _, context = load_context(data_dir, config)
 
         for method_key, method_cfg in methods.items():
