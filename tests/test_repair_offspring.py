@@ -168,7 +168,7 @@ def run_offspring_repair_test(
         print(
             f"  Summary: pre={avg_pre:.1f} -> post={avg_post:.1f} "
             f"(reduction={reduction:.0f}%)  "
-            f"pass_rate={pass_rate*100:.0f}% (threshold={threshold:.0f})"
+            f"pass_rate={pass_rate * 100:.0f}% (threshold={threshold:.0f})"
         )
 
     return results
@@ -191,7 +191,7 @@ def main():
         print(
             f"  k={k:3d}: post_avg={r['avg_post']:.0f} "
             f"reduction={r['reduction_pct']:.0f}% "
-            f"pass_rate={r['pass_rate']*100:.0f}% [{status}]"
+            f"pass_rate={r['pass_rate'] * 100:.0f}% [{status}]"
         )
 
     overall = "PASS" if all_pass else "FAIL"

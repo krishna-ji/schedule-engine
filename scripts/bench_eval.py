@@ -85,7 +85,10 @@ def bench_evaluator_original(data, X):
 
 def bench_evaluator_batch(data, X):
     """Benchmark batch evaluator (full population at once)."""
-    from src.pipeline.fast_evaluator_batch import fast_evaluate_hard_batch, prepare_batch_data
+    from src.pipeline.fast_evaluator_batch import (
+        fast_evaluate_hard_batch,
+        prepare_batch_data,
+    )
 
     bd = prepare_batch_data(data)
     N = X.shape[0]
@@ -208,9 +211,7 @@ def main():
         "total_ms": round(total_batch, 3),
         "per_ind_ms": round(per_batch, 3),
     }
-    print(
-        f"  Batch:     total={total_batch:.1f} ms  " f"per_ind={per_batch:.3f} ms/ind"
-    )
+    print(f"  Batch:     total={total_batch:.1f} ms  per_ind={per_batch:.3f} ms/ind")
 
     speedup_eval = s_orig["mean_ms"] / per_batch if per_batch > 0 else float("inf")
     results["evaluator_speedup"] = round(speedup_eval, 2)
@@ -268,7 +269,7 @@ def main():
     }
     print(
         f"  Total: {batch_repair_total:.1f} ms  "
-        f"per_ind: {batch_repair_total/N_REPAIR:.1f} ms/ind"
+        f"per_ind: {batch_repair_total / N_REPAIR:.1f} ms/ind"
     )
 
     # --- Save results ---

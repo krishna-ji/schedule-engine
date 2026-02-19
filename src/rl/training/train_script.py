@@ -725,7 +725,7 @@ def main() -> None:
             total_trained_steps = 0
             for stage_idx, stage in enumerate(curriculum_stages):
                 logger.info(
-                    f"\n{'='*60}\nStage {stage_idx+1}/{len(curriculum_stages)}: {stage['name'].upper()}\n{'='*60}"
+                    f"\n{'=' * 60}\nStage {stage_idx + 1}/{len(curriculum_stages)}: {stage['name'].upper()}\n{'=' * 60}"
                 )
                 logger.info(f"Episodes: {stage['num_episodes']}")
                 logger.info(f"Max generations: {stage['max_generations']}")

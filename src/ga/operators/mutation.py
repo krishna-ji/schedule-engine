@@ -312,8 +312,6 @@ def mutate_gene_spreading(
 
     Returns a NEW SessionGene (does NOT mutate in-place).
     """
-    from src.ga.core.domain_store import GeneDomainStore
-    from src.ga.core.usage_tracker import UsageTracker
 
     domain = domain_store.get_domain(gene_idx)
 

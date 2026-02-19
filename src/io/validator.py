@@ -10,11 +10,11 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Any, cast
 
-from src.domain.course import Course
 from src.exceptions import DataValidationError
 from src.utils.console_service import get_console
 
 if TYPE_CHECKING:
+    from src.domain.course import Course
     from src.domain.types import SchedulingContext
 
 __all__ = ["InputValidator", "ValidationError", "validate_input"]
@@ -75,7 +75,7 @@ class InputValidator:
         self, course_identifier: str
     ) -> list[tuple[Any, Course]]:
         """Return all course entries matching provided identifier."""
-        courses = cast(dict[Any, Course], self.context.courses)
+        courses = cast("dict[Any, Course]", self.context.courses)
         matches: list[tuple[Any, Course]] = []
         for key, course in courses.items():
             if key == course_identifier:
@@ -368,11 +368,7 @@ class InputValidator:
                 qualified_instructors = getattr(course, "qualified_instructor_ids", [])
                 if not qualified_instructors or len(qualified_instructors) == 0:
                     # Convert course_id to string (it might be a tuple like ('CE707', 'practical'))
-                    course_id_str = (
-                        str(course_id)
-                        if isinstance(course_id, tuple)
-                        else str(course_id)
-                    )
+                    course_id_str = str(course_id)
                     courses_without_instructors.append(
                         (
                             course_id_str,

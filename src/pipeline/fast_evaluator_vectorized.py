@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .bitset_time import FULL_MASK, T, mask_from_quanta
+from .bitset_time import T
 
 # Constraint column order (same as everywhere else)
 HARD_CONSTRAINT_NAMES = [

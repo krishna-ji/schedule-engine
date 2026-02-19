@@ -45,9 +45,9 @@ class TestOOPRegistry:
 
         all_h = get_all_heuristic_objects()
         names = [h.name for h in all_h]
-        assert len(names) == len(
-            set(names)
-        ), f"Duplicate names: {[n for n in names if names.count(n) > 1]}"
+        assert len(names) == len(set(names)), (
+            f"Duplicate names: {[n for n in names if names.count(n) > 1]}"
+        )
 
     def test_categories_correct(self):
         from src.ga.heuristics.heuristics import get_all_heuristic_objects
@@ -99,9 +99,9 @@ class TestOOPRegistry:
         }
         all_h = get_all_heuristic_objects()
         disabled_actual = {h.name for h in all_h if not h.enabled}
-        assert (
-            disabled_actual == disabled_expected
-        ), f"Disabled mismatch: expected {disabled_expected}, got {disabled_actual}"
+        assert disabled_actual == disabled_expected, (
+            f"Disabled mismatch: expected {disabled_expected}, got {disabled_actual}"
+        )
 
     def test_lookup_by_name(self):
         from src.ga.heuristics.heuristics import get_heuristic_by_name_oop

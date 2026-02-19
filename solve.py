@@ -94,7 +94,7 @@ def solve_pymoo(args) -> dict:
     cv = G.sum(axis=1).clip(0)
     best_idx = np.argmin(cv)
 
-    print(f"\nDone in {elapsed:.1f}s ({elapsed/args.gens:.2f}s/gen)")
+    print(f"\nDone in {elapsed:.1f}s ({elapsed / args.gens:.2f}s/gen)")
     print(
         f"Best: hard={F[best_idx, 0]:.0f} soft={F[best_idx, 1]:.0f} cv={cv[best_idx]:.0f}"
     )

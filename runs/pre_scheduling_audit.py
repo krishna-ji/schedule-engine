@@ -80,7 +80,7 @@ def section(title: str) -> None:
     console.print()
     console.rule(f"[bold yellow]{title}[/bold yellow]")
     console.print()
-    report_lines.append(f"\n{'='*80}\n{title}\n{'='*80}\n")
+    report_lines.append(f"\n{'=' * 80}\n{title}\n{'=' * 80}\n")
 
 
 def ok(msg: str) -> None:

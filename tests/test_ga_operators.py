@@ -304,9 +304,9 @@ class TestMutation:
         qualified = {"I1", "I2"}
         for _ in range(20):
             mutated = mutate_gene(g, ctx)
-            assert (
-                mutated.instructor_id in qualified
-            ), f"Instructor {mutated.instructor_id} not qualified for CS101"
+            assert mutated.instructor_id in qualified, (
+                f"Instructor {mutated.instructor_id} not qualified for CS101"
+            )
 
     def test_mutate_time_quanta_preserves_count(self):
         """INVARIANT: number of quanta never changes during time mutation."""

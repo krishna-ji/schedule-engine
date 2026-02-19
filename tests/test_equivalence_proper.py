@@ -14,7 +14,6 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.pipeline.fast_evaluator import fast_conflict_evaluator
 from src.domain.gene import SessionGene
 from src.domain.timetable import Timetable
 from src.domain.types import SchedulingContext
@@ -27,6 +26,7 @@ from src.io.data_loader import (
     load_rooms,
 )
 from src.io.time_system import QuantumTimeSystem
+from src.pipeline.fast_evaluator import fast_conflict_evaluator
 
 
 def create_test_individual(events_data, seed=42):
@@ -157,12 +157,12 @@ def test_equivalence():
     data_path = PROJECT_ROOT / "data"
     qts = QuantumTimeSystem()
 
-    courses = load_courses(str(data_path / "Course.json"))
+    courses, skipped_courses = load_courses(str(data_path / "Course.json"))
     groups = load_groups(str(data_path / "Groups.json"), qts)
     instructors = load_instructors(str(data_path / "Instructors.json"), qts)
     rooms = load_rooms(str(data_path / "Rooms.json"), qts)
 
-    link_courses_and_groups(courses, groups)
+    link_courses_and_groups(courses, groups, skipped_courses=skipped_courses)
     link_courses_and_instructors(courses, instructors)
 
     context = SchedulingContext(
@@ -245,9 +245,9 @@ def test_equivalence():
     print("\\n=== RESULTS ===")
     print("Individuals tested: 20")
     print(f"Mismatches found: {len(mismatches)}")
-    print(f"Average original time: {np.mean(original_times)*1000:.2f}ms")
-    print(f"Average fast time: {np.mean(fast_times)*1000:.2f}ms")
-    print(f"Speedup: {np.mean(original_times)/np.mean(fast_times):.2f}x")
+    print(f"Average original time: {np.mean(original_times) * 1000:.2f}ms")
+    print(f"Average fast time: {np.mean(fast_times) * 1000:.2f}ms")
+    print(f"Speedup: {np.mean(original_times) / np.mean(fast_times):.2f}x")
 
     if len(mismatches) == 0:
         print("\\n EQUIVALENCE TEST PASSED")
@@ -256,7 +256,7 @@ def test_equivalence():
     print("\\n EQUIVALENCE TEST FAILED")
     print("\\nShowing first 3 mismatches:")
     for i, mismatch in enumerate(mismatches[:3]):
-        print(f"\\nMismatch {i+1} (Individual {mismatch['individual_id']}):")
+        print(f"\\nMismatch {i + 1} (Individual {mismatch['individual_id']}):")
         print(f"  Original: {mismatch['original']}")
         print(f"  Fast:     {mismatch['fast']}")
         print("  Per-constraint breakdown:")

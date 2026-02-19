@@ -79,7 +79,7 @@ for e_idx in empties:
                     )
 
     print(
-        f"  Failures: type_fail={type_fail} spec_feature_fail={spec_fail} total={type_fail+spec_fail}/75"
+        f"  Failures: type_fail={type_fail} spec_feature_fail={spec_fail} total={type_fail + spec_fail}/75"
     )
     for sf in sample_fails:
         print(sf)

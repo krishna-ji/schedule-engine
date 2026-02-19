@@ -232,6 +232,6 @@ class TestDetectStrategies:
         # Hybrid includes everything from full
         for idx, vtypes in full_result.items():
             for vtype in vtypes:
-                assert vtype in hybrid_result.get(
-                    idx, []
-                ), f"Hybrid missing {vtype} for gene {idx}"
+                assert vtype in hybrid_result.get(idx, []), (
+                    f"Hybrid missing {vtype} for gene {idx}"
+                )

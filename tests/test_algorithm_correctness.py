@@ -182,9 +182,9 @@ class TestAdaptiveSelector:
             stats = selector.get_stats()
             for name, prob in stats["probs"].items():
                 # Allow 10% relative tolerance since enforcement is approximate
-                assert (
-                    prob >= min_prob * 0.8
-                ), f"{name} probability {prob} dropped far below min_prob {min_prob}"
+                assert prob >= min_prob * 0.8, (
+                    f"{name} probability {prob} dropped far below min_prob {min_prob}"
+                )
 
 
 # Constraint Weight Algebra
@@ -209,9 +209,9 @@ class TestConstraintAlgebra:
 
         min_hard = min(c.weight for c in HARD_CONSTRAINT_CLASSES)
         max_soft = max(c.weight for c in SOFT_CONSTRAINT_CLASSES)
-        assert (
-            min_hard >= max_soft
-        ), f"Min hard weight {min_hard} < max soft weight {max_soft}"
+        assert min_hard >= max_soft, (
+            f"Min hard weight {min_hard} < max soft weight {max_soft}"
+        )
 
     def test_evaluate_returns_non_negative(self):
         """Every constraint.evaluate() should return >= 0."""
@@ -307,9 +307,9 @@ class TestQuantumTimeSystem:
         for q in range(qts.total_quanta):
             day, time_str = qts.quanta_to_time(q)
             reconstructed = qts.time_to_quanta(day, time_str)
-            assert (
-                reconstructed == q
-            ), f"Roundtrip failed for q={q}: got {reconstructed}"
+            assert reconstructed == q, (
+                f"Roundtrip failed for q={q}: got {reconstructed}"
+            )
 
     def test_all_quanta_valid(self):
         """Every quantum 0..total-1 should decode to a valid day."""
@@ -337,6 +337,6 @@ class TestQuantumTimeSystem:
         for i, d1 in enumerate(days):
             for j, d2 in enumerate(days):
                 if i != j:
-                    assert day_ranges[d1].isdisjoint(
-                        day_ranges[d2]
-                    ), f"{d1} and {d2} quanta overlap"
+                    assert day_ranges[d1].isdisjoint(day_ranges[d2]), (
+                        f"{d1} and {d2} quanta overlap"
+                    )

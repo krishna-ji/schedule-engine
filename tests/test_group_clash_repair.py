@@ -11,8 +11,6 @@ Verifies that repair_group_clashes():
 
 from __future__ import annotations
 
-import pytest
-
 from src.ga.repair.group_clash_repair import repair_group_clashes
 from tests.conftest import (
     make_context,

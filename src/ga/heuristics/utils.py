@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from src.domain.course import Course
-
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from src.domain.course import Course
     from src.domain.gene import SessionGene
     from src.domain.types import SchedulingContext
 
@@ -18,7 +17,7 @@ def get_course_for_gene(context: SchedulingContext, gene: SessionGene) -> Course
 
     course_id = gene.course_id
     course_type = getattr(gene, "course_type", None)
-    courses = cast(dict[Any, Course], context.courses)
+    courses = cast("dict[Any, Course]", context.courses)
 
     # Try tuple key first (course_id, course_type)
     if course_type is not None:

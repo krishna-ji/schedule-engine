@@ -8,7 +8,6 @@ Guarantees:
 """
 
 import hashlib
-import json
 import pickle
 import sys
 import time
@@ -80,7 +79,7 @@ def build_events_with_domains(
     # --- 0. Fix tutorial-style practicals (structural infeasibility) ---
     if fix_tutorial_practicals:
         n_fixed = 0
-        for key, course in ctx.courses.items():
+        for course in ctx.courses.values():
             lab_feats = getattr(course, "specific_lab_features", None)
             if lab_feats:
                 # Normalize to list of lowercase strings
@@ -155,7 +154,7 @@ def build_events_with_domains(
         ), f"Event {e}: start_quanta={gene.start_quanta!r} is not int"
 
         course_key = (gene.course_id, gene.course_type)
-        course = ctx.courses.get(course_key)
+        ev_course = ctx.courses.get(course_key)  # may be None
 
         ekey = _make_event_key(gene)
         event_keys.append(ekey)
@@ -172,15 +171,15 @@ def build_events_with_domains(
         # Allowed rooms – EXACTLY the same logic as RoomSuitability constraint
         # (type compatibility only, NO capacity check, NO fallback to all rooms)
         required = (
-            getattr(course, "required_room_features", "lecture")
-            if course
+            getattr(ev_course, "required_room_features", "lecture")
+            if ev_course
             else "lecture"
         )
         required_str = (
             (required if isinstance(required, str) else str(required)).lower().strip()
         )
         course_lab_feats = (
-            getattr(course, "specific_lab_features", None) if course else None
+            getattr(ev_course, "specific_lab_features", None) if ev_course else None
         )
 
         room_indices = []
@@ -201,8 +200,8 @@ def build_events_with_domains(
 
         # Allowed instructors (qualification)
         qualified: list[str] = []
-        if course:
-            qualified = getattr(course, "qualified_instructor_ids", [])
+        if ev_course:
+            qualified = getattr(ev_course, "qualified_instructor_ids", [])
         inst_indices = sorted(
             instructor_to_idx[iid] for iid in qualified if iid in instructor_to_idx
         )
@@ -223,9 +222,15 @@ def build_events_with_domains(
     rlens = [len(r) for r in allowed_rooms]
     ilens = [len(i) for i in allowed_instructors]
     slens = [len(s) for s in allowed_starts]
-    print(f"Rooms   min={min(rlens)} max={max(rlens)} avg={sum(rlens)/len(rlens):.1f}")
-    print(f"Instr   min={min(ilens)} max={max(ilens)} avg={sum(ilens)/len(ilens):.1f}")
-    print(f"Starts  min={min(slens)} max={max(slens)} avg={sum(slens)/len(slens):.1f}")
+    print(
+        f"Rooms   min={min(rlens)} max={max(rlens)} avg={sum(rlens) / len(rlens):.1f}"
+    )
+    print(
+        f"Instr   min={min(ilens)} max={max(ilens)} avg={sum(ilens) / len(ilens):.1f}"
+    )
+    print(
+        f"Starts  min={min(slens)} max={max(slens)} avg={sum(slens) / len(slens):.1f}"
+    )
 
     # --- 6. Export ---
     export_data = {
@@ -338,8 +343,8 @@ def load_events(
     for i in range(len(stored_keys) - 1):
         if stored_keys[i] > stored_keys[i + 1]:
             raise RuntimeError(
-                f"Event keys not sorted at index {i}→{i+1}:\n"
-                f"  {stored_keys[i]} > {stored_keys[i+1]}\n"
+                f"Event keys not sorted at index {i}→{i + 1}:\n"
+                f"  {stored_keys[i]} > {stored_keys[i + 1]}\n"
                 "Re-run: python build_events.py"
             )
 

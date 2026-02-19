@@ -447,9 +447,9 @@ class TestVNDBehavior:
         variable_neighborhood_descent(individual, ctx, max_iterations=3)
 
         for b, a in zip(before, individual, strict=False):
-            assert structural_fields_preserved(
-                b, a
-            ), f"Structural field changed: {b} -> {a}"
+            assert structural_fields_preserved(b, a), (
+                f"Structural field changed: {b} -> {a}"
+            )
 
     def test_vnd_never_worsens_hard_constraints(self):
         """VND should not increase hard constraint violations."""
@@ -1416,9 +1416,9 @@ class TestScheduleIndexDetectorCrossValidation:
             if "group_overlap" in vtypes
         }
 
-        assert (
-            index_violated == detector_group_violated
-        ), f"Mismatch: index={index_violated}, detector={detector_group_violated}"
+        assert index_violated == detector_group_violated, (
+            f"Mismatch: index={index_violated}, detector={detector_group_violated}"
+        )
 
     def test_index_and_detector_agree_on_room_conflicts(self):
         individual, ctx = _make_multi_conflict_individual()
@@ -1566,9 +1566,9 @@ class TestEndToEndIntegration:
         post_violations = detect_violated_genes(individual, ctx, strategy="full")
         post_count = sum(len(v) for v in post_violations.values())
 
-        assert (
-            post_count <= pre_count
-        ), f"Repair should not increase violations: {pre_count} → {post_count}"
+        assert post_count <= pre_count, (
+            f"Repair should not increase violations: {pre_count} → {post_count}"
+        )
 
     def test_vnd_then_detect_consistency(self):
         """VND improvement → ScheduleIndex verification."""

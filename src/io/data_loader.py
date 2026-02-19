@@ -187,7 +187,9 @@ def load_instructors(path: str, qts: QuantumTimeSystem) -> dict[str, Instructor]
     return instructors
 
 
-def load_courses(path: str) -> dict[tuple[str, str], Course]:
+def load_courses(
+    path: str,
+) -> tuple[dict[tuple[str, str], Course], dict[str, dict[str, int]]]:
     """
     Loads courses from FullSyllabusAll format and creates separate theory/practical course objects.
 
@@ -196,15 +198,22 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
     - course_type attribute = "theory" or "practical"
     - Dict keyed by (course_code, course_type) tuple for uniqueness
 
+    Also returns a dict of courses that were skipped because they are
+    non-schedulable (zero credits or zero L/T/P hours).
+
     Args:
         path (str): Path to the course JSON file.
 
     Returns:
-        Dict[tuple, Course]: Dictionary keyed by (course_code, course_type) tuples.
+        Tuple of:
+          - Dict[tuple, Course]: Courses keyed by (course_code, course_type).
+          - Dict[str, dict]: Skipped non-schedulable courses keyed by course_code,
+            values are {"L": int, "T": int, "P": int, "credits": int}.
     """
     with Path(path).open() as f:
         data = json.load(f)
     courses = {}
+    skipped_courses: dict[str, dict[str, int]] = {}
 
     for item in data:
         course_code = item["CourseCode"].strip()
@@ -218,13 +227,17 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
         tut = item.get("T", 0)
         prac = item.get("P", 0)
 
-        # Skip non-schedulable courses (zero credits OR zero L/T/P hours)
-        # Rationale: These are typically non-classroom activities:
-        # - Survey Camp, Industrial Attachment, Group Work (0 credits)
-        # - Self-study, project work (0 L/T/P hours)
-        # This filtering is intentional to focus on schedulable classroom sessions.
-        # Skipped courses are logged below for transparency.
-        if credit_hours == 0 or (lec == 0 and tut == 0 and prac == 0):
+        # Skip non-schedulable courses (zero L/T/P hours → no classroom sessions)
+        # Rationale: If a course has no lecture, tutorial, or practical hours,
+        # there is nothing to schedule (e.g. Survey Camp, Industrial Attachment).
+        # Courses with Credits=0 but valid L/T/P hours ARE still scheduled.
+        if lec == 0 and tut == 0 and prac == 0:
+            skipped_courses[course_code] = {
+                "L": int(lec),
+                "T": int(tut),
+                "P": int(prac),
+                "credits": int(credit_hours),
+            }
             continue
 
         practical_features = item.get("PracticalRoomFeatures", "").strip()
@@ -280,7 +293,7 @@ def load_courses(path: str) -> dict[tuple[str, str], Course]:
             # Key by (course_code, course_type) for uniqueness
             courses[(course_code, "practical")] = course
 
-    return courses
+    return courses, skipped_courses
 
 
 def load_groups(path: str, qts: QuantumTimeSystem) -> dict[str, Group]:
@@ -475,20 +488,26 @@ def load_rooms(path: str, qts: QuantumTimeSystem) -> dict[str, Room]:
 
 
 def link_courses_and_groups(
-    courses: dict[tuple[str, str], Course], groups: dict[str, Group]
+    courses: dict[tuple[str, str], Course],
+    groups: dict[str, Group],
+    skipped_courses: dict[str, dict[str, int]] | None = None,
 ) -> None:
     """
     Links courses and groups based on group enrollment.
 
     Args:
-        courses (Dict[tuple, Course]): Courses dict keyed by (course_code, course_type).
-        groups (Dict[str, Group]): Groups with enrolled course codes.
+        courses: Courses dict keyed by (course_code, course_type).
+        groups: Groups with enrolled course codes.
+        skipped_courses: Optional dict of non-schedulable courses from load_courses().
+            When provided, only non-schedulable courses are displayed (with L+T / P reason).
+            Courses not found in Course.json at all are silently ignored.
     """
     for course in courses.values():
         course.enrolled_group_ids = []
 
-    # Collect missing courses for batch display
-    missing_courses = []
+    # Collect non-schedulable courses for batch display
+    # (silently ignore courses that are completely missing from Course.json)
+    non_schedulable_entries: list[tuple[str, str]] = []  # (course_code, group_id)
 
     # Link groups to ALL courses with matching course_code (theory AND practical)
     for group_id, group in groups.items():
@@ -510,37 +529,43 @@ def link_courses_and_groups(
                 found_any = True
 
             if not found_any:
-                missing_courses.append((course_code, group_id))
+                # Only track if it was explicitly skipped as non-schedulable
+                if skipped_courses and course_code in skipped_courses:
+                    non_schedulable_entries.append((course_code, group_id))
+                # else: truly missing from Course.json — silently ignore
             else:
                 valid_courses.append(course_code)
 
         # Remove non-schedulable/missing courses from group enrollments
         group.enrolled_courses = valid_courses
 
-    # Display missing courses in a table if any found
-    if missing_courses:
+    # Display non-schedulable courses if any found
+    if non_schedulable_entries and skipped_courses:
+        from collections import defaultdict
+
         from rich.console import Console
 
         console = Console()
 
         console.print()
-        console.print("[yellow]Non-schedulable or missing courses skipped[/yellow]")
+        console.print("[yellow]Non-schedulable courses skipped[/yellow]")
 
         # Group by course code for compact display
-        from collections import defaultdict
-
-        courses_by_code = defaultdict(list)
-        for course_code, group_id in missing_courses:
+        courses_by_code: dict[str, list[str]] = defaultdict(list)
+        for course_code, group_id in non_schedulable_entries:
             courses_by_code[course_code].append(group_id)
 
         for course_code, group_ids in sorted(courses_by_code.items()):
             groups_str = ", ".join(sorted(group_ids))
+            info = skipped_courses.get(course_code, {})
+            lt = info.get("L", 0) + info.get("T", 0)
+            p = info.get("P", 0)
             console.print(
-                f"  [dim]{course_code}:[/dim] {groups_str} [dim](non-schedulable)[/dim]"
+                f"  [dim]{course_code}:[/dim] {groups_str} [dim](L+T={lt} P={p})[/dim]"
             )
 
         console.print(
-            f"  [dim]{len(missing_courses)} enrollments skipped (Survey Camp, Industrial Attachment, etc.)[/dim]"
+            f"  [dim]{len(non_schedulable_entries)} enrollments skipped[/dim]"
         )
         console.print()
 

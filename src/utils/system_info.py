@@ -83,7 +83,7 @@ def diagnose_system() -> SystemDiagnostics:
     try:
         import torch
 
-        pytorch_version = torch.__version__
+        pytorch_version: str = torch.__version__
         cuda_attr = torch.version.cuda if torch.cuda.is_available() else "N/A"
         cuda_version = cuda_attr or "N/A"
     except ImportError:

@@ -580,7 +580,7 @@ class CPSATSolver:
             instr_frozen_bounds: dict[str, tuple[int, int]] = {}
 
             for gi in effective_indices:
-                for li, iid in enumerate(instrs_for[gi]):
+                for _li, iid in enumerate(instrs_for[gi]):
                     instr_gene_map.setdefault(iid, []).append(gi)
 
             for fa in frozen:

@@ -9,12 +9,11 @@ Verifies:
 from __future__ import annotations
 
 import random
-from collections import Counter
 
 import pytest
 
-from src.domain.gene import SessionGene, set_time_system
-from src.ga.core.domain_store import GeneDomain, GeneDomainStore
+from src.domain.gene import set_time_system
+from src.ga.core.domain_store import GeneDomainStore
 from src.ga.core.usage_tracker import UsageTracker
 from src.io.time_system import QuantumTimeSystem
 from tests.conftest import (

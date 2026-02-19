@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import random
 from collections import Counter
@@ -8,8 +9,10 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+logger = logging.getLogger(__name__)
+
 from src.domain.gene import SessionGene
-from src.ga.core.domain_store import GeneDomainStore, build_domain_store_for_context
+from src.ga.core.domain_store import GeneDomainStore
 from src.ga.core.usage_tracker import UsageTracker
 from src.utils.console_service import get_console
 from src.utils.parallel_worker import get_worker_context, init_worker
@@ -740,7 +743,6 @@ def _create_individual_with_spreading(
     This replaces the old ``random.choice()`` pattern that caused clustering.
     """
     from src.domain.gene import SessionGene, get_time_system
-    from src.ga.core.quanta_converter import quanta_list_to_contiguous
 
     qts = get_time_system()
     domain_store = GeneDomainStore(context, qts)
@@ -1057,7 +1059,6 @@ def create_session_gene_with_conflict_avoidance(
     Returns:
         SessionGene or None if creation failed
     """
-    import logging
 
     # ENHANCED: Try to find instructor-time pairs that respect availability
     # Build set of quanta already used by THIS individual's instructors
@@ -1102,8 +1103,8 @@ def create_session_gene_with_conflict_avoidance(
 
         # CRITICAL: Never return None - always create gene with fallback
         if not qualified_instructors:
-            logging.warning(
-                f"No instructors available for {course_id}, using placeholder"
+            logger.warning(
+                "No instructors available for %s, using placeholder", course_id
             )
             from src.domain.instructor import Instructor
 
@@ -1132,7 +1133,7 @@ def create_session_gene_with_conflict_avoidance(
         suitable_rooms = [next(iter(context.rooms.values()))]
 
     if not suitable_rooms:
-        logging.warning(f"No rooms available for {course_id}, creating gene anyway")
+        logger.warning("No rooms available for %s, creating gene anyway", course_id)
 
     room = random.choice(suitable_rooms) if suitable_rooms else None
     # If we didn't get assigned_quanta from availability check, use fallback
@@ -1165,8 +1166,11 @@ def create_session_gene_with_conflict_avoidance(
         )
 
         if assigned_quanta and len(assigned_quanta) != quanta_needed:
-            logging.warning(
-                f"{course_id}: assign_conflict_free_quanta returned {len(assigned_quanta)} but needed {quanta_needed}"
+            logger.warning(
+                "%s: assign_conflict_free_quanta returned %d but needed %d",
+                course_id,
+                len(assigned_quanta),
+                quanta_needed,
             )
 
         # CRITICAL: If assignment fails, pick a random start (not always 0)
@@ -1186,8 +1190,11 @@ def create_session_gene_with_conflict_avoidance(
 
     # VERIFICATION: Ensure we got exactly quanta_needed
     if len(assigned_quanta) != quanta_needed:
-        logging.error(
-            f"BUG: Got {len(assigned_quanta)} quanta but needed {quanta_needed} for {course_id}"
+        logger.error(
+            "BUG: Got %d quanta but needed %d for %s",
+            len(assigned_quanta),
+            quanta_needed,
+            course_id,
         )
 
     # Create session gene with multi-group support

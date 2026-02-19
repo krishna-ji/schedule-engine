@@ -218,7 +218,7 @@ def print_summary(
 
     lines.append(f"\n Final Population (n={len(population)}):")
     lines.append(
-        f"   Feasible:     {feasible_count}/{len(population)} ({100*feasible_count/len(population):.1f}%)"
+        f"   Feasible:     {feasible_count}/{len(population)} ({100 * feasible_count / len(population):.1f}%)"
     )
     lines.append(f"   Min Hard:     {min(hard_vals):.0f}")
     lines.append(f"   Avg Hard:     {np.mean(hard_vals):.1f}")
@@ -249,7 +249,7 @@ def print_summary(
 
         for name, value in sorted(breakdown.items()):
             is_hard = name in HARD_CONSTRAINT_NAMES
-            marker = "" if is_hard else ""
+            marker = ""
             lines.append(
                 f"   {marker} {name}: {value:.0f}"
                 if value == int(value)

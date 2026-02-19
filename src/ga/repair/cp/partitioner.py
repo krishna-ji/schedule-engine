@@ -15,7 +15,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from src.domain.supergroup import Cluster, build_clusters, extract_programme_prefix
+from src.domain.supergroup import Cluster, build_clusters
 
 if TYPE_CHECKING:
     from src.domain.gene import SessionGene

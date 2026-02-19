@@ -13,8 +13,6 @@ external dependencies.
 
 from __future__ import annotations
 
-import copy
-
 import pytest
 
 from tests.conftest import (
@@ -492,9 +490,9 @@ class TestCPSATSolver:
         assert result.success is True
         _, _, sq1 = result.assignments[1]
         # Gene 1 must not overlap with frozen gene 0 (start=0, dur=2)
-        assert not (
-            sq1 < 2 and sq1 + 2 > 0
-        ), f"Gene 1 at {sq1} overlaps frozen gene at 0"
+        assert not (sq1 < 2 and sq1 + 2 > 0), (
+            f"Gene 1 at {sq1} overlaps frozen gene at 0"
+        )
 
     def test_empty_gene_indices(self):
         """Solving with zero genes returns trivial success."""
@@ -654,9 +652,9 @@ class TestPipeline:
         sq1 = repaired[1].start_quanta
         g0_end = sq0 + 2
         g1_end = sq1 + 2
-        assert not (
-            sq0 < g1_end and sq1 < g0_end
-        ), f"Group conflict NOT resolved: [{sq0},{g0_end}) vs [{sq1},{g1_end})"
+        assert not (sq0 < g1_end and sq1 < g0_end), (
+            f"Group conflict NOT resolved: [{sq0},{g0_end}) vs [{sq1},{g1_end})"
+        )
 
     def test_pipeline_preserves_structural_fields(self):
         """Course_id, course_type, group_ids, num_quanta must never change."""

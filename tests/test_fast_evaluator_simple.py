@@ -94,7 +94,7 @@ def test_fast_evaluator():
     results = []
     times = []
 
-    for i in range(10):
+    for _i in range(10):
         start_time = time.time()
         result = fast_conflict_evaluator(
             start_assign,
@@ -118,7 +118,7 @@ def test_fast_evaluator():
     )
 
     print(f"Consistency test: {'PASS' if consistent else 'FAIL'}")
-    print(f"Average time: {sum(times)/len(times)*1000:.2f}ms")
+    print(f"Average time: {sum(times) / len(times) * 1000:.2f}ms")
     print(
         f"Result: room_conflicts={first_result[0]}, instructor_conflicts={first_result[1]}, group_conflicts={first_result[2]}, soft_penalty={first_result[3]:.2f}"
     )
@@ -139,7 +139,7 @@ def test_fast_evaluator():
         )
         different_results.append((seed, result))
         print(
-            f"Seed {seed}: hard={result[0]+result[1]+result[2]}, soft={result[3]:.2f}"
+            f"Seed {seed}: hard={result[0] + result[1] + result[2]}, soft={result[3]:.2f}"
         )
 
     # Verify we get different results for different assignments (sanity check)

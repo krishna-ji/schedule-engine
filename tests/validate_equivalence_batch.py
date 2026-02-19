@@ -20,7 +20,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.pipeline.fast_evaluator import fast_evaluate_hard
 from src.pipeline.fast_evaluator_batch import (
     HARD_CONSTRAINT_NAMES,
-    BatchEvalData,
     fast_evaluate_hard_batch,
     fast_evaluate_hard_single,
     prepare_batch_data,
@@ -87,14 +86,14 @@ def main():
         result = evaluate_original(X[i], pkl_data)
         original_results.append(result)
     t_orig = time.time() - t0
-    print(f"  Original: {t_orig:.3f}s ({t_orig/N*1000:.2f} ms/ind)")
+    print(f"  Original: {t_orig:.3f}s ({t_orig / N * 1000:.2f} ms/ind)")
 
     # Evaluate with batch evaluator
     print("Evaluating with batch evaluator...")
     t0 = time.time()
     G = fast_evaluate_hard_batch(X, batch_data)
     t_batch = time.time() - t0
-    print(f"  Batch: {t_batch:.3f}s ({t_batch/N*1000:.2f} ms/ind)")
+    print(f"  Batch: {t_batch:.3f}s ({t_batch / N * 1000:.2f} ms/ind)")
 
     # Compare
     mismatches = 0
@@ -146,7 +145,7 @@ def main():
     # Timing comparison
     speedup = t_orig / t_batch if t_batch > 0 else float("inf")
     print(
-        f"\nTiming: original={t_orig*1000:.1f}ms batch={t_batch*1000:.1f}ms "
+        f"\nTiming: original={t_orig * 1000:.1f}ms batch={t_batch * 1000:.1f}ms "
         f"speedup={speedup:.1f}x"
     )
 
