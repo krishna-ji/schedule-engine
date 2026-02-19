@@ -1,8 +1,6 @@
 """GA Core: Fundamental data types and evaluation for the genetic algorithm.
 
 Provides:
-    - get_creator: Centralized DEAP creator registry
-    - create_individual: Factory for DEAP Individual wrapping SessionGenes
     - PopulationFactory: Unified population creation API
     - evaluate / evaluate_detailed: Fitness evaluation functions
     - quanta_list_to_contiguous: Legacy gene format converter
@@ -10,17 +8,13 @@ Provides:
 
 from __future__ import annotations
 
-from src.ga.core.creator_registry import get_creator
 from src.ga.core.evaluator import evaluate, evaluate_detailed
-from src.ga.core.individual import create_individual
 from src.ga.core.population_factory import PopulationFactory
 from src.ga.core.quanta_converter import quanta_list_to_contiguous
 
 __all__ = [
     "PopulationFactory",
-    "create_individual",
     "evaluate",
     "evaluate_detailed",
-    "get_creator",
     "quanta_list_to_contiguous",
 ]

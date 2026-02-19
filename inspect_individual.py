@@ -13,9 +13,6 @@ def inspect_individual():
     """Create and inspect a single individual."""
     try:
         # Import required modules
-        from src.domain.timetable import Timetable
-        from src.domain.types import SchedulingContext
-        from src.ga.core.creator_registry import get_creator
         from src.ga.core.evaluator import evaluate
         from src.ga.core.population import generate_pure_random_population
         from src.io.data_store import DataStore
@@ -37,9 +34,6 @@ def inspect_individual():
         print(f"  Instructors: {len(instructors)}")
         print(f"  Groups: {len(groups)}")
         print(f"  Rooms: {len(rooms)}")
-
-        # Setup DEAP
-        _ = get_creator()
 
         print("\nGenerating individual...")
         population = generate_pure_random_population(1, context, parallel=False)

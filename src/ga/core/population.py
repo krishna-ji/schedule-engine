@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any
 
 from src.domain.gene import SessionGene
 from src.ga.core.domain_store import GeneDomainStore, build_domain_store_for_context
-from src.ga.core.individual import create_individual
 from src.ga.core.usage_tracker import UsageTracker
 from src.utils.console_service import get_console
 from src.utils.parallel_worker import get_worker_context, init_worker
@@ -443,7 +442,7 @@ def generate_pure_random_population(
                     genes.append(gene)
 
         if genes:
-            population.append(create_individual(genes))
+            population.append(genes)
 
     return population
 
@@ -478,7 +477,7 @@ def _create_pure_random_individual_wrapper(
                 genes.append(gene)
 
     if genes:
-        return create_individual(genes)
+        return genes
     return None
 
 
@@ -587,7 +586,7 @@ def _create_single_individual_wrapper(
             genes.append(session_gene)
 
     if genes:
-        return create_individual(genes)
+        return genes
     if not silent:
         print(f"Warning: Individual {individual_idx + 1} has no genes!")
     return None
@@ -886,7 +885,7 @@ def _create_individual_with_spreading(
             gene_idx += 1
 
     if genes:
-        return create_individual(genes)
+        return genes
     return None
 
 
@@ -1914,7 +1913,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> list[Indiv
         try:
             genes = heuristic(context)
             if genes:
-                population.append(create_individual(genes))
+                population.append(genes)
         except Exception:
             fallback = generate_course_group_aware_population(1, context)
             if fallback:
@@ -1932,7 +1931,7 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> list[Indiv
         for _i in range(random_count):
             individual = _random_construction(context, pair_tuples)
             if individual:
-                population.append(create_individual(individual))
+                population.append(individual)
 
     while len(population) < n:
         extra = generate_course_group_aware_population(1, context)
@@ -1947,7 +1946,7 @@ def _random_construction_wrapper(
     context, pair_tuples = args
     individual = _random_construction(context, pair_tuples)
     if individual:
-        return create_individual(individual)
+        return individual
     return None
 
 

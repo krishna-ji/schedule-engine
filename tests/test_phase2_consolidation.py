@@ -458,31 +458,6 @@ class TestGAPackageTopLevel:
 
         assert PopulationFactory is not None
 
-    def test_ga_scheduler_export(self):
-        from src.ga import GAScheduler
-
-        assert GAScheduler is not None
-
-    def test_ga_config_export(self):
-        from src.ga import GAConfig
-
-        assert GAConfig is not None
-
-    def test_ga_metrics_export(self):
-        from src.ga import GAMetrics
-
-        assert GAMetrics is not None
-
-    def test_get_creator_export(self):
-        from src.ga import get_creator
-
-        assert callable(get_creator)
-
-    def test_create_individual_export(self):
-        from src.ga import create_individual
-
-        assert callable(create_individual)
-
     def test_session_gene_export(self):
         from src.ga import SessionGene
 

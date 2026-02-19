@@ -409,40 +409,6 @@ class TestPopulationFactory:
         assert factory.context is ctx
 
 
-# Phase 6: BaseExperiment + PopulationFactory Integration
-
-
-class TestBaseExperimentIntegration:
-    """Tests for BaseExperiment using PopulationFactory."""
-
-    def test_base_experiment_imports(self):
-        from src.experiments.base import BaseExperiment
-        from src.ga import PopulationFactory
-
-        assert BaseExperiment is not None
-        assert PopulationFactory is not None
-
-    def test_base_experiment_has_population_factory_property(self):
-        from src.experiments.base import BaseExperiment
-
-        assert hasattr(BaseExperiment, "population_factory")
-
-    def test_population_factory_has_required_methods(self):
-        from src.ga import PopulationFactory
-
-        assert callable(getattr(PopulationFactory, "create_population", None))
-        assert callable(getattr(PopulationFactory, "random_individual", None))
-        assert callable(getattr(PopulationFactory, "greedy_individual", None))
-
-    def test_population_factory_strategies(self):
-        from src.ga import PopulationFactory
-
-        # Test that _smart_population, _hybrid_population, _pure_random_population exist
-        assert callable(getattr(PopulationFactory, "_smart_population", None))
-        assert callable(getattr(PopulationFactory, "_hybrid_population", None))
-        assert callable(getattr(PopulationFactory, "_pure_random_population", None))
-
-
 # Phase 7: family_map in SchedulingContext
 
 

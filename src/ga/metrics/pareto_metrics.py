@@ -19,9 +19,10 @@ Performance: Uses pymoo's optimized implementations where available (10-100x fas
 """
 
 import numpy as np
-from deap import tools
 from pymoo.indicators.gd import GD
 from pymoo.indicators.igd import IGD
+
+from src.ga.metrics._nds import get_pareto_front
 from scipy.spatial.distance import pdist, squareform
 
 
@@ -51,9 +52,7 @@ def calculate_spacing(population: list, pareto_front: list | None = None) -> flo
     """
     # Extract Pareto front (non-dominated solutions only)
     if pareto_front is None:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
+        pareto_front = get_pareto_front(population)
 
     if len(pareto_front) < 2:
         return 0.0
@@ -114,9 +113,7 @@ def calculate_generational_distance(
 
     # Extract Pareto front (reuse pre-computed front if available)
     if pareto_front is None:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
+        pareto_front = get_pareto_front(population)
 
     if not pareto_front:
         return float("inf")
@@ -174,9 +171,7 @@ def calculate_inverted_generational_distance(
 
     # Extract Pareto front (reuse pre-computed front if available)
     if pareto_front is None:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
+        pareto_front = get_pareto_front(population)
 
     if not pareto_front:
         return float("inf")
@@ -221,9 +216,7 @@ def calculate_spread(population: list, pareto_front: list | None = None) -> floa
     """
     # Extract Pareto front (reuse pre-computed front if available)
     if pareto_front is None:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
+        pareto_front = get_pareto_front(population)
 
     if len(pareto_front) < 2:
         return 1.0
@@ -313,9 +306,7 @@ def calculate_epsilon_indicator(
 
     # Extract Pareto front (reuse pre-computed front if available)
     if pareto_front is None:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
+        pareto_front = get_pareto_front(population)
 
     if not pareto_front:
         return float("inf")
@@ -361,9 +352,7 @@ def calculate_ideal_point_distance(population: list) -> float:
         return float("inf")
 
     # Extract Pareto front
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    pareto_front = get_pareto_front(population)
 
     if not pareto_front:
         return float("inf")
@@ -395,8 +384,6 @@ def get_pareto_front_size(population: list, pareto_front: list | None = None) ->
         return 0
 
     if pareto_front is None:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
+        pareto_front = get_pareto_front(population)
 
     return len(pareto_front)

@@ -4,7 +4,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from deap import tools
+
+from src.ga.metrics._nds import get_pareto_front
 
 from src.utils.output_paths import get_csv_dir, get_nsga_plot_dir
 
@@ -47,9 +48,7 @@ def plot_pareto_front(population: list, output_dir: str) -> None:
             writer.writerow([idx, h, s])
 
     # Save Pareto front data to CSV
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    pareto_front = get_pareto_front(population)
     pareto_hard = [ind.fitness.values[0] for ind in pareto_front]
     pareto_soft = [ind.fitness.values[1] for ind in pareto_front]
 

@@ -103,7 +103,7 @@ schedule-engine/
 ## Tech Stack
 
 - **Python 3.12**
-- **GA Core**: DEAP 1.4.1, NumPy 1.26.4, pymoo 0.6.1.3
+- **GA Core**: pymoo 0.6.1.3, NumPy 1.26.4
 - **RL Stack**: PyTorch 2.4.1+CUDA12.1, Stable-Baselines3 2.3.2, Gymnasium 0.29.1
 - **Config**: Pydantic 2.10.3
 - **UI**: Rich 13.9.4, matplotlib, seaborn
