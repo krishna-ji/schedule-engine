@@ -10,7 +10,8 @@ plain (hard, soft) tuples, and returns the first Pareto front as a list.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting

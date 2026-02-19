@@ -19,7 +19,6 @@ import numpy as np
 
 if TYPE_CHECKING:
     import logging
-
     from typing import Any
 
 __all__ = [

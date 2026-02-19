@@ -13,7 +13,7 @@ import pickle
 
 import numpy as np
 
-from encoding import chromosome_views
+from .encoding import chromosome_views
 
 try:
     from pymoo.core.crossover import Crossover
@@ -22,7 +22,7 @@ try:
 except ImportError:
     raise ImportError("pymoo is required: pip install pymoo>=0.6")
 
-from repair_operator import SchedulingRepair
+from .repair_operator import SchedulingRepair
 
 # =====================================================================
 # Sampling: Constructive Initialization
@@ -190,7 +190,7 @@ def create_algorithm(
     from pymoo.algorithms.moo.nsga2 import NSGA2
     from pymoo.algorithms.soo.nonconvex.ga import GA
 
-    from repair_operator import PymooSchedulingRepair
+    from .repair_operator import PymooSchedulingRepair
 
     sampling = ConstructiveSampling(pkl_path)
     crossover = EventBlockCrossover(prob=crossover_prob)

@@ -28,7 +28,6 @@ from src.ga.operators.mutation import (
     mutate_time_quanta,
 )
 
-
 # Crossover Tests
 
 

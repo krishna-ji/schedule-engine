@@ -15,9 +15,9 @@ import pytest
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from fast_evaluator import fast_evaluate_hard
-from repair_operator import SchedulingRepair
-from repair_operator_bitset import BitsetSchedulingRepair, repair_batch
+from src.pipeline.fast_evaluator import fast_evaluate_hard
+from src.pipeline.repair_operator import SchedulingRepair
+from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair, repair_batch
 
 PKL_PATH = "events_with_domains.pkl"
 

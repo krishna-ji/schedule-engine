@@ -24,7 +24,7 @@ SKIP_REASON = "events_with_domains.pkl not found — run `python build_events.py
 def pkl_data():
     if not PKL_PATH.exists():
         pytest.skip(SKIP_REASON)
-    from build_events import load_events
+    from src.pipeline.build_events import load_events
 
     return load_events(str(PKL_PATH), verify=True)
 
@@ -62,7 +62,7 @@ def ctx_qts(pkl_data):
 
 class TestEncodingRoundtrip:
     def test_roundtrip(self):
-        from encoding import GeneAssignment, decode, encode
+        from src.pipeline.encoding import GeneAssignment, decode, encode
 
         genes = [GeneAssignment(i, i + 1, i * 2) for i in range(50)]
         x = encode(genes)
@@ -70,7 +70,7 @@ class TestEncodingRoundtrip:
         assert decode(x) == genes
 
     def test_chromosome_views(self):
-        from encoding import GeneAssignment, chromosome_views, encode
+        from src.pipeline.encoding import GeneAssignment, chromosome_views, encode
 
         genes = [GeneAssignment(10, 20, 30), GeneAssignment(40, 50, 60)]
         x = encode(genes)
@@ -83,7 +83,7 @@ class TestEncodingRoundtrip:
         assert x[0] == 99
 
     def test_encoding_spec(self, pkl_data):
-        from encoding import EncodingSpec
+        from src.pipeline.encoding import EncodingSpec
 
         spec = EncodingSpec.from_pkl_data(pkl_data)
         assert spec.n_vars == 3 * spec.n_events
@@ -106,8 +106,8 @@ class TestEvaluatorEquivalence:
     N = 10  # Reduced for CI speed; validate_migration.py tests 50
 
     def test_equivalence_on_random_individuals(self, pkl_data, ctx_qts):
-        from build_events import _make_event_key
-        from fast_evaluator import fast_evaluate_hard
+        from src.pipeline.build_events import _make_event_key
+        from src.pipeline.fast_evaluator import fast_evaluate_hard
         from src.constraints.evaluator import Evaluator
         from src.domain.timetable import Timetable
         from src.ga.core.population import generate_pure_random_population

@@ -2,11 +2,15 @@
 """Diagnose post-repair residual violations by constraint type."""
 
 import pickle
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 
-from fast_evaluator import fast_evaluate_hard
-from repair_operator import SchedulingRepair
+from src.pipeline.fast_evaluator import fast_evaluate_hard
+from src.pipeline.repair_operator import SchedulingRepair
 
 repairer = SchedulingRepair()
 E = repairer.n_events

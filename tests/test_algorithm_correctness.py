@@ -8,7 +8,6 @@ Tests mathematical/algorithmic properties that must hold:
 
 from __future__ import annotations
 
-
 # Strategy Selector Properties
 
 

@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 RESULTS_DIR = PROJECT_ROOT / "results" / "bench_compare"
@@ -42,8 +42,8 @@ def run_pymoo(pop_size: int, n_gen: int, seed: int) -> dict:
     from pymoo.core.callback import Callback
     from pymoo.optimize import minimize
 
-    from pymoo_operators import create_algorithm
-    from scheduling_problem import create_problem
+    from src.pipeline.pymoo_operators import create_algorithm
+    from src.pipeline.scheduling_problem import create_problem
 
     class TrackingCallback(Callback):
         def __init__(self):
@@ -94,7 +94,7 @@ def run_pymoo(pop_size: int, n_gen: int, seed: int) -> dict:
     callback = TrackingCallback()
     pkl_path = str(PROJECT_ROOT / "events_with_domains.pkl")
     if not Path(pkl_path).exists():
-        from build_events import build_events_with_domains
+        from src.pipeline.build_events import build_events_with_domains
 
         build_events_with_domains()
 

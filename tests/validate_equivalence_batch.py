@@ -14,18 +14,18 @@ from pathlib import Path
 
 import numpy as np
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from fast_evaluator import fast_evaluate_hard
-from fast_evaluator_batch import (
+from src.pipeline.fast_evaluator import fast_evaluate_hard
+from src.pipeline.fast_evaluator_batch import (
     HARD_CONSTRAINT_NAMES,
     BatchEvalData,
     fast_evaluate_hard_batch,
     fast_evaluate_hard_single,
     prepare_batch_data,
 )
-from repair_operator import SchedulingRepair
+from src.pipeline.repair_operator import SchedulingRepair
 
 PKL_PATH = "events_with_domains.pkl"
 

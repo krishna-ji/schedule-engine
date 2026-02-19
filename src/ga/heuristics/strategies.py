@@ -165,9 +165,7 @@ class RoundRobinSelector:
         gene.room_id = random.choice(list(data.rooms.keys()))
         return 1
 
-    def _instructor_swap(
-        self, individual: list[SessionGene], data: Any
-    ) -> int:
+    def _instructor_swap(self, individual: list[SessionGene], data: Any) -> int:
         """Swap instructor for random session."""
         if not individual:
             return 0
@@ -313,9 +311,7 @@ class AdaptiveSelector:
         gene.room_id = random.choice(list(data.rooms.keys()))
         return 1
 
-    def _instructor_swap(
-        self, individual: list[SessionGene], data: Any
-    ) -> int:
+    def _instructor_swap(self, individual: list[SessionGene], data: Any) -> int:
         """Swap instructor for random session."""
         if not individual:
             return 0
@@ -542,9 +538,7 @@ class SimpleRLSelector:
         gene.room_id = random.choice(list(data.rooms.keys()))
         return 1
 
-    def _instructor_swap(
-        self, individual: list[SessionGene], data: Any
-    ) -> int:
+    def _instructor_swap(self, individual: list[SessionGene], data: Any) -> int:
         """Swap instructor for random session."""
         if not individual:
             return 0

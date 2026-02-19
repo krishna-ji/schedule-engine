@@ -28,7 +28,7 @@ uv sync --all-extras
 
 ## Code Standards
 
-### Pre-commit Hooks 
+### Pre-commit Hooks
 
 **Automatic code quality checks before every commit!**
 

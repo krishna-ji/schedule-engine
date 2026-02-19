@@ -15,8 +15,11 @@ from __future__ import annotations
 import json
 import os
 import pickle
+import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 
@@ -59,7 +62,7 @@ def percentile(arr, p):
 
 def bench_evaluator_original(data, X):
     """Benchmark original per-individual evaluator."""
-    from fast_evaluator import fast_evaluate_hard
+    from src.pipeline.fast_evaluator import fast_evaluate_hard
 
     events = data["events"]
     ai = data["allowed_instructors"]
@@ -82,7 +85,7 @@ def bench_evaluator_original(data, X):
 
 def bench_evaluator_batch(data, X):
     """Benchmark batch evaluator (full population at once)."""
-    from fast_evaluator_batch import fast_evaluate_hard_batch, prepare_batch_data
+    from src.pipeline.fast_evaluator_batch import fast_evaluate_hard_batch, prepare_batch_data
 
     bd = prepare_batch_data(data)
     N = X.shape[0]
@@ -106,7 +109,7 @@ def bench_evaluator_batch(data, X):
 
 def bench_repair_original(data, X, n_repair):
     """Benchmark original SchedulingRepair."""
-    from repair_operator import SchedulingRepair
+    from src.pipeline.repair_operator import SchedulingRepair
 
     rep = SchedulingRepair(PKL_PATH)
     times = []
@@ -121,7 +124,7 @@ def bench_repair_original(data, X, n_repair):
 
 def bench_repair_bitset(data, X, n_repair):
     """Benchmark BitsetSchedulingRepair."""
-    from repair_operator_bitset import BitsetSchedulingRepair
+    from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
 
     rep = BitsetSchedulingRepair(PKL_PATH)
     times = []
@@ -141,7 +144,7 @@ def bench_repair_bitset(data, X, n_repair):
 
 def bench_pymoo_evaluate(data, X):
     """Benchmark pymoo SchedulingProblem._evaluate (batch)."""
-    from scheduling_problem import SchedulingProblem
+    from src.pipeline.scheduling_problem import SchedulingProblem
 
     prob = SchedulingProblem(PKL_PATH)
     out = {}
@@ -252,7 +255,7 @@ def main():
 
     # --- Batch repair timing ---
     print(f"\n--- Batch Repair (N={N_REPAIR}) ---")
-    from repair_operator_bitset import BitsetSchedulingRepair, repair_batch
+    from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair, repair_batch
 
     rep_engine = BitsetSchedulingRepair(PKL_PATH)
     t0 = time.perf_counter()

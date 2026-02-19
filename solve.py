@@ -33,13 +33,13 @@ def solve_pymoo(args) -> dict:
     from pymoo.core.callback import Callback
     from pymoo.optimize import minimize
 
-    from pymoo_operators import create_algorithm
-    from scheduling_problem import create_problem
+    from src.pipeline.pymoo_operators import create_algorithm
+    from src.pipeline.scheduling_problem import create_problem
 
     pkl_path = str(PROJECT_ROOT / "events_with_domains.pkl")
     if not Path(pkl_path).exists():
         print("Building events_with_domains.pkl...")
-        from build_events import build_events_with_domains
+        from src.pipeline.build_events import build_events_with_domains
 
         build_events_with_domains()
 
@@ -160,7 +160,7 @@ def main():
     )
     args = parser.parse_args()
 
-    print(f"Solver: pymoo")
+    print("Solver: pymoo")
     print(f"Config: pop={args.pop}, gens={args.gens}, seed={args.seed}")
     print()
 

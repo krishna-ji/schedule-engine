@@ -20,14 +20,14 @@ import sys
 import time
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
 
-from build_events import _make_event_key
-from fast_evaluator import fast_evaluate_hard
-from repair_operator import SchedulingRepair
+from src.pipeline.build_events import _make_event_key
+from src.pipeline.fast_evaluator import fast_evaluate_hard
+from src.pipeline.repair_operator import SchedulingRepair
 from src.ga.core.population import generate_pure_random_population
 from src.io.data_store import DataStore
 from src.io.time_system import QuantumTimeSystem

@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from bitset_time import (
+from .bitset_time import (
     FULL_MASK,
     ZERO,
     T,

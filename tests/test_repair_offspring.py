@@ -18,11 +18,11 @@ from pathlib import Path
 
 import numpy as np
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from fast_evaluator import fast_evaluate_hard
-from repair_operator import SchedulingRepair
+from src.pipeline.fast_evaluator import fast_evaluate_hard
+from src.pipeline.repair_operator import SchedulingRepair
 
 PKL_PATH = "events_with_domains.pkl"
 

@@ -26,7 +26,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from bitset_time import FULL_MASK, T, mask_from_interval, mask_from_quanta
+from .bitset_time import FULL_MASK, T, mask_from_interval, mask_from_quanta
 
 # Pre-compute mask LUT for bitset-based group-free-time checks
 _MAX_DUR = 12

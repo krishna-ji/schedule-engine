@@ -9,10 +9,10 @@ import time
 from pathlib import Path
 
 # Add src to path
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from fast_evaluator import fast_conflict_evaluator
+from src.pipeline.fast_evaluator import fast_conflict_evaluator
 
 
 def create_dummy_assignments(events_data):

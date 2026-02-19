@@ -25,10 +25,7 @@ class TestMetricsImports:
         assert callable(calculate_hypervolume)
 
     def test_diversity_imports(self):
-        from src.ga.metrics import (
-            average_pairwise_diversity,
-            individual_distance,
-        )
+        from src.ga.metrics import average_pairwise_diversity, individual_distance
 
         assert callable(average_pairwise_diversity)
         assert callable(individual_distance)
@@ -45,10 +42,7 @@ class TestMetricsImports:
         assert callable(calculate_spacing)
 
     def test_convergence_imports(self):
-        from src.ga.metrics import (
-            calculate_convergence_rate,
-            detect_stagnation,
-        )
+        from src.ga.metrics import calculate_convergence_rate, detect_stagnation
 
         assert callable(calculate_convergence_rate)
         assert callable(detect_stagnation)
@@ -143,10 +137,7 @@ class TestHeuristicsLegacyAPI:
         assert isinstance(enabled, dict)
 
     def test_get_heuristic_by_name(self):
-        from src.ga.heuristics import (
-            get_all_heuristics,
-            get_heuristic_by_name,
-        )
+        from src.ga.heuristics import get_all_heuristics, get_heuristic_by_name
 
         all_h = get_all_heuristics()
         if all_h:
@@ -214,10 +205,7 @@ class TestHeuristicsOOPAPI:
             assert isinstance(lst, list | tuple)
 
     def test_heuristic_names(self):
-        from src.ga.heuristics import (
-            ENABLED_HEURISTIC_NAMES,
-            HEURISTIC_NAMES,
-        )
+        from src.ga.heuristics import ENABLED_HEURISTIC_NAMES, HEURISTIC_NAMES
 
         assert isinstance(HEURISTIC_NAMES, list | tuple | set)
         assert isinstance(ENABLED_HEURISTIC_NAMES, list | tuple | set)
@@ -241,10 +229,7 @@ class TestHeuristicsOOPAPI:
         assert isinstance(repair, list)
 
     def test_get_heuristic_by_name_oop(self):
-        from src.ga.heuristics import (
-            HEURISTIC_NAMES,
-            get_heuristic_by_name_oop,
-        )
+        from src.ga.heuristics import HEURISTIC_NAMES, get_heuristic_by_name_oop
 
         if HEURISTIC_NAMES:
             name = next(iter(HEURISTIC_NAMES))
@@ -296,9 +281,7 @@ class TestRepairHeuristicsImports:
         assert callable(repair_break_placement)
 
     def test_conflict_detection_import(self):
-        from src.ga.repair.conflict_detection import (
-            find_hard_conflict_sessions,
-        )
+        from src.ga.repair.conflict_detection import find_hard_conflict_sessions
 
         assert callable(find_hard_conflict_sessions)
 
@@ -418,10 +401,7 @@ class TestCrossModuleIntegration:
 
     def test_repair_uses_violation_detector(self):
         """Verify repair operators can use violation detector."""
-        from src.ga.operators import (
-            detect_violated_genes,
-            repair_individual,
-        )
+        from src.ga.operators import detect_violated_genes, repair_individual
 
         assert detect_violated_genes is not None
         assert repair_individual is not None
