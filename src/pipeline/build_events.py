@@ -343,7 +343,7 @@ def load_events(
     for i in range(len(stored_keys) - 1):
         if stored_keys[i] > stored_keys[i + 1]:
             raise RuntimeError(
-                f"Event keys not sorted at index {i}→{i + 1}:\n"
+                f"Event keys not sorted at index {i}->{i + 1}:\n"
                 f"  {stored_keys[i]} > {stored_keys[i + 1]}\n"
                 "Re-run: python build_events.py"
             )

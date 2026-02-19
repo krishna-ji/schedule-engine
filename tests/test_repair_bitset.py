@@ -99,9 +99,9 @@ class TestBitsetRepairEquivalence:
         v_bs = _total_violations(x_bs, pkl_data)
 
         # Bitset repair should be no worse than 2x original
-        assert v_bs <= max(2 * v_orig, v_orig + 30), (
-            f"seed={seed}: orig={v_orig}, bitset={v_bs}"
-        )
+        assert v_bs <= max(
+            2 * v_orig, v_orig + 30
+        ), f"seed={seed}: orig={v_orig}, bitset={v_bs}"
 
 
 class TestConstructFeasible:
@@ -134,7 +134,9 @@ class TestConstructFeasible:
         # Should be much better than random (threshold scales with event count)
         n_events = len(pkl_data["events"])
         threshold = max(200, n_events // 3)
-        assert v < threshold, f"construct_feasible violations: {v} (threshold={threshold})"
+        assert (
+            v < threshold
+        ), f"construct_feasible violations: {v} (threshold={threshold})"
 
 
 class TestRepairDomains:
@@ -232,6 +234,6 @@ class TestOffspringRepair:
                 successes += 1
 
         # At least 60% of trials should meet tolerance
-        assert successes >= n_trials * 0.6, (
-            f"k={k}: only {successes}/{n_trials} met tolerance"
-        )
+        assert (
+            successes >= n_trials * 0.6
+        ), f"k={k}: only {successes}/{n_trials} met tolerance"
