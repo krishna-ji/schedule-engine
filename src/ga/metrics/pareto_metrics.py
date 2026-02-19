@@ -21,9 +21,9 @@ Performance: Uses pymoo's optimized implementations where available (10-100x fas
 import numpy as np
 from pymoo.indicators.gd import GD
 from pymoo.indicators.igd import IGD
+from scipy.spatial.distance import pdist, squareform
 
 from src.ga.metrics._nds import get_pareto_front
-from scipy.spatial.distance import pdist, squareform
 
 
 def calculate_spacing(population: list, pareto_front: list | None = None) -> float:

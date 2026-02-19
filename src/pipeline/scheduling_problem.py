@@ -18,14 +18,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from encoding import EncodingSpec, chromosome_views
-from fast_evaluator import fast_evaluate_hard
-from fast_evaluator_batch import (
+from .encoding import EncodingSpec, chromosome_views
+from .fast_evaluator import fast_evaluate_hard
+from .fast_evaluator_batch import (
     BatchEvalData,
     fast_evaluate_hard_batch,
     prepare_batch_data,
 )
-from fast_evaluator_vectorized import (
+from .fast_evaluator_vectorized import (
     VectorizedEvalData,
     fast_evaluate_hard_vectorized,
     prepare_vectorized_data,

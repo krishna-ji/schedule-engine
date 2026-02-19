@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from src.ga.metrics._nds import get_pareto_front
-
 from src.utils.output_paths import get_csv_dir, get_nsga_plot_dir
 
 from .thesis_style import (

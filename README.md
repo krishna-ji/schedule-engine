@@ -76,6 +76,7 @@ ruff check src/schedule_engine/ test/    # Lint
 mypy src/schedule_engine/                # Type check
 pytest test/                             # Run tests
 ```
+
 ## Repository Layout
 
 ```

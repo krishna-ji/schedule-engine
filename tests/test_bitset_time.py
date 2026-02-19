@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from bitset_time import (
+from src.pipeline.bitset_time import (
     FULL_MASK,
     ZERO,
     T,

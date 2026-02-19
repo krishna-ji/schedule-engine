@@ -11,10 +11,10 @@ from pathlib import Path
 import numpy as np
 
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from fast_evaluator import fast_conflict_evaluator
+from src.pipeline.fast_evaluator import fast_conflict_evaluator
 from src.domain.gene import SessionGene
 from src.domain.timetable import Timetable
 from src.domain.types import SchedulingContext

@@ -5,7 +5,7 @@ import pickle
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.io.data_store import DataStore
 from src.utils.room_compatibility import is_room_suitable_for_course
