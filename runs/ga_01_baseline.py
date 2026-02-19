@@ -20,7 +20,7 @@ from src.experiments import BaselineExperiment
 SEED = 42
 
 # GA Core Parameters
-POP_SIZE = 20  # Population size
+POP_SIZE = 10  # Population size
 NGEN = 200  # Number of generations
 CROSSOVER_PROB = 0.5  # Per-event crossover probability
 MUTATION_PROB = 0.05  # Per-event mutation probability

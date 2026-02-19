@@ -117,7 +117,7 @@ class GAExperiment(BaseExperiment):
 
             report_path = self.output_dir / "feasibility_report.txt"
             generate_feasibility_report_file(store.feasibility_report, str(report_path))
-            self.logger.info(f"Feasibility report → {report_path}")
+            self.logger.info(f"Feasibility report -> {report_path}")
 
         return store, ctx, qts
 
@@ -200,6 +200,7 @@ class GAExperiment(BaseExperiment):
             "sec_per_gen": round(elapsed / self.ngen, 3) if self.ngen else 0,
             "convergence_hard": getattr(callback, "best_hards", []),
             "convergence_soft": getattr(callback, "best_softs", []),
+            "convergence_constraints": getattr(callback, "best_breakdowns", []),
         }
 
 
@@ -207,25 +208,36 @@ class GAExperiment(BaseExperiment):
 #  Callbacks (shared helpers, kept private)
 # =====================================================================
 
+# Short labels for compact per-constraint logging (matches HARD_CONSTRAINT_NAMES order)
+_SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp"]
+
 
 def _progress_payload(algorithm):
     F = algorithm.pop.get("F")
     G = algorithm.pop.get("G")
     cv = G.sum(axis=1).clip(0)
     best_idx = int(np.argmin(cv))
-    return F, cv, best_idx
+    return F, G, cv, best_idx
+
+
+def _constraint_breakdown(G_row: np.ndarray) -> dict[str, int]:
+    """Return {short_name: violation_count} for one individual."""
+    return {n: int(v) for n, v in zip(_SHORT, G_row, strict=False)}
 
 
 def _log_gen(algorithm, log_interval):
-    F, cv, best_idx = _progress_payload(algorithm)
+    F, G, cv, best_idx = _progress_payload(algorithm)
     if algorithm.n_gen == 1 or algorithm.n_gen % log_interval == 0:
+        bd = G[best_idx]
+        parts = " ".join(f"{n}={int(v)}" for n, v in zip(_SHORT, bd, strict=False))
         print(
             f"  Gen {algorithm.n_gen:4d}: "
-            f"hard={F[best_idx, 0]:.0f}  soft={F[best_idx, 1]:.0f}  "
+            f"hard={F[best_idx, 0]:.0f}  [{parts}]  "
+            f"soft={F[best_idx, 1]:.0f}  "
             f"cv={cv.min():.0f}  "
             f"feasible={int((cv == 0).sum())}/{len(algorithm.pop)}"
         )
-    return F, cv, best_idx
+    return F, G, cv, best_idx
 
 
 def _make_progress_cb(log_interval: int):
@@ -236,11 +248,13 @@ def _make_progress_cb(log_interval: int):
             super().__init__()
             self.best_hards: list[float] = []
             self.best_softs: list[float] = []
+            self.best_breakdowns: list[dict[str, int]] = []
 
         def notify(self, algorithm):
-            F, cv, best_idx = _log_gen(algorithm, log_interval)
+            F, G, cv, best_idx = _log_gen(algorithm, log_interval)
             self.best_hards.append(float(F[best_idx, 0]))
             self.best_softs.append(float(F[best_idx, 1]))
+            self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
 
     return CB()
 
@@ -302,11 +316,13 @@ class MemeticExperiment(GAExperiment):
                 super().__init__()
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
+                self.best_breakdowns: list[dict[str, int]] = []
 
             def notify(self, algorithm):
-                F, cv, best_idx = _log_gen(algorithm, log_interval)
+                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
                 self.best_hards.append(float(F[best_idx, 0]))
                 self.best_softs.append(float(F[best_idx, 1]))
+                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
 
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
@@ -356,11 +372,13 @@ class AggressiveExperiment(GAExperiment):
                 super().__init__()
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
+                self.best_breakdowns: list[dict[str, int]] = []
 
             def notify(self, algorithm):
-                F, cv, best_idx = _log_gen(algorithm, log_interval)
+                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
                 self.best_hards.append(float(F[best_idx, 0]))
                 self.best_softs.append(float(F[best_idx, 1]))
+                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
 
                 pop = algorithm.pop
                 for i in range(len(pop)):
@@ -419,14 +437,16 @@ class AdaptiveExperiment(GAExperiment):
                 super().__init__()
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
+                self.best_breakdowns: list[dict[str, int]] = []
                 self._stagnant = 0
                 self._escalated = False
 
             def notify(self, algorithm):
-                F, cv, best_idx = _log_gen(algorithm, log_interval)
+                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
                 cur_hard = float(F[best_idx, 0])
                 self.best_hards.append(cur_hard)
                 self.best_softs.append(float(F[best_idx, 1]))
+                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
 
                 if len(self.best_hards) >= 2 and cur_hard >= self.best_hards[-2]:
                     self._stagnant += 1
@@ -499,6 +519,7 @@ class CPHybridExperiment(GAExperiment):
                 super().__init__()
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
+                self.best_breakdowns: list[dict[str, int]] = []
                 self._pkl_data = None
                 self._ctx = None
                 self._cp_pipeline = None
@@ -532,9 +553,10 @@ class CPHybridExperiment(GAExperiment):
                 return True
 
             def notify(self, algorithm):
-                F, cv, best_idx = _log_gen(algorithm, log_interval)
+                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
                 self.best_hards.append(float(F[best_idx, 0]))
                 self.best_softs.append(float(F[best_idx, 1]))
+                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
 
                 if algorithm.n_gen % cp_interval != 0:
                     return
