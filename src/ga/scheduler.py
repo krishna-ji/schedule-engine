@@ -61,9 +61,8 @@ def _worker_evaluate(individual: Any) -> tuple[float, float]:
     """
     Evaluate individual using worker-local context.
 
-    This function is called for each evaluation. It retrieves the
-    scheduling context from module-level state (set once in init_worker)
-    instead of pickling it every time.
+    Uses the full SchedulingContext from init_worker (with cohort_pairs,
+    family_map, etc.) so soft constraints match the main process exactly.
 
     Args:
         individual: GA individual to evaluate
@@ -71,14 +70,16 @@ def _worker_evaluate(individual: Any) -> tuple[float, float]:
     Returns:
         Tuple of (hard_violations, soft_penalty)
     """
-    context = get_worker_context()
-    return evaluate(
-        individual,
-        context["courses"],
-        context["instructors"],
-        context["groups"],
-        context["rooms"],
-    )
+    from src.domain.timetable import Timetable
+    from src.ga.core.evaluator import evaluate_from_timetable
+    from src.io.decoder import decode_individual
+
+    wctx = get_worker_context()
+    ctx = wctx["context"]  # Full SchedulingContext built by DataStore
+
+    decode_individual(individual, ctx.courses, ctx.instructors, ctx.groups, ctx.rooms)
+    tt = Timetable(genes=individual, context=ctx)
+    return evaluate_from_timetable(tt)
 
 
 # Genetic Operators (Sequential to avoid GIL thrashing)

@@ -7,6 +7,7 @@ Guarantees:
 - Instructor/room availability data exported per event
 """
 
+import hashlib
 import json
 import pickle
 import sys
@@ -15,6 +16,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+SCHEMA_VERSION = 2  # Bump when export format changes
 
 
 def _make_event_key(gene) -> tuple:
@@ -31,8 +34,33 @@ def _make_event_key(gene) -> tuple:
     )
 
 
-def build_events_with_domains(data_dir: str = "data") -> dict:
+def _compute_data_hash(data_dir: str) -> str:
+    """SHA-256 hash of all input JSON files for change detection."""
+    h = hashlib.sha256()
+    data_path = Path(data_dir)
+    for name in sorted(
+        ["Course.json", "Groups.json", "Instructors.json", "Rooms.json"]
+    ):
+        fp = data_path / name
+        if fp.exists():
+            h.update(fp.read_bytes())
+    return h.hexdigest()
+
+
+def build_events_with_domains(
+    data_dir: str = "data",
+    *,
+    fix_tutorial_practicals: bool = True,
+) -> dict:
     """Build events with precomputed allowed domains for encoding.
+
+    Args:
+        data_dir: Path to the data directory containing JSON files.
+        fix_tutorial_practicals: If True, clear specific_lab_features for
+            courses whose PracticalRoomFeatures is 'Lecture Hall' or
+            'Seminar Room' (tutorial-style practicals that don't need
+            a specific lab).  This fixes the 24-event structural
+            infeasibility.
 
     Returns the export_data dict, or raises on failure.
     """
@@ -41,10 +69,30 @@ def build_events_with_domains(data_dir: str = "data") -> dict:
     from src.io.time_system import QuantumTimeSystem
     from src.utils.room_compatibility import is_room_suitable_for_course
 
+    data_hash = _compute_data_hash(data_dir)
+    print(f"Data hash: {data_hash[:16]}...")
+
     print("Loading data and generating reference individual...")
     store = DataStore.from_json(data_dir)
     ctx = store.to_context()
     qts = QuantumTimeSystem()
+
+    # --- 0. Fix tutorial-style practicals (structural infeasibility) ---
+    if fix_tutorial_practicals:
+        n_fixed = 0
+        for key, course in ctx.courses.items():
+            lab_feats = getattr(course, "specific_lab_features", None)
+            if lab_feats:
+                # Normalize to list of lowercase strings
+                feats_lower = [
+                    (f if isinstance(f, str) else str(f)).lower().strip()
+                    for f in lab_feats
+                ]
+                if any(f in ("lecture hall", "seminar room") for f in feats_lower):
+                    course.specific_lab_features = []
+                    n_fixed += 1
+        if n_fixed:
+            print(f"  Fixed {n_fixed} courses with tutorial-practical room mismatch")
 
     pop = generate_pure_random_population(1, ctx, parallel=False)
     raw_genes = pop[0]
@@ -181,6 +229,8 @@ def build_events_with_domains(data_dir: str = "data") -> dict:
 
     # --- 6. Export ---
     export_data = {
+        "schema_version": SCHEMA_VERSION,
+        "data_hash": data_hash,
         "events": events,
         "event_keys": event_keys,
         "allowed_rooms": allowed_rooms,
@@ -192,6 +242,7 @@ def build_events_with_domains(data_dir: str = "data") -> dict:
         "idx_to_instructor": idx_to_instructor,
         "instructor_available_quanta": instructor_available_quanta,
         "room_available_quanta": room_available_quanta,
+        "fix_tutorial_practicals": fix_tutorial_practicals,
         "metadata": {
             "n_events": len(genes),
             "n_rooms": len(ctx.rooms),
@@ -209,20 +260,89 @@ def build_events_with_domains(data_dir: str = "data") -> dict:
     return export_data
 
 
-def load_events(pkl_path: str = "events_with_domains.pkl") -> dict:
-    """Load events and loudly fail if event_keys absent."""
+def load_events(
+    pkl_path: str = "events_with_domains.pkl",
+    data_dir: str = "data",
+    *,
+    verify: bool = True,
+) -> dict:
+    """Load events with integrity checks.
+
+    Args:
+        pkl_path: Path to the pickle file.
+        data_dir: Path to the data directory (for hash verification).
+        verify: If True (default), recompute event_keys from the stored
+            events and assert they match the saved keys.  Also verify
+            the data_hash matches the current JSON files.
+
+    Raises:
+        RuntimeError: If the pkl is missing required fields, event_keys
+            don't match, or data_hash changed.
+    """
     with open(pkl_path, "rb") as f:
         data: dict = pickle.load(f)
-    if "event_keys" not in data:
+
+    # --- Required fields ---
+    for field in ("event_keys", "instructor_available_quanta", "schema_version"):
+        if field not in data:
+            raise RuntimeError(
+                f"events_with_domains.pkl missing '{field}'. "
+                "Re-run: python build_events.py"
+            )
+
+    if data["schema_version"] < SCHEMA_VERSION:
         raise RuntimeError(
-            "events_with_domains.pkl has no event_keys. "
+            f"PKL schema_version={data['schema_version']} < expected {SCHEMA_VERSION}. "
             "Re-run: python build_events.py"
         )
-    if "instructor_available_quanta" not in data:
+
+    if not verify:
+        return data
+
+    # --- Data hash check ---
+    if "data_hash" in data:
+        current_hash = _compute_data_hash(data_dir)
+        if current_hash != data["data_hash"]:
+            raise RuntimeError(
+                "Input JSON files changed since events_with_domains.pkl was built!\n"
+                f"  Saved hash: {data['data_hash'][:16]}...\n"
+                f"  Current hash: {current_hash[:16]}...\n"
+                "Re-run: python build_events.py"
+            )
+
+    # --- Event key integrity ---
+    stored_keys = data["event_keys"]
+    events = data["events"]
+    if len(stored_keys) != len(events):
         raise RuntimeError(
-            "events_with_domains.pkl missing instructor availability. "
-            "Re-run: python build_events.py"
+            f"event_keys length {len(stored_keys)} != events length {len(events)}"
         )
+
+    # Recompute keys from stored event dicts and verify
+    for i, ev in enumerate(events):
+        recomputed = (
+            ev["course_id"],
+            ev["course_type"],
+            tuple(sorted(ev["group_ids"])),
+            ev["num_quanta"],
+        )
+        if recomputed != stored_keys[i]:
+            raise RuntimeError(
+                f"Event key mismatch at index {i}:\n"
+                f"  Stored:     {stored_keys[i]}\n"
+                f"  Recomputed: {recomputed}\n"
+                "The pkl file is corrupted. Re-run: python build_events.py"
+            )
+
+    # Verify ordering is sorted
+    for i in range(len(stored_keys) - 1):
+        if stored_keys[i] > stored_keys[i + 1]:
+            raise RuntimeError(
+                f"Event keys not sorted at index {i}→{i+1}:\n"
+                f"  {stored_keys[i]} > {stored_keys[i+1]}\n"
+                "Re-run: python build_events.py"
+            )
+
     return data
 
 

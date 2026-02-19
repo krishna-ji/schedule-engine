@@ -43,3 +43,7 @@ build/
 .agents/
 .idea/
 *.pkl
+*.jpg
+*.png
+*.jpeg
+results/

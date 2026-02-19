@@ -30,7 +30,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from build_events import _make_event_key
+from build_events import _make_event_key, load_events
 from fast_evaluator import fast_evaluate_hard
 from repair_operator import SchedulingRepair
 from src.constraints.evaluator import Evaluator
@@ -54,9 +54,7 @@ PKL_PATH = "events_with_domains.pkl"
 
 
 def _load_pkl() -> dict:
-    with open(PKL_PATH, "rb") as f:
-        data: dict = pickle.load(f)
-    return data
+    return load_events(PKL_PATH, verify=True)
 
 
 def _genes_to_numeric(
