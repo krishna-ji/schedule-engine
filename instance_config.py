@@ -58,6 +58,14 @@ PENALTY_LUNCH_BREAK = 4
 PENALTY_LONG_DAY = 4
 PENALTY_UNBALANCED_SCHEDULE = 3
 PENALTY_ROOM_PREFERENCE = 1
+
+# SOLVER SELECTION
+# Default solver backend: "pymoo" (recommended) or "deap" (deprecated fallback)
+# Can also be overridden via:
+#   - CLI:  python solve.py --solver deap
+#   - Env:  SCHED_SOLVER=deap
+DEFAULT_SOLVER = "pymoo"
+
 # PARALLEL PROCESSING
 # Enable multiprocessing for fitness evaluation
 USE_MULTIPROCESSING = True
