@@ -103,15 +103,14 @@ class TestNewPackageStructure:
         assert callable(calculate_spacing)
         assert ViolationHeatmap is not None
 
-    def test_output_package_exports(self):
-        """experiments.output has export functionality."""
-        from src.experiments.output.base import BaseExporter
-        from src.experiments.output.repair_exporter import RepairExporter
-        from src.experiments.output.rl_exporter import RLExporter
-
-        assert BaseExporter is not None
-        assert RepairExporter is not None
-        assert RLExporter is not None
+    def test_output_package_deleted(self):
+        """experiments.output was removed with the experiments package."""
+        with pytest.raises(ImportError):
+            from src.experiments.output.base import BaseExporter
+        with pytest.raises(ImportError):
+            from src.experiments.output.repair_exporter import RepairExporter
+        with pytest.raises(ImportError):
+            from src.experiments.output.rl_exporter import RLExporter
 
     def test_output_plots_ga(self):
         """io.export has GA plotting functions."""

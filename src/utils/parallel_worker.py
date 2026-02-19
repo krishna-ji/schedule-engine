@@ -1,4 +1,9 @@
-"""Helper utilities for multiprocessing worker initialization."""
+"""Helper utilities for multiprocessing worker initialization.
+
+Loads scheduling context from disk into each worker process so the large
+``SchedulingContext`` object does not need to be pickled across the process
+boundary.
+"""
 
 from __future__ import annotations
 
@@ -17,8 +22,8 @@ def init_worker(
 ) -> None:
     """Initialize worker process by loading data via :class:`DataStore`.
 
-    Called once when each worker process starts.  Sets up DEAP creator
-    types and loads scheduling context from disk.
+    Called once when each worker process starts.  Loads scheduling context
+    from disk so we don't have to pickle it.
     """
     global _WORKER_CONTEXT
 
@@ -29,8 +34,6 @@ def init_worker(
     sys.stdout = StringIO()
 
     try:
-        from deap import base, creator
-
         from src.config import Config, init_config
         from src.io.data_store import DataStore
 
@@ -42,12 +45,6 @@ def init_worker(
                 else config_dict
             )
             init_config(config_obj=config_obj)
-
-        # Set up DEAP creator types (required for Windows spawn)
-        if not hasattr(creator, "FitnessMulti"):
-            creator.create("FitnessMulti", base.Fitness, weights=(-1.0, -1.0))
-        if not hasattr(creator, "Individual"):
-            creator.create("Individual", list, fitness=creator.FitnessMulti)
 
         # Load everything via DataStore (single source of truth)
         extra_pairs: list[tuple[str, str]] = []
@@ -90,19 +87,21 @@ def init_worker(
 
 
 def get_worker_context() -> dict[str, Any]:
-    """
-    Get the global worker context.
+    """Get the global worker context.
 
-    Returns:
-        Dict containing 'courses', 'instructors', 'groups', 'rooms', 'qts', 'context'
+    Returns
+    -------
+    dict
+        Contains ``'courses'``, ``'instructors'``, ``'groups'``, ``'rooms'``,
+        ``'qts'``, ``'context'``.
 
-    Raises:
-        RuntimeError: If context is not initialized (not in a worker process)
+    Raises
+    ------
+    RuntimeError
+        If context is not initialised (not in a worker process).
     """
     global _WORKER_CONTEXT  # noqa: PLW0602
     if _WORKER_CONTEXT is None:
-        # Fallback for sequential execution or if init failed
-        # But strictly speaking, this should only be called in workers
         raise RuntimeError(
             "Worker context not initialized. Are you running in a worker process?"
         )

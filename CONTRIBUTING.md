@@ -70,7 +70,7 @@ from pathlib import Path
 
 # 2. Third-party packages
 import numpy as np
-from deap import tools
+from pymoo.optimize import minimize
 
 # 3. Local modules
 from schedule_engine.config import get_config

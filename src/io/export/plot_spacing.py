@@ -13,7 +13,8 @@ Visualizations include:
 
 import matplotlib.pyplot as plt
 import numpy as np
-from deap import tools
+
+from src.ga.metrics._nds import get_pareto_front
 
 from src.utils.output_paths import get_nsga_plot_dir
 
@@ -147,9 +148,7 @@ def plot_spacing_distribution(population: list, output_dir: str) -> None:
     plot_dir = get_nsga_plot_dir(output_dir)
 
     # Extract Pareto front
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    pareto_front = get_pareto_front(population)
 
     if len(pareto_front) < 2:
         return
@@ -241,9 +240,7 @@ def plot_spacing_with_pareto(
     plot_dir = get_nsga_plot_dir(output_dir)
 
     # Extract Pareto front
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    pareto_front = get_pareto_front(population)
 
     if len(pareto_front) < 2:
         return

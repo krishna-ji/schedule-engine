@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 __all__ = ["Individual", "SchedulingContext"]
 
-# Alias used across GA and RL modules; DEAP wraps this list at runtime.
+# Alias used across GA and RL modules.
 Individual = list["SessionGene"]
 
 

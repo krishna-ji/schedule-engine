@@ -15,7 +15,6 @@ keywords = ["scheduling", "genetic-algorithm", "nsga-ii", "optimization", "timet
 
 dependencies = [
     # Core dependencies - pinned to stable versions
-    "deap==1.4.1",
     "pydantic==2.10.3",
     "pyyaml==6.0.2",
     "rich==13.9.4",
@@ -116,7 +115,6 @@ select = [
 ignore = [
     "E402",    # Module level import not at top of file (console init)
     "E501",    # Line too long (handled by Black)
-    "N812",    # Lowercase imported as non-lowercase (DEAP conventions)
     "SIM108",  # Use ternary operator (sometimes less readable)
     "PLR0913", # Too many arguments to function call
     "PLR2004", # Magic value in comparison
@@ -306,13 +304,6 @@ module = ["src.metrics.*"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
-# Relaxed checking for complex GA/RL integration with DEAP's dynamic types
-[[tool.mypy.overrides]]
-module = ["src.ga.scheduler"]
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-disable_error_code = ["attr-defined", "arg-type", "union-attr", "assignment", "unreachable"]
-
 # RL gym env uses a custom Logger wrapper with non-standard API
 [[tool.mypy.overrides]]
 module = ["src.rl.gym_env.schedule_env"]
@@ -341,7 +332,6 @@ disable_error_code = ["unreachable", "unused-ignore"]
 # GA modules with unreachable after exhaustive match
 [[tool.mypy.overrides]]
 module = [
-    "src.ga.operators.fast_nsga2",
     "src.ga.metrics.violation_recorder",
     "src.ga.repair.selective_heuristic",
     "src.ga.repair.break_repair",

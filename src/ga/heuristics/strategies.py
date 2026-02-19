@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from src.domain.gene import SessionGene
-    from src.ga.run_helpers import NotebookData
 
 __all__ = [
     "AdaptiveSelector",
@@ -35,7 +34,7 @@ __all__ = [
 # MODE B: LOCAL SEARCH (Memetic)
 def local_search_individual(
     individual: list[SessionGene],
-    data: NotebookData,
+    data: Any,
     evaluate_fn: Callable[[list[SessionGene]], tuple[float, float]],
     max_iterations: int = 10,
 ) -> tuple[list[SessionGene], float]:
@@ -46,7 +45,7 @@ def local_search_individual(
 
     Args:
         individual: Individual to improve (modified in-place)
-        data: NotebookData for context
+        data: Any for context
         evaluate_fn: Fitness evaluation function
         max_iterations: Maximum improvement attempts
 
@@ -125,14 +124,14 @@ class RoundRobinSelector:
     def apply(
         self,
         individual: list[SessionGene],
-        data: NotebookData,
+        data: Any,
     ) -> tuple[str, int]:
         """
         Apply next heuristic in round-robin sequence.
 
         Args:
             individual: Individual to repair (modified in-place)
-            data: NotebookData for context
+            data: Any for context
 
         Returns:
             Tuple of (heuristic name, number of fixes applied)
@@ -145,7 +144,7 @@ class RoundRobinSelector:
 
         return name, fixes
 
-    def _time_shift(self, individual: list[SessionGene], data: NotebookData) -> int:
+    def _time_shift(self, individual: list[SessionGene], data: Any) -> int:
         """Shift random session to new time slot."""
         if not individual:
             return 0
@@ -157,7 +156,7 @@ class RoundRobinSelector:
             return 1
         return 0
 
-    def _room_swap(self, individual: list[SessionGene], data: NotebookData) -> int:
+    def _room_swap(self, individual: list[SessionGene], data: Any) -> int:
         """Swap room for random session."""
         if not individual:
             return 0
@@ -167,7 +166,7 @@ class RoundRobinSelector:
         return 1
 
     def _instructor_swap(
-        self, individual: list[SessionGene], data: NotebookData
+        self, individual: list[SessionGene], data: Any
     ) -> int:
         """Swap instructor for random session."""
         if not individual:
@@ -221,14 +220,14 @@ class AdaptiveSelector:
     def apply(
         self,
         individual: list[SessionGene],
-        data: NotebookData,
+        data: Any,
     ) -> tuple[str, int]:
         """
         Apply heuristic selected by adaptive roulette wheel.
 
         Args:
             individual: Individual to repair (modified in-place)
-            data: NotebookData for context
+            data: Any for context
 
         Returns:
             Tuple of (heuristic name, number of fixes applied)
@@ -295,7 +294,7 @@ class AdaptiveSelector:
         total = sum(self.probs.values())
         self.probs = {h: p / total for h, p in self.probs.items()}
 
-    def _time_shift(self, individual: list[SessionGene], data: NotebookData) -> int:
+    def _time_shift(self, individual: list[SessionGene], data: Any) -> int:
         """Shift random session to new time slot."""
         if not individual:
             return 0
@@ -306,7 +305,7 @@ class AdaptiveSelector:
             return 1
         return 0
 
-    def _room_swap(self, individual: list[SessionGene], data: NotebookData) -> int:
+    def _room_swap(self, individual: list[SessionGene], data: Any) -> int:
         """Swap room for random session."""
         if not individual:
             return 0
@@ -315,7 +314,7 @@ class AdaptiveSelector:
         return 1
 
     def _instructor_swap(
-        self, individual: list[SessionGene], data: NotebookData
+        self, individual: list[SessionGene], data: Any
     ) -> int:
         """Swap instructor for random session."""
         if not individual:
@@ -398,7 +397,7 @@ class SimpleRLSelector:
     def apply(
         self,
         individual: list[SessionGene],
-        data: NotebookData,
+        data: Any,
         evaluate_fn: Callable[[list[SessionGene]], tuple[float, float]],
     ) -> tuple[str, int, float]:
         """
@@ -406,7 +405,7 @@ class SimpleRLSelector:
 
         Args:
             individual: Individual to repair (modified in-place)
-            data: NotebookData for context
+            data: Any for context
             evaluate_fn: Fitness evaluation function
 
         Returns:
@@ -524,7 +523,7 @@ class SimpleRLSelector:
         """Decay epsilon after each generation."""
         self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
-    def _time_shift(self, individual: list[SessionGene], data: NotebookData) -> int:
+    def _time_shift(self, individual: list[SessionGene], data: Any) -> int:
         """Shift random session to new time slot."""
         if not individual:
             return 0
@@ -535,7 +534,7 @@ class SimpleRLSelector:
             return 1
         return 0
 
-    def _room_swap(self, individual: list[SessionGene], data: NotebookData) -> int:
+    def _room_swap(self, individual: list[SessionGene], data: Any) -> int:
         """Swap room for random session."""
         if not individual:
             return 0
@@ -544,7 +543,7 @@ class SimpleRLSelector:
         return 1
 
     def _instructor_swap(
-        self, individual: list[SessionGene], data: NotebookData
+        self, individual: list[SessionGene], data: Any
     ) -> int:
         """Swap instructor for random session."""
         if not individual:

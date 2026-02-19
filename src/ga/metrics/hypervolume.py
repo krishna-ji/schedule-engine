@@ -17,8 +17,9 @@ Performance: pymoo's HV is 10-100x faster than pure Python implementations.
 from typing import Any
 
 import numpy as np
-from deap import tools
 from pymoo.indicators.hv import HV
+
+from src.ga.metrics._nds import get_pareto_front
 
 
 def calculate_hypervolume(
@@ -59,9 +60,7 @@ def calculate_hypervolume(
 
     # Extract Pareto front (reuse pre-computed front if available)
     if pareto_front is None:
-        pareto_front = tools.sortNondominated(
-            population, len(population), first_front_only=True
-        )[0]
+        pareto_front = get_pareto_front(population)
 
     if not pareto_front:
         return 0.0

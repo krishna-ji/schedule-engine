@@ -20,7 +20,7 @@ import numpy as np
 if TYPE_CHECKING:
     import logging
 
-    from src.ga.run_helpers import EvolutionStats
+    from typing import Any
 
 __all__ = [
     "plot_constraint_breakdown",
@@ -34,7 +34,7 @@ __all__ = [
 
 
 def plot_convergence(
-    stats: EvolutionStats,
+    stats: Any,
     save_path: Path | str | None = None,
     title_prefix: str = "",
     show: bool = True,
@@ -47,7 +47,7 @@ def plot_convergence(
     - Right: Soft constraint penalty over generations
 
     Args:
-        stats: EvolutionStats object with recorded metrics
+        stats: Any object with recorded metrics
         save_path: Optional path to save the plot
         title_prefix: Prefix for plot titles (e.g., "Mode A: ")
         show: Whether to display the plot
@@ -184,7 +184,7 @@ def plot_constraint_breakdown(
 
 def print_summary(
     population: list[Any],
-    stats: EvolutionStats,
+    stats: Any,
     breakdown: dict[str, int | float] | None = None,
     logger: logging.Logger | None = None,
 ) -> None:
@@ -301,16 +301,14 @@ def plot_pareto_front(
         title: Plot title
         show: Whether to display the plot
     """
-    from deap import tools
+    from src.ga.metrics._nds import get_pareto_front
 
     # Extract all fitness values
     all_hard = [ind.fitness.values[0] for ind in population]
     all_soft = [ind.fitness.values[1] for ind in population]
 
     # Get Pareto front (non-dominated solutions)
-    pareto_front = tools.sortNondominated(
-        population, len(population), first_front_only=True
-    )[0]
+    pareto_front = get_pareto_front(population)
     pf_hard = [ind.fitness.values[0] for ind in pareto_front]
     pf_soft = [ind.fitness.values[1] for ind in pareto_front]
 
@@ -539,7 +537,7 @@ def plot_constraint_trends(
 
 
 def plot_feasibility_progress(
-    stats: EvolutionStats,
+    stats: Any,
     save_path: Path | str | None = None,
     title_prefix: str = "",
     show: bool = True,
@@ -548,7 +546,7 @@ def plot_feasibility_progress(
     Plot feasibility progress over generations.
 
     Args:
-        stats: EvolutionStats object
+        stats: Any object
         save_path: Optional path to save the plot
         title_prefix: Prefix for plot title
         show: Whether to display the plot

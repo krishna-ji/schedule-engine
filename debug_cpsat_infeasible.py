@@ -21,12 +21,12 @@ logging.basicConfig(level=logging.WARNING, format="%(message)s")
 from src.ga.core.population import get_family_map_from_json
 from src.ga.core.population_factory import PopulationFactory
 from src.ga.repair.cp.solver import CPSATSolver
-from src.ga.run_helpers import load_data
+from src.io.data_store import DataStore
 
 # Load data
 data_dir = PROJECT_ROOT / "data"
-nb_data = load_data(data_dir, "10:00", "17:00", ["Saturday"])
-ctx = nb_data.context
+store = DataStore.from_json(data_dir)
+ctx = store.to_context()
 family_map = get_family_map_from_json(str(data_dir / "Groups.json"))
 
 # Create one individual

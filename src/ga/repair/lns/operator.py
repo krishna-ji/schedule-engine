@@ -13,7 +13,6 @@ from src.domain.gene import SessionGene
 from src.domain.group import Group
 from src.domain.instructor import Instructor
 from src.domain.room import Room
-from src.ga.core.individual import create_individual
 from src.ga.repair.conflict_detection import (
     find_hard_conflict_sessions,
     select_worst_conflicts,
@@ -286,8 +285,8 @@ def lns_igls_repair(
         ):
             new_genes[idx] = repaired_session
 
-        # Wrap into DEAP Individual
-        new_individual = create_individual(new_genes)
+        # Build repaired individual (plain list)
+        new_individual = new_genes
 
         _lns_stats.successful_repairs += 1
         _lns_stats.total_conflicts_repaired += total_conflicts
@@ -301,8 +300,7 @@ def lns_igls_repair(
                 f"[bold green]   [LNS-IGLS] (OK) Repair SUCCESSFUL: {len(conflicted_sessions)} sessions repaired "
                 f"(total_time={repair_time:.2f}s)[/bold green]"
             )
-        # Type cast for mypy (create_individual returns DEAP Individual which inherits from list)
-        return list(new_individual)
+        return new_individual
     _lns_stats.failed_repairs += 1
     repair_time = time.time() - start_time
     _lns_stats.total_repair_time += repair_time

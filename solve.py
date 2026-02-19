@@ -1,34 +1,23 @@
 #!/usr/bin/env python3
 """Unified scheduling solver CLI.
 
-Default solver: **pymoo** (NSGA-II with vectorized evaluator).
-DEAP is kept as a fallback for regression checks.
+Solver: **pymoo** (NSGA-II with vectorized evaluator).
 
 Usage:
-    python solve.py --gens 100 --pop 50 --seed 42            # pymoo (default)
-    python solve.py --solver deap --gens 2000 --pop 50        # DEAP fallback
-
-Environment override:
-    SCHED_SOLVER=deap python solve.py --gens 100 --pop 50     # env kill-switch
+    python solve.py --gens 100 --pop 50 --seed 42
 
 The pymoo solver uses the numeric encoding pipeline
 (build_events.py -> fast_evaluator.py -> scheduling_problem.py).
-
-The DEAP solver uses the existing BaselineExperiment from
-src/experiments.  It is deprecated and will be removed in a future
-release once pymoo has been validated in production.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import pickle
 import sys
 import time
-import warnings
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -122,64 +111,6 @@ def solve_pymoo(args) -> dict:
     }
 
 
-def solve_deap(args) -> dict:
-    """Run DEAP baseline via BaselineExperiment.
-
-    .. deprecated::
-        DEAP is kept as a fallback.  Use ``--solver pymoo`` (the default)
-        for production runs.
-    """
-    warnings.warn(
-        "DEAP solver is deprecated. Use --solver pymoo (the default) for "
-        "production runs. DEAP will be removed in a future release.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    from src.experiments import BaselineExperiment
-
-    print(
-        f"DEAP NSGA-II (deprecated): pop={args.pop}, gens={args.gens}, seed={args.seed}"
-    )
-    t0 = time.time()
-
-    output_dir = PROJECT_ROOT / "output" / "solve_deap" / f"seed{args.seed}"
-    exp = BaselineExperiment(
-        seed=args.seed,
-        pop_size=args.pop,
-        ngen=args.gens,
-        cxpb=0.9,
-        mutpb=0.3,
-        fitness_weights=(-1.0, -1.0),
-        data_dir=PROJECT_ROOT / "data",
-        output_dir=output_dir,
-        opening_time="10:00",
-        closing_time="17:00",
-        closed_days=["Saturday"],
-        init_strategy="smart",
-        log_interval=max(1, args.gens // 20),
-        verbose=True,
-    )
-    metadata = exp.run()
-    elapsed = time.time() - t0
-
-    # Extract best fitness from DEAP individual
-    best = exp.best_individual
-    best_hard = best.fitness.values[0] if hasattr(best, "fitness") else float("nan")
-    best_soft = best.fitness.values[1] if hasattr(best, "fitness") else float("nan")
-
-    print(f"\nDone in {elapsed:.1f}s")
-    print(f"Best: hard={best_hard:.0f} soft={best_soft:.0f}")
-
-    pkl_path = str(PROJECT_ROOT / "events_with_domains.pkl")
-    return {
-        **_solver_metadata(pkl_path, "deap", args),
-        "best_hard": float(best_hard),
-        "best_soft": float(best_soft),
-        "elapsed_s": elapsed,
-        "sec_per_gen": elapsed / args.gens if args.gens else 0,
-    }
-
-
 # -----------------------------------------------------------------
 #  Metadata helper
 # -----------------------------------------------------------------
@@ -215,28 +146,8 @@ def _solver_metadata(pkl_path: str, solver_name: str, args) -> dict:
 
 
 def main():
-    # Solver precedence: CLI arg > env var (SCHED_SOLVER) > instance_config > "pymoo"
-    env_solver = os.environ.get("SCHED_SOLVER", "").lower().strip()
-    if env_solver in ("pymoo", "deap"):
-        default_solver = env_solver
-    else:
-        try:
-            from instance_config import DEFAULT_SOLVER
-
-            default_solver = (
-                DEFAULT_SOLVER if DEFAULT_SOLVER in ("pymoo", "deap") else "pymoo"
-            )
-        except ImportError:
-            default_solver = "pymoo"
-
     parser = argparse.ArgumentParser(
         description="University timetable scheduling solver"
-    )
-    parser.add_argument(
-        "--solver",
-        choices=["pymoo", "deap"],
-        default=default_solver,
-        help=f"Solver backend (default: {default_solver}; override with SCHED_SOLVER env var)",
     )
     parser.add_argument("--gens", type=int, default=100, help="Number of generations")
     parser.add_argument("--pop", type=int, default=50, help="Population size")
@@ -249,14 +160,11 @@ def main():
     )
     args = parser.parse_args()
 
-    print(f"Solver: {args.solver}")
+    print(f"Solver: pymoo")
     print(f"Config: pop={args.pop}, gens={args.gens}, seed={args.seed}")
     print()
 
-    if args.solver == "pymoo":
-        result = solve_pymoo(args)
-    else:
-        result = solve_deap(args)
+    result = solve_pymoo(args)
 
     if args.output:
         out_path = Path(args.output)
