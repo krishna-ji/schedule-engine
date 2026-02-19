@@ -20,7 +20,7 @@ from src.experiments import BaselineExperiment
 SEED = 42
 
 # GA Core Parameters
-POP_SIZE = 100  # Population size
+POP_SIZE = 20  # Population size
 NGEN = 200  # Number of generations
 CROSSOVER_PROB = 0.5  # Per-event crossover probability
 MUTATION_PROB = 0.05  # Per-event mutation probability
@@ -30,7 +30,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 OUTPUT_DIR = None  # Auto-generated: output/ga_baseline/<timestamp>
 
 # Logging
-LOG_INTERVAL = 10  # Generations between detailed logs
+LOG_INTERVAL = 1  # Generations between detailed logs
 VERBOSE = True
 
 

@@ -89,6 +89,10 @@
       {
         "coursecode": "ME652",
         "coursetype": "Theory"
+      },
+      {
+        "coursecode": "AM654",
+        "coursetype": "Theory"
       }
     ],
     "availability": {}
@@ -1323,6 +1327,10 @@
       {
         "coursecode": "CT651",
         "coursetype": "Theory"
+      },
+      {
+        "coursecode": "CT654",
+        "coursetype": "Practical"
       }
     ],
     "availability": {
@@ -1443,6 +1451,10 @@
       {
         "coursecode": "ENEX 201",
         "coursetype": "Practical"
+      },
+      {
+        "coursecode": "CT753",
+        "coursetype": "Theory"
       }
     ],
     "availability": {}
@@ -1633,6 +1645,10 @@
       {
         "coursecode": "EX656",
         "coursetype": "Theory"
+      },
+      {
+        "coursecode": "EX654",
+        "coursetype": "Practical"
       }
     ],
     "availability": {
@@ -1797,6 +1813,10 @@
       {
         "coursecode": "EX653",
         "coursetype": "Theory"
+      },
+      {
+        "coursecode": "EX654",
+        "coursetype": "Practical"
       }
     ],
     "availability": {
@@ -2022,6 +2042,10 @@
       {
         "coursecode": "ENCT 325-344",
         "coursetype": "Theory"
+      },
+      {
+        "coursecode": "CT654",
+        "coursetype": "Practical"
       }
     ],
     "availability": {
@@ -3492,6 +3516,10 @@
       {
         "coursecode": "IE654",
         "coursetype": "Theory"
+      },
+      {
+        "coursecode": "IE651",
+        "coursetype": "Theory"
       }
     ],
     "availability": {
@@ -3533,6 +3561,10 @@
       },
       {
         "coursecode": "IE655",
+        "coursetype": "Theory"
+      },
+      {
+        "coursecode": "IE653",
         "coursetype": "Theory"
       }
     ],
@@ -4113,6 +4145,10 @@
       },
       {
         "coursecode": "SH652",
+        "coursetype": "Theory"
+      },
+      {
+        "coursecode": "SH653",
         "coursetype": "Theory"
       }
     ],

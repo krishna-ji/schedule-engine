@@ -120,7 +120,9 @@ class TestNewPackageStructure:
         assert callable(plot_pareto_front)
         assert callable(plot_diversity_trend)
 
-    @pytest.mark.xfail(reason="tensorboard not installed in CI", raises=ModuleNotFoundError)
+    @pytest.mark.xfail(
+        reason="tensorboard not installed in CI", raises=ModuleNotFoundError
+    )
     def test_output_plots_rl(self):
         """rl.training.visualizer has RL visualization functions."""
         from src.rl.training.visualizer import (
