@@ -59,7 +59,7 @@ def oop_soft_scores(population, pkl_data):
     except ImportError:
         pytest.skip("OOP evaluator dependencies not available")
 
-    store = DataStore.from_json("data")
+    store = DataStore.from_json("data", run_preflight=False)
     ctx = store.to_context()
     qts = QuantumTimeSystem()
     evaluator = Evaluator()
