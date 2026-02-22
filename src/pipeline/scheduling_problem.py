@@ -26,6 +26,7 @@ from .fast_evaluator_vectorized import (
 from .soft_evaluator_vectorized import (
     SoftVectorizedData,
     eval_soft_vectorized,
+    evaluate_paired_cohorts_vectorized,
     prepare_soft_vectorized_data,
 )
 from .vectorized_lookups import VectorizedLookups, build_vectorized_lookups
@@ -145,6 +146,9 @@ class SchedulingProblem(Problem):
 
         # ---- Soft evaluation (vectorized over full population) ----
         F[:, 1] = eval_soft_vectorized(x, self._soft_data)
+
+        # ---- Paired cohort practical alignment (soft) ----
+        F[:, 1] += evaluate_paired_cohorts_vectorized(x, self.lookups)
 
         # ---- Defensive NaN/Inf guard on soft scores ----
         F[:, 1] = np.nan_to_num(F[:, 1], nan=1e6, posinf=1e6, neginf=0.0)

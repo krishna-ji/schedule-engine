@@ -381,3 +381,58 @@ def eval_soft_vectorized(
     S += lunch_penalty
 
     return S
+
+
+# ------------------------------------------------------------------
+# Paired Cohort Practical Alignment (vectorized XOR penalty)
+# ------------------------------------------------------------------
+
+
+def evaluate_paired_cohorts_vectorized(
+    X: np.ndarray,
+    lookups: VectorizedLookups,
+) -> np.ndarray:
+    """Compute paired-cohort practical alignment penalty for full population.
+
+    For each pair (event_A, event_B) representing the same practical course
+    for two paired cohorts, penalise misalignment by the symmetric
+    difference in occupied quanta.  When durations match (guaranteed for
+    the same course), misalignment equals ``duration * 2`` if starts
+    differ, or ``0`` if they coincide.
+
+    Parameters
+    ----------
+    X : ndarray, shape (N, 3*E), int
+        Population matrix (interleaved [I,R,T] per event).
+    lookups : VectorizedLookups
+        Must contain ``cohort_event_pairs`` of shape (P, 2) and
+        ``durations`` of shape (E,).
+
+    Returns
+    -------
+    penalty : ndarray, shape (N,), float64
+        Per-individual misalignment penalty.
+    """
+    pairs = lookups.cohort_event_pairs  # (P, 2) int32
+    if pairs.shape[0] == 0:
+        N = X.shape[0] if X.ndim == 2 else 1
+        return np.zeros(N, dtype=np.float64)
+
+    X = np.asarray(X, dtype=np.int64)
+    if X.ndim == 1:
+        X = X.reshape(1, -1)
+
+    left_idx = pairs[:, 0]  # (P,)
+    right_idx = pairs[:, 1]  # (P,)
+
+    starts_left = X[:, left_idx * 3 + 2]  # (N, P)
+    starts_right = X[:, right_idx * 3 + 2]  # (N, P)
+
+    durations = lookups.durations  # (E,)
+    dur_left = durations[left_idx]  # (P,)  — broadcast to (N, P)
+
+    # If starts differ → fully misaligned → penalty = duration * 2 (XOR)
+    misaligned = (starts_left != starts_right).astype(np.float64)  # (N, P)
+    penalty_per_pair = misaligned * dur_left[np.newaxis, :] * 2  # (N, P)
+
+    return penalty_per_pair.sum(axis=1)  # (N,)

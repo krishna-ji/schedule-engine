@@ -103,6 +103,9 @@ class VectorizedLookups:
     sibling_event_to_course: np.ndarray  # (E,) int32 — course group id per event
     quanta_per_day: int  # QPD constant (default 7)
 
+    # ---- Paired cohort practical alignment ----
+    cohort_event_pairs: np.ndarray  # (P, 2) int32 — (event_A, event_B) practical pairs
+
 
 def build_vectorized_lookups(pkl_data: dict) -> VectorizedLookups:
     """Convert jagged pkl domain data into dense NumPy arrays.
@@ -199,6 +202,13 @@ def build_vectorized_lookups(pkl_data: dict) -> VectorizedLookups:
 
     # QPD constant
     quanta_per_day = T // (T // 7) if T == 42 else 7  # 42 / 6 days = 7
+
+    # ---- Paired cohort practical event pairs ----
+    raw_pairs = pkl_data.get("paired_practical_events", [])
+    if raw_pairs:
+        cohort_event_pairs = np.array(raw_pairs, dtype=np.int32)  # (P, 2)
+    else:
+        cohort_event_pairs = np.empty((0, 2), dtype=np.int32)
 
     # ================================================================
     # Expansion arrays — fully vectorized via np.repeat
@@ -344,4 +354,5 @@ def build_vectorized_lookups(pkl_data: dict) -> VectorizedLookups:
         sibling_pairs=sibling_pairs,
         sibling_event_to_course=sibling_event_to_course,
         quanta_per_day=quanta_per_day,
+        cohort_event_pairs=cohort_event_pairs,
     )
