@@ -93,8 +93,14 @@ def _make_rich_handler(level: int) -> logging.Handler:
     not installed (shouldn't happen — it's a pinned dependency).
     """
     try:
+        from rich.console import Console
         from rich.logging import RichHandler
         from rich.traceback import install as install_rich_traceback
+
+        # Force a sane minimum width so output never degrades to
+        # char-per-line when the terminal reports a tiny width (e.g. CI,
+        # piped output, or embedded tool terminals).
+        console = Console(stderr=False, width=max(120, (Console().width or 120)))
 
         # Install rich tracebacks globally — beautiful crash reports
         install_rich_traceback(
@@ -106,6 +112,7 @@ def _make_rich_handler(level: int) -> logging.Handler:
 
         handler = RichHandler(
             level=level,
+            console=console,
             show_time=True,
             show_level=True,
             show_path=True,

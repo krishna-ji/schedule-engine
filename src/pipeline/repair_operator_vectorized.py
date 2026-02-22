@@ -704,9 +704,16 @@ try:
             self.passes = passes
 
         def _do(self, problem, x, **kwargs):
+            import logging as _logging
+
             if x.ndim == 1:
                 x = x.reshape(1, -1)
-            return self.engine.repair_batch(x, passes=self.passes)
+            result = self.engine.repair_batch(x, passes=self.passes)
+            _logging.getLogger(__name__).debug(
+                "Repair: %d individuals, %d passes",
+                x.shape[0], self.passes,
+            )
+            return result
 
 except ImportError:
     pass  # pymoo not installed

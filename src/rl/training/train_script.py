@@ -403,10 +403,7 @@ def make_parallel_envs(
 
     from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
-    logger.info("")
-    logger.info("=" * 80)
-    logger.info(f"IMPORTANT: Creating {n_envs} parallel environments")
-    logger.info("=" * 80)
+    logger.info("[PARALLEL] Creating %d environments", n_envs)
     logger.info(
         f"Environment type: {'SubprocVecEnv (true parallelism)' if use_subproc else 'DummyVecEnv (sequential)'}"
     )
@@ -426,8 +423,6 @@ def make_parallel_envs(
         logger.info("   - Workers run in separate processes (no console output)")
         logger.info("   - This will appear FROZEN for 1-2 minutes - BE PATIENT!")
         logger.info("   - Check logs/training/*.log for worker activity")
-    logger.info("=" * 80)
-    logger.info("")
 
     sys.stdout.flush()
 
@@ -544,9 +539,7 @@ def main() -> None:
             args.debug_log_interval,
         )
 
-    logger.info("=" * 60)
-    logger.info("RL AGENT TRAINING")
-    logger.info("=" * 60)
+    logger.info("[START] RL agent training")
     logger.info(
         "Training profile: %s (timesteps=%s)",
         args.loaded_profile,
@@ -564,9 +557,7 @@ def main() -> None:
     tensorboard_port = 6006
 
     try:
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 1: Setup Output Directory")
-        logger.info("=" * 60)
+        logger.info("[STEP 1] Setup output directory")
 
         # Create timestamped output directory
         from pathlib import Path
@@ -592,9 +583,7 @@ def main() -> None:
 
         run_tensorboard_log.parent.mkdir(parents=True, exist_ok=True)
 
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 2: Load Scheduling Data")
-        logger.info("=" * 60)
+        logger.info("[STEP 2] Load scheduling data")
 
         # Load global config for cohort pairs
         from src.config import get_config
@@ -615,9 +604,7 @@ def main() -> None:
         logger.info("Loaded %*d rooms", count_width, len(context.rooms))
         logger.info("Loaded %*d groups", count_width, len(context.groups))
 
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 3: Create RL Environment")
-        logger.info("=" * 60)
+        logger.info("[STEP 3] Create RL environment")
 
         # Create parallel or single environment based on config
         env: VecEnv | ScheduleEnv
@@ -632,9 +619,7 @@ def main() -> None:
             env = create_environment(args, context)
             logger.info("Using single environment (no parallelization)")
 
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 4: Initialize RL Trainer")
-        logger.info("=" * 60)
+        logger.info("[STEP 4] Initialize RL trainer")
 
         trainer = RLTrainer(
             env=env,  # Use the env created above (parallel or single)
@@ -650,9 +635,7 @@ def main() -> None:
         )
 
         # Start TensorBoard in background
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 3.5: Start TensorBoard")
-        logger.info("=" * 60)
+        logger.info("[STEP 3.5] Start TensorBoard")
 
         import socket
         import subprocess
@@ -697,9 +680,7 @@ def main() -> None:
                     args.tensorboard_log,
                 )
 
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 5: Train Agent")
-        logger.info("=" * 60)
+        logger.info("[STEP 5] Train agent")
 
         if args.curriculum:
             logger.info("[INFO] Curriculum learning: ENABLED")
@@ -724,9 +705,7 @@ def main() -> None:
             # Train through curriculum stages
             total_trained_steps = 0
             for stage_idx, stage in enumerate(curriculum_stages):
-                logger.info(
-                    f"\n{'=' * 60}\nStage {stage_idx + 1}/{len(curriculum_stages)}: {stage['name'].upper()}\n{'=' * 60}"
-                )
+                logger.info("[STAGE %d/%d] %s", stage_idx + 1, len(curriculum_stages), stage["name"])
                 logger.info(f"Episodes: {stage['num_episodes']}")
                 logger.info(f"Max generations: {stage['max_generations']}")
 
@@ -793,9 +772,7 @@ def main() -> None:
         logger.info("\n[OK] Training completed successfully!")
 
         if not args.no_eval and args.eval_episodes > 0:
-            logger.info("\n" + "=" * 60)
-            logger.info("STEP 6: Evaluate Trained Agent")
-            logger.info("=" * 60)
+            logger.info("[STEP 6] Evaluate trained agent")
 
             metrics = trainer.evaluate(n_eval_episodes=args.eval_episodes)
             logger.info("\nEvaluation Results:")
@@ -811,9 +788,7 @@ def main() -> None:
             )
             logger.info("  Mean Episode Length: %.1f", metrics["mean_length"])
 
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 7: Save Model")
-        logger.info("=" * 60)
+        logger.info("[STEP 7] Save model")
 
         if args.save_path:
             save_path = args.save_path
@@ -837,9 +812,7 @@ def main() -> None:
         logger.info("\n[OK] Model saved to: %s", model_path)
 
         stats = trainer.get_training_statistics()
-        logger.info("\n" + "=" * 60)
-        logger.info("TRAINING STATISTICS")
-        logger.info("=" * 60)
+        logger.info("[STATS] Training statistics")
         logger.info("Total timesteps: %s", f"{stats['total_timesteps']:,}")
         logger.info(
             "Total training time: %.1fs (%.1f min)",
@@ -847,14 +820,10 @@ def main() -> None:
             stats["total_training_time"] / 60,
         )
         logger.info("Training runs: %s", stats["num_training_runs"])
-        logger.info("\n" + "=" * 60)
-        logger.info("TRAINING COMPLETE!")
-        logger.info("=" * 60)
+        logger.info("[DONE] Training complete")
 
         # Generate visualizations
-        logger.info("\n" + "=" * 60)
-        logger.info("STEP 8: Generate Training Visualizations")
-        logger.info("=" * 60)
+        logger.info("[STEP 8] Generate training visualizations")
 
         try:
             from pathlib import Path as PathLib
@@ -889,9 +858,7 @@ def main() -> None:
         #     notes=f"RL training: {args.agent_type.upper()}, {args.timesteps:,} steps, model: {model_path.name}",
         # )
 
-        logger.info("\n" + "=" * 60)
-        logger.info("OUTPUT LOCATIONS")
-        logger.info("=" * 60)
+        logger.info("[OUTPUT] Locations")
         logger.info("Trained model:   %s", model_path)
         logger.info("Run artifacts:   %s", output_dir)
         logger.info("  - Plots:       %s", output_dir / "plots")
@@ -899,9 +866,7 @@ def main() -> None:
         logger.info("  - Logs:        %s", output_dir / "logs")
         logger.info("  - TensorBoard: %s", run_tensorboard_log)
 
-        logger.info("\n" + "=" * 60)
-        logger.info("VIEW TRAINING IN TENSORBOARD")
-        logger.info("=" * 60)
+        logger.info("[TENSORBOARD] View training")
         logger.info("TensorBoard: http://localhost:%d", tensorboard_port)
         if tensorboard_process:
             logger.info(
@@ -909,16 +874,6 @@ def main() -> None:
             )
         else:
             logger.info("\\nOr start manually: .\\\\start_tensorboard.ps1")
-
-        logger.info("\n" + "=" * 60)
-        logger.info("OUTPUT LOCATIONS")
-        logger.info("=" * 60)
-        logger.info("Trained model:   %s", model_path)
-        logger.info("Run artifacts:   %s", output_dir)
-        logger.info("  - Plots:       %s", output_dir / "plots")
-        logger.info("  - Metrics CSV: %s", output_dir / "csv")
-        logger.info("  - Logs:        %s", output_dir / "logs")
-        logger.info("  - TensorBoard: %s", run_tensorboard_log)
 
     except KeyboardInterrupt:
         logger.warning("\nTraining interrupted by user")

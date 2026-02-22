@@ -46,6 +46,8 @@ def main() -> None:
         output_dir=OUTPUT_DIR,
         log_interval=LOG_INTERVAL,
         verbose=VERBOSE,
+        export_pdf=True,
+        force_pdf=True,
     )
     exp.run()
 
