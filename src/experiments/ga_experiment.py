@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from pymoo.core.evaluator import Evaluator
+from pymoo.core.population import Population
 
 from .base import PROJECT_ROOT, BaseExperiment
 from .callback_core import GACallbackBase
@@ -24,6 +26,25 @@ from .callback_core import GACallbackBase
 logger = logging.getLogger(__name__)
 
 __version__ = "3.0.0"  # pymoo runner v3
+
+
+def _reeval_modified(algorithm: Any, modified_inds: list) -> None:
+    """Clear stale F/G/CV on modified individuals and force re-evaluation.
+
+    Must be called whenever a callback mutates ``pop[i].X`` so that
+    pymoo's NSGA-II sorting sees the updated fitness, not the stale
+    pre-repair scores.
+    """
+    if not modified_inds:
+        return
+    for ind in modified_inds:
+        ind.set("F", None)
+        ind.set("G", None)
+        ind.set("CV", None)
+        ind.set("feasible", None)
+        ind.evaluated = set()  # pymoo >=0.6 uses a set
+    eval_pop = Population.create(*modified_inds)
+    Evaluator().eval(algorithm.problem, eval_pop)
 
 
 # =====================================================================
@@ -638,11 +659,14 @@ class MemeticExperiment(GAExperiment):
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
                 elite_idxs = np.argsort(cv)[:n_elite]
+                modified = []
                 for idx in elite_idxs:
                     X = pop[idx].get("X").copy()
                     for _ in range(repair_iters):
                         X = repairer.repair(X)
                     pop[idx].set("X", X)
+                    modified.append(pop[idx])
+                _reeval_modified(algorithm, modified)
 
         return CB(log_interval)
 
@@ -679,11 +703,14 @@ class AggressiveExperiment(GAExperiment):
         class CB(GACallbackBase):
             def _on_generation(self, algorithm, F, G, cv, best_idx):
                 pop = algorithm.pop
+                modified = []
                 for i in range(len(pop)):
                     X = pop[i].get("X").copy()
                     for _ in range(repair_iters):
                         X = repairer.repair(X)
                     pop[i].set("X", X)
+                    modified.append(pop[i])
+                _reeval_modified(algorithm, modified)
 
         return CB(log_interval)
 
@@ -758,11 +785,14 @@ class AdaptiveExperiment(GAExperiment):
                     pop = algorithm.pop
                     n_elite = max(1, int(len(pop) * elite_pct))
                     elite_idxs = np.argsort(cv)[:n_elite]
+                    modified = []
                     for idx in elite_idxs:
                         X = pop[idx].get("X").copy()
                         for _ in range(repair_iters):
                             X = repairer.repair(X)
                         pop[idx].set("X", X)
+                        modified.append(pop[idx])
+                    _reeval_modified(algorithm, modified)
 
             @staticmethod
             def _set_mutation(algorithm, prob):
@@ -866,6 +896,7 @@ class CPHybridExperiment(GAExperiment):
                     X_new = self._genes_to_chromosome(repaired_genes)
                     if X_new is not None:
                         pop[best_idx].set("X", X_new)
+                        _reeval_modified(algorithm, [pop[best_idx]])
                 except Exception as exc:
                     _cb_log.error("CP-SAT error: %s", exc)
 
