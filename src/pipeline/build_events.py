@@ -267,7 +267,35 @@ def build_events_with_domains(
         sum(slens) / len(slens),
     )
 
-    # --- 6. Export ---
+    # --- 6. Paired practical events for cohort alignment ---
+    paired_practical_events: list[tuple[int, int]] = []
+    cohort_pairs = getattr(ctx, "cohort_pairs", None) or []
+    if cohort_pairs:
+        # Index: (course_id, group_id) -> list of event indices for practicals
+        _prac_idx: dict[tuple[str, str], list[int]] = {}
+        for e, ev in enumerate(events):
+            if ev.get("course_type", "theory").lower() != "practical":
+                continue
+            for gid in ev["group_ids"]:
+                _prac_idx.setdefault((ev["course_id"], gid), []).append(e)
+
+        for left_id, right_id in cohort_pairs:
+            # Find all course_ids that have practicals for the left cohort
+            left_courses = {cid for (cid, gid) in _prac_idx if gid == left_id}
+            for cid in left_courses:
+                left_evts = _prac_idx.get((cid, left_id), [])
+                right_evts = _prac_idx.get((cid, right_id), [])
+                # Pair them positionally (same course, same sub-session order)
+                for a, b in zip(left_evts, right_evts):
+                    paired_practical_events.append((a, b))
+
+        logger.info(
+            "Cohort pairs: %d pairs -> %d paired practical event tuples",
+            len(cohort_pairs),
+            len(paired_practical_events),
+        )
+
+    # --- 7. Export ---
     export_data = {
         "schema_version": SCHEMA_VERSION,
         "data_hash": data_hash,
@@ -282,6 +310,7 @@ def build_events_with_domains(
         "idx_to_instructor": idx_to_instructor,
         "instructor_available_quanta": instructor_available_quanta,
         "room_available_quanta": room_available_quanta,
+        "paired_practical_events": paired_practical_events,
         "fix_tutorial_practicals": fix_tutorial_practicals,
         "metadata": {
             "n_events": len(genes),
