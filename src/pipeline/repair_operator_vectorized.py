@@ -16,11 +16,14 @@ for ``PymooSchedulingRepair``.
 
 from __future__ import annotations
 
+import logging
 import pickle
 
 import numpy as np
 
 from .bitset_time import T
+
+logger = logging.getLogger(__name__)
 
 
 class VectorizedRepair:
@@ -64,6 +67,20 @@ class VectorizedRepair:
             if dt:
                 self.time_dom_len[e] = len(dt)
                 self.time_domains[e, : len(dt)] = dt
+
+        # ---- Domain-integrity warnings ----
+        _n_empty_inst = int((self.inst_dom_len == 0).sum())
+        _n_empty_room = int((self.room_dom_len == 0).sum())
+        if _n_empty_inst:
+            logger.warning(
+                "VectorizedRepair: %d events have empty instructor domains",
+                _n_empty_inst,
+            )
+        if _n_empty_room:
+            logger.warning(
+                "VectorizedRepair: %d events have empty room domains",
+                _n_empty_room,
+            )
 
         # ---- Per-event metadata ----
         self.durations = np.array(

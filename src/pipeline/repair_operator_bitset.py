@@ -349,12 +349,15 @@ class BitsetSchedulingRepair:
         gidxs = self.event_group_indices[e]
 
         # Pre-compute numpy array of allowed rooms for vectorized lookup
-        ar = np.array(ar_list, dtype=np.intp)
+        ar = np.array(ar_list, dtype=np.intp) if ar_list else np.empty(0, dtype=np.intp)
         ia = self.inst_avail_arr
         ra = self.room_avail_arr
 
         def _score_all_rooms(i_idx, t):
             """Score all allowed rooms for (i_idx, t). Returns (best_cost, best_room_idx)."""
+            if len(ar) == 0:
+                # No valid rooms — return current room with max penalty
+                return 10000, cur_r
             end = t + dur
             # Instructor+group cost is fixed across rooms
             fixed = 0
