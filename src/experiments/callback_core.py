@@ -156,7 +156,7 @@ def _log_gen(algorithm: Any, log_interval: int) -> tuple:
         sbd = _soft_breakdown(algorithm.problem, best_idx)
         soft_parts = " ".join(f"{k}={v}" for k, v in sbd.items()) if sbd else ""
         logger.info(
-            "Gen %4d: hard=%.0f  [%s]  soft=%.0f  [%s]  cv=%.0f  feasible=%d/%d",
+            "Gen %4d: hard=%.0f  (%s)  soft=%.0f  (%s)  cv=%.0f  feasible=%d/%d",
             algorithm.n_gen,
             F[best_idx, 0],
             parts,
