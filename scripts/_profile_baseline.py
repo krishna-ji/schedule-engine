@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import cProfile
+import logging
 import pstats
 import sys
 from pathlib import Path
+
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -28,16 +33,17 @@ def run():
 
 
 if __name__ == "__main__":
+    quick_setup()
     pr = cProfile.Profile()
     pr.enable()
     run()
     pr.disable()
 
     s = pstats.Stats(pr, stream=sys.stdout)
-    print("\n\n===== TOP 50 BY CUMULATIVE TIME =====")
+    logger.info("===== TOP 50 BY CUMULATIVE TIME =====")
     s.sort_stats("cumulative")
     s.print_stats(50)
 
-    print("\n\n===== TOP 40 BY TOTAL (SELF) TIME =====")
+    logger.info("===== TOP 40 BY TOTAL (SELF) TIME =====")
     s.sort_stats("tottime")
     s.print_stats(40)

@@ -4,6 +4,7 @@ Specialist agents for different search scenarios.
 ENHANCEMENT #4: Task-specific RL agents with coordinator.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -79,9 +80,13 @@ class SpecialistAgent(ABC):
 
                 loaded_model: PPO = PPO.load(self.model_path)
                 self.model = loaded_model
-                print(f"Loaded {self.name} model from {self.model_path}")
+                logging.getLogger(__name__).info(
+                    "Loaded %s model from %s", self.name, self.model_path
+                )
             except Exception as e:
-                print(f"Warning: Failed to load {self.name} model: {e}")
+                logging.getLogger(__name__).warning(
+                    "Failed to load %s model: %s", self.name, e
+                )
                 self.model = None
 
     def record_activation(self, was_successful: bool) -> None:

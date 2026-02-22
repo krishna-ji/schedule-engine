@@ -21,11 +21,16 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import logging
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
+
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -83,13 +88,14 @@ def run_pymoo(pop_size: int, n_gen: int, seed: int) -> dict:
             )
             # Progress line so user can see it's not stuck
             gen = algorithm.n_gen
-            print(
-                f"    gen {gen:3d}  hard={hard_vals[best_cv_idx]:.0f}  "
-                f"soft={soft_vals[best_cv_idx]:.0f}  "
-                f"cv_min={cv.min():.0f}  "
-                f"feasible={int((cv == 0).sum())}  "
-                f"({dt:.1f}s)",
-                flush=True,
+            logger.info(
+                "    gen %3d  hard=%.0f  soft=%.0f  cv_min=%.0f  feasible=%d  (%.1fs)",
+                gen,
+                hard_vals[best_cv_idx],
+                soft_vals[best_cv_idx],
+                cv.min(),
+                int((cv == 0).sum()),
+                dt,
             )
 
     callback = TrackingCallback()
@@ -186,12 +192,12 @@ def run_deap(pop_size: int, n_gen: int, seed: int) -> dict:
 
     # ---------- init ----------------------------------------------------
     t_gen0 = time.perf_counter()
-    print("  DEAP init: generating population...", flush=True)
+    logger.info("  DEAP init: generating population...")
     pop = generate_course_group_aware_population(pop_size, ctx, parallel=False)
-    print("  DEAP init: evaluating...", flush=True)
+    logger.info("  DEAP init: evaluating...")
     scores = _eval_pop(pop)
     dt_init = time.perf_counter() - t_gen0
-    print(f"  DEAP init done ({dt_init:.1f}s)", flush=True)
+    logger.info("  DEAP init done (%.1fs)", dt_init)
     rows: list[dict] = [_record(0, scores, dt_init)]
 
     t_total0 = time.perf_counter()
@@ -240,10 +246,13 @@ def run_deap(pop_size: int, n_gen: int, seed: int) -> dict:
         best_h = scores[0][0]
         best_s = scores[0][1]
         n_feas = sum(1 for s in scores if s[0] == 0)
-        print(
-            f"    gen {gen:3d}  hard={best_h:.0f}  soft={best_s:.0f}  "
-            f"feasible={n_feas}  ({dt:.1f}s)",
-            flush=True,
+        logger.info(
+            "    gen %3d  hard=%.0f  soft=%.0f  feasible=%d  (%.1fs)",
+            gen,
+            best_h,
+            best_s,
+            n_feas,
+            dt,
         )
 
     elapsed = time.perf_counter() - t_total0 + dt_init
@@ -300,18 +309,20 @@ def main():
     for seed in seeds:
         # ---- pymoo ----
         if not args.deap_only:
-            print(f"\n{'=' * 60}")
-            print(f"PYMOO  seed={seed}  pop={args.pop}  gens={args.gens}")
-            print(f"{'=' * 60}")
+            logger.info("=" * 60)
+            logger.info("PYMOO  seed=%d  pop=%d  gens=%d", seed, args.pop, args.gens)
+            logger.info("=" * 60)
             result = run_pymoo(args.pop, args.gens, seed)
             all_rows.extend(result["rows"])
             all_summaries.append(result["summary"])
             s = result["summary"]
-            print(
-                f"  Done {s['elapsed_s']:.1f}s  ({s['sec_per_gen']:.2f}s/gen)  "
-                f"best_hard={s['final_best_hard']:.0f}  "
-                f"best_soft={s['final_best_soft']:.0f}  "
-                f"feasible={s['final_n_feasible']}"
+            logger.info(
+                "  Done %.1fs  (%.2fs/gen)  best_hard=%.0f  best_soft=%.0f  feasible=%d",
+                s["elapsed_s"],
+                s["sec_per_gen"],
+                s["final_best_hard"],
+                s["final_best_soft"],
+                s["final_n_feasible"],
             )
             # Incremental save so crashes don't lose data
             with open(jsonl_path, "a") as f:
@@ -320,18 +331,20 @@ def main():
 
         # ---- DEAP ----
         if not args.pymoo_only:
-            print(f"\n{'=' * 60}")
-            print(f"DEAP   seed={seed}  pop={args.pop}  gens={args.gens}")
-            print(f"{'=' * 60}")
+            logger.info("=" * 60)
+            logger.info("DEAP   seed=%d  pop=%d  gens=%d", seed, args.pop, args.gens)
+            logger.info("=" * 60)
             result = run_deap(args.pop, args.gens, seed)
             all_rows.extend(result["rows"])
             all_summaries.append(result["summary"])
             s = result["summary"]
-            print(
-                f"  Done {s['elapsed_s']:.1f}s  ({s['sec_per_gen']:.2f}s/gen)  "
-                f"best_hard={s['final_best_hard']:.0f}  "
-                f"best_soft={s['final_best_soft']:.0f}  "
-                f"feasible={s['final_n_feasible']}"
+            logger.info(
+                "  Done %.1fs  (%.2fs/gen)  best_hard=%.0f  best_soft=%.0f  feasible=%d",
+                s["elapsed_s"],
+                s["sec_per_gen"],
+                s["final_best_hard"],
+                s["final_best_soft"],
+                s["final_n_feasible"],
             )
             # Incremental save
             with open(jsonl_path, "a") as f:
@@ -339,7 +352,7 @@ def main():
                     f.write(json.dumps(row, default=str) + "\n")
 
     # ---- JSONL already written incrementally ----
-    print(f"\nWrote {len(all_rows)} rows -> {jsonl_path}")
+    logger.info("Wrote %d rows -> %s", len(all_rows), jsonl_path)
 
     # ---- Write summary JSON ----
     # Also compute cross-seed aggregates
@@ -373,15 +386,15 @@ def main():
     }
     with open(summary_path, "w") as f:
         json.dump(out, f, indent=2, default=str)
-    print(f"Wrote summary -> {summary_path}")
+    logger.info("Wrote summary -> %s", summary_path)
 
     # ---- Print quick comparison ----
-    print(f"\n{'=' * 60}")
-    print("AGGREGATE COMPARISON")
-    print(f"{'=' * 60}")
+    logger.info("=" * 60)
+    logger.info("AGGREGATE COMPARISON")
+    logger.info("=" * 60)
     header = f"{'Metric':<28} {'pymoo':>12} {'deap':>12}"
-    print(header)
-    print("-" * len(header))
+    logger.info("%s", header)
+    logger.info("%s", "-" * len(header))
     for metric in (
         "median_best_hard",
         "median_best_soft",
@@ -394,8 +407,9 @@ def main():
         dv = agg.get("deap", {}).get(metric, "-")
         pv_s = f"{pv:.2f}" if isinstance(pv, float) else str(pv)
         dv_s = f"{dv:.2f}" if isinstance(dv, float) else str(dv)
-        print(f"  {metric:<26} {pv_s:>12} {dv_s:>12}")
+        logger.info("  %-26s %12s %12s", metric, pv_s, dv_s)
 
 
 if __name__ == "__main__":
+    quick_setup()
     main()

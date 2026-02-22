@@ -1,10 +1,16 @@
 """Debug script to isolate soft eval per-constraint discrepancy."""
 
+import logging
 import pickle
 import sys
 from pathlib import Path
 
 import numpy as np
+
+from src.utils.logging_config import quick_setup
+
+logger = quick_setup()
+
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -29,7 +35,7 @@ with open(PKL_PATH, "rb") as f:
 prob = SchedulingProblem(PKL_PATH)
 sampling = ConstructiveSampling(PKL_PATH)
 X = sampling._do(prob, 5)
-print(f"Pop shape: {X.shape}")
+logger.info("Pop shape: %s", X.shape)
 
 events = pkl_data["events"]
 idx_to_instructor = {int(k): v for k, v in pkl_data["idx_to_instructor"].items()}
@@ -215,29 +221,29 @@ oop_instructor = np.array(oop_instructor)
 oop_lunch = np.array(oop_lunch)
 oop_total = oop_student + oop_instructor + oop_lunch
 
-print("\n=== PER-CONSTRAINT COMPARISON ===")
-print("\nStudent Compactness:")
-print(f"  Vec: {vec_student}")
-print(f"  OOP: {oop_student}")
-print(f"  Diff: {vec_student - oop_student}")
+logger.info("\n=== PER-CONSTRAINT COMPARISON ===")
+logger.info("\nStudent Compactness:")
+logger.info("  Vec: %s", vec_student)
+logger.info("  OOP: %s", oop_student)
+logger.info("  Diff: %s", vec_student - oop_student)
 
-print("\nInstructor Compactness:")
-print(f"  Vec: {vec_instructor}")
-print(f"  OOP: {oop_instructor}")
-print(f"  Diff: {vec_instructor - oop_instructor}")
+logger.info("\nInstructor Compactness:")
+logger.info("  Vec: %s", vec_instructor)
+logger.info("  OOP: %s", oop_instructor)
+logger.info("  Diff: %s", vec_instructor - oop_instructor)
 
-print("\nLunch Break:")
-print(f"  Vec: {vec_lunch}")
-print(f"  OOP: {oop_lunch}")
-print(f"  Diff: {vec_lunch - oop_lunch}")
+logger.info("\nLunch Break:")
+logger.info("  Vec: %s", vec_lunch)
+logger.info("  OOP: %s", oop_lunch)
+logger.info("  Diff: %s", vec_lunch - oop_lunch)
 
-print("\nTotal:")
-print(f"  Vec: {vec_total}")
-print(f"  OOP: {oop_total}")
-print(f"  Diff: {vec_total - oop_total}")
+logger.info("\nTotal:")
+logger.info("  Vec: %s", vec_total)
+logger.info("  OOP: %s", oop_total)
+logger.info("  Diff: %s", vec_total - oop_total)
 
 # Deep dive: for individual 0, show per-group per-day student gaps
-print("\n=== DEEP DIVE: Individual 0 ===")
+logger.info("\n=== DEEP DIVE: Individual 0 ===")
 xi = X[0].astype(int)
 inst, room, time_ = chromosome_views(xi)
 genes = []
@@ -269,8 +275,8 @@ for ev in events:
 group_to_idx = {gid: i for i, gid in enumerate(sorted(all_gids))}
 
 # Show first few groups with gaps
-print(f"  Total groups in OOP: {len(group_daily)}")
-print(f"  Total groups in Vec: {sdata.n_groups}")
+logger.info("  Total groups in OOP: %d", len(group_daily))
+logger.info("  Total groups in Vec: %d", sdata.n_groups)
 
 gap_examples = 0
 for gid in sorted(group_daily.keys()):
@@ -286,13 +292,14 @@ for gid in sorted(group_daily.keys()):
         )
         if oop_gap > 0 and gap_examples < 10:
             gidx = group_to_idx.get(gid, -1)
-            print(
-                f"  Group {gid} (idx={gidx}), {day_name}: occ={sorted_q}, break={sorted(break_q)}, oop_gap={oop_gap}"
+            logger.debug(
+                "  Group %s (idx=%d), %s: occ=%s, break=%s, oop_gap=%d",
+                gid, gidx, day_name, sorted_q, sorted(break_q), oop_gap
             )
             gap_examples += 1
 
 # Compare occupancy tensors for individual 0
-print("\n=== OCCUPANCY COMPARISON: Individual 0 ===")
+logger.info("\n=== OCCUPANCY COMPARISON: Individual 0 ===")
 
 # Build vec occupancy tensor for ind 0
 N_test = 1
@@ -329,31 +336,32 @@ for gidx in range(min(n_groups_v, 10)):
         vec_occ = set(np.where(occ_v[0, gidx, d_idx])[0])
         oop_occ = oop_days.get(day_name, set())
         if vec_occ != oop_occ:
-            print(
-                f"  MISMATCH {gid} (idx={gidx}), {day_name}: vec={sorted(vec_occ)}, oop={sorted(oop_occ)}"
+            logger.warning(
+                "  MISMATCH %s (idx=%d), %s: vec=%s, oop=%s",
+                gid, gidx, day_name, sorted(vec_occ), sorted(oop_occ)
             )
             mismatch_count += 1
     if mismatch_count > 20:
-        print("  ... (truncated)")
+        logger.info("  ... (truncated)")
         break
 
 if mismatch_count == 0:
-    print("  All group-day occupancies MATCH!")
+    logger.info("  All group-day occupancies MATCH!")
 else:
     # Detailed trace for first mismatch
-    print(f"\n  Total mismatches: {mismatch_count}")
+    logger.info("\n  Total mismatches: %d", mismatch_count)
     # Trace BAM1A (idx=0) Wednesday (day 3) — vec has extra [0,1], oop has [2,3,5,6]
     target_gid = "BAM1A"
     target_gidx = group_to_idx[target_gid]
     target_day = 3  # Wednesday
     target_day_name = "Wednesday"
-    print(f"\n  TRACE: Events mapped to {target_gid} (idx={target_gidx})")
+    logger.debug("\n  TRACE: Events mapped to %s (idx=%d)", target_gid, target_gidx)
 
     # Find all events with BAM1A in their groups
     bam1a_events = [
         (e, ev) for e, ev in enumerate(events) if target_gid in ev["group_ids"]
     ]
-    print(f"  Total events for {target_gid}: {len(bam1a_events)}")
+    logger.debug("  Total events for %s: %d", target_gid, len(bam1a_events))
 
     xi = X[0].astype(int)
     inst_v, room_v, time_v = chromosome_views(xi)
@@ -366,31 +374,33 @@ else:
         on_target = [(d, w) for d, w in days_within if d == target_day]
         all_days = [(d, w) for d, w in days_within]
         if on_target or any(d == target_day for d, _ in all_days):
-            print(
-                f"    Event {e} ({ev['course_id']}): start={start}, dur={dur}, "
-                f"quanta={quanta}, day_within={days_within}"
+            logger.debug(
+                "    Event %d (%s): start=%d, dur=%d, quanta=%s, day_within=%s",
+                e, ev['course_id'], start, dur, quanta, days_within
             )
 
     # Now show what OOP has for BAM1A Wednesday
     oop_bam1a_wed = group_daily.get(target_gid, {}).get(target_day_name, set())
-    print(f"\n  OOP {target_gid} {target_day_name}: {sorted(oop_bam1a_wed)}")
-    print(
-        f"  Vec {target_gid} {target_day_name}: {sorted(set(np.where(occ_v[0, target_gidx, target_day])[0]))}"
+    logger.debug("\n  OOP %s %s: %s", target_gid, target_day_name, sorted(oop_bam1a_wed))
+    logger.debug(
+        "  Vec %s %s: %s",
+        target_gid, target_day_name, sorted(set(np.where(occ_v[0, target_gidx, target_day])[0]))
     )
 
     # Also trace events at continuous quanta 21, 22 (Wednesday q0, q1) for any group
-    print(f"\n  Events yielding continuous quanta 21-22 (Wed q0-q1) for {target_gid}:")
+    logger.debug("\n  Events yielding continuous quanta 21-22 (Wed q0-q1) for %s:", target_gid)
     for e, ev in bam1a_events:
         start = int(time_v[e])
         dur = ev["num_quanta"]
         quanta = list(range(start, start + dur))
         if any(q in [21, 22] for q in quanta):
-            print(
-                f"    Event {e} ({ev['course_id']}): start={start}, dur={dur}, quanta={quanta}"
+            logger.debug(
+                "    Event %d (%s): start=%d, dur=%d, quanta=%s",
+                e, ev['course_id'], start, dur, quanta
             )
 
     # Now compare: what events does the expansion array map to Wednesday for BAM1A?
-    print(f"\n  Expansion entries for group {target_gidx} (BAM1A):")
+    logger.debug("\n  Expansion entries for group %d (BAM1A):", target_gidx)
     exp_mask = sdata.grp_exp_group == target_gidx
     exp_events_for_group = sdata.grp_exp_event[exp_mask]
     exp_offsets_for_group = sdata.grp_exp_offset[exp_mask]
@@ -403,13 +413,13 @@ else:
         on_wed = [(d, w) for d, w in days_within if d == target_day]
         if on_wed:
             ev = events[e_idx]
-            print(
-                f"    Event {e_idx} ({ev['course_id']}): start={start}, "
-                f"offsets={list(offsets)}, quanta={quanta}, days_within={days_within}"
+            logger.debug(
+                "    Event %d (%s): start=%d, offsets=%s, quanta=%s, days_within=%s",
+                e_idx, ev['course_id'], start, list(offsets), quanta, days_within
             )
 
 # Also compare instructor occupancy for first few instructors
-print("\n=== INSTRUCTOR OCCUPANCY COMPARISON: Individual 0 ===")
+logger.info("\n=== INSTRUCTOR OCCUPANCY COMPARISON: Individual 0 ===")
 from src.constraints.constraints import _instructor_daily_map
 
 inst_daily = _instructor_daily_map(tt, qts)
@@ -449,15 +459,16 @@ for iid in range(min(n_inst_v, 200)):
         vec_occ_i = set(np.where(occ_i_v[0, iid, d_idx])[0])
         oop_occ_i = oop_i_days.get(day_name, set())
         if vec_occ_i != oop_occ_i:
-            print(
-                f"  MISMATCH inst {iname} (idx={iid}), {day_name}: vec={sorted(vec_occ_i)}, oop={sorted(oop_occ_i)}"
+            logger.warning(
+                "  MISMATCH inst %s (idx=%d), %s: vec=%s, oop=%s",
+                iname, iid, day_name, sorted(vec_occ_i), sorted(oop_occ_i)
             )
             mismatch_inst += 1
             if mismatch_inst > 20:
                 break
     if mismatch_inst > 20:
-        print("  ... (truncated)")
+        logger.info("  ... (truncated)")
         break
 
 if mismatch_inst == 0:
-    print("  All instructor-day occupancies MATCH!")
+    logger.info("  All instructor-day occupancies MATCH!")

@@ -6,6 +6,7 @@ ENHANCEMENT #4: Coordinates specialist agent selection and execution.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -169,7 +170,9 @@ class AgentCoordinator:
                     loaded_model = PPO.load(meta_model_path)
                     self.meta_agent = loaded_model
                 except Exception as e:
-                    print(f"Warning: Failed to load meta-agent: {e}")
+                    logging.getLogger(__name__).warning(
+                        "Failed to load meta-agent: %s", e
+                    )
                     self.meta_agent = None
 
         if self.meta_agent and observation is not None:

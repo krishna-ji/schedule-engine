@@ -15,12 +15,17 @@ from __future__ import annotations
 import cProfile
 import functools
 import io
+import logging
 import pstats
 import sys
 import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 # ensure project root is on path
 ROOT = Path(__file__).resolve().parent.parent
@@ -95,17 +100,17 @@ def main() -> None:
     pr.disable()
 
     # ── Print call log ────────────────────────────────────────────
-    print("\n" + "=" * 72)
-    print(" AUDIT: PLOT / EXPORT PIPELINE COST")
-    print("=" * 72)
+    logger.info("=" * 72)
+    logger.info(" AUDIT: PLOT / EXPORT PIPELINE COST")
+    logger.info("=" * 72)
 
     total_plot = 0.0
     total_eval = 0.0
     total_decode = 0.0
     total_other = 0.0
 
-    print(f"\n{'Function':<65} {'Calls':>5} {'Total(s)':>9} {'Avg(ms)':>9}")
-    print("-" * 92)
+    logger.info("%-65s %5s %9s %9s", "Function", "Calls", "Total(s)", "Avg(ms)")
+    logger.info("%s", "-" * 92)
 
     for key in sorted(_CALL_LOG):
         calls = _CALL_LOG[key]
@@ -136,40 +141,41 @@ def main() -> None:
             .replace("src.pipeline.", "")
             .replace("src.io.", "")
         )
-        print(f"  {tag} {short:<58} {n:>5} {tot:>9.3f} {avg_ms:>9.1f}")
+        logger.info("  %s %-58s %5d %9.3f %9.1f", tag, short, n, tot, avg_ms)
 
-    print("-" * 92)
-    print(f"  Total plotting/export:  {total_plot:>8.3f}s")
-    print(f"  Total evaluation:       {total_eval:>8.3f}s")
-    print(f"  Total decoding:         {total_decode:>8.3f}s")
-    print(f"  Wall clock:             {t_total:>8.3f}s")
+    logger.info("%s", "-" * 92)
+    logger.info("  Total plotting/export:  %8.3fs", total_plot)
+    logger.info("  Total evaluation:       %8.3fs", total_eval)
+    logger.info("  Total decoding:         %8.3fs", total_decode)
+    logger.info("  Wall clock:             %8.3fs", t_total)
     pct_plot = (total_plot / t_total * 100) if t_total > 0 else 0
     pct_eval = (total_eval / t_total * 100) if t_total > 0 else 0
-    print(f"  Plot/export fraction:   {pct_plot:>7.1f}%")
-    print(f"  Eval fraction:          {pct_eval:>7.1f}%")
+    logger.info("  Plot/export fraction:   %7.1f%%", pct_plot)
+    logger.info("  Eval fraction:          %7.1f%%", pct_eval)
 
     # Decoder calls
     decode_calls = len(_CALL_LOG.get("src.io.decoder.decode_individual", []))
-    print(f"\n  decode_individual calls: {decode_calls}")
-    print("  (should be 1 — only best solution after run)")
+    logger.info("  decode_individual calls: %d", decode_calls)
+    logger.info("  (should be 1 — only best solution after run)")
 
     # ── cProfile top-20 ──────────────────────────────────────────
-    print("\n" + "=" * 72)
-    print(" cProfile TOP-20 (cumulative)")
-    print("=" * 72)
+    logger.info("=" * 72)
+    logger.info(" cProfile TOP-20 (cumulative)")
+    logger.info("=" * 72)
     s = io.StringIO()
     ps = pstats.Stats(pr, stream=s)
     ps.sort_stats("cumulative")
     ps.print_stats(20)
-    print(s.getvalue())
+    logger.info("%s", s.getvalue())
 
     # ── Cleanup ──────────────────────────────────────────────────
     import shutil
 
     shutil.rmtree(out_dir, ignore_errors=True)
 
-    print("Done. Temp output cleaned up.")
+    logger.info("Done. Temp output cleaned up.")
 
 
 if __name__ == "__main__":
+    quick_setup()
     main()

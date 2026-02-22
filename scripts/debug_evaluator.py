@@ -3,6 +3,7 @@
 Debug remaining differences between evaluators with detailed comparison.
 """
 
+import logging
 import pickle
 import sys
 from collections import defaultdict
@@ -26,14 +27,17 @@ from src.io.data_loader import (
 )
 from src.io.time_system import QuantumTimeSystem
 from src.pipeline.fast_evaluator import fast_conflict_evaluator
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 
 def debug_single_individual():
     """Debug a single individual to understand differences."""
-    print("=== DEBUGGING SINGLE INDIVIDUAL ===")
+    logger.info("=== DEBUGGING SINGLE INDIVIDUAL ===")
 
     # Load context data
-    print("Loading data...")
+    logger.info("Loading data...")
     data_path = PROJECT_ROOT / "data"
     qts = QuantumTimeSystem()
     courses, skipped_courses = load_courses(str(data_path / "Course.json"))
@@ -51,7 +55,7 @@ def debug_single_individual():
         events_data = pickle.load(f)
     events = events_data["events"]
 
-    print(f"Loaded {len(events)} events")
+    logger.info("Loaded %d events", len(events))
 
     # Create a simple test: assign first valid choice to each event
     individual = []
@@ -73,7 +77,7 @@ def debug_single_individual():
     idx_to_instructor = {idx: inst_id for inst_id, idx in instructor_to_idx.items()}
     idx_to_room = {idx: room_id for room_id, idx in room_to_idx.items()}
 
-    print("Creating test individual...")
+    logger.info("Creating test individual...")
     for i, event in enumerate(events[:10]):  # Just test first 10 events
         # Get first valid assignments
         instructor_idx = allowed_instructors[i][0] if allowed_instructors[i] else 0
@@ -104,32 +108,35 @@ def debug_single_individual():
             event["groups_mask"] if event["groups_mask"] < 2**63 else 0
         )
 
-    print(f"Created individual with {len(individual)} genes")
+    logger.info("Created individual with %d genes", len(individual))
 
     # Evaluate with original
-    print("\\nEvaluating with original Timetable...")
+    logger.info("Evaluating with original Timetable...")
     timetable = Timetable(individual, context)
     orig_group = timetable.count_group_violations()
     orig_instructor = timetable.count_instructor_violations()
     orig_room = timetable.count_room_violations()
 
-    print(
-        f"Original: group={orig_group}, instructor={orig_instructor}, room={orig_room}"
+    logger.info(
+        "Original: group=%d, instructor=%d, room=%d",
+        orig_group,
+        orig_instructor,
+        orig_room,
     )
 
     # Print detailed group occupancy from original
-    print("\\nOriginal group occupancy analysis:")
+    logger.info("Original group occupancy analysis:")
     group_occ_orig = timetable._group_occ
-    print(f"Group occupancy entries: {len(group_occ_orig)}")
+    logger.info("Group occupancy entries: %d", len(group_occ_orig))
     violations_orig = [
         (key, len(idxs)) for key, idxs in group_occ_orig.items() if len(idxs) > 1
     ]
-    print(f"Violations: {len(violations_orig)}")
+    logger.info("Violations: %d", len(violations_orig))
     for i, (key, count) in enumerate(violations_orig[:5]):
-        print(f"  {key}: {count} events")
+        logger.info("  %s: %d events", key, count)
 
     # Evaluate with fast
-    print("\\nEvaluating with fast evaluator...")
+    logger.info("Evaluating with fast evaluator...")
     start_arr = np.array(assignments["start"])
     duration_arr = np.array(assignments["duration"])
     room_arr = np.array(assignments["room"])
@@ -153,23 +160,41 @@ def debug_single_individual():
         events_data_truncated,
     )
 
-    print(f"Fast: group={fast_group}, instructor={fast_instructor}, room={fast_room}")
-
-    print("\\nDifferences:")
-    print(f"  Group: {orig_group} vs {fast_group} (diff: {fast_group - orig_group})")
-    print(
-        f"  Instructor: {orig_instructor} vs {fast_instructor} (diff: {fast_instructor - orig_instructor})"
+    logger.info(
+        "Fast: group=%d, instructor=%d, room=%d", fast_group, fast_instructor, fast_room
     )
-    print(f"  Room: {orig_room} vs {fast_room} (diff: {fast_room - orig_room})")
+
+    logger.info("Differences:")
+    logger.info(
+        "  Group: %d vs %d (diff: %d)", orig_group, fast_group, fast_group - orig_group
+    )
+    logger.info(
+        "  Instructor: %d vs %d (diff: %d)",
+        orig_instructor,
+        fast_instructor,
+        fast_instructor - orig_instructor,
+    )
+    logger.info(
+        "  Room: %d vs %d (diff: %d)", orig_room, fast_room, fast_room - orig_room
+    )
 
     # Detailed conflict analysis for troubleshooting
-    print("\\nDetailed conflict analysis:")
-    print("Individual summary:")
+    logger.info("Detailed conflict analysis:")
+    logger.info("Individual summary:")
     for i, gene in enumerate(individual):
-        print(
-            f"  Gene {i}: {gene.course_id} {gene.course_type} groups={gene.group_ids} room={gene.room_id} instructor={gene.instructor_id} start={gene.start_quanta} dur={gene.num_quanta}"
+        logger.info(
+            "  Gene %d: %s %s groups=%s room=%s instructor=%s start=%d dur=%d",
+            i,
+            gene.course_id,
+            gene.course_type,
+            gene.group_ids,
+            gene.room_id,
+            gene.instructor_id,
+            gene.start_quanta,
+            gene.num_quanta,
         )
 
 
 if __name__ == "__main__":
+    quick_setup()
     debug_single_individual()

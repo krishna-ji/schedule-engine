@@ -7,8 +7,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import logging
+
 from src.io.data_store import DataStore
+from src.utils.logging_config import quick_setup
 from src.utils.room_compatibility import is_room_suitable_for_course
+
+logger = quick_setup()
 
 store = DataStore.from_json("data")
 ctx = store.to_context()
@@ -21,8 +26,8 @@ allowed_rooms = d["allowed_rooms"]
 room_ids_sorted = sorted(ctx.rooms.keys())
 
 empties = [i for i, ar in enumerate(allowed_rooms) if len(ar) == 0]
-print(f"Total events with 0 suitable rooms: {len(empties)}")
-print()
+logger.info("Total events with 0 suitable rooms: %d", len(empties))
+logger.info("")
 
 # Collect unique course keys for these events
 course_keys_seen = set()
@@ -40,10 +45,19 @@ for e_idx in empties:
     req_str = (required if isinstance(required, str) else str(required)).lower().strip()
     course_lab = getattr(course, "specific_lab_features", None) if course else None
 
-    print(
-        f"Event {e_idx}: course={cid} type={ctype} groups={ev['group_ids']} dur={ev['num_quanta']}"
+    logger.info(
+        "Event %d: course=%s type=%s groups=%s dur=%s",
+        e_idx,
+        cid,
+        ctype,
+        ev["group_ids"],
+        ev["num_quanta"],
     )
-    print(f'  required_room_features="{req_str}"  specific_lab_features={course_lab}')
+    logger.info(
+        '  required_room_features="%s"  specific_lab_features=%s',
+        req_str,
+        course_lab,
+    )
 
     course_keys_seen.add(course_key)
 
@@ -78,21 +92,24 @@ for e_idx in empties:
                         f'    {rid}: type="{rt_str}" spec={rsf} -> SPEC_FAIL (type ok, specific features mismatch)'
                     )
 
-    print(
-        f"  Failures: type_fail={type_fail} spec_feature_fail={spec_fail} total={type_fail + spec_fail}/75"
+    logger.info(
+        "  Failures: type_fail=%d spec_feature_fail=%d total=%d/75",
+        type_fail,
+        spec_fail,
+        type_fail + spec_fail,
     )
     for sf in sample_fails:
-        print(sf)
-    print()
+        logger.info("%s", sf)
+    logger.info("")
 
-print("=" * 70)
-print(f"Unique courses affected: {len(course_keys_seen)}")
+logger.info("=" * 70)
+logger.info("Unique courses affected: %d", len(course_keys_seen))
 for ck in sorted(course_keys_seen):
-    print(f"  {ck}")
+    logger.info("  %s", ck)
 
 # Also show what room types exist
-print()
-print("Room type distribution:")
+logger.info("")
+logger.info("Room type distribution:")
 from collections import Counter
 
 rtypes: Counter[str] = Counter()
@@ -101,4 +118,4 @@ for rid, room in ctx.rooms.items():
     rt_str = (rt if isinstance(rt, str) else str(rt)).lower().strip()
     rtypes[rt_str] += 1
 for rt, cnt in rtypes.most_common():
-    print(f"  {rt}: {cnt}")
+    logger.info("  %s: %d", rt, cnt)

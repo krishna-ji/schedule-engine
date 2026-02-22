@@ -11,6 +11,7 @@ Saves results to results/bench_eval_vectorized.json.
 from __future__ import annotations
 
 import json
+import logging
 import pickle
 import sys
 import time
@@ -19,6 +20,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
+
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 PKL_PATH = "events_with_domains.pkl"
 RESULTS_DIR = Path("results")
@@ -69,9 +74,9 @@ def stats(times_ms, N):
 
 
 def main():
-    print("=" * 70)
-    print("BENCHMARK: Vectorized vs Batch Hard-Constraint Evaluator")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("BENCHMARK: Vectorized vs Batch Hard-Constraint Evaluator")
+    logger.info("=" * 70)
 
     data = load_data()
     E = len(data["events"])
@@ -116,41 +121,42 @@ def main():
         }
         results["benchmarks"].append(entry)
 
-        print(f"\n--- N = {N} ---")
-        print(
-            f"  Batch (per-ind loop):  "
-            f"mean={s_batch['total_mean_ms']:8.1f} ms  "
-            f"({s_batch['per_ind_mean_ms']:.4f} ms/ind)  "
-            f"median={s_batch['total_median_ms']:.1f}  "
-            f"p95={s_batch['total_p95_ms']:.1f}"
+        logger.info("--- N = %d ---", N)
+        logger.info(
+            "  Batch (per-ind loop):  mean=%8.1f ms  (%.4f ms/ind)  median=%.1f  p95=%.1f",
+            s_batch["total_mean_ms"],
+            s_batch["per_ind_mean_ms"],
+            s_batch["total_median_ms"],
+            s_batch["total_p95_ms"],
         )
-        print(
-            f"  Vectorized:            "
-            f"mean={s_vec['total_mean_ms']:8.1f} ms  "
-            f"({s_vec['per_ind_mean_ms']:.4f} ms/ind)  "
-            f"median={s_vec['total_median_ms']:.1f}  "
-            f"p95={s_vec['total_p95_ms']:.1f}"
+        logger.info(
+            "  Vectorized:            mean=%8.1f ms  (%.4f ms/ind)  median=%.1f  p95=%.1f",
+            s_vec["total_mean_ms"],
+            s_vec["per_ind_mean_ms"],
+            s_vec["total_median_ms"],
+            s_vec["total_p95_ms"],
         )
-        print(f"  Speedup: {speedup:.2f}x")
+        logger.info("  Speedup: %.2fx", speedup)
 
     # Save
     out_path = RESULTS_DIR / "bench_eval_vectorized.json"
     with open(out_path, "w") as f:
         json.dump(results, f, indent=2)
-    print(f"\nResults saved to {out_path}")
+    logger.info("Results saved to %s", out_path)
 
     # Summary table
-    print("\n" + "=" * 70)
-    print(f"{'N':>6}  {'Batch ms/ind':>14}  {'Vec ms/ind':>12}  {'Speedup':>8}")
-    print("-" * 50)
+    logger.info("=" * 70)
+    logger.info("%6s  %14s  %12s  %8s", "N", "Batch ms/ind", "Vec ms/ind", "Speedup")
+    logger.info("-" * 50)
     for entry in results["benchmarks"]:
         N = entry["N"]
         b = entry["batch"]["per_ind_mean_ms"]
         v = entry["vectorized"]["per_ind_mean_ms"]
         s = entry["speedup"]
-        print(f"{N:>6}  {b:>14.4f}  {v:>12.4f}  {s:>7.2f}x")
-    print("=" * 70)
+        logger.info("%6d  %14.4f  %12.4f  %7.2fx", N, b, v, s)
+    logger.info("=" * 70)
 
 
 if __name__ == "__main__":
+    quick_setup()
     main()

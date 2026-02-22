@@ -6,6 +6,7 @@ ENHANCEMENT #8: Specialist agents for different Pareto ranks.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -81,7 +82,9 @@ class RankBasedAgent:
 
                 self.model = PPO.load(self.model_path)
             except Exception as e:
-                print(f"Warning: Failed to load rank-{self.rank} agent: {e}")
+                logging.getLogger(__name__).warning(
+                    "Failed to load rank-%s agent: %s", self.rank, e
+                )
 
 
 class RankBasedMultiAgent:

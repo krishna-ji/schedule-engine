@@ -11,7 +11,12 @@ Courses fixed:
   SH653 theory (insufficient)   → I225
 """
 import json
+import logging
 from pathlib import Path
+
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 DATA = Path(__file__).resolve().parent.parent / "data" / "Instructors.json"
 
@@ -51,14 +56,15 @@ def main() -> None:
         existing = {(q["coursecode"], q["coursetype"]) for q in inst["courses"]}
         if (cc, ct) not in existing:
             inst["courses"].append({"coursecode": cc, "coursetype": ct})
-            print(f"  Added {cc}/{ct} → {iid} ({inst['name']})")
+            logger.info("  Added %s/%s -> %s (%s)", cc, ct, iid, inst["name"])
         else:
-            print(f"  Already exists: {cc}/{ct} in {iid}")
+            logger.info("  Already exists: %s/%s in %s", cc, ct, iid)
 
     with open(DATA, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    print(f"\nSaved {DATA}")
+    logger.info("Saved %s", DATA)
 
 
 if __name__ == "__main__":
+    quick_setup()
     main()

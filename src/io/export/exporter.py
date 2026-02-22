@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import textwrap
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -475,7 +476,7 @@ def _save_json_schedule_as_pdf(
         for group_id in sorted(group_sessions):
             plot_schedule(group_sessions[group_id], group_id, pdf, color_map)
 
-    print(f" PDF saved as '{output_pdf_path}'")
+    logging.getLogger(__name__).info("PDF saved as '%s'", output_pdf_path)
 
 
 def export_everything(
@@ -560,6 +561,6 @@ def export_everything(
             pdf_future = executor.submit(save_pdf, json_path)
             pdf_path = pdf_future.result()
 
-    print("[OK-KRISHNA] Schedule exported successfully!")
-    print(f"[...]JSON: {json_path}")
-    print(f"[...]PDF:  {pdf_path}")
+    logging.getLogger(__name__).info("Schedule exported successfully!")
+    logging.getLogger(__name__).info("JSON: %s", json_path)
+    logging.getLogger(__name__).info("PDF:  %s", pdf_path)

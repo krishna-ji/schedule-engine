@@ -9,6 +9,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 
+from src.utils.logging_config import quick_setup
+
+logger = quick_setup()
+
 from src.pipeline.fast_evaluator import fast_evaluate_hard
 from src.pipeline.repair_operator import SchedulingRepair
 
@@ -41,15 +45,15 @@ result = fast_evaluate_hard(
     data["instructor_available_quanta"],
     data["room_available_quanta"],
 )
-print("POST-REPAIR BREAKDOWN:")
+logger.info("POST-REPAIR BREAKDOWN:")
 total = 0
 for k, v in sorted(result.items(), key=lambda x: -x[1]):
-    print(f"  {k:40s} {v:5d}")
+    logger.info("  %-40s %5d", k, v)
     total += v
-print(f"  {'TOTAL':40s} {total:5d}")
+logger.info("  %-40s %5d", "TOTAL", total)
 
 # Also show how many events still have each type of violation
-print("\nPER-EVENT ANALYSIS:")
+logger.info("PER-EVENT ANALYSIS:")
 # Count events with group conflicts
 from collections import defaultdict
 
@@ -73,26 +77,26 @@ group_conflict_events = set()
 for evts in group_occ.values():
     if len(evts) > 1:
         group_conflict_events.update(evts)
-print(f"  Events with group conflicts: {len(group_conflict_events)}")
+logger.info("  Events with group conflicts: %d", len(group_conflict_events))
 
 inst_conflict_events = set()
 for evts in inst_occ.values():
     if len(evts) > 1:
         inst_conflict_events.update(evts)
-print(f"  Events with instructor conflicts: {len(inst_conflict_events)}")
+logger.info("  Events with instructor conflicts: %d", len(inst_conflict_events))
 
 room_conflict_events = set()
 for evts in room_occ.values():
     if len(evts) > 1:
         room_conflict_events.update(evts)
-print(f"  Events with room conflicts: {len(room_conflict_events)}")
+logger.info("  Events with room conflicts: %d", len(room_conflict_events))
 
 # Room suitability
 suit_bad = sum(1 for e in range(E) if int(room[e]) not in data["allowed_rooms"][e])
-print(f"  Events with bad room suitability: {suit_bad}")
+logger.info("  Events with bad room suitability: %d", suit_bad)
 
 # Instructor qualification
 qual_bad = sum(
     1 for e in range(E) if int(inst[e]) not in data["allowed_instructors"][e]
 )
-print(f"  Events with bad instructor qual: {qual_bad}")
+logger.info("  Events with bad instructor qual: %d", qual_bad)

@@ -4,6 +4,7 @@
 import cProfile
 import io
 import json
+import logging
 import os
 import pstats
 import sys
@@ -12,6 +13,10 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.utils.logging_config import quick_setup
+
+logger = quick_setup()
 
 POP = int(sys.argv[1]) if len(sys.argv) > 1 else 200
 NGEN = int(sys.argv[2]) if len(sys.argv) > 2 else 50
@@ -28,7 +33,7 @@ from src.pipeline.scheduling_problem import create_problem
 problem = create_problem(pkl_path)
 algo = create_algorithm(pkl_path, pop_size=POP)
 
-print(f"Profiling: pop={POP}, gens={NGEN}")
+logger.info("Profiling: pop=%d, gens=%d", POP, NGEN)
 
 # cProfile
 profiler = cProfile.Profile()
@@ -38,9 +43,9 @@ res = minimize(problem, algo, ("n_gen", NGEN), seed=42, verbose=False)
 wall = time.perf_counter() - t0
 profiler.disable()
 
-print(f"Wall time: {wall:.2f}s")
+logger.info("Wall time: %.2fs", wall)
 if res.F is not None:
-    print(f"Best F: {res.F[:3]}")
+    logger.info("Best F: %s", res.F[:3])
 
 # Save cumulative
 s = io.StringIO()
@@ -69,10 +74,11 @@ for key, val in profiler.stats.items():
     )
 stats_list.sort(key=lambda x: x["tottime"], reverse=True)
 
-print("\n=== TOP 15 BY TOTTIME ===")
+logger.info("\n=== TOP 15 BY TOTTIME ===")
 for h in stats_list[:15]:
-    print(
-        f"  {h['function']:45s} {h['tottime']:8.3f}s tot  {h['cumtime']:8.3f}s cum  ({h['ncalls']:>6} calls)  [{h['file']}:{h['lineno']}]"
+    logger.info(
+        "  %-45s %8.3fs tot  %8.3fs cum  (%6d calls)  [%s:%s]",
+        h['function'], h['tottime'], h['cumtime'], h['ncalls'], h['file'], h['lineno']
     )
 
 # Save JSON summary
@@ -87,7 +93,7 @@ summary = {
 )
 
 # pyinstrument
-print("\n=== pyinstrument run ===")
+logger.info("\n=== pyinstrument run ===")
 import pyinstrument
 
 problem2 = create_problem(pkl_path)
@@ -104,6 +110,6 @@ text = profiler2.output_text(unicode=False)
 (OUT / "profile_pyinstrument.txt").write_text(text, encoding="utf-8")
 # Show first 40 lines
 for line in text.split("\n")[:40]:
-    print(line)
+    logger.info("%s", line)
 
-print("\nDone. Outputs: results/profile_*.{txt,json,html}")
+logger.info("\nDone. Outputs: results/profile_*.{txt,json,html}")

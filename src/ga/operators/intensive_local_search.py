@@ -39,6 +39,7 @@ Usage:
     )
 """
 
+import logging
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -230,8 +231,10 @@ def apply_exhaustive_search(
 
                     except Exception as e:
                         # Log error but continue
-                        print(
-                            f"[!warn] Gene optimization failed for gene {futures[future]}: {e}"
+                        logging.getLogger(__name__).warning(
+                            "Gene optimization failed for gene %s: %s",
+                            futures[future],
+                            e,
                         )
 
         else:
@@ -395,8 +398,10 @@ def apply_greedy_search(
 
                     except Exception as e:
                         # Log error but continue
-                        print(
-                            f"[!warn] Gene optimization failed for gene {futures[future]}: {e}"
+                        logging.getLogger(__name__).warning(
+                            "Gene optimization failed for gene %s: %s",
+                            futures[future],
+                            e,
                         )
 
         else:

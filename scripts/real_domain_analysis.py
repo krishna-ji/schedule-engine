@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Exact domain size analysis with real constraints."""
 
+import logging
 import sys
 from pathlib import Path
+
+from src.utils.logging_config import quick_setup
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+logger = logging.getLogger(__name__)
 
 
 def analyze_real_domain_sizes():
@@ -27,22 +32,22 @@ def analyze_real_domain_sizes():
         # Sample 100 random genes
         sample_genes = random.sample(genes, min(100, len(genes)))
 
-        print("=== REAL DOMAIN SIZES FOR 100 RANDOM EVENTS ===")
-        print()
-        print("Function locations:")
-        print(
+        logger.info("=== REAL DOMAIN SIZES FOR 100 RANDOM EVENTS ===")
+        logger.info("")
+        logger.info("Function locations:")
+        logger.info(
             "- Room suitability: find_suitable_rooms_for_course() in src/ga/operators/mutation.py"
         )
-        print(
+        logger.info(
             "- Uses: is_room_suitable_for_course() in src/utils/room_compatibility.py"
         )
-        print(
+        logger.info(
             "- Instructor qualification: course.qualified_instructor_ids (InstructorQualifications constraint)"
         )
-        print(
+        logger.info(
             "- Time availability: instructor.is_full_time or instructor.available_quanta"
         )
-        print()
+        logger.info("")
 
         suitable_rooms_counts = []
         qualified_instructors_counts = []
@@ -76,70 +81,79 @@ def analyze_real_domain_sizes():
             allowed_start_times.append(len(allowed_starts))
 
             if i < 10:  # Show first 10 events
-                print(
-                    f"Event {i}: Course={gene.course_id} Type={gene.course_type} Groups={gene.group_ids}"
+                logger.info(
+                    "Event %d: Course=%s Type=%s Groups=%s",
+                    i, gene.course_id, gene.course_type, gene.group_ids
                 )
-                print(f"  Duration: {gene.num_quanta} quanta")
-                print(
-                    f"  Suitable rooms: {len(suitable_rooms)} (from suitability+capacity check)"
+                logger.info("  Duration: %d quanta", gene.num_quanta)
+                logger.info(
+                    "  Suitable rooms: %d (from suitability+capacity check)",
+                    len(suitable_rooms)
                 )
-                print(f"  Qualified instructors: {len(qualified_instructors)}")
-                print(
-                    f"  Allowed start times: {len(allowed_starts)} (0 to {base_max_start})"
+                logger.info("  Qualified instructors: %d", len(qualified_instructors))
+                logger.info(
+                    "  Allowed start times: %d (0 to %d)",
+                    len(allowed_starts), base_max_start
                 )
                 if i < 3:  # Show details for first 3
-                    print(f"    Sample suitable rooms: {suitable_rooms[:5]}")
-                    print(
-                        f"    Sample qualified instructors: {qualified_instructors[:5]}"
+                    logger.debug("    Sample suitable rooms: %s", suitable_rooms[:5])
+                    logger.debug(
+                        "    Sample qualified instructors: %s",
+                        qualified_instructors[:5]
                     )
-                print()
+                logger.info("")
 
-        print("=== SUMMARY STATISTICS ===")
-        print()
-        print("SUITABLE ROOMS (real suitability + capacity):")
-        print(f"  Min: {min(suitable_rooms_counts)}")
-        print(f"  Max: {max(suitable_rooms_counts)}")
-        print(f"  Avg: {sum(suitable_rooms_counts) / len(suitable_rooms_counts):.1f}")
-        print()
+        logger.info("=== SUMMARY STATISTICS ===")
+        logger.info("")
+        logger.info("SUITABLE ROOMS (real suitability + capacity):")
+        logger.info("  Min: %d", min(suitable_rooms_counts))
+        logger.info("  Max: %d", max(suitable_rooms_counts))
+        logger.info("  Avg: %.1f", sum(suitable_rooms_counts) / len(suitable_rooms_counts))
+        logger.info("")
 
-        print("QUALIFIED INSTRUCTORS (real qualification check):")
-        print(f"  Min: {min(qualified_instructors_counts)}")
-        print(f"  Max: {max(qualified_instructors_counts)}")
-        print(
-            f"  Avg: {sum(qualified_instructors_counts) / len(qualified_instructors_counts):.1f}"
+        logger.info("QUALIFIED INSTRUCTORS (real qualification check):")
+        logger.info("  Min: %d", min(qualified_instructors_counts))
+        logger.info("  Max: %d", max(qualified_instructors_counts))
+        logger.info(
+            "  Avg: %.1f",
+            sum(qualified_instructors_counts) / len(qualified_instructors_counts)
         )
-        print()
+        logger.info("")
 
-        print("ALLOWED START TIMES (considering duration):")
-        print(f"  Min: {min(allowed_start_times)}")
-        print(f"  Max: {max(allowed_start_times)}")
-        print(f"  Avg: {sum(allowed_start_times) / len(allowed_start_times):.1f}")
-        print()
+        logger.info("ALLOWED START TIMES (considering duration):")
+        logger.info("  Min: %d", min(allowed_start_times))
+        logger.info("  Max: %d", max(allowed_start_times))
+        logger.info("  Avg: %.1f", sum(allowed_start_times) / len(allowed_start_times))
+        logger.info("")
 
         # Show distribution of constraints
-        print("CONSTRAINT TIGHTNESS ANALYSIS:")
+        logger.info("CONSTRAINT TIGHTNESS ANALYSIS:")
         tight_rooms = sum(1 for count in suitable_rooms_counts if count <= 5)
         tight_instructors = sum(
             1 for count in qualified_instructors_counts if count <= 2
         )
         tight_time = sum(1 for count in allowed_start_times if count <= 10)
 
-        print(
-            f"Events with ≤5 suitable rooms: {tight_rooms}/100 ({100 * tight_rooms / 100:.0f}%)"
+        logger.info(
+            "Events with <=5 suitable rooms: %d/100 (%.0f%%)",
+            tight_rooms, 100 * tight_rooms / 100
         )
-        print(
-            f"Events with ≤2 qualified instructors: {tight_instructors}/100 ({100 * tight_instructors / 100:.0f}%)"
+        logger.info(
+            "Events with <=2 qualified instructors: %d/100 (%.0f%%)",
+            tight_instructors, 100 * tight_instructors / 100
         )
-        print(
-            f"Events with ≤10 start time options: {tight_time}/100 ({100 * tight_time / 100:.0f}%)"
+        logger.info(
+            "Events with <=10 start time options: %d/100 (%.0f%%)",
+            tight_time, 100 * tight_time / 100
         )
 
     except Exception as e:
-        print(f"Error during analysis: {e}")
+        logger.error("Error during analysis: %s", e)
         import traceback
 
         traceback.print_exc()
 
 
 if __name__ == "__main__":
+    quick_setup()
     analyze_real_domain_sizes()

@@ -6,6 +6,7 @@ and generates detailed reports and visualizations.
 """
 
 import json
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -385,9 +386,9 @@ class HeuristicTracker:
         with timeline_path.open("w") as f:
             json.dump(timeline, f, indent=2)
 
-        print("      [!ok] heuristic_summary.json")
-        print("      [!ok] heuristic_stats.json")
-        print("      [!ok] generation_timeline.json")
+        logging.getLogger(__name__).info("heuristic_summary.json written")
+        logging.getLogger(__name__).info("heuristic_stats.json written")
+        logging.getLogger(__name__).info("generation_timeline.json written")
 
     def generate_plots(self, output_dir: Path) -> None:
         """Generate visualization plots."""
@@ -412,11 +413,11 @@ class HeuristicTracker:
         # 5. Category Performance (Grouped Bar)
         self._plot_category_performance(output_dir)
 
-        print("      [!ok] heuristic_performance.png")
-        print("      [!ok] temporal_pattern.png")
-        print("      [!ok] success_rates.png")
-        print("      [!ok] improvement_distribution.png")
-        print("      [!ok] category_performance.png")
+        logging.getLogger(__name__).info("heuristic_performance.png written")
+        logging.getLogger(__name__).info("temporal_pattern.png written")
+        logging.getLogger(__name__).info("success_rates.png written")
+        logging.getLogger(__name__).info("improvement_distribution.png written")
+        logging.getLogger(__name__).info("category_performance.png written")
 
     def _plot_heuristic_performance(self, output_dir: Path) -> None:
         """Plot total improvement per heuristic."""

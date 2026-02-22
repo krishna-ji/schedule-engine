@@ -16,6 +16,7 @@ import argparse
 import cProfile
 import io
 import json
+import logging
 import os
 import pstats
 import sys
@@ -23,6 +24,10 @@ import time
 from pathlib import Path
 
 import numpy as np
+
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -238,35 +243,37 @@ def profile_pyinstrument(pkl_path: str):
 
 # ── Main ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print(f"=== Profiling pipeline: pop={POP}, gens={NGEN} ===")
-    print("Problem: 549 events, 75 rooms, 189 instructors, 42 quanta")
-    print()
+    quick_setup()
+    logger.info("=== Profiling pipeline: pop=%d, gens=%d ===", POP, NGEN)
+    logger.info("Problem: 549 events, 75 rooms, 189 instructors, 42 quanta")
+    logger.info("")
 
     pkl_path = build_pkl_if_needed()
 
     # 1) Micro-benchmarks
-    print("── Micro-benchmarks ──")
+    logger.info("── Micro-benchmarks ──")
     micro = micro_benchmarks(pkl_path)
     for k, v in micro.items():
-        print(f"  {k}: {v}")
-    print()
+        logger.info("  %s: %s", k, v)
+    logger.info("")
 
     # 2) cProfile full run
-    print(f"── cProfile full run (pop={POP}, gens={NGEN}) ──")
+    logger.info("── cProfile full run (pop=%d, gens=%d) ──", POP, NGEN)
     cprof = profile_full_run(pkl_path)
-    print(f"  Wall time: {cprof['wall_time_s']}s")
-    print("  Top 10 hotspots (by cumtime):")
+    logger.info("  Wall time: %ss", cprof['wall_time_s'])
+    logger.info("  Top 10 hotspots (by cumtime):")
     for h in cprof["top_hotspots"][:10]:
-        print(
-            f"    {h['function']:40s} {h['tottime']:8.3f}s tot  {h['cumtime']:8.3f}s cum  ({h['ncalls']} calls)  [{h['file']}:{h['lineno']}]"
+        logger.info(
+            "    %-40s %8.3fs tot  %8.3fs cum  (%s calls)  [%s:%s]",
+            h['function'], h['tottime'], h['cumtime'], h['ncalls'], h['file'], h['lineno']
         )
-    print()
+    logger.info("")
 
     # 3) pyinstrument
-    print(f"── pyinstrument (pop={POP}, gens={NGEN}) ──")
+    logger.info("── pyinstrument (pop=%d, gens=%d) ──", POP, NGEN)
     pi_result = profile_pyinstrument(pkl_path)
-    print(f"  {pi_result}")
-    print()
+    logger.info("  %s", pi_result)
+    logger.info("")
 
     # 4) Save combined summary
     summary = {
@@ -287,9 +294,9 @@ if __name__ == "__main__":
         json.dumps(summary, indent=2), encoding="utf-8"
     )
 
-    print("=== Profiling complete ===")
-    print("  results/profile_cprofile.txt")
-    print("  results/profile_cprofile_tottime.txt")
-    print("  results/profile_pyinstrument.html")
-    print("  results/profile_pyinstrument.txt")
-    print("  results/profile_summary.json")
+    logger.info("=== Profiling complete ===")
+    logger.info("  results/profile_cprofile.txt")
+    logger.info("  results/profile_cprofile_tottime.txt")
+    logger.info("  results/profile_pyinstrument.html")
+    logger.info("  results/profile_pyinstrument.txt")
+    logger.info("  results/profile_summary.json")

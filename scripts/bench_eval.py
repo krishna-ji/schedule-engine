@@ -13,6 +13,7 @@ Saves results to results/bench_eval.json.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import pickle
 import sys
@@ -22,6 +23,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
+
+from src.utils.logging_config import quick_setup
+
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 # Setup
@@ -179,9 +184,9 @@ def stats(arr):
 
 
 def main():
-    print("=" * 60)
-    print("BENCHMARK: Evaluator & Repair Acceleration")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("BENCHMARK: Evaluator & Repair Acceleration")
+    logger.info("=" * 60)
 
     data = load_data()
     E = len(data["events"])
@@ -196,14 +201,16 @@ def main():
     results = {"n_events": E, "n_eval": N_EVAL, "n_repair": N_REPAIR}
 
     # --- Evaluator benchmarks ---
-    print(f"\n--- Evaluator (N={N_EVAL}) ---")
+    logger.info("--- Evaluator (N=%d) ---", N_EVAL)
 
     t_orig = bench_evaluator_original(data, X_eval)
     s_orig = stats(t_orig)
     results["evaluator_original"] = s_orig
-    print(
-        f"  Original:  mean={s_orig['mean_ms']:.3f} ms/ind  "
-        f"median={s_orig['median_ms']:.3f}  p95={s_orig['p95_ms']:.3f}"
+    logger.info(
+        "  Original:  mean=%.3f ms/ind  median=%.3f  p95=%.3f",
+        s_orig["mean_ms"],
+        s_orig["median_ms"],
+        s_orig["p95_ms"],
     )
 
     total_batch, per_batch = bench_evaluator_batch(data, X_eval)
@@ -211,29 +218,35 @@ def main():
         "total_ms": round(total_batch, 3),
         "per_ind_ms": round(per_batch, 3),
     }
-    print(f"  Batch:     total={total_batch:.1f} ms  per_ind={per_batch:.3f} ms/ind")
+    logger.info(
+        "  Batch:     total=%.1f ms  per_ind=%.3f ms/ind", total_batch, per_batch
+    )
 
     speedup_eval = s_orig["mean_ms"] / per_batch if per_batch > 0 else float("inf")
     results["evaluator_speedup"] = round(speedup_eval, 2)
-    print(f"  Speedup:   {speedup_eval:.2f}x")
+    logger.info("  Speedup:   %.2fx", speedup_eval)
 
     # --- Repair benchmarks ---
-    print(f"\n--- Repair (N={N_REPAIR}) ---")
+    logger.info("--- Repair (N=%d) ---", N_REPAIR)
 
     t_repair_orig = bench_repair_original(data, X_repair, N_REPAIR)
     s_repair_orig = stats(t_repair_orig)
     results["repair_original"] = s_repair_orig
-    print(
-        f"  Original:  mean={s_repair_orig['mean_ms']:.1f} ms/ind  "
-        f"median={s_repair_orig['median_ms']:.1f}  p95={s_repair_orig['p95_ms']:.1f}"
+    logger.info(
+        "  Original:  mean=%.1f ms/ind  median=%.1f  p95=%.1f",
+        s_repair_orig["mean_ms"],
+        s_repair_orig["median_ms"],
+        s_repair_orig["p95_ms"],
     )
 
     t_repair_bs = bench_repair_bitset(data, X_repair, N_REPAIR)
     s_repair_bs = stats(t_repair_bs)
     results["repair_bitset"] = s_repair_bs
-    print(
-        f"  Bitset:    mean={s_repair_bs['mean_ms']:.1f} ms/ind  "
-        f"median={s_repair_bs['median_ms']:.1f}  p95={s_repair_bs['p95_ms']:.1f}"
+    logger.info(
+        "  Bitset:    mean=%.1f ms/ind  median=%.1f  p95=%.1f",
+        s_repair_bs["mean_ms"],
+        s_repair_bs["median_ms"],
+        s_repair_bs["p95_ms"],
     )
 
     speedup_repair = (
@@ -242,20 +255,20 @@ def main():
         else float("inf")
     )
     results["repair_speedup"] = round(speedup_repair, 2)
-    print(f"  Speedup:   {speedup_repair:.2f}x")
+    logger.info("  Speedup:   %.2fx", speedup_repair)
 
     # --- Pymoo _evaluate benchmark ---
-    print(f"\n--- Pymoo _evaluate (N={N_EVAL}) ---")
+    logger.info("--- Pymoo _evaluate (N=%d) ---", N_EVAL)
 
     total_pymoo, per_pymoo = bench_pymoo_evaluate(data, X_eval)
     results["pymoo_evaluate"] = {
         "total_ms": round(total_pymoo, 3),
         "per_ind_ms": round(per_pymoo, 3),
     }
-    print(f"  Total: {total_pymoo:.1f} ms  per_ind: {per_pymoo:.3f} ms/ind")
+    logger.info("  Total: %.1f ms  per_ind: %.3f ms/ind", total_pymoo, per_pymoo)
 
     # --- Batch repair timing ---
-    print(f"\n--- Batch Repair (N={N_REPAIR}) ---")
+    logger.info("--- Batch Repair (N=%d) ---", N_REPAIR)
     from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair, repair_batch
 
     rep_engine = BitsetSchedulingRepair(PKL_PATH)
@@ -267,30 +280,36 @@ def main():
         "total_ms": round(batch_repair_total, 3),
         "per_ind_ms": round(batch_repair_total / N_REPAIR, 3),
     }
-    print(
-        f"  Total: {batch_repair_total:.1f} ms  "
-        f"per_ind: {batch_repair_total / N_REPAIR:.1f} ms/ind"
+    logger.info(
+        "  Total: %.1f ms  per_ind: %.1f ms/ind",
+        batch_repair_total,
+        batch_repair_total / N_REPAIR,
     )
 
     # --- Save results ---
     out_path = RESULTS_DIR / "bench_eval.json"
     with open(out_path, "w") as f:
         json.dump(results, f, indent=2)
-    print(f"\nResults saved to {out_path}")
+    logger.info("Results saved to %s", out_path)
 
     # --- Summary ---
-    print("\n" + "=" * 60)
-    print("SUMMARY")
-    print("=" * 60)
-    print(
-        f"  Evaluator speedup: {speedup_eval:.2f}x  "
-        f"({s_orig['mean_ms']:.3f} -> {per_batch:.3f} ms/ind)"
+    logger.info("=" * 60)
+    logger.info("SUMMARY")
+    logger.info("=" * 60)
+    logger.info(
+        "  Evaluator speedup: %.2fx  (%.3f -> %.3f ms/ind)",
+        speedup_eval,
+        s_orig["mean_ms"],
+        per_batch,
     )
-    print(
-        f"  Repair speedup:    {speedup_repair:.2f}x  "
-        f"({s_repair_orig['mean_ms']:.1f} -> {s_repair_bs['mean_ms']:.1f} ms/ind)"
+    logger.info(
+        "  Repair speedup:    %.2fx  (%.1f -> %.1f ms/ind)",
+        speedup_repair,
+        s_repair_orig["mean_ms"],
+        s_repair_bs["mean_ms"],
     )
 
 
 if __name__ == "__main__":
+    quick_setup()
     main()
