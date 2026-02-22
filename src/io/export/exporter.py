@@ -376,8 +376,13 @@ def _save_json_schedule_as_pdf(
             if day not in day_idx:
                 continue
             x = day_idx[day]
-            y = session["start"]
-            height = session["end"] - session["start"]
+            y = max(session["start"], start_hour)  # clamp to grid top
+            raw_end = session["end"]
+            # Clamp end to grid bottom and skip degenerate blocks
+            end_clamped = min(raw_end, end_hour)
+            height = end_clamped - y
+            if height <= 0:
+                continue  # skip sessions fully outside visible range
             label = session["label"]
             course_base = session.get("course_base", label)
             color = color_map.get(course_base, "#CCCCCC")

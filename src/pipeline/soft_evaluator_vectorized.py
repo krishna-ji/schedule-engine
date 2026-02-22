@@ -383,6 +383,148 @@ def eval_soft_vectorized(
     return S
 
 
+# Short labels for soft constraint components (order matches breakdown tuple)
+SOFT_COMPONENT_NAMES: list[str] = [
+    "student_compactness",
+    "instructor_compactness",
+    "lunch_break",
+]
+
+
+def eval_soft_vectorized_breakdown(
+    X: np.ndarray,
+    sdata: SoftVectorizedData,
+) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """Like eval_soft_vectorized but also returns per-component arrays.
+
+    Returns
+    -------
+    S : ndarray, shape (N,), float64  — total soft penalty
+    breakdown : dict[str, ndarray shape (N,)]
+        Keys: ``student_compactness``, ``instructor_compactness``, ``lunch_break``
+    """
+    X = np.asarray(X, dtype=np.int64)
+    if X.ndim == 1:
+        X = X.reshape(1, -1)
+    N = X.shape[0]
+    n_groups = sdata.n_groups
+    n_inst = sdata.n_instructors
+    n_days = sdata.n_days
+    qpd = sdata.quanta_per_day
+
+    inst_assign = X[:, 0::3]
+    time_assign = X[:, 2::3].copy()
+
+    durations = sdata.durations
+    day_offsets_e = (time_assign // qpd) * qpd
+    end_of_day_e = day_offsets_e + qpd
+    spills = (durations[np.newaxis, :] <= qpd) & (
+        time_assign + durations[np.newaxis, :] > end_of_day_e
+    )
+    clamped_start = np.maximum(day_offsets_e, end_of_day_e - durations[np.newaxis, :])
+    time_assign = np.where(spills, clamped_start, time_assign)
+
+    # ── 1. Student compactness ────────────────────────────────────
+    GQ = sdata.GQ
+    grp_starts = time_assign[:, sdata.grp_exp_event]
+    grp_quanta = grp_starts + sdata.grp_exp_offset[np.newaxis, :]
+    grp_days = np.clip(grp_quanta // qpd, 0, n_days - 1)
+    grp_within = grp_quanta % qpd
+
+    stride = n_groups * n_days * qpd
+    n_idx = np.repeat(np.arange(N, dtype=np.int64), GQ)
+    g_flat = np.tile(sdata.grp_exp_group, N)
+    d_flat = grp_days.ravel()
+    w_flat = grp_within.ravel()
+
+    flat_idx = n_idx * stride + g_flat * (n_days * qpd) + d_flat * qpd + w_flat
+    occ_flat = np.bincount(flat_idx.astype(np.int64), minlength=N * stride)
+    occ = occ_flat.reshape(N, n_groups, n_days, qpd) > 0
+
+    any_occ = occ.any(axis=3)
+    occ_count = occ.sum(axis=3)
+
+    qrange = np.arange(qpd, dtype=np.int32)
+    qr4 = qrange[np.newaxis, np.newaxis, np.newaxis, :]
+
+    occ_masked_min = np.where(occ, qr4, qpd)
+    occ_masked_max = np.where(occ, qr4, -1)
+    min_q = occ_masked_min.min(axis=3)
+    max_q = occ_masked_max.max(axis=3)
+
+    break_mask = sdata.break_within_day
+    in_span = (qr4 >= min_q[:, :, :, np.newaxis]) & (qr4 <= max_q[:, :, :, np.newaxis])
+    gap_mask = in_span & ~occ & ~break_mask[np.newaxis, np.newaxis, np.newaxis, :]
+    gap = gap_mask.sum(axis=3).astype(np.int32)
+    gap = np.where(any_occ & (occ_count >= 2), gap, 0)
+
+    student_compactness = (
+        gap.sum(axis=(1, 2)).astype(np.float64) * sdata.gap_penalty_per_quantum
+    )
+
+    # ── 2. Instructor compactness ─────────────────────────────────
+    Q = sdata.Q
+    inst_starts = time_assign[:, sdata.exp_event]
+    inst_quanta = inst_starts + sdata.exp_offset[np.newaxis, :]
+    inst_ids = inst_assign[:, sdata.exp_event]
+
+    inst_days = np.clip(inst_quanta // qpd, 0, n_days - 1)
+    inst_within = inst_quanta % qpd
+
+    stride_i = n_inst * n_days * qpd
+    n_idx_i = np.repeat(np.arange(N, dtype=np.int64), Q)
+    i_flat = inst_ids.ravel()
+    d_flat_i = inst_days.ravel()
+    w_flat_i = inst_within.ravel()
+
+    flat_idx_i = (
+        n_idx_i * stride_i + i_flat * (n_days * qpd) + d_flat_i * qpd + w_flat_i
+    )
+    occ_i_flat = np.bincount(flat_idx_i.astype(np.int64), minlength=N * stride_i)
+    occ_i = occ_i_flat.reshape(N, n_inst, n_days, qpd) > 0
+
+    any_occ_i = occ_i.any(axis=3)
+    occ_count_i = occ_i.sum(axis=3)
+    occ_masked_min_i = np.where(occ_i, qr4, qpd)
+    occ_masked_max_i = np.where(occ_i, qr4, -1)
+    min_q_i = occ_masked_min_i.min(axis=3)
+    max_q_i = occ_masked_max_i.max(axis=3)
+
+    in_span_i = (qr4 >= min_q_i[:, :, :, np.newaxis]) & (
+        qr4 <= max_q_i[:, :, :, np.newaxis]
+    )
+    gap_mask_i = in_span_i & ~occ_i & ~break_mask[np.newaxis, np.newaxis, np.newaxis, :]
+    gap_i = gap_mask_i.sum(axis=3).astype(np.int32)
+    gap_i = np.where(any_occ_i & (occ_count_i >= 2), gap_i, 0)
+
+    instructor_compactness = (
+        gap_i.sum(axis=(1, 2)).astype(np.float64) * sdata.gap_penalty_per_quantum
+    )
+
+    # ── 3. Student lunch break ────────────────────────────────────
+    lunch_mask_arr = sdata.lunch_window
+    lunch_window_size = int(lunch_mask_arr.sum())
+    occ_in_lunch = (occ & lunch_mask_arr[np.newaxis, np.newaxis, np.newaxis, :]).sum(
+        axis=3
+    )
+    free_lunch = lunch_window_size - occ_in_lunch
+    lunch_deficit = np.maximum(sdata.lunch_min_quanta - free_lunch, 0)
+    lunch_deficit = np.where(any_occ, lunch_deficit, 0)
+    lunch_penalty = (
+        lunch_deficit.sum(axis=(1, 2)).astype(np.float64)
+        * sdata.lunch_penalty_per_missing
+    )
+
+    S = student_compactness + instructor_compactness + lunch_penalty
+
+    breakdown = {
+        "student_compactness": student_compactness,
+        "instructor_compactness": instructor_compactness,
+        "lunch_break": lunch_penalty,
+    }
+    return S, breakdown
+
+
 # ------------------------------------------------------------------
 # Paired Cohort Practical Alignment (vectorized XOR penalty)
 # ------------------------------------------------------------------

@@ -217,14 +217,14 @@ class VectorizedRepair:
             X[bi, 3 * be + 1] = self.room_domains[be, rand_idx]
 
         # ---- Time domain: random replacement ----
-        time_vals = time[:, :, np.newaxis]                 # (N, E, 1)
-        time_doms = self.time_domains[np.newaxis, :, :]    # (1, E, max_dom)
+        time_vals = time[:, :, np.newaxis]  # (N, E, 1)
+        time_doms = self.time_domains[np.newaxis, :, :]  # (1, E, max_dom)
         dom_mask = (
             np.arange(self._time_max_dom)[np.newaxis, :]
             < self.time_dom_len[:, np.newaxis]
-        )                                                  # (E, max_dom)
+        )  # (E, max_dom)
         matches = (time_vals == time_doms) & dom_mask[np.newaxis, :, :]
-        time_ok = matches.any(axis=2)                      # (N, E)
+        time_ok = matches.any(axis=2)  # (N, E)
         time_bad = ~time_ok & (self.time_dom_len[np.newaxis, :] > 0)
         if time_bad.any():
             bi, be = np.nonzero(time_bad)
@@ -262,10 +262,10 @@ class VectorizedRepair:
         n_idx = np.arange(N, dtype=np.int64)[:, None]  # (N, 1)
 
         # Expand to quantum level
-        starts_exp = time[:, self.exp_event]                                  # (N, Q)
-        quanta_exp = np.clip(starts_exp + self.exp_offset[None, :], 0, T - 1) # (N, Q)
-        rooms_exp = room[:, self.exp_event]                                   # (N, Q)
-        insts_exp = inst[:, self.exp_event]                                   # (N, Q)
+        starts_exp = time[:, self.exp_event]  # (N, Q)
+        quanta_exp = np.clip(starts_exp + self.exp_offset[None, :], 0, T - 1)  # (N, Q)
+        rooms_exp = room[:, self.exp_event]  # (N, Q)
+        insts_exp = inst[:, self.exp_event]  # (N, Q)
 
         # Linearized per-individual event index (for aggregation)
         event_lin = (n_idx * E + self.exp_event[None, :]).ravel()  # (N*Q,)
@@ -284,27 +284,25 @@ class VectorizedRepair:
         inst_conflict = (inst_cnt[inst_keys] > 1).astype(np.float64)
 
         # --- Availability violations (heavier weight) ---
-        inst_unavail = (
-            ~self.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]
-        ).astype(np.float64) * 10.0
-        room_unavail = (
-            ~self.room_avail[rooms_exp.ravel(), quanta_exp.ravel()]
-        ).astype(np.float64) * 10.0
+        inst_unavail = (~self.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]).astype(
+            np.float64
+        ) * 10.0
+        room_unavail = (~self.room_avail[rooms_exp.ravel(), quanta_exp.ravel()]).astype(
+            np.float64
+        ) * 10.0
 
         # Aggregate per-quantum scores to per-event via bincount
         q_score = room_conflict + inst_conflict + inst_unavail + room_unavail
         scores = np.bincount(event_lin, weights=q_score, minlength=NE)
 
         # --- Group double-booking ---
-        grp_starts = time[:, self.grp_exp_event]                                # (N, GQ)
+        grp_starts = time[:, self.grp_exp_event]  # (N, GQ)
         grp_quanta = np.clip(
             grp_starts + self.grp_exp_offset[None, :], 0, T - 1
-        )                                                                       # (N, GQ)
+        )  # (N, GQ)
         nGT = np.int64(self.n_groups) * np.int64(T)
         grp_keys = (
-            n_idx * nGT
-            + self.grp_exp_group[None, :].astype(np.int64) * T
-            + grp_quanta
+            n_idx * nGT + self.grp_exp_group[None, :].astype(np.int64) * T + grp_quanta
         ).ravel()
         grp_cnt = np.bincount(grp_keys, minlength=int(N * nGT))
         grp_conflict = (grp_cnt[grp_keys] > 1).astype(np.float64)
@@ -329,6 +327,8 @@ class VectorizedRepair:
         conflicts, not eliminate them in a single shot.
         """
         rng = np.random.default_rng()
+        N = X.shape[0]
+        E = self.n_events
 
         for _ in range(passes):
             scores = self._score_all_batch(X)  # (N, E)
@@ -336,9 +336,19 @@ class VectorizedRepair:
             if not conflict_mask.any():
                 break
 
-            bi, be = np.nonzero(conflict_mask)
+            # Only mutate a subset of conflicts per pass to avoid thrashing
+            mutation_mask = conflict_mask & (rng.random((N, E)) < 0.3)
+            if not mutation_mask.any():
+                # Fall back: if the 30% mask zeroed everything, pick at
+                # least the worst-scoring events (top 10%) to ensure progress
+                threshold = np.percentile(scores[conflict_mask], 90)
+                mutation_mask = scores >= max(threshold, 1)
+            if not mutation_mask.any():
+                continue
 
-            # --- Always resample time slot ---
+            bi, be = np.nonzero(mutation_mask)
+
+            # --- Resample time slot ---
             t_dl = self.time_dom_len[be]
             t_valid = t_dl > 0
             t_bi, t_be, t_dl_v = bi[t_valid], be[t_valid], t_dl[t_valid]
@@ -346,7 +356,7 @@ class VectorizedRepair:
             t_idx = np.minimum(t_idx, t_dl_v - 1)
             X[t_bi, 3 * t_be + 2] = self.time_domains[t_be, t_idx]
 
-            # --- Resample room for ~50 % of conflicts ---
+            # --- Resample room for ~50 % of selected conflicts ---
             do_room = rng.random(len(bi)) < 0.5
             r_bi, r_be = bi[do_room], be[do_room]
             r_dl = self.room_dom_len[r_be]
@@ -384,7 +394,8 @@ try:
             result = self.engine.repair_batch(x, passes=self.passes)
             _logging.getLogger(__name__).debug(
                 "Repair: %d individuals, %d passes",
-                x.shape[0], self.passes,
+                x.shape[0],
+                self.passes,
             )
             return result
 

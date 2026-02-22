@@ -25,7 +25,7 @@ from .fast_evaluator_vectorized import (
 )
 from .soft_evaluator_vectorized import (
     SoftVectorizedData,
-    eval_soft_vectorized,
+    eval_soft_vectorized_breakdown,
     evaluate_paired_cohorts_vectorized,
     prepare_soft_vectorized_data,
 )
@@ -145,10 +145,16 @@ class SchedulingProblem(Problem):
         F[:, 0] = G.sum(axis=1)  # total hard penalty
 
         # ---- Soft evaluation (vectorized over full population) ----
-        F[:, 1] = eval_soft_vectorized(x, self._soft_data)
+        soft_total, soft_bd = eval_soft_vectorized_breakdown(x, self._soft_data)
+        F[:, 1] = soft_total
 
         # ---- Paired cohort practical alignment (soft) ----
-        F[:, 1] += evaluate_paired_cohorts_vectorized(x, self.lookups)
+        paired_penalty = evaluate_paired_cohorts_vectorized(x, self.lookups)
+        F[:, 1] += paired_penalty
+        soft_bd["paired_cohort"] = paired_penalty
+
+        # Store latest soft breakdown for callback access
+        self._last_soft_breakdown = soft_bd
 
         # ---- Defensive NaN/Inf guard on soft scores ----
         F[:, 1] = np.nan_to_num(F[:, 1], nan=1e6, posinf=1e6, neginf=0.0)

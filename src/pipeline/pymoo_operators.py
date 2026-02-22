@@ -112,8 +112,8 @@ class RandomDomainSampling(Sampling):
         # Vectorized: for each gene type, sample random index into padded domain
         e_idx = np.arange(E, dtype=np.int64)  # (E,) — reused for fancy indexing
         for g in range(3):
-            dom_padded = self._dom_padded[g]   # (E, max_dom) int64
-            dom_len = self._dom_len[g]         # (E,) int64
+            dom_padded = self._dom_padded[g]  # (E, max_dom) int64
+            dom_len = self._dom_len[g]  # (E,) int64
 
             # Random index per (individual, event): shape (N, E)
             safe_len = np.maximum(dom_len, 1)  # avoid div-by-zero
@@ -170,7 +170,10 @@ class EventBlockCrossover(Crossover):
         total = n_matings * E
         logging.getLogger(__name__).debug(
             "Crossover: %d matings, %d/%d events swapped (%.1f%%)",
-            n_matings, swapped, total, 100 * swapped / total if total else 0,
+            n_matings,
+            swapped,
+            total,
+            100 * swapped / total if total else 0,
         )
 
         return Y
@@ -276,7 +279,9 @@ class EventLocalMutation(Mutation):
 
         logging.getLogger(__name__).debug(
             "Mutation: %d individuals, %d/%d events mutated (%.1f%%)",
-            n_ind, n_mutated_events, n_ind * E,
+            n_ind,
+            n_mutated_events,
+            n_ind * E,
             100 * n_mutated_events / (n_ind * E) if (n_ind * E) else 0,
         )
 
@@ -318,7 +323,7 @@ def create_algorithm(
     from pymoo.algorithms.moo.nsga2 import NSGA2
     from pymoo.algorithms.soo.nonconvex.ga import GA
 
-    sampling = ConstructiveSampling(pkl_path)
+    sampling = RandomDomainSampling(pkl_path)
     crossover = EventBlockCrossover(prob=crossover_prob)
     mutation = EventLocalMutation(pkl_path=pkl_path, event_prob=mutation_event_prob)
 
