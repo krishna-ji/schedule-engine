@@ -61,19 +61,36 @@ class ConstructiveSampling(Sampling):
 class RandomDomainSampling(Sampling):
     """Generate initial population by sampling random domain-valid chromosomes.
 
-    Much faster than ``ConstructiveSampling`` (~100ms vs ~10s for pop=50).
-    Quality is lower (no conflict avoidance), but pymoo's repair pass —
-    which runs automatically after sampling — handles conflict resolution.
+    Fully vectorized — no Python loops over individuals or events.
+    Uses padded domain matrices with random index selection.
     """
 
     def __init__(self, pkl_path: str = "events_with_domains.pkl"):
         super().__init__()
         with open(pkl_path, "rb") as f:
             data = pickle.load(f)
-        self._ai = data["allowed_instructors"]
-        self._ar = data["allowed_rooms"]
-        self._at = data["allowed_starts"]
         self._n_events = len(data["events"])
+        E = self._n_events
+
+        # Pre-pad ragged domain arrays into dense matrices
+        domain_lists = [
+            data["allowed_instructors"],
+            data["allowed_rooms"],
+            data["allowed_starts"],
+        ]
+        self._dom_padded: list[np.ndarray] = []
+        self._dom_len: list[np.ndarray] = []
+        for domains in domain_lists:
+            max_d = max((len(d) for d in domains), default=1) or 1
+            padded = np.zeros((E, max_d), dtype=np.int64)
+            lengths = np.zeros(E, dtype=np.int64)
+            for e, d in enumerate(domains):
+                dl = len(d)
+                if dl > 0:
+                    lengths[e] = dl
+                    padded[e, :dl] = d
+            self._dom_padded.append(padded)
+            self._dom_len.append(lengths)
 
     def _do(self, problem, n_samples, **kwargs):
         import time as _time
@@ -81,19 +98,26 @@ class RandomDomainSampling(Sampling):
         t0 = _time.perf_counter()
         E = self._n_events
         X = np.zeros((n_samples, problem.n_var), dtype=int)
-        for i in range(n_samples):
-            rng = np.random.default_rng(i)
-            x = X[i]
-            for e in range(E):
-                ai = self._ai[e]
-                ar = self._ar[e]
-                at = self._at[e]
-                x[3 * e] = rng.choice(ai) if ai else 0
-                x[3 * e + 1] = rng.choice(ar) if ar else 0
-                x[3 * e + 2] = rng.choice(at) if at else 0
+
+        # Vectorized: for each gene type, sample random index into padded domain
+        e_idx = np.arange(E, dtype=np.int64)  # (E,) — reused for fancy indexing
+        for g in range(3):
+            dom_padded = self._dom_padded[g]   # (E, max_dom) int64
+            dom_len = self._dom_len[g]         # (E,) int64
+
+            # Random index per (individual, event): shape (N, E)
+            safe_len = np.maximum(dom_len, 1)  # avoid div-by-zero
+            rand_idx = (
+                np.random.random((n_samples, E)) * safe_len[np.newaxis, :]
+            ).astype(np.int64)
+            rand_idx = np.minimum(rand_idx, safe_len[np.newaxis, :] - 1)
+
+            # Gather: dom_padded[e, rand_idx[n, e]] for all (n, e)
+            X[:, g::3] = dom_padded[e_idx[np.newaxis, :], rand_idx]
+
         elapsed = _time.perf_counter() - t0
         logging.getLogger(__name__).info(
-            "Random domain sampling: %d (%.1fs)",
+            "Random domain sampling: %d (%.3fs, vectorized)",
             n_samples,
             elapsed,
         )

@@ -28,6 +28,7 @@ from .soft_evaluator_vectorized import (
     eval_soft_vectorized,
     prepare_soft_vectorized_data,
 )
+from .vectorized_lookups import VectorizedLookups, build_vectorized_lookups
 
 if TYPE_CHECKING:
     from src.domain.types import SchedulingContext
@@ -49,6 +50,7 @@ HARD_CONSTRAINT_NAMES = [
     "instructor_time_availability",
     "room_time_availability",
     "course_completeness",
+    "sibling_same_day",
 ]
 
 
@@ -108,6 +110,9 @@ class SchedulingProblem(Problem):
         self._soft_data: SoftVectorizedData = prepare_soft_vectorized_data(
             self.pkl_data
         )
+        # Unified lookups (superset of _vec_data: includes domain matrices,
+        # group_conflict_matrix, event_metadata).
+        self.lookups: VectorizedLookups = build_vectorized_lookups(self.pkl_data)
 
         super().__init__(
             n_var=self.spec.n_vars,

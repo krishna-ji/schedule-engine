@@ -83,9 +83,11 @@ class TestHardEvaluatorEquivalence:
         G_batch = fast_evaluate_hard_batch(population, batch_data)
         G_vec = fast_evaluate_hard_vectorized(population, vec_data)
 
+        # Old batch evaluator has 8 cols; vectorized now has 9 (sibling_same_day).
+        # Compare only the shared first 8 columns.
         np.testing.assert_array_equal(
             G_batch,
-            G_vec,
+            G_vec[:, :8],
             err_msg="Vectorized and batch hard evaluators disagree",
         )
 
@@ -98,7 +100,7 @@ class TestHardEvaluatorEquivalence:
 
         vec_data = prepare_vectorized_data(pkl_data)
         G = fast_evaluate_hard_vectorized(population[0:1], vec_data)
-        assert G.shape == (1, 8)
+        assert G.shape == (1, 9)
         assert G.dtype == np.int64
 
     def test_1d_input(self, pkl_data, population):
@@ -110,7 +112,7 @@ class TestHardEvaluatorEquivalence:
 
         vec_data = prepare_vectorized_data(pkl_data)
         G = fast_evaluate_hard_vectorized(population[0], vec_data)
-        assert G.shape == (1, 8)
+        assert G.shape == (1, 9)
 
 
 # ------------------------------------------------------------------
@@ -127,7 +129,7 @@ class TestBatchAPIContract:
 
         G = eval_hard_batch(population, batch_ctx)
         N = population.shape[0]
-        assert G.shape == (N, 8)
+        assert G.shape == (N, 9)
         assert G.dtype == np.int64
         assert (G >= 0).all(), "Violation counts must be non-negative"
 
@@ -161,9 +163,9 @@ class TestBatchAPIContract:
         # Repair should reduce total violations
         before_total = G_before.sum(axis=1)
         after_total = G_after.sum(axis=1)
-        assert (after_total <= before_total).all(), (
-            f"Repair made things worse: {before_total} -> {after_total}"
-        )
+        assert (
+            after_total <= before_total
+        ).all(), f"Repair made things worse: {before_total} -> {after_total}"
 
     def test_metrics_batch(self, population, batch_ctx):
         from src.pipeline.batch_api import eval_hard_batch, metrics_batch
@@ -187,7 +189,7 @@ class TestBatchAPIContract:
         from src.pipeline.batch_api import eval_hard_batch
 
         G = eval_hard_batch(population[0], batch_ctx)
-        assert G.shape == (1, 8)
+        assert G.shape == (1, 9)
 
 
 # ------------------------------------------------------------------
@@ -218,4 +220,4 @@ class TestSchedulingProblemCanonical:
         assert "F" in out
         assert "G" in out
         assert out["F"].shape == (population.shape[0], 2)
-        assert out["G"].shape == (population.shape[0], 8)
+        assert out["G"].shape == (population.shape[0], 9)

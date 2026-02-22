@@ -7,7 +7,7 @@ in a single numpy call.
 Public API
 ----------
     prepare_vectorized_data(pkl_data) -> VectorizedEvalData
-    fast_evaluate_hard_vectorized(X, vdata) -> G   # shape (N, 8)
+    fast_evaluate_hard_vectorized(X, vdata) -> G   # shape (N, 9)
 
 The result is numerically identical to ``fast_evaluate_hard_batch``.
 """
@@ -30,6 +30,7 @@ HARD_CONSTRAINT_NAMES = [
     "instructor_time_availability",
     "room_time_availability",
     "course_completeness",
+    "sibling_same_day",
 ]
 
 
@@ -219,7 +220,7 @@ def fast_evaluate_hard_vectorized(
 
     Returns
     -------
-    G : ndarray, shape (N, 8), int64
+    G : ndarray, shape (N, 9), int64
         Per-constraint violation counts.  Column order matches
         ``HARD_CONSTRAINT_NAMES``.
     """
@@ -261,21 +262,22 @@ def fast_evaluate_hard_vectorized(
     i_flat = insts.ravel()  # (N*Q,)
 
     # ================================================================
-    # Room exclusivity: room_cnt[n, r, q], violation = sum(max(cnt-1, 0))
+    # Room exclusivity: violation = Q - #unique(room, quantum) cells
+    # Identity: sum(max(cnt-1,0)) = total_entries - count(cnt>0)
+    # Avoids large int64 temporaries from maximum/subtract.
     # ================================================================
-    # Use bincount on flattened 1-D index for speed
     stride_r = n_rooms * T
     flat_idx_r = n_idx_ri * stride_r + r_flat * T + q_flat  # (N*Q,)
-    room_cnt = np.bincount(flat_idx_r, minlength=N * stride_r).reshape(N, n_rooms, T)
-    room_viol = np.sum(np.maximum(room_cnt - 1, 0), axis=(1, 2))  # (N,)
+    room_cnt = np.bincount(flat_idx_r, minlength=N * stride_r)  # (N*stride_r,)
+    room_viol = Q - (room_cnt.reshape(N, stride_r) > 0).sum(axis=1)  # (N,)
 
     # ================================================================
-    # Instructor exclusivity
+    # Instructor exclusivity: same identity as room
     # ================================================================
     stride_i = n_inst * T
     flat_idx_i = n_idx_ri * stride_i + i_flat * T + q_flat
-    inst_cnt = np.bincount(flat_idx_i, minlength=N * stride_i).reshape(N, n_inst, T)
-    inst_viol = np.sum(np.maximum(inst_cnt - 1, 0), axis=(1, 2))  # (N,)
+    inst_cnt = np.bincount(flat_idx_i, minlength=N * stride_i)  # (N*stride_i,)
+    inst_viol = Q - (inst_cnt.reshape(N, stride_i) > 0).sum(axis=1)  # (N,)
 
     # ================================================================
     # Group exclusivity (separate expansion for multi-group events)
@@ -289,8 +291,8 @@ def fast_evaluate_hard_vectorized(
 
     stride_g = n_groups * T
     flat_idx_g = n_idx_g * stride_g + gg_flat * T + gq_flat
-    group_cnt = np.bincount(flat_idx_g, minlength=N * stride_g).reshape(N, n_groups, T)
-    group_viol = np.sum(np.maximum(group_cnt - 1, 0), axis=(1, 2))  # (N,)
+    group_cnt = np.bincount(flat_idx_g, minlength=N * stride_g)  # (N*stride_g,)
+    group_viol = GQ - (group_cnt.reshape(N, stride_g) > 0).sum(axis=1)  # (N,)
 
     # ================================================================
     # Instructor qualifications: bool lookup
@@ -330,7 +332,7 @@ def fast_evaluate_hard_vectorized(
     # ================================================================
     # Assemble G
     # ================================================================
-    G = np.empty((N, 8), dtype=np.int64)
+    G = np.empty((N, 9), dtype=np.int64)
     G[:, 0] = group_viol
     G[:, 1] = inst_viol
     G[:, 2] = room_viol
@@ -339,5 +341,21 @@ def fast_evaluate_hard_vectorized(
     G[:, 5] = inst_avail_viol
     G[:, 6] = room_avail_viol
     G[:, 7] = 0  # course_completeness — always 0
+
+    # ================================================================
+    # Sibling same-day: penalize sub-sessions of the same course on
+    # the same day.  Uses sparse sibling_pairs from VectorizedLookups.
+    # ================================================================
+    _QPD = 7  # quanta per day (T=42 / 6 days)
+    sibling_pairs = getattr(vdata, "sibling_pairs", None)
+    if sibling_pairs is not None and len(sibling_pairs) > 0:
+        days = time_assign // _QPD  # (N, E)
+        sp_i = sibling_pairs[:, 0]  # (P,)
+        sp_j = sibling_pairs[:, 1]  # (P,)
+        # days[:, sp_i] and days[:, sp_j] are (N, P)
+        same_day = days[:, sp_i] == days[:, sp_j]  # (N, P) bool
+        G[:, 8] = same_day.sum(axis=1)  # (N,)
+    else:
+        G[:, 8] = 0
 
     return G
