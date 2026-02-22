@@ -2,12 +2,13 @@
 
 Replaces the O(E^2) per-individual Python dict-based repair with:
   1. Population-level domain fix (boolean membership arrays)
-  2. Per-individual conflict resolution using 2D numpy occupancy arrays
-  3. Group-aware deconfliction with vectorized placement search
+  2. Population-level stochastic conflict resolution (bincount occupancy)
 
-Key speedup: numpy ``int32[resource, timeslot]`` arrays replace
-``dict[tuple, set]`` occupancy maps.  Candidate evaluation is
-vectorized across all valid start-times x rooms in one shot.
+Stage 1 fixes out-of-domain assignments via random domain sampling.
+Stage 2 detects per-event conflict scores for the entire population in
+one vectorized pass (room / instructor / group double-booking +
+availability violations), then stochastically resamples time and room
+for conflicting events.  Zero Python loops over N or E.
 
 For pymoo integration, ``PymooVectorizedRepair`` is a drop-in replacement
 for ``PymooSchedulingRepair``.
@@ -86,13 +87,7 @@ class VectorizedRepair:
         ]
 
         # Group -> events and utilization (for group deconfliction ordering)
-        self._group_events: list[list[int]] = [[] for _ in range(self.n_groups)]
-        self._group_util = np.zeros(self.n_groups, dtype=np.int32)
-        for e in range(E):
-            for gidx in self._event_groups[e]:
-                self._group_events[gidx].append(e)
-                self._group_util[gidx] += int(self.durations[e])
-        self._sorted_groups = list(np.argsort(-self._group_util))
+        # (Kept for potential future use; not needed by vectorized repair.)
 
         # ---- Expansion arrays (vectorized occupancy building) ----
         Q = int(self.durations.sum())
@@ -150,34 +145,6 @@ class VectorizedRepair:
                 if idx < self.n_rooms:
                     self.room_allowed[e, idx] = True
 
-        # ---- Pre-computed quanta matrices per event (for _find_best) ----
-        # Also pre-split columns to avoid .sum(axis=1) overhead in tight loop.
-        self._event_times: list[np.ndarray] = []
-        self._event_quanta: list[np.ndarray] = []
-        self._event_qcols: list[list[np.ndarray]] = []  # quanta[:,c] columns
-        for e in range(E):
-            n_t = int(self.time_dom_len[e])
-            if n_t == 0:
-                self._event_times.append(np.empty(0, dtype=np.int64))
-                self._event_quanta.append(np.empty((0, 0), dtype=np.int64))
-                self._event_qcols.append([])
-                continue
-            times = self.time_domains[e, :n_t]
-            dur = int(self.durations[e])
-            q_mat = times[:, None] + np.arange(dur, dtype=np.int64)[None, :]
-            valid = q_mat[:, -1] < T
-            t_valid = times[valid].copy()
-            q_valid = q_mat[valid].copy()
-            self._event_times.append(t_valid)
-            self._event_quanta.append(q_valid)
-            self._event_qcols.append([q_valid[:, c].copy() for c in range(dur)])
-
-        # Pre-computed room domain arrays per event
-        self._event_rooms: list[np.ndarray] = []
-        for e in range(E):
-            n_r = int(self.room_dom_len[e])
-            self._event_rooms.append(self.room_domains[e, :n_r].copy().astype(np.int64))
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -186,13 +153,11 @@ class VectorizedRepair:
         """Repair population X of shape (N, 3*E).
 
         Stage 1: Fix domain violations (vectorized across population).
-        Stage 2: Incremental conflict fixing (per individual, numpy arrays).
-        Stage 3: Group-aware deconfliction (per individual).
+        Stage 2: Stochastic conflict resolution (vectorized across population).
         """
         X = X.copy().astype(np.int64)
         self._fix_domains_vec(X)
-        for n in range(X.shape[0]):
-            self._repair_individual(X[n], passes)
+        self._repair_conflicts_vec(X, passes)
         return X
 
     # ------------------------------------------------------------------
@@ -252,450 +217,127 @@ class VectorizedRepair:
             X[bi, 3 * be + 2] = self.time_domains[be, rand_idx]
 
     # ------------------------------------------------------------------
-    # Stage 2 & 3: per-individual conflict resolution
+    # Stage 2: population-level stochastic conflict resolution
     # ------------------------------------------------------------------
 
-    def _repair_individual(self, x: np.ndarray, passes: int) -> None:
-        """Smart conflict resolution for one chromosome (in-place)."""
-        inst = x[0::3]  # views into x
-        room = x[1::3]
-        time = x[2::3]
+    def _score_all_batch(self, X: np.ndarray) -> np.ndarray:
+        """Per-event conflict scores for all individuals.
 
-        room_occ, inst_occ, group_occ = self._build_occupancy(inst, room, time)
+        Uses expansion arrays and ``np.bincount`` for O(Q + GQ)
+        work per individual, fully vectorized across the population.
 
-        # Stage 2: incremental conflict fixing
-        for pass_idx in range(passes):
-            scores = self._score_all(inst, room, time, room_occ, inst_occ, group_occ)
-            conflict_events = np.nonzero(scores > 0)[0]
-            if len(conflict_events) == 0:
-                break
-            # Alternate ordering: most-conflicted-first / least-first
-            if pass_idx % 2 == 0:
-                order = conflict_events[np.argsort(-scores[conflict_events])]
-            else:
-                order = conflict_events[np.argsort(scores[conflict_events])]
-            for e_int in order:
-                e = int(e_int)
-                if (
-                    self._event_score(
-                        e, inst, room, time, room_occ, inst_occ, group_occ
-                    )
-                    == 0
-                ):
-                    continue
-                self._remove_occ(e, inst, room, time, room_occ, inst_occ, group_occ)
-                self._find_best(e, inst, room, time, room_occ, inst_occ, group_occ)
-                self._add_occ(e, inst, room, time, room_occ, inst_occ, group_occ)
-
-        # Stage 3: group-aware deconfliction
-        self._fix_groups(inst, room, time, room_occ, inst_occ, group_occ)
-
-    # ------------------------------------------------------------------
-    # Occupancy array management
-    # ------------------------------------------------------------------
-
-    def _build_occupancy(
-        self,
-        inst: np.ndarray,
-        room: np.ndarray,
-        time: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Build 2D count arrays from current assignment (vectorized)."""
-        room_occ = np.zeros((self.n_rooms, T), dtype=np.int32)
-        inst_occ = np.zeros((self.n_instructors, T), dtype=np.int32)
-        group_occ = np.zeros((self.n_groups, T), dtype=np.int32)
-
-        starts = time[self.exp_event].astype(np.int64)
-        quanta = np.clip(starts + self.exp_offset, 0, T - 1)
-        rooms_q = np.clip(room[self.exp_event].astype(np.int64), 0, self.n_rooms - 1)
-        insts_q = np.clip(
-            inst[self.exp_event].astype(np.int64), 0, self.n_instructors - 1
-        )
-
-        np.add.at(room_occ, (rooms_q, quanta), 1)
-        np.add.at(inst_occ, (insts_q, quanta), 1)
-
-        grp_starts = time[self.grp_exp_event].astype(np.int64)
-        grp_quanta = np.clip(grp_starts + self.grp_exp_offset, 0, T - 1)
-        np.add.at(group_occ, (self.grp_exp_group, grp_quanta), 1)
-
-        return room_occ, inst_occ, group_occ
-
-    def _remove_occ(
-        self,
-        e: int,
-        inst: np.ndarray,
-        room: np.ndarray,
-        time: np.ndarray,
-        room_occ: np.ndarray,
-        inst_occ: np.ndarray,
-        group_occ: np.ndarray,
-    ) -> None:
-        """Remove event *e* from occupancy arrays."""
-        s = int(time[e])
-        d = int(self.durations[e])
-        r = int(room[e])
-        i = int(inst[e])
-        for q in range(s, min(s + d, T)):
-            room_occ[r, q] -= 1
-            inst_occ[i, q] -= 1
-            for gidx in self._event_groups[e]:
-                group_occ[gidx, q] -= 1
-
-    def _add_occ(
-        self,
-        e: int,
-        inst: np.ndarray,
-        room: np.ndarray,
-        time: np.ndarray,
-        room_occ: np.ndarray,
-        inst_occ: np.ndarray,
-        group_occ: np.ndarray,
-    ) -> None:
-        """Add event *e* to occupancy arrays."""
-        s = int(time[e])
-        d = int(self.durations[e])
-        r = int(room[e])
-        i = int(inst[e])
-        for q in range(s, min(s + d, T)):
-            room_occ[r, q] += 1
-            inst_occ[i, q] += 1
-            for gidx in self._event_groups[e]:
-                group_occ[gidx, q] += 1
-
-    # ------------------------------------------------------------------
-    # Scoring
-    # ------------------------------------------------------------------
-
-    def _score_all(
-        self,
-        inst: np.ndarray,
-        room: np.ndarray,
-        time: np.ndarray,
-        room_occ: np.ndarray,
-        inst_occ: np.ndarray,
-        group_occ: np.ndarray,
-    ) -> np.ndarray:
-        """Conflict score for every event (vectorized).  Returns (E,) int32."""
+        Returns
+        -------
+        scores : ndarray, shape (N, E), int32
+            Sum of conflicting-quantum indicators per event per individual.
+            Room/instructor/group double-bookings each contribute 1 per
+            quantum; availability violations contribute 10 per quantum.
+        """
+        N = X.shape[0]
         E = self.n_events
-        starts = time[self.exp_event].astype(np.int64)
-        quanta = np.clip(starts + self.exp_offset, 0, T - 1)
-        rooms_q = np.clip(room[self.exp_event].astype(np.int64), 0, self.n_rooms - 1)
-        insts_q = np.clip(
-            inst[self.exp_event].astype(np.int64), 0, self.n_instructors - 1
-        )
+        Q = len(self.exp_event)
+        GQ = len(self.grp_exp_event)
 
-        scores = np.zeros(E, dtype=np.int32)
+        inst = np.clip(X[:, 0::3], 0, self.n_instructors - 1).astype(np.int64)
+        room = np.clip(X[:, 1::3], 0, self.n_rooms - 1).astype(np.int64)
+        time = X[:, 2::3].astype(np.int64)
 
-        # Room double-booking
-        rc = (room_occ[rooms_q, quanta] > 1).astype(np.int32)
-        np.add.at(scores, self.exp_event, rc)
+        n_idx = np.arange(N, dtype=np.int64)[:, None]  # (N, 1)
 
-        # Instructor double-booking
-        ic = (inst_occ[insts_q, quanta] > 1).astype(np.int32)
-        np.add.at(scores, self.exp_event, ic)
+        # Expand to quantum level
+        starts_exp = time[:, self.exp_event]                                  # (N, Q)
+        quanta_exp = np.clip(starts_exp + self.exp_offset[None, :], 0, T - 1) # (N, Q)
+        rooms_exp = room[:, self.exp_event]                                   # (N, Q)
+        insts_exp = inst[:, self.exp_event]                                   # (N, Q)
 
-        # Group double-booking
-        grp_starts = time[self.grp_exp_event].astype(np.int64)
-        grp_quanta = np.clip(grp_starts + self.grp_exp_offset, 0, T - 1)
-        gc = (group_occ[self.grp_exp_group, grp_quanta] > 1).astype(np.int32)
-        np.add.at(scores, self.grp_exp_event, gc)
+        # Linearized per-individual event index (for aggregation)
+        event_lin = (n_idx * E + self.exp_event[None, :]).ravel()  # (N*Q,)
+        NE = N * E
 
-        # Instructor availability (heavy penalty)
-        iu = (~self.inst_avail[insts_q, quanta]).astype(np.int32) * 100
-        np.add.at(scores, self.exp_event, iu)
+        # --- Room double-booking ---
+        nRT = np.int64(self.n_rooms) * np.int64(T)
+        room_keys = (n_idx * nRT + rooms_exp * T + quanta_exp).ravel()
+        room_cnt = np.bincount(room_keys, minlength=int(N * nRT))
+        room_conflict = (room_cnt[room_keys] > 1).astype(np.float64)
 
-        return scores
+        # --- Instructor double-booking ---
+        nIT = np.int64(self.n_instructors) * np.int64(T)
+        inst_keys = (n_idx * nIT + insts_exp * T + quanta_exp).ravel()
+        inst_cnt = np.bincount(inst_keys, minlength=int(N * nIT))
+        inst_conflict = (inst_cnt[inst_keys] > 1).astype(np.float64)
 
-    def _event_score(
-        self,
-        e: int,
-        inst: np.ndarray,
-        room: np.ndarray,
-        time: np.ndarray,
-        room_occ: np.ndarray,
-        inst_occ: np.ndarray,
-        group_occ: np.ndarray,
-    ) -> int:
-        """Conflict score for event *e* (event IS in occupancy -- check >1)."""
-        s = int(time[e])
-        d = int(self.durations[e])
-        r = int(room[e])
-        i = int(inst[e])
-        score = 0
-        for q in range(s, min(s + d, T)):
-            if room_occ[r, q] > 1:
-                score += 1
-            if inst_occ[i, q] > 1:
-                score += 1
-            for gidx in self._event_groups[e]:
-                if group_occ[gidx, q] > 1:
-                    score += 1
-            if not self.inst_avail[i, q]:
-                score += 100
-        return score
+        # --- Availability violations (heavier weight) ---
+        inst_unavail = (
+            ~self.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]
+        ).astype(np.float64) * 10.0
+        room_unavail = (
+            ~self.room_avail[rooms_exp.ravel(), quanta_exp.ravel()]
+        ).astype(np.float64) * 10.0
 
-    def _check_placement(
-        self,
-        e: int,
-        i_val: int,
-        r_val: int,
-        t_val: int,
-        room_occ: np.ndarray,
-        inst_occ: np.ndarray,
-        group_occ: np.ndarray,
-    ) -> int:
-        """Score hypothetical placement (event NOT in occupancy -- check >0)."""
-        d = int(self.durations[e])
-        score = 0
-        for q in range(t_val, min(t_val + d, T)):
-            if room_occ[r_val, q] > 0:
-                score += 1
-            if inst_occ[i_val, q] > 0:
-                score += 1
-            for gidx in self._event_groups[e]:
-                if group_occ[gidx, q] > 0:
-                    score += 1
-            if not self.inst_avail[i_val, q]:
-                score += 100
-            if not self.room_avail[r_val, q]:
-                score += 100
-        return score
+        # Aggregate per-quantum scores to per-event via bincount
+        q_score = room_conflict + inst_conflict + inst_unavail + room_unavail
+        scores = np.bincount(event_lin, weights=q_score, minlength=NE)
 
-    # ------------------------------------------------------------------
-    # Placement search (vectorized across candidates)
-    # ------------------------------------------------------------------
+        # --- Group double-booking ---
+        grp_starts = time[:, self.grp_exp_event]                                # (N, GQ)
+        grp_quanta = np.clip(
+            grp_starts + self.grp_exp_offset[None, :], 0, T - 1
+        )                                                                       # (N, GQ)
+        nGT = np.int64(self.n_groups) * np.int64(T)
+        grp_keys = (
+            n_idx * nGT
+            + self.grp_exp_group[None, :].astype(np.int64) * T
+            + grp_quanta
+        ).ravel()
+        grp_cnt = np.bincount(grp_keys, minlength=int(N * nGT))
+        grp_conflict = (grp_cnt[grp_keys] > 1).astype(np.float64)
 
-    def _find_best(
-        self,
-        e: int,
-        inst: np.ndarray,
-        room: np.ndarray,
-        time: np.ndarray,
-        room_occ: np.ndarray,
-        inst_occ: np.ndarray,
-        group_occ: np.ndarray,
-    ) -> None:
-        """Find and apply best (inst, room, time) for event *e*.
+        grp_event_lin = (n_idx * E + self.grp_exp_event[None, :]).ravel()
+        scores += np.bincount(grp_event_lin, weights=grp_conflict, minlength=NE)
 
-        Event MUST already be removed from occupancy arrays.
-        Updates ``inst[e]``, ``room[e]``, ``time[e]`` in-place.
+        return scores[:NE].reshape(N, E).astype(np.int32)
 
-        Strategy (vectorized candidate evaluation):
-          Phase 1 -- all times with current instructor + room
-          Phase 2 -- all rooms at group-free times (current instructor)
-          Phase 3 -- up to 8 alternate instructors x group-free times x rooms
+    def _repair_conflicts_vec(self, X: np.ndarray, passes: int = 3) -> None:
+        """Population-level stochastic conflict resolution (in-place).
+
+        For each pass:
+          1. Compute per-event conflict scores for all (N, E)
+          2. Identify events with score > 0
+          3. Resample time (always) and room (50%) from domain matrices
+          4. Repeat
+
+        This replaces the serial per-individual greedy repair with a
+        fully vectorized stochastic approach.  The GA's selection
+        pressure drives convergence; the repair only needs to *reduce*
+        conflicts, not eliminate them in a single shot.
         """
-        cur_i = int(inst[e])
-        cur_r = int(room[e])
-        cur_t = int(time[e])
+        rng = np.random.default_rng()
 
-        best_score = self._check_placement(
-            e, cur_i, cur_r, cur_t, room_occ, inst_occ, group_occ
-        )
-        if best_score == 0:
-            return
-        best_i, best_r, best_t = cur_i, cur_r, cur_t
-
-        # Pre-computed candidate times and quanta
-        times = self._event_times[e]
-        quanta = self._event_quanta[e]  # (K, d)
-        K = len(times)
-        if K == 0:
-            return
-
-        # ---- Phase 1: all times, current instructor + room ----
-        inst_avail_ok = self.inst_avail[cur_i, quanta].all(axis=1)  # (K,)
-        iavl_penalty = (~inst_avail_ok).astype(np.int32) * 100 * int(self.durations[e])
-
-        group_score = np.zeros(K, dtype=np.int32)
-        for gidx in self._event_groups[e]:
-            group_score += (group_occ[gidx][quanta] > 0).sum(axis=1).astype(np.int32)
-
-        room_score_cur = (room_occ[cur_r][quanta] > 0).sum(axis=1).astype(np.int32)
-        inst_score_cur = (inst_occ[cur_i][quanta] > 0).sum(axis=1).astype(np.int32)
-        ravl_penalty = (~self.room_avail[cur_r][quanta]).sum(axis=1).astype(
-            np.int32
-        ) * 100
-
-        total = (
-            iavl_penalty + group_score + room_score_cur + inst_score_cur + ravl_penalty
-        )
-
-        best_k = int(np.argmin(total))
-        if total[best_k] == 0:
-            time[e] = times[best_k]
-            return
-        if total[best_k] < best_score:
-            best_score = int(total[best_k])
-            best_t = int(times[best_k])
-
-        # ---- Phase 2: all rooms at group-free + instructor-available times ----
-        group_free = (group_score == 0) & inst_avail_ok
-        rooms_e = self._event_rooms[e]
-        n_rooms_e = len(rooms_e)
-
-        if group_free.any() and n_rooms_e > 0:
-            gf_idx = np.nonzero(group_free)[0]
-            gf_quanta = quanta[gf_idx]  # (F, d)
-
-            r_occ = room_occ[rooms_e[:, None, None], gf_quanta[None, :, :]]
-            r_scores = (r_occ > 0).sum(axis=2).astype(np.int32)
-            r_avl = self.room_avail[rooms_e[:, None, None], gf_quanta[None, :, :]]
-            r_avl_penalty = (~r_avl).sum(axis=2).astype(np.int32) * 100
-            i_scores_gf = inst_score_cur[gf_idx]
-            total_rf = r_scores + r_avl_penalty + i_scores_gf[None, :]
-
-            best_flat = int(np.argmin(total_rf))
-            best_ri, best_fi = divmod(best_flat, len(gf_idx))
-            val_rf = int(total_rf[best_ri, best_fi])
-            if val_rf < best_score:
-                best_score = val_rf
-                best_r = int(rooms_e[best_ri])
-                best_t = int(times[gf_idx[best_fi]])
-                if best_score == 0:
-                    room[e] = best_r
-                    time[e] = best_t
-                    return
-
-        # ---- Phase 3: alternate instructors ----
-        n_inst_e = int(self.inst_dom_len[e])
-        if n_inst_e > 1 and best_score > 0:
-            insts_e = self.inst_domains[e, : min(n_inst_e, 8)]
-            for alt_i_np in insts_e:
-                alt_i = int(alt_i_np)
-                if alt_i == cur_i:
-                    continue
-
-                avail = self.inst_avail[alt_i, quanta].all(axis=1)
-                if not avail.any():
-                    continue
-
-                av_idx = np.nonzero(avail)[0]
-                av_quanta = quanta[av_idx]
-
-                g_score = np.zeros(len(av_idx), dtype=np.int32)
-                for gidx in self._event_groups[e]:
-                    g_score += (
-                        (group_occ[gidx][av_quanta] > 0).sum(axis=1).astype(np.int32)
-                    )
-
-                gf_alt = g_score == 0
-                if not gf_alt.any():
-                    continue
-
-                gf_av_idx = np.nonzero(gf_alt)[0]
-                gf_av_quanta = av_quanta[gf_av_idx]
-
-                i_score_alt = (
-                    (inst_occ[alt_i][gf_av_quanta] > 0).sum(axis=1).astype(np.int32)
-                )
-
-                if n_rooms_e > 0:
-                    r_occ_a = room_occ[rooms_e[:, None, None], gf_av_quanta[None, :, :]]
-                    r_scores_a = (r_occ_a > 0).sum(axis=2).astype(np.int32)
-                    r_avl_a = self.room_avail[
-                        rooms_e[:, None, None], gf_av_quanta[None, :, :]
-                    ]
-                    r_avl_pen_a = (~r_avl_a).sum(axis=2).astype(np.int32) * 100
-                    total_a = r_scores_a + r_avl_pen_a + i_score_alt[None, :]
-                    best_a_flat = int(np.argmin(total_a))
-                    best_a_ri, best_a_fi = divmod(best_a_flat, len(gf_av_idx))
-                    val_a = int(total_a[best_a_ri, best_a_fi])
-                    if val_a < best_score:
-                        best_score = val_a
-                        best_i = alt_i
-                        best_r = int(rooms_e[best_a_ri])
-                        best_t = int(times[av_idx[gf_av_idx[best_a_fi]]])
-                        if best_score == 0:
-                            inst[e] = best_i
-                            room[e] = best_r
-                            time[e] = best_t
-                            return
-
-        # Apply best found (even if score > 0)
-        inst[e] = best_i
-        room[e] = best_r
-        time[e] = best_t
-
-    # ------------------------------------------------------------------
-    # Stage 3: group-aware deconfliction
-    # ------------------------------------------------------------------
-
-    def _fix_groups(
-        self,
-        inst: np.ndarray,
-        room: np.ndarray,
-        time: np.ndarray,
-        room_occ: np.ndarray,
-        inst_occ: np.ndarray,
-        group_occ: np.ndarray,
-    ) -> None:
-        """Process groups atomically: remove all events, re-insert greedily.
-
-        Tightest groups (highest utilization) are processed first.
-        """
-        for _round in range(2):
-            any_fix = False
-            for gidx in self._sorted_groups:
-                events = self._group_events[gidx]
-                if not events:
-                    continue
-
-                # Check if group has any double-booking
-                has_conflict = False
-                for ev in events:
-                    s = int(time[ev])
-                    d = int(self.durations[ev])
-                    for q in range(s, min(s + d, T)):
-                        if group_occ[gidx, q] > 1:
-                            has_conflict = True
-                            break
-                    if has_conflict:
-                        break
-                if not has_conflict:
-                    continue
-
-                any_fix = True
-
-                # Remove all events in this group
-                for ev in events:
-                    self._remove_occ(
-                        ev, inst, room, time, room_occ, inst_occ, group_occ
-                    )
-
-                # Re-insert sorted by duration (longest first)
-                events_sorted = sorted(events, key=lambda ev: -int(self.durations[ev]))
-                for ev in events_sorted:
-                    self._find_best(ev, inst, room, time, room_occ, inst_occ, group_occ)
-                    self._add_occ(ev, inst, room, time, room_occ, inst_occ, group_occ)
-
-            if not any_fix:
+        for _ in range(passes):
+            scores = self._score_all_batch(X)  # (N, E)
+            conflict_mask = scores > 0
+            if not conflict_mask.any():
                 break
 
-        # Final residual cleanup
-        for _pass in range(2):
-            scores = self._score_all(inst, room, time, room_occ, inst_occ, group_occ)
-            conflict_events = np.nonzero(scores > 0)[0]
-            if len(conflict_events) == 0:
-                break
-            conflict_events = conflict_events[np.argsort(-scores[conflict_events])]
-            any_fix = False
-            for e_int in conflict_events:
-                ev = int(e_int)
-                if (
-                    self._event_score(
-                        ev, inst, room, time, room_occ, inst_occ, group_occ
-                    )
-                    == 0
-                ):
-                    continue
-                any_fix = True
-                self._remove_occ(ev, inst, room, time, room_occ, inst_occ, group_occ)
-                self._find_best(ev, inst, room, time, room_occ, inst_occ, group_occ)
-                self._add_occ(ev, inst, room, time, room_occ, inst_occ, group_occ)
-            if not any_fix:
-                break
+            bi, be = np.nonzero(conflict_mask)
+
+            # --- Always resample time slot ---
+            t_dl = self.time_dom_len[be]
+            t_valid = t_dl > 0
+            t_bi, t_be, t_dl_v = bi[t_valid], be[t_valid], t_dl[t_valid]
+            t_idx = (rng.random(len(t_bi)) * t_dl_v).astype(np.int64)
+            t_idx = np.minimum(t_idx, t_dl_v - 1)
+            X[t_bi, 3 * t_be + 2] = self.time_domains[t_be, t_idx]
+
+            # --- Resample room for ~50 % of conflicts ---
+            do_room = rng.random(len(bi)) < 0.5
+            r_bi, r_be = bi[do_room], be[do_room]
+            r_dl = self.room_dom_len[r_be]
+            r_valid = r_dl > 0
+            r_bi, r_be, r_dl_v = r_bi[r_valid], r_be[r_valid], r_dl[r_valid]
+            r_idx = (rng.random(len(r_bi)) * r_dl_v).astype(np.int64)
+            r_idx = np.minimum(r_idx, r_dl_v - 1)
+            X[r_bi, 3 * r_be + 1] = self.room_domains[r_be, r_idx]
 
 
 # ======================================================================
