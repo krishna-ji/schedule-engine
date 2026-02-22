@@ -258,7 +258,7 @@ class TestIntegrationNaNGuard:
         prob._evaluate(x, out)
 
         G = out["G"]
-        assert G.shape[1] == 8, "Should have 8 hard constraint columns"
+        assert G.shape[1] == 9, "Should have 9 hard constraint columns"
         assert np.all(G >= 0), "Constraint violations should be non-negative"
 
 

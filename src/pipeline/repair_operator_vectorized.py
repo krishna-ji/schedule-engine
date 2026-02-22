@@ -200,42 +200,56 @@ class VectorizedRepair:
     # ------------------------------------------------------------------
 
     def _fix_domains_vec(self, X: np.ndarray) -> None:
-        """Fix domain violations in-place.  Vectorized over population."""
+        """Fix domain violations in-place.  Vectorized over population.
+
+        Invalid assignments are replaced with a **random** valid value
+        from the event's domain (not always the first), improving
+        population diversity.
+        """
         E = self.n_events
-        inst = X[:, 0::3]
-        room = X[:, 1::3]
-        time = X[:, 2::3]
+        inst = X[:, 0::3]  # (N, E)
+        room = X[:, 1::3]  # (N, E)
+        time = X[:, 2::3]  # (N, E)
         e_idx = np.arange(E, dtype=np.int64)
 
-        # Instructor domain
+        # ---- Instructor domain: random replacement ----
         inst_clamped = np.clip(inst, 0, self.n_instructors - 1)
-        inst_ok = self.inst_allowed[e_idx[np.newaxis, :], inst_clamped]
+        inst_ok = self.inst_allowed[e_idx[np.newaxis, :], inst_clamped]  # (N, E)
         inst_bad = ~inst_ok
         if inst_bad.any():
-            bi, be = np.nonzero(inst_bad)
-            X[bi, 3 * be] = self.inst_domains[be, 0]
+            bi, be = np.nonzero(inst_bad)  # bad (individual, event) pairs
+            dom_len = self.inst_dom_len[be]  # (K,) valid domain sizes
+            rand_idx = (np.random.random(len(bi)) * dom_len).astype(np.int64)
+            rand_idx = np.minimum(rand_idx, np.maximum(dom_len - 1, 0))
+            X[bi, 3 * be] = self.inst_domains[be, rand_idx]
 
-        # Room domain
+        # ---- Room domain: random replacement ----
         room_clamped = np.clip(room, 0, self.n_rooms - 1)
-        room_ok = self.room_allowed[e_idx[np.newaxis, :], room_clamped]
+        room_ok = self.room_allowed[e_idx[np.newaxis, :], room_clamped]  # (N, E)
         room_bad = ~room_ok
         if room_bad.any():
             bi, be = np.nonzero(room_bad)
-            X[bi, 3 * be + 1] = self.room_domains[be, 0]
+            dom_len = self.room_dom_len[be]
+            rand_idx = (np.random.random(len(bi)) * dom_len).astype(np.int64)
+            rand_idx = np.minimum(rand_idx, np.maximum(dom_len - 1, 0))
+            X[bi, 3 * be + 1] = self.room_domains[be, rand_idx]
 
-        # Time domain (padded broadcasting check)
-        time_vals = time[:, :, np.newaxis]  # (N, E, 1)
-        time_doms = self.time_domains[np.newaxis, :, :]  # (1, E, max_dom)
+        # ---- Time domain: random replacement ----
+        time_vals = time[:, :, np.newaxis]                 # (N, E, 1)
+        time_doms = self.time_domains[np.newaxis, :, :]    # (1, E, max_dom)
         dom_mask = (
             np.arange(self._time_max_dom)[np.newaxis, :]
             < self.time_dom_len[:, np.newaxis]
-        )
+        )                                                  # (E, max_dom)
         matches = (time_vals == time_doms) & dom_mask[np.newaxis, :, :]
-        time_ok = matches.any(axis=2)
+        time_ok = matches.any(axis=2)                      # (N, E)
         time_bad = ~time_ok & (self.time_dom_len[np.newaxis, :] > 0)
         if time_bad.any():
             bi, be = np.nonzero(time_bad)
-            X[bi, 3 * be + 2] = self.time_domains[be, 0]
+            dom_len = self.time_dom_len[be]
+            rand_idx = (np.random.random(len(bi)) * dom_len).astype(np.int64)
+            rand_idx = np.minimum(rand_idx, np.maximum(dom_len - 1, 0))
+            X[bi, 3 * be + 2] = self.time_domains[be, rand_idx]
 
     # ------------------------------------------------------------------
     # Stage 2 & 3: per-individual conflict resolution
