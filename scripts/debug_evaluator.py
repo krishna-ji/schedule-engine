@@ -51,7 +51,7 @@ def debug_single_individual():
     )
 
     # Load events data
-    with open("events_with_domains.pkl", "rb") as f:
+    with open(".cache/events_with_domains.pkl", "rb") as f:
         events_data = pickle.load(f)
     events = events_data["events"]
 

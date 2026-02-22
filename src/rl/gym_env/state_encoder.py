@@ -64,20 +64,21 @@ class StateEncoder:
     - Diversity metrics (5): population, genotype, phenotype, fitness, unique_fitness_ratio
     - Progress metrics (4): generation, stagnation, convergence, improvement
     - Constraint metrics (3): hard, soft, violation_std
-    - ENHANCEMENT #2: Per-constraint breakdown (12): 8 hard + 4 soft constraint violations
+    - ENHANCEMENT #2: Per-constraint breakdown (13): 9 hard + 4 soft constraint violations
     - Heuristic history (dynamic): recent heuristic IDs
     """
 
-    # Hard constraint names (8 total)
+    # Hard constraint names (9 total — must match fast_evaluate_hard_vectorized column order)
     HARD_CONSTRAINT_NAMES: ClassVar[list[str]] = [
         "student_group_exclusivity",
         "instructor_exclusivity",
+        "room_exclusivity",
         "instructor_qualifications",
         "room_suitability",
         "instructor_time_availability",
         "room_time_availability",
         "course_completeness",
-        "room_exclusivity",
+        "sibling_same_day",
     ]
 
     # Soft constraint names (4 total)

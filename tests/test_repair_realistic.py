@@ -38,7 +38,7 @@ N_OFFSPRING = 200
 PERTURBATION_RANGE = (5, 20)  # mutate 5–20 genes per offspring
 FLOOR_THRESHOLD = 0.95  # >=95% reach floor
 REDUCTION_THRESHOLD = 0.90  # median reduction >=90%
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 
 random.seed(42)
 np.random.seed(42)

@@ -26,7 +26,7 @@ from src.pipeline.fast_evaluator_batch import (
 )
 from src.pipeline.repair_operator import SchedulingRepair
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 
 
 def generate_individuals(pkl_data: dict, n: int, seed: int = 42) -> np.ndarray:

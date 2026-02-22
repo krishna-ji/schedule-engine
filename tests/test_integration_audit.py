@@ -21,9 +21,9 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Skip all tests if pkl or data doesn't exist
-_PKL = PROJECT_ROOT / "events_with_domains.pkl"
+_PKL = PROJECT_ROOT / ".cache" / "events_with_domains.pkl"
 _DATA = PROJECT_ROOT / "data"
-_SKIP_MSG = "Requires events_with_domains.pkl and data/ directory"
+_SKIP_MSG = "Requires .cache/events_with_domains.pkl and data/ directory"
 pytestmark = pytest.mark.skipif(
     not (_PKL.exists() and _DATA.exists()), reason=_SKIP_MSG
 )

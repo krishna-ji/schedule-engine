@@ -27,7 +27,7 @@ from src.pipeline.soft_evaluator_vectorized import (
     prepare_soft_vectorized_data,
 )
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 with open(PKL_PATH, "rb") as f:
     pkl_data = pickle.load(f)
 

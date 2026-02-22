@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = 2  # Bump when export format changes
 
+# Canonical cache location for the events pickle
+_CACHE_DIR = Path(".cache")
+PKL_DEFAULT_PATH = str(_CACHE_DIR / "events_with_domains.pkl")
+
 
 def _make_event_key(gene) -> tuple:
     """Stable, deterministic sort key for an event (gene).
@@ -289,7 +293,8 @@ def build_events_with_domains(
         },
     }
 
-    pkl_path = "events_with_domains.pkl"
+    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    pkl_path = PKL_DEFAULT_PATH
     logger.info("Saving %s ...", pkl_path)
     with open(pkl_path, "wb") as f:
         pickle.dump(export_data, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -299,7 +304,7 @@ def build_events_with_domains(
 
 
 def load_events(
-    pkl_path: str = "events_with_domains.pkl",
+    pkl_path: str = PKL_DEFAULT_PATH,
     data_dir: str = "data",
     *,
     verify: bool = True,

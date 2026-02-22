@@ -19,7 +19,7 @@ import numpy as np
 class SchedulingRepair:
     """Repair a 3×E interleaved chromosome [I0,R0,T0, I1,R1,T1, …]."""
 
-    def __init__(self, events_data_path: str = "events_with_domains.pkl"):
+    def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
         with open(events_data_path, "rb") as f:
             data = pickle.load(f)
 
@@ -545,7 +545,7 @@ try:
     class PymooSchedulingRepair(Repair):
         """Pymoo-compatible repair operator class."""
 
-        def __init__(self, events_data_path: str = "events_with_domains.pkl"):
+        def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
             super().__init__()
             self.engine = SchedulingRepair(events_data_path)
 

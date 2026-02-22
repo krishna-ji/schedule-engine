@@ -25,7 +25,7 @@ from src.utils.logging_config import quick_setup
 
 logger = logging.getLogger(__name__)
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 RESULTS_DIR = Path("results")
 RESULTS_DIR.mkdir(exist_ok=True)
 

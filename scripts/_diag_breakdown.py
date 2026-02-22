@@ -18,7 +18,7 @@ from src.pipeline.repair_operator import SchedulingRepair
 
 repairer = SchedulingRepair()
 E = repairer.n_events
-with open("events_with_domains.pkl", "rb") as f:
+with open(".cache/events_with_domains.pkl", "rb") as f:
     data = pickle.load(f)
 
 rng = np.random.default_rng(42)

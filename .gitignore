@@ -37,6 +37,9 @@ build/
 .ruff_cache/
 .mypy_cache/
 
+# Pipeline cache
+.cache/
+
 # report/
 
 # suggest/

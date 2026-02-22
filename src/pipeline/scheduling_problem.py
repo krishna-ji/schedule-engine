@@ -67,7 +67,7 @@ class SchedulingProblem(Problem):
     Parameters
     ----------
     pkl_path : str
-        Path to events_with_domains.pkl.
+        Path to .cache/events_with_domains.pkl.
     ctx : SchedulingContext | None
         If provided, enables full soft constraint evaluation via the
         original Evaluator. Without this, soft penalty is 0.
@@ -77,7 +77,7 @@ class SchedulingProblem(Problem):
 
     def __init__(
         self,
-        pkl_path: str = "events_with_domains.pkl",
+        pkl_path: str = ".cache/events_with_domains.pkl",
         ctx: SchedulingContext | None = None,
         qts: QuantumTimeSystem | None = None,
     ):
@@ -191,7 +191,7 @@ class SchedulingProblem(Problem):
 
 
 def create_problem(
-    pkl_path: str = "events_with_domains.pkl",
+    pkl_path: str = ".cache/events_with_domains.pkl",
     ctx: SchedulingContext | None = None,
     qts: QuantumTimeSystem | None = None,
 ) -> SchedulingProblem:

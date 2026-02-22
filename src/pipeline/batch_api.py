@@ -6,7 +6,7 @@ no per-individual Python loops in the caller.
 Shapes & dtypes
 ~~~~~~~~~~~~~~~
     X : int64, (N, 3*E)    — population matrix (interleaved chromosomes)
-    G : int64, (N, 8)      — hard constraint violation counts
+    G : int64, (N, 9)      — hard constraint violation counts (9 constraints)
     F : float64, (N, 2)    — objectives [hard_total, soft_total]
     S : float64, (N,)      — soft penalty per individual
     hv, igd, spacing : float64 scalars
@@ -55,7 +55,7 @@ class BatchContext:
     Construct once, pass to all ``eval_*_batch`` and ``repair_batch`` calls.
     """
 
-    def __init__(self, pkl_path: str = "events_with_domains.pkl"):
+    def __init__(self, pkl_path: str = ".cache/events_with_domains.pkl"):
         with open(pkl_path, "rb") as f:
             self.pkl_data: dict = pickle.load(f)
 

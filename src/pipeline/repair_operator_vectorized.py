@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class VectorizedRepair:
     """Repair engine using numpy occupancy arrays for fast conflict resolution."""
 
-    def __init__(self, events_data_path: str = "events_with_domains.pkl"):
+    def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
         with open(events_data_path, "rb") as f:
             data = pickle.load(f)
 
@@ -369,7 +369,7 @@ try:
 
         def __init__(
             self,
-            events_data_path: str = "events_with_domains.pkl",
+            events_data_path: str = ".cache/events_with_domains.pkl",
             passes: int = 3,
         ):
             super().__init__()
