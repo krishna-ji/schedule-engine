@@ -227,6 +227,23 @@ class GAExperiment(BaseExperiment):
                 ),
             )
 
+        # ── 2b. Per-soft-constraint trend plots ───────────────────
+        best_soft_breakdowns: list[dict] = getattr(callback, "best_soft_breakdowns", [])
+        if best_soft_breakdowns and best_soft_breakdowns[0]:
+            all_soft_keys = best_soft_breakdowns[0].keys()
+            soft_trends: dict[str, list[int]] = {
+                k: [bd.get(k, 0) for bd in best_soft_breakdowns] for k in all_soft_keys
+            }
+            self._safe_call(
+                "individual soft constraint plots",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_detailed_constraints",
+                        fromlist=["plot_individual_soft_constraints"],
+                    ).plot_individual_soft_constraints(soft_trends, out)
+                ),
+            )
+
         # ── 3. Convergence rate analysis ───────────────────────────
         if len(best_hards) >= 11:
             self._safe_call(

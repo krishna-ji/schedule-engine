@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 # ── Short constraint labels (matches HARD_CONSTRAINT_NAMES order) ────
 _SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp", "sib"]
 
+# ── Short labels for soft constraint components ──────────────────────
+_SHORT_SOFT = ["sComp", "iComp", "lunch", "paired"]
+
 # ── MOEA metrics computed every K generations ────────────────────────
 _METRICS_INTERVAL = 10
 
@@ -121,18 +124,44 @@ def _constraint_breakdown(G_row: np.ndarray) -> dict[str, int]:
     return {n: int(v) for n, v in zip(_SHORT, G_row, strict=False)}
 
 
+def _soft_breakdown(problem: Any, best_idx: int) -> dict[str, int]:
+    """Return {short_name: penalty} for best individual's soft constraints."""
+    bd = getattr(problem, "_last_soft_breakdown", None)
+    if bd is None:
+        return {}
+    keys = [
+        "student_compactness",
+        "instructor_compactness",
+        "lunch_break",
+        "paired_cohort",
+    ]
+    labels = _SHORT_SOFT
+    result = {}
+    for key, label in zip(keys, labels):
+        arr = bd.get(key)
+        if arr is not None:
+            result[label] = (
+                int(arr[best_idx]) if hasattr(arr, "__getitem__") else int(arr)
+            )
+    return result
+
+
 def _log_gen(algorithm: Any, log_interval: int) -> tuple:
     """Log generation summary and return (F, G, cv, best_idx)."""
     F, G, cv, best_idx = _progress_payload(algorithm)
     if algorithm.n_gen == 1 or algorithm.n_gen % log_interval == 0:
         bd = G[best_idx]
         parts = " ".join(f"{n}={int(v)}" for n, v in zip(_SHORT, bd, strict=False))
+        # Soft breakdown from problem
+        sbd = _soft_breakdown(algorithm.problem, best_idx)
+        soft_parts = " ".join(f"{k}={v}" for k, v in sbd.items()) if sbd else ""
         logger.info(
-            "Gen %4d: hard=%.0f  [%s]  soft=%.0f  cv=%.0f  feasible=%d/%d",
+            "Gen %4d: hard=%.0f  [%s]  soft=%.0f  [%s]  cv=%.0f  feasible=%d/%d",
             algorithm.n_gen,
             F[best_idx, 0],
             parts,
             F[best_idx, 1],
+            soft_parts,
             cv.min(),
             int((cv == 0).sum()),
             len(algorithm.pop),
@@ -170,6 +199,7 @@ class GACallbackBase(Callback):
         self.best_hards: list[float] = []
         self.best_softs: list[float] = []
         self.best_breakdowns: list[dict[str, int]] = []
+        self.best_soft_breakdowns: list[dict[str, int]] = []
         self.gen_times: list[float] = []
         self._gen_t0: float = time.time()
         _init_moea_lists(self)
@@ -187,6 +217,7 @@ class GACallbackBase(Callback):
         self.best_hards.append(cur_hard)
         self.best_softs.append(cur_soft)
         self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
+        self.best_soft_breakdowns.append(_soft_breakdown(algorithm.problem, best_idx))
         _record_moea_metrics(self, algorithm, F, G)
 
         # ── Debug: improvement / stagnation detection ────────────
@@ -198,17 +229,26 @@ class GACallbackBase(Callback):
             if delta > 0:
                 logger.debug(
                     "Gen %4d: IMPROVED  hard %.0f -> %.0f (delta=%.0f)  dt=%.2fs",
-                    gen, prev_hard, cur_hard, delta, gen_dt,
+                    gen,
+                    prev_hard,
+                    cur_hard,
+                    delta,
+                    gen_dt,
                 )
             elif n_hards >= 10 and cur_hard == self.best_hards[-10]:
                 logger.debug(
                     "Gen %4d: STAGNANT  hard=%.0f unchanged for 10 gens  dt=%.2fs",
-                    gen, cur_hard, gen_dt,
+                    gen,
+                    cur_hard,
+                    gen_dt,
                 )
         else:
             logger.debug(
                 "Gen %4d: INIT  hard=%.0f  soft=%.0f  dt=%.2fs",
-                gen, cur_hard, cur_soft, gen_dt,
+                gen,
+                cur_hard,
+                cur_soft,
+                gen_dt,
             )
 
         # ── Debug: population diversity snapshot ─────────────────
@@ -218,8 +258,12 @@ class GACallbackBase(Callback):
             logger.debug(
                 "Gen %4d: pop diversity=%d unique hard values, mean_cv=%.1f, "
                 "min_cv=%.0f, feasible=%d/%d",
-                gen, unique_hard, mean_cv, cv.min(),
-                int((cv == 0).sum()), len(cv),
+                gen,
+                unique_hard,
+                mean_cv,
+                cv.min(),
+                int((cv == 0).sum()),
+                len(cv),
             )
 
         self._on_generation(algorithm, F, G, cv, best_idx)
