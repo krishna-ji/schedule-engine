@@ -91,7 +91,7 @@ t0 = time.perf_counter()
 prob._evaluate(X, out)
 t_eval = time.perf_counter() - t0
 logger.info("Full _evaluate (50 inds): %.4fs", t_eval)
-logger.info("F shape: %s, G shape: %s", out['F'].shape, out['G'].shape)
+logger.info("F shape: %s, G shape: %s", out["F"].shape, out["G"].shape)
 
 # Crossover and mutation timing
 from src.pipeline.pymoo_operators import EventBlockCrossover, EventLocalMutation
@@ -118,16 +118,15 @@ logger.info("Mutation (50 inds): %.4fs", t_mut)
 logger.info("\n=== SUMMARY ===")
 logger.info("Constructive sampling: %.1fms/ind", t_sampling / 50 * 1000)
 logger.info(
-    "Hard eval vectorized:  %.2fms/ind (%.4fs for 200)",
-    t_vec200 / 200 * 1000, t_vec200
+    "Hard eval vectorized:  %.2fms/ind (%.4fs for 200)", t_vec200 / 200 * 1000, t_vec200
 )
 logger.info(
     "Hard eval batch:       %.2fms/ind (%.4fs for 200)",
-    t_batch200 / 200 * 1000, t_batch200
+    t_batch200 / 200 * 1000,
+    t_batch200,
 )
 logger.info(
-    "Repair:                %.1fms/ind (%.1fs for 200)",
-    t_repair * 1000, t_repair * 200
+    "Repair:                %.1fms/ind (%.1fs for 200)", t_repair * 1000, t_repair * 200
 )
 logger.info("Crossover:             %.1fms for %d matings", t_cx * 1000, n_matings)
 logger.info("Mutation:              %.1fms for 50 inds", t_mut * 1000)

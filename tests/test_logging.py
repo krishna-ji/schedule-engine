@@ -26,7 +26,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
@@ -422,9 +421,9 @@ def test_noisy_loggers_suppressed(tmp_path: Path) -> None:
     setup_unified_logging(log_file=tmp_path / "noise.log", suppress_noisy=True)
 
     for name in ("matplotlib", "PIL", "urllib3", "pymoo"):
-        assert logging.getLogger(name).level >= logging.WARNING, (
-            f"Logger '{name}' not suppressed"
-        )
+        assert (
+            logging.getLogger(name).level >= logging.WARNING
+        ), f"Logger '{name}' not suppressed"
 
 
 def test_noise_suppression_disabled(tmp_path: Path) -> None:
@@ -457,9 +456,7 @@ def test_rotating_file_handler_used(tmp_path: Path) -> None:
     root = logging.getLogger("src")
 
     rotating_handlers = [
-        h
-        for h in root.handlers
-        if isinstance(h, logging.handlers.RotatingFileHandler)
+        h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
     ]
     assert len(rotating_handlers) >= 1, "No RotatingFileHandler found"
 
@@ -475,9 +472,7 @@ def test_no_print_in_experiments() -> None:
     violations: list[str] = []
 
     for py_file in sorted(experiments_dir.glob("*.py")):
-        for i, line in enumerate(
-            py_file.read_text(encoding="utf-8").splitlines(), 1
-        ):
+        for i, line in enumerate(py_file.read_text(encoding="utf-8").splitlines(), 1):
             stripped = line.lstrip()
             if (
                 stripped.startswith("#")
@@ -522,9 +517,9 @@ def test_context_filter_attached_to_handlers(tmp_path: Path) -> None:
     for handler in root.handlers:
         if hasattr(handler, "summary"):  # skip LogStats
             continue
-        assert len(handler.filters) >= 1, (
-            f"Handler {handler.__class__.__name__} has no context filter"
-        )
+        assert (
+            len(handler.filters) >= 1
+        ), f"Handler {handler.__class__.__name__} has no context filter"
 
 
 # =====================================================================

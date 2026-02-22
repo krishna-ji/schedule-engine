@@ -50,9 +50,13 @@ def inspect_individual():
         for i, gene in enumerate(individual[:5]):
             logger.info(
                 "  Gene %d: Course=%s, Groups=%s, Instructor=%s, Room=%s, Start=%s, Num=%s",
-                i, gene.course_id, gene.group_ids,
-                gene.instructor_id, gene.room_id,
-                gene.start_quanta, gene.num_quanta
+                i,
+                gene.course_id,
+                gene.group_ids,
+                gene.instructor_id,
+                gene.room_id,
+                gene.start_quanta,
+                gene.num_quanta,
             )
 
         # Quick evaluation test
@@ -70,7 +74,11 @@ def inspect_individual():
             time_str = f"{day} {start_time}-{end_time}"
             logger.info(
                 "  %s - %s - %s - %s - %s",
-                gene.course_id, gene.group_ids, gene.instructor_id, gene.room_id, time_str
+                gene.course_id,
+                gene.group_ids,
+                gene.instructor_id,
+                gene.room_id,
+                time_str,
             )
 
     except Exception as e:

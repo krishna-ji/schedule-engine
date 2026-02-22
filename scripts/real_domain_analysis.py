@@ -83,23 +83,27 @@ def analyze_real_domain_sizes():
             if i < 10:  # Show first 10 events
                 logger.info(
                     "Event %d: Course=%s Type=%s Groups=%s",
-                    i, gene.course_id, gene.course_type, gene.group_ids
+                    i,
+                    gene.course_id,
+                    gene.course_type,
+                    gene.group_ids,
                 )
                 logger.info("  Duration: %d quanta", gene.num_quanta)
                 logger.info(
                     "  Suitable rooms: %d (from suitability+capacity check)",
-                    len(suitable_rooms)
+                    len(suitable_rooms),
                 )
                 logger.info("  Qualified instructors: %d", len(qualified_instructors))
                 logger.info(
                     "  Allowed start times: %d (0 to %d)",
-                    len(allowed_starts), base_max_start
+                    len(allowed_starts),
+                    base_max_start,
                 )
                 if i < 3:  # Show details for first 3
                     logger.debug("    Sample suitable rooms: %s", suitable_rooms[:5])
                     logger.debug(
                         "    Sample qualified instructors: %s",
-                        qualified_instructors[:5]
+                        qualified_instructors[:5],
                     )
                 logger.info("")
 
@@ -108,7 +112,9 @@ def analyze_real_domain_sizes():
         logger.info("SUITABLE ROOMS (real suitability + capacity):")
         logger.info("  Min: %d", min(suitable_rooms_counts))
         logger.info("  Max: %d", max(suitable_rooms_counts))
-        logger.info("  Avg: %.1f", sum(suitable_rooms_counts) / len(suitable_rooms_counts))
+        logger.info(
+            "  Avg: %.1f", sum(suitable_rooms_counts) / len(suitable_rooms_counts)
+        )
         logger.info("")
 
         logger.info("QUALIFIED INSTRUCTORS (real qualification check):")
@@ -116,7 +122,7 @@ def analyze_real_domain_sizes():
         logger.info("  Max: %d", max(qualified_instructors_counts))
         logger.info(
             "  Avg: %.1f",
-            sum(qualified_instructors_counts) / len(qualified_instructors_counts)
+            sum(qualified_instructors_counts) / len(qualified_instructors_counts),
         )
         logger.info("")
 
@@ -136,15 +142,18 @@ def analyze_real_domain_sizes():
 
         logger.info(
             "Events with <=5 suitable rooms: %d/100 (%.0f%%)",
-            tight_rooms, 100 * tight_rooms / 100
+            tight_rooms,
+            100 * tight_rooms / 100,
         )
         logger.info(
             "Events with <=2 qualified instructors: %d/100 (%.0f%%)",
-            tight_instructors, 100 * tight_instructors / 100
+            tight_instructors,
+            100 * tight_instructors / 100,
         )
         logger.info(
             "Events with <=10 start time options: %d/100 (%.0f%%)",
-            tight_time, 100 * tight_time / 100
+            tight_time,
+            100 * tight_time / 100,
         )
 
     except Exception as e:

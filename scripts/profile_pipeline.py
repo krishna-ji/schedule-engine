@@ -260,12 +260,17 @@ if __name__ == "__main__":
     # 2) cProfile full run
     logger.info("── cProfile full run (pop=%d, gens=%d) ──", POP, NGEN)
     cprof = profile_full_run(pkl_path)
-    logger.info("  Wall time: %ss", cprof['wall_time_s'])
+    logger.info("  Wall time: %ss", cprof["wall_time_s"])
     logger.info("  Top 10 hotspots (by cumtime):")
     for h in cprof["top_hotspots"][:10]:
         logger.info(
             "    %-40s %8.3fs tot  %8.3fs cum  (%s calls)  [%s:%s]",
-            h['function'], h['tottime'], h['cumtime'], h['ncalls'], h['file'], h['lineno']
+            h["function"],
+            h["tottime"],
+            h["cumtime"],
+            h["ncalls"],
+            h["file"],
+            h["lineno"],
         )
     logger.info("")
 
