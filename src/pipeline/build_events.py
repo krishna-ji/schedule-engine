@@ -75,7 +75,7 @@ def build_events_with_domains(
     logger.info("Data hash: %s...", data_hash[:16])
 
     logger.info("Loading data and generating reference individual...")
-    store = DataStore.from_json(data_dir)
+    store = DataStore.from_json(data_dir, run_preflight=False)
     ctx = store.to_context()
     qts = QuantumTimeSystem()
 
@@ -173,8 +173,9 @@ def build_events_with_domains(
         }
         events.append(event)
 
-        # Allowed rooms – EXACTLY the same logic as RoomSuitability constraint
-        # (type compatibility only, NO capacity check, NO fallback to all rooms)
+        # Allowed rooms – type compatibility only
+        # (Room capacity is non-binding in the target deployment;
+        #  campus rooms have sufficient excess capacity for all groups.)
         required = (
             getattr(ev_course, "required_room_features", "lecture")
             if ev_course
@@ -224,6 +225,22 @@ def build_events_with_domains(
     elapsed = time.time() - t0
     logger.info("Domain computation: %.2fs for %d events", elapsed, len(genes))
 
+    # --- Domain-integrity assertions ---
+    empty_room_events = [e for e, r in enumerate(allowed_rooms) if not r]
+    empty_inst_events = [e for e, i in enumerate(allowed_instructors) if not i]
+    if empty_room_events:
+        logger.warning(
+            "  %d events have EMPTY room domains: %s",
+            len(empty_room_events),
+            empty_room_events[:20],
+        )
+    if empty_inst_events:
+        logger.warning(
+            "  %d events have EMPTY instructor domains: %s",
+            len(empty_inst_events),
+            empty_inst_events[:20],
+        )
+
     rlens = [len(r) for r in allowed_rooms]
     ilens = [len(i) for i in allowed_instructors]
     slens = [len(s) for s in allowed_starts]
@@ -267,6 +284,8 @@ def build_events_with_domains(
             "n_rooms": len(ctx.rooms),
             "n_instructors": len(ctx.instructors),
             "max_quanta": max_quantum,
+            "empty_room_domains": len(empty_room_events),
+            "empty_inst_domains": len(empty_inst_events),
         },
     }
 

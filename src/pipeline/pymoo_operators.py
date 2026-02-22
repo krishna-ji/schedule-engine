@@ -78,17 +78,27 @@ class RandomDomainSampling(Sampling):
             data["allowed_rooms"],
             data["allowed_starts"],
         ]
+        _domain_names = ["instructor", "room", "start"]
         self._dom_padded: list[np.ndarray] = []
         self._dom_len: list[np.ndarray] = []
-        for domains in domain_lists:
+        for dname, domains in zip(_domain_names, domain_lists):
             max_d = max((len(d) for d in domains), default=1) or 1
             padded = np.zeros((E, max_d), dtype=np.int64)
             lengths = np.zeros(E, dtype=np.int64)
+            n_empty = 0
             for e, d in enumerate(domains):
                 dl = len(d)
                 if dl > 0:
                     lengths[e] = dl
                     padded[e, :dl] = d
+                else:
+                    n_empty += 1
+            if n_empty:
+                logging.getLogger(__name__).warning(
+                    "RandomDomainSampling: %d events have empty %s domains",
+                    n_empty,
+                    dname,
+                )
             self._dom_padded.append(padded)
             self._dom_len.append(lengths)
 
