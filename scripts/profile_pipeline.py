@@ -48,7 +48,7 @@ OUT_DIR.mkdir(exist_ok=True)
 # ── Helpers ──────────────────────────────────────────────────────────
 def build_pkl_if_needed():
     """Ensure events_with_domains.pkl exists."""
-    pkl = Path("events_with_domains.pkl")
+    pkl = Path(".cache/events_with_domains.pkl")
     if pkl.exists():
         return str(pkl)
     from src.pipeline.build_events import build_events_with_domains

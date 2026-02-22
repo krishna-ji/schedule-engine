@@ -18,7 +18,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 PKL_EXISTS = Path(PKL_PATH).exists()
 
 skip_no_pkl = pytest.mark.skipif(
@@ -83,10 +83,10 @@ class TestHardEvaluatorEquivalence:
         G_batch = fast_evaluate_hard_batch(population, batch_data)
         G_vec = fast_evaluate_hard_vectorized(population, vec_data)
 
-        # Old batch evaluator has 8 cols; vectorized now has 9 (sibling_same_day).
-        # Compare only the shared first 8 columns.
+        # Batch evaluator does not compute sibling_same_day (col 8 = 0).
+        # Compare the shared first 8 columns for equivalence.
         np.testing.assert_array_equal(
-            G_batch,
+            G_batch[:, :8],
             G_vec[:, :8],
             err_msg="Vectorized and batch hard evaluators disagree",
         )

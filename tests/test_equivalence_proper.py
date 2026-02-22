@@ -174,7 +174,7 @@ def test_equivalence():
 
     # Load events data
     try:
-        with open("events_with_domains.pkl", "rb") as f:
+        with open(".cache/events_with_domains.pkl", "rb") as f:
             events_data = pickle.load(f)
         print(f"Loaded {len(events_data['events'])} events")
     except FileNotFoundError:

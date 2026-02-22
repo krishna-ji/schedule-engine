@@ -9,9 +9,9 @@ Exposes:
     fast_evaluate_hard_batch(X, data) -> G
         X: shape (N, 3E) interleaved chromosome matrix
         data: precomputed BatchEvalData (from prepare_batch_data)
-        G: shape (N, 8) per-constraint violation counts
+        G: shape (N, 9) per-constraint violation counts
 
-Constraint order matches the original fast_evaluator.py exactly:
+Constraint order matches fast_evaluator_vectorized.py exactly:
     0: student_group_exclusivity
     1: instructor_exclusivity
     2: room_exclusivity
@@ -20,6 +20,7 @@ Constraint order matches the original fast_evaluator.py exactly:
     5: instructor_time_availability
     6: room_time_availability
     7: course_completeness (always 0)
+    8: sibling_same_day (not computed in batch fallback — always 0)
 
 Violation counting convention (must match original):
     Exclusivity: For each (resource, quantum), if k events overlap, count k-1.
@@ -61,7 +62,7 @@ def _fast_popcount(v: int | np.uint64) -> int:
     )
 
 
-# Hard constraint names in canonical order (same as fast_evaluator.py)
+# Hard constraint names in canonical order (same as fast_evaluator_vectorized.py)
 HARD_CONSTRAINT_NAMES = [
     "student_group_exclusivity",
     "instructor_exclusivity",
@@ -71,6 +72,7 @@ HARD_CONSTRAINT_NAMES = [
     "instructor_time_availability",
     "room_time_availability",
     "course_completeness",
+    "sibling_same_day",
 ]
 
 
@@ -202,7 +204,7 @@ def fast_evaluate_hard_batch(
 
     Returns
     -------
-    G : ndarray, shape (N, 8)
+    G : ndarray, shape (N, 9)
         Per-constraint violation counts. Column order matches
         HARD_CONSTRAINT_NAMES.
     """
@@ -210,7 +212,7 @@ def fast_evaluate_hard_batch(
     if X.ndim == 1:
         X = X.reshape(1, -1)
     N = X.shape[0]
-    G = np.zeros((N, 8), dtype=np.int64)
+    G = np.zeros((N, 9), dtype=np.int64)
 
     E = data.n_events
     durations = data.durations
@@ -295,6 +297,7 @@ def fast_evaluate_hard_batch(
         G[n, 5] = inst_avail_viol
         G[n, 6] = room_avail_viol
         G[n, 7] = 0  # course_completeness always 0
+        G[n, 8] = 0  # sibling_same_day — not computed in batch fallback
 
     return G
 

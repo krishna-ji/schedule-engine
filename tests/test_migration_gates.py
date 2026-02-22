@@ -15,8 +15,8 @@ import pytest
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-PKL_PATH = PROJECT_ROOT / "events_with_domains.pkl"
-SKIP_REASON = "events_with_domains.pkl not found — run `python build_events.py`"
+PKL_PATH = PROJECT_ROOT / ".cache" / "events_with_domains.pkl"
+SKIP_REASON = ".cache/events_with_domains.pkl not found — run `python build_events.py`"
 
 
 @pytest.fixture(scope="module")
@@ -180,9 +180,9 @@ class TestEventKeyIntegrity:
     def test_keys_are_sorted(self, pkl_data):
         keys = pkl_data["event_keys"]
         for i in range(len(keys) - 1):
-            assert keys[i] <= keys[i + 1], (
-                f"Keys not sorted at {i}: {keys[i]} > {keys[i + 1]}"
-            )
+            assert (
+                keys[i] <= keys[i + 1]
+            ), f"Keys not sorted at {i}: {keys[i]} > {keys[i + 1]}"
 
     def test_keys_match_events(self, pkl_data):
         events = pkl_data["events"]
@@ -207,12 +207,12 @@ class TestEventKeyIntegrity:
     def test_no_zero_room_domains(self, pkl_data):
         """After tutorial-practical fix, no event should have 0 suitable rooms."""
         for i, ar in enumerate(pkl_data["allowed_rooms"]):
-            assert len(ar) > 0, (
-                f"Event {i} has 0 suitable rooms: {pkl_data['events'][i]}"
-            )
+            assert (
+                len(ar) > 0
+            ), f"Event {i} has 0 suitable rooms: {pkl_data['events'][i]}"
 
     def test_no_zero_instructor_domains(self, pkl_data):
         for i, ai in enumerate(pkl_data["allowed_instructors"]):
-            assert len(ai) > 0, (
-                f"Event {i} has 0 qualified instructors: {pkl_data['events'][i]}"
-            )
+            assert (
+                len(ai) > 0
+            ), f"Event {i} has 0 qualified instructors: {pkl_data['events'][i]}"

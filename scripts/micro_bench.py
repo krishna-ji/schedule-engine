@@ -17,7 +17,7 @@ import pickle
 
 import numpy as np
 
-pkl_path = "events_with_domains.pkl"
+pkl_path = ".cache/events_with_domains.pkl"
 with open(pkl_path, "rb") as f:
     pkl_data = pickle.load(f)
 

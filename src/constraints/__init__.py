@@ -5,8 +5,8 @@ Self-contained constraint classes with configurable weights and parameters.
 Public API:
 - ``Constraint`` protocol
 - ``Evaluator`` unified fitness evaluator
-- ``ALL_CONSTRAINTS`` registry (14 default instances)
-- ``HARD_CONSTRAINT_CLASSES`` registry (8 default instances)
+- ``ALL_CONSTRAINTS`` registry (15 default instances)
+- ``HARD_CONSTRAINT_CLASSES`` registry (9 default instances)
 - ``SOFT_CONSTRAINT_CLASSES`` registry (6 default instances)
 - ``build_constraints()`` factory for custom configs
 
@@ -46,6 +46,7 @@ from src.constraints.constraints import (  # Individual constraint classes
     RoomSuitability,
     RoomTimeAvailability,
     SessionContinuity,
+    SiblingSameDay,
     StudentGroupExclusivity,
     StudentLunchBreak,
     StudentScheduleCompactness,
@@ -80,6 +81,7 @@ __all__ = [
     "RoomSuitability",
     "RoomTimeAvailability",
     "SessionContinuity",
+    "SiblingSameDay",
     # Individual classes (for custom configs)
     "StudentGroupExclusivity",
     "StudentLunchBreak",

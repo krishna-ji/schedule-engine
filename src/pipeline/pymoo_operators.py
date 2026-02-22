@@ -35,7 +35,7 @@ class ConstructiveSampling(Sampling):
     events (tightest groups first) with conflict avoidance.
     """
 
-    def __init__(self, pkl_path: str = "events_with_domains.pkl"):
+    def __init__(self, pkl_path: str = ".cache/events_with_domains.pkl"):
         super().__init__()
         self.repairer = SchedulingRepair(pkl_path)
 
@@ -65,7 +65,7 @@ class RandomDomainSampling(Sampling):
     Uses padded domain matrices with random index selection.
     """
 
-    def __init__(self, pkl_path: str = "events_with_domains.pkl"):
+    def __init__(self, pkl_path: str = ".cache/events_with_domains.pkl"):
         super().__init__()
         with open(pkl_path, "rb") as f:
             data = pickle.load(f)
@@ -191,7 +191,7 @@ class EventLocalMutation(Mutation):
 
     def __init__(
         self,
-        pkl_path: str = "events_with_domains.pkl",
+        pkl_path: str = ".cache/events_with_domains.pkl",
         event_prob: float = 0.05,
     ):
         super().__init__()
@@ -289,7 +289,7 @@ class EventLocalMutation(Mutation):
 
 
 def create_algorithm(
-    pkl_path: str = "events_with_domains.pkl",
+    pkl_path: str = ".cache/events_with_domains.pkl",
     pop_size: int = 100,
     n_offsprings: int | None = None,
     crossover_prob: float = 0.5,
@@ -301,7 +301,7 @@ def create_algorithm(
     """Create a fully-configured pymoo algorithm for scheduling.
 
     Args:
-        pkl_path: Path to events_with_domains.pkl.
+        pkl_path: Path to .cache/events_with_domains.pkl.
         pop_size: Population size.
         n_offsprings: Offspring per generation (default: pop_size).
         crossover_prob: Per-event crossover probability.

@@ -39,7 +39,7 @@ for _d in range(_MAX_DUR + 1):
 class BitsetSchedulingRepair:
     """Accelerated repair using numpy count arrays + bitset scoring."""
 
-    def __init__(self, events_data_path: str = "events_with_domains.pkl"):
+    def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
         with open(events_data_path, "rb") as f:
             data = pickle.load(f)
 
@@ -547,7 +547,7 @@ class BitsetSchedulingRepair:
 def repair_batch(
     X: np.ndarray,
     repairer: BitsetSchedulingRepair | None = None,
-    events_data_path: str = "events_with_domains.pkl",
+    events_data_path: str = ".cache/events_with_domains.pkl",
 ) -> np.ndarray:
     """Repair a batch of chromosomes.
 
@@ -584,7 +584,7 @@ try:
     class PymooBitsetRepair(Repair):
         """Pymoo-compatible repair operator."""
 
-        def __init__(self, events_data_path: str = "events_with_domains.pkl"):
+        def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
             super().__init__()
             self.engine = BitsetSchedulingRepair(events_data_path)
 

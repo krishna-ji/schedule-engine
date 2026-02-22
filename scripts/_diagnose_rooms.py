@@ -18,7 +18,7 @@ logger = quick_setup()
 store = DataStore.from_json("data")
 ctx = store.to_context()
 
-with open("events_with_domains.pkl", "rb") as f:
+with open(".cache/events_with_domains.pkl", "rb") as f:
     d = pickle.load(f)
 
 events = d["events"]

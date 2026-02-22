@@ -24,7 +24,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.pipeline.fast_evaluator import fast_evaluate_hard
 from src.pipeline.repair_operator import SchedulingRepair
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 
 
 def perturb_chromosome(

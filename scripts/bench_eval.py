@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Setup
 # ------------------------------------------------------------------
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 RESULTS_DIR = Path("results")
 RESULTS_DIR.mkdir(exist_ok=True)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fast numeric evaluator for pymoo migration.
 
-Computes ALL 8 hard constraints that the original Evaluator uses:
+Computes ALL 9 hard constraints that the original Evaluator uses:
   1. student_group_exclusivity   – (group, quantum) double-booking
   2. instructor_exclusivity      – (instructor, quantum) double-booking
   3. room_exclusivity            – (room, quantum) double-booking
@@ -10,6 +10,7 @@ Computes ALL 8 hard constraints that the original Evaluator uses:
   6. instructor_time_availability – part-time instructor assigned outside available_quanta
   7. room_time_availability      – room assigned outside its available_quanta
   8. course_completeness         – always 0 (gene list is fixed, quanta match by construction)
+  9. sibling_same_day            – sub-sessions of same course on same day
 
 Returns per-constraint breakdown dict identical to Evaluator.breakdown().
 """
@@ -36,7 +37,7 @@ def fast_evaluate_hard(
     All counts use the SAME convention as the original Evaluator:
     overlapping slots counted as sum(len(bucket)-1 for bucket if len>1).
 
-    Returns dict with the 8 constraint names as keys.
+    Returns dict with the 9 constraint names as keys.
     """
     n_events = len(events)
     instructor_assign = np.asarray(instructor_assign, dtype=int)
@@ -101,6 +102,27 @@ def fast_evaluate_hard(
                 if q not in room_slots:
                     room_avail_violations += 1
 
+    # ---------- sibling same-day ------------------------------------------------
+    # Sub-sessions of the same course (same course_id, course_type, group_ids)
+    # should not be scheduled on the same day.
+    _QPD = 7  # quanta per day (42 total / 6 days)
+    course_keys: dict[tuple, list[int]] = defaultdict(list)
+    for e in range(n_events):
+        ev = events[e]
+        ck = (ev["course_id"], ev["course_type"], tuple(sorted(ev["group_ids"])))
+        course_keys[ck].append(e)
+
+    sibling_same_day = 0
+    for siblings in course_keys.values():
+        if len(siblings) < 2:
+            continue
+        for i in range(len(siblings)):
+            for j in range(i + 1, len(siblings)):
+                day_i = int(time_assign[siblings[i]]) // _QPD
+                day_j = int(time_assign[siblings[j]]) // _QPD
+                if day_i == day_j:
+                    sibling_same_day += 1
+
     return {
         "student_group_exclusivity": group_violations,
         "instructor_exclusivity": instructor_violations,
@@ -110,6 +132,7 @@ def fast_evaluate_hard(
         "instructor_time_availability": inst_avail_violations,
         "room_time_availability": room_avail_violations,
         "course_completeness": 0,  # fixed by construction
+        "sibling_same_day": sibling_same_day,
     }
 
 

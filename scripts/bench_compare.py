@@ -99,7 +99,7 @@ def run_pymoo(pop_size: int, n_gen: int, seed: int) -> dict:
             )
 
     callback = TrackingCallback()
-    pkl_path = str(PROJECT_ROOT / "events_with_domains.pkl")
+    pkl_path = str(PROJECT_ROOT / ".cache" / "events_with_domains.pkl")
     if not Path(pkl_path).exists():
         from src.pipeline.build_events import build_events_with_domains
 

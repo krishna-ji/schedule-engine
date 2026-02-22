@@ -23,7 +23,7 @@ NGEN = int(sys.argv[2]) if len(sys.argv) > 2 else 50
 OUT = Path("results")
 OUT.mkdir(exist_ok=True)
 
-pkl_path = "events_with_domains.pkl"
+pkl_path = ".cache/events_with_domains.pkl"
 
 from pymoo.optimize import minimize
 

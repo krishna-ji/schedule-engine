@@ -19,7 +19,7 @@ from src.pipeline.fast_evaluator import fast_evaluate_hard
 from src.pipeline.repair_operator import SchedulingRepair
 from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair, repair_batch
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 
 
 @pytest.fixture(scope="module")
@@ -133,9 +133,10 @@ class TestConstructFeasible:
         v = _total_violations(chrom, pkl_data)
         # Should be much better than random (threshold scales with event count)
         # Note: threshold accounts for availability rounding (start times
-        # rounded UP to quantum boundaries in encode_availability).
+        # rounded UP to quantum boundaries in encode_availability) and
+        # sibling_same_day violations from the 9th constraint.
         n_events = len(pkl_data["events"])
-        threshold = max(200, int(n_events * 0.4))
+        threshold = max(200, int(n_events * 0.5))
         assert (
             v < threshold
         ), f"construct_feasible violations: {v} (threshold={threshold})"

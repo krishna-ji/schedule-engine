@@ -351,6 +351,55 @@ class CourseCompleteness:
         return violations
 
 
+class SiblingSameDay:
+    """Sub-sessions of the same course should not be scheduled on the same day.
+
+    Two events are "siblings" if they share the same (course_id, course_type,
+    sorted(group_ids)).  Each pair of siblings that lands on the same day
+    counts as one violation.  Mirrors the vectorized evaluator column G[:, 8].
+    """
+
+    kind: str = "hard"
+
+    def __init__(self, weight: float = 1.0):
+        self.name = "sibling_same_day"
+        self.weight = weight
+
+    def evaluate(self, tt: Timetable) -> float:
+        """Count sibling pairs scheduled on the same day."""
+        qts = tt.qts
+        if qts is None:
+            # Fallback: use _QPD = 7 (42 quanta / 6 days)
+            _QPD = 7
+        else:
+            # Compute quanta-per-day from the first operational day
+            _QPD = 7
+            for day in qts.DAY_NAMES:
+                cnt = qts.day_quanta_count.get(day, 0)
+                if cnt > 0:
+                    _QPD = cnt
+                    break
+
+        # Group genes by course offering key
+        course_groups: dict[tuple, list] = defaultdict(list)
+        for gene in tt.genes:
+            key = (gene.course_id, gene.course_type, tuple(sorted(gene.group_ids)))
+            course_groups[key].append(gene)
+
+        violations = 0
+        for siblings in course_groups.values():
+            if len(siblings) < 2:
+                continue
+            for i in range(len(siblings)):
+                for j in range(i + 1, len(siblings)):
+                    day_i = siblings[i].start_quanta // _QPD
+                    day_j = siblings[j].start_quanta // _QPD
+                    if day_i == day_j:
+                        violations += 1
+
+        return violations
+
+
 # SOFT CONSTRAINTS
 
 
@@ -654,6 +703,7 @@ HARD_CONSTRAINT_CLASSES: list[Constraint] = [
     InstructorTimeAvailability(),
     RoomTimeAvailability(),
     CourseCompleteness(),
+    SiblingSameDay(),
 ]
 
 SOFT_CONSTRAINT_CLASSES: list[Constraint] = [
@@ -684,6 +734,7 @@ def build_constraints(
     instructor_time_availability_weight: float | None = None,
     room_time_availability_weight: float | None = None,
     course_completeness_weight: float | None = None,
+    sibling_same_day_weight: float | None = None,
     student_schedule_compactness_weight: float | None = None,
     instructor_schedule_compactness_weight: float | None = None,
     student_lunch_break_weight: float | None = None,
@@ -790,6 +841,13 @@ def build_constraints(
             weight=(
                 course_completeness_weight
                 if course_completeness_weight is not None
+                else hard_weight
+            )
+        ),
+        SiblingSameDay(
+            weight=(
+                sibling_same_day_weight
+                if sibling_same_day_weight is not None
                 else hard_weight
             )
         ),

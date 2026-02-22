@@ -670,7 +670,7 @@ The key insight: **expand events into quanta**, then use NumPy broadcasting over
    # Detect where occupancy > 1 → violations
    ```
 
-3. **Result**: `G` matrix of shape `(N, 8)` — 8 hard constraint violation counts per individual.
+3. **Result**: `G` matrix of shape `(N, 9)` — 9 hard constraint violation counts per individual.
 
 ### 10.3 Soft Constraint Vectorization
 

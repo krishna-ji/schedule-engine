@@ -25,7 +25,7 @@ from pymoo.core.callback import Callback
 logger = logging.getLogger(__name__)
 
 # ── Short constraint labels (matches HARD_CONSTRAINT_NAMES order) ────
-_SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp"]
+_SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp", "sib"]
 
 # ── MOEA metrics computed every K generations ────────────────────────
 _METRICS_INTERVAL = 10

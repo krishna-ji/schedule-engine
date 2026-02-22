@@ -20,7 +20,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-PKL_PATH = "events_with_domains.pkl"
+PKL_PATH = ".cache/events_with_domains.pkl"
 PKL_EXISTS = Path(PKL_PATH).exists()
 
 skip_no_pkl = pytest.mark.skipif(

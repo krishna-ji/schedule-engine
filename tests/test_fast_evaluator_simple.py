@@ -80,7 +80,7 @@ def test_fast_evaluator():
 
     # Load events data
     try:
-        with open("events_with_domains.pkl", "rb") as f:
+        with open(".cache/events_with_domains.pkl", "rb") as f:
             events_data = pickle.load(f)
         print(f"Loaded events data with {events_data['metadata']['n_events']} events")
     except FileNotFoundError:
