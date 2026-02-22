@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Quick micro-benchmark for pipeline components."""
 
+import logging
 import os
 import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.utils.logging_config import quick_setup
+
+logger = quick_setup()
 
 import pickle
 
@@ -37,23 +42,23 @@ sampling = ConstructiveSampling(pkl_path)
 t0 = time.perf_counter()
 X = sampling._do(prob, 50)
 t_sampling = time.perf_counter() - t0
-print(f"Sampling 50: {t_sampling:.2f}s ({t_sampling / 50:.3f}s each)")
+logger.info("Sampling 50: %.2fs (%.3fs each)", t_sampling, t_sampling / 50)
 
 # Hard eval — batch (5 reps)
 t0 = time.perf_counter()
 for _ in range(10):
     G_batch = fast_evaluate_hard_batch(X, batch_data)
 t_batch = (time.perf_counter() - t0) / 10
-print(f"Hard eval batch (50 inds): {t_batch:.4f}s")
+logger.info("Hard eval batch (50 inds): %.4fs", t_batch)
 
 # Hard eval — vectorized (5 reps)
 t0 = time.perf_counter()
 for _ in range(10):
     G_vec = fast_evaluate_hard_vectorized(X, vec_data)
 t_vec = (time.perf_counter() - t0) / 10
-print(f"Hard eval vectorized (50 inds): {t_vec:.4f}s")
-print(f"Speedup vec/batch: {t_batch / t_vec:.1f}x")
-print(f"Equivalence: {np.array_equal(G_batch, G_vec)}")
+logger.info("Hard eval vectorized (50 inds): %.4fs", t_vec)
+logger.info("Speedup vec/batch: %.1fx", t_batch / t_vec)
+logger.info("Equivalence: %s", np.array_equal(G_batch, G_vec))
 
 # Scale test at 200
 X200 = np.tile(X, (4, 1))  # 200 inds
@@ -66,9 +71,9 @@ t0 = time.perf_counter()
 for _ in range(5):
     fast_evaluate_hard_vectorized(X200, vec_data)
 t_vec200 = (time.perf_counter() - t0) / 5
-print(f"Hard eval batch (200 inds): {t_batch200:.4f}s")
-print(f"Hard eval vectorized (200 inds): {t_vec200:.4f}s")
-print(f"Speedup vec/batch @200: {t_batch200 / t_vec200:.1f}x")
+logger.info("Hard eval batch (200 inds): %.4fs", t_batch200)
+logger.info("Hard eval vectorized (200 inds): %.4fs", t_vec200)
+logger.info("Speedup vec/batch @200: %.1fx", t_batch200 / t_vec200)
 
 # Repair
 repairer = BitsetSchedulingRepair(pkl_path)
@@ -77,16 +82,16 @@ t0 = time.perf_counter()
 for i in range(n_repair):
     repairer.repair(X[i].copy())
 t_repair = (time.perf_counter() - t0) / n_repair
-print(f"Repair per individual: {t_repair:.4f}s")
-print(f"Repair est 200 individuals: {t_repair * 200:.1f}s")
+logger.info("Repair per individual: %.4fs", t_repair)
+logger.info("Repair est 200 individuals: %.1fs", t_repair * 200)
 
 # Full _evaluate
 out = {}
 t0 = time.perf_counter()
 prob._evaluate(X, out)
 t_eval = time.perf_counter() - t0
-print(f"Full _evaluate (50 inds): {t_eval:.4f}s")
-print(f"F shape: {out['F'].shape}, G shape: {out['G'].shape}")
+logger.info("Full _evaluate (50 inds): %.4fs", t_eval)
+logger.info("F shape: %s, G shape: %s", out['F'].shape, out['G'].shape)
 
 # Crossover and mutation timing
 from src.pipeline.pymoo_operators import EventBlockCrossover, EventLocalMutation
@@ -101,26 +106,29 @@ t0 = time.perf_counter()
 for _ in range(10):
     cx._do(prob, parents)
 t_cx = (time.perf_counter() - t0) / 10
-print(f"Crossover ({n_matings} matings): {t_cx:.4f}s")
+logger.info("Crossover (%d matings): %.4fs", n_matings, t_cx)
 
 # Mutation
 t0 = time.perf_counter()
 for _ in range(10):
     mut._do(prob, X.copy())
 t_mut = (time.perf_counter() - t0) / 10
-print(f"Mutation (50 inds): {t_mut:.4f}s")
+logger.info("Mutation (50 inds): %.4fs", t_mut)
 
-print("\n=== SUMMARY ===")
-print(f"Constructive sampling: {t_sampling / 50 * 1000:.1f}ms/ind")
-print(
-    f"Hard eval vectorized:  {t_vec200 / 200 * 1000:.2f}ms/ind ({t_vec200:.4f}s for 200)"
+logger.info("\n=== SUMMARY ===")
+logger.info("Constructive sampling: %.1fms/ind", t_sampling / 50 * 1000)
+logger.info(
+    "Hard eval vectorized:  %.2fms/ind (%.4fs for 200)",
+    t_vec200 / 200 * 1000, t_vec200
 )
-print(
-    f"Hard eval batch:       {t_batch200 / 200 * 1000:.2f}ms/ind ({t_batch200:.4f}s for 200)"
+logger.info(
+    "Hard eval batch:       %.2fms/ind (%.4fs for 200)",
+    t_batch200 / 200 * 1000, t_batch200
 )
-print(
-    f"Repair:                {t_repair * 1000:.1f}ms/ind ({t_repair * 200:.1f}s for 200)"
+logger.info(
+    "Repair:                %.1fms/ind (%.1fs for 200)",
+    t_repair * 1000, t_repair * 200
 )
-print(f"Crossover:             {t_cx * 1000:.1f}ms for {n_matings} matings")
-print(f"Mutation:              {t_mut * 1000:.1f}ms for 50 inds")
-print(f"Full _evaluate:        {t_eval * 1000:.1f}ms for 50 inds")
+logger.info("Crossover:             %.1fms for %d matings", t_cx * 1000, n_matings)
+logger.info("Mutation:              %.1fms for 50 inds", t_mut * 1000)
+logger.info("Full _evaluate:        %.1fms for 50 inds", t_eval * 1000)

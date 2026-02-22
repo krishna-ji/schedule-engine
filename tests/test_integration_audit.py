@@ -180,6 +180,8 @@ class TestIntegrationPlotFiles:
             "solver",
             "mode",
             "version",
+            "experiment_class",
+            "framework",
             "config",
             "best_hard",
             "best_soft",
@@ -187,6 +189,7 @@ class TestIntegrationPlotFiles:
             "n_feasible",
             "elapsed_s",
             "sec_per_gen",
+            "timing_per_gen",
             "convergence_hard",
             "convergence_soft",
             "convergence_constraints",
@@ -195,6 +198,8 @@ class TestIntegrationPlotFiles:
             "diversities",
             "feasibility_rates",
             "igds",
+            "final_F",
+            "final_G",
         }
         for key in expected_keys:
             assert key in results, f"Missing key in results.json: {key}"

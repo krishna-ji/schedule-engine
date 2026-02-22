@@ -9,6 +9,7 @@ allowed_starts) stored in the events_with_domains.pkl.
 
 from __future__ import annotations
 
+import logging
 import pickle
 
 import numpy as np
@@ -47,12 +48,13 @@ class ConstructiveSampling(Sampling):
             rng = np.random.default_rng(i)
             X[i] = self.repairer.construct_feasible(rng)
             elapsed = _time.perf_counter() - t0
-            print(
-                f"\r  Constructive sampling: {i + 1}/{n_samples} ({elapsed:.1f}s)",
-                end="",
-                flush=True,
-            )
-        print()  # newline after progress
+            if (i + 1) % 10 == 0 or i == n_samples - 1:
+                logging.getLogger(__name__).info(
+                    "Constructive sampling: %d/%d (%.1fs)",
+                    i + 1,
+                    n_samples,
+                    elapsed,
+                )
         return X
 
 
@@ -90,7 +92,11 @@ class RandomDomainSampling(Sampling):
                 x[3 * e + 1] = rng.choice(ar) if ar else 0
                 x[3 * e + 2] = rng.choice(at) if at else 0
         elapsed = _time.perf_counter() - t0
-        print(f"  Random domain sampling: {n_samples} ({elapsed:.1f}s)")
+        logging.getLogger(__name__).info(
+            "Random domain sampling: %d (%.1fs)",
+            n_samples,
+            elapsed,
+        )
         return X
 
 

@@ -2,7 +2,9 @@
 
 Provides:
 - Timestamped output directories
-- Dual logging (file + console)
+- Dual logging (file + console + JSONL) via unified logger
+- Log context injection (experiment name, tag)
+- Log statistics included in result metadata
 - Timing & metadata
 - JSON result export
 - Reproducible seeding
@@ -12,14 +14,17 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 import time
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from src.utils.logging_config import LogContext, get_log_stats, setup_unified_logging
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+logger = logging.getLogger(__name__)
 
 
 class BaseExperiment(ABC):
@@ -70,41 +75,30 @@ class BaseExperiment(ABC):
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self._logger: logging.Logger | None = None
+        self._log_file: Path | None = None
 
     # ── Logging ───────────────────────────────────────────────────
 
     @property
     def logger(self) -> logging.Logger:
-        """Lazily create a logger on first access."""
+        """Return the project-wide logger, lazily initialised on first access."""
         if self._logger is None:
             self._logger = self._setup_logging()
         return self._logger
 
     def _setup_logging(self) -> logging.Logger:
-        """Create file + console logger."""
-        log_file = self.output_dir / f"{self.tag}.log"
+        """Initialise unified logging (console + per-run log file + JSONL).
 
-        fmt = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+        Uses the centralised ``setup_unified_logging`` so every ``src.*``
+        module logger writes to the same file + console handlers.
+        Also enables structured JSONL logging and log-health statistics.
+        """
+        self._log_file = self.output_dir / "run.log"
+        setup_unified_logging(
+            log_file=self._log_file,
+            verbose=self.verbose,
         )
-
-        fh = logging.FileHandler(log_file)
-        fh.setLevel(logging.DEBUG)
-        fh.setFormatter(fmt)
-
-        ch = logging.StreamHandler(sys.stdout)
-        ch.setLevel(logging.INFO if self.verbose else logging.WARNING)
-        ch.setFormatter(fmt)
-
-        logger = logging.getLogger(self.tag)
-        logger.setLevel(logging.DEBUG)
-        # Avoid duplicate handlers on repeated calls
-        if not logger.handlers:
-            logger.addHandler(fh)
-            logger.addHandler(ch)
-
-        return logger
+        return logging.getLogger(__name__)
 
     # ── Public API ────────────────────────────────────────────────
 
@@ -121,11 +115,16 @@ class BaseExperiment(ABC):
 
         t0 = time.time()
         try:
-            results = self._execute()
+            with LogContext(experiment=self.tag, phase="execute"):
+                results = self._execute()
         except Exception:
             self.logger.exception("Experiment failed")
             raise
         elapsed = time.time() - t0
+
+        # ── Gather log statistics ─────────────────────────────────
+        stats = get_log_stats()
+        log_summary = stats.summary() if stats else None
 
         results["_meta"] = {
             "experiment": self.tag,
@@ -133,6 +132,8 @@ class BaseExperiment(ABC):
             "timestamp": datetime.now(UTC).isoformat(),
             "seed": self.seed,
             "elapsed_s": round(elapsed, 2),
+            "log_file": str(self._log_file) if self._log_file else None,
+            "log_stats": log_summary,
         }
 
         # Save results
@@ -142,6 +143,13 @@ class BaseExperiment(ABC):
 
         self.logger.info(f"Results saved to: {results_path}")
         self.logger.info(f"Elapsed: {elapsed:.1f}s")
+        if log_summary:
+            self.logger.info(
+                "Log stats: %d total (%d warn, %d err)",
+                log_summary["total"],
+                log_summary["counts"].get("WARNING", 0),
+                log_summary["counts"].get("ERROR", 0),
+            )
         self.logger.info("=" * 60)
         self.logger.info(f"{self.name.upper()} COMPLETE")
         self.logger.info("=" * 60)

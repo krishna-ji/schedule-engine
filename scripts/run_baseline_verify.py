@@ -1,7 +1,16 @@
 """Quick baseline run for verification."""
 
+import logging
 import math
+import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.utils.logging_config import quick_setup
+
+logger = quick_setup()
 
 from src.experiments.ga_experiment import BaselineExperiment
 
@@ -9,43 +18,43 @@ exp = BaselineExperiment(
     pop_size=20,
     ngen=50,
     seed=42,
-    export_pdf=False,
+    export_pdf=True,
     verbose=True,
 )
 t0 = time.time()
 result = exp.run()
 total = time.time() - t0
 
-print()
-print("=" * 60)
-print("BASELINE RESULT SUMMARY")
-print("=" * 60)
-print(f"  Total wall time:   {total:.1f}s")
-print(f"  GA time:           {result['elapsed_s']}s")
-print(f"  sec/gen:           {result['sec_per_gen']}")
-print(f"  best_hard:         {result['best_hard']}")
-print(f"  best_soft:         {result['best_soft']}")
-print(f"  best_cv:           {result['best_cv']}")
-print(f"  n_feasible:        {result['n_feasible']}")
-print(f"  HV points:         {len(result['hypervolumes'])}")
-print(f"  Spacing points:    {len(result['spacings'])}")
-print(f"  Feasibility pts:   {len(result['feasibility_rates'])}")
-print(f"  IGD points:        {len(result['igds'])}")
+logger.info("")
+logger.info("=" * 60)
+logger.info("BASELINE RESULT SUMMARY")
+logger.info("=" * 60)
+logger.info("  Total wall time:   %.1fs", total)
+logger.info("  GA time:           %ss", result['elapsed_s'])
+logger.info("  sec/gen:           %s", result['sec_per_gen'])
+logger.info("  best_hard:         %s", result['best_hard'])
+logger.info("  best_soft:         %s", result['best_soft'])
+logger.info("  best_cv:           %s", result['best_cv'])
+logger.info("  n_feasible:        %s", result['n_feasible'])
+logger.info("  HV points:         %d", len(result['hypervolumes']))
+logger.info("  Spacing points:    %d", len(result['spacings']))
+logger.info("  Feasibility pts:   %d", len(result['feasibility_rates']))
+logger.info("  IGD points:        %d", len(result['igds']))
 
 hv_list = result["hypervolumes"]
 hv_real = [v for v in hv_list if not math.isnan(v)]
 if hv_real:
-    print(f"  HV (last finite):  {hv_real[-1]:.2f}")
+    logger.info("  HV (last finite):  %.2f", hv_real[-1])
 else:
-    print("  HV: all nan (no feasible solutions)")
+    logger.info("  HV: all nan (no feasible solutions)")
 
 feas = result["feasibility_rates"]
 if feas:
-    print(f"  Feas rate (last):  {feas[-1]:.3f}")
+    logger.info("  Feas rate (last):  %.3f", feas[-1])
 
 igd_list = result["igds"]
 igd_real = [v for v in igd_list if not math.isnan(v)]
 if igd_real:
-    print(f"  IGD (last finite): {igd_real[-1]:.4f}")
+    logger.info("  IGD (last finite): %.4f", igd_real[-1])
 else:
-    print("  IGD: all nan (no reference front)")
+    logger.info("  IGD: all nan (no reference front)")

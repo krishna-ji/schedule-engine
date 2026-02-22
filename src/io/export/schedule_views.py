@@ -13,6 +13,7 @@ Each page has:
 
 from __future__ import annotations
 
+import logging
 import textwrap
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -517,7 +518,7 @@ def generate_instructor_schedules_pdf(
             pdf.savefig(fig, bbox_inches="tight")
             plt.close(fig)
 
-    print(f"  Instructor schedules PDF saved: {pdf_path}")
+    logging.getLogger(__name__).info("Instructor schedules PDF saved: %s", pdf_path)
     return pdf_path
 
 
@@ -630,7 +631,7 @@ def generate_room_schedules_pdf(
             pdf.savefig(fig, bbox_inches="tight")
             plt.close(fig)
 
-    print(f"  Room schedules PDF saved: {pdf_path}")
+    logging.getLogger(__name__).info("Room schedules PDF saved: %s", pdf_path)
     return pdf_path
 
 

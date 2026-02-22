@@ -7,6 +7,7 @@ boundary.
 
 from __future__ import annotations
 
+import logging
 import os
 import random
 import sys
@@ -62,7 +63,7 @@ def init_worker(
 
     except Exception as e:
         sys.stdout = old_stdout
-        print(f"Worker initialization failed: {e}")
+        logging.getLogger(__name__).error("Worker initialization failed: %s", e)
         raise
     finally:
         sys.stdout = old_stdout

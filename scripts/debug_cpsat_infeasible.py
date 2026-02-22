@@ -16,7 +16,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-logging.basicConfig(level=logging.WARNING, format="%(message)s")
+from src.utils.logging_config import quick_setup
+
+quick_setup()
+logger = logging.getLogger(__name__)
 
 from src.ga.core.population import get_family_map_from_json
 from src.ga.core.population_factory import PopulationFactory
@@ -32,17 +35,17 @@ family_map = get_family_map_from_json(str(data_dir / "Groups.json"))
 # Create one individual
 pf = PopulationFactory(ctx)
 ind = pf.random_individual(conflict_aware=True)
-print(f"Total genes: {len(ind)}")
-print(f"Available quanta: {sorted(ctx.available_quanta)}")
-print(f"Rooms: {len(ctx.rooms)}, Instructors: {len(ctx.instructors)}")
-print()
+logger.info("Total genes: %d", len(ind))
+logger.info("Available quanta: %s", sorted(ctx.available_quanta))
+logger.info("Rooms: %d, Instructors: %d", len(ctx.rooms), len(ctx.instructors))
+logger.info("")
 
 # ======================================================================
 # 1. Domain analysis
 # ======================================================================
-print("=" * 60)
-print("1. DOMAIN ANALYSIS")
-print("=" * 60)
+logger.info("=" * 60)
+logger.info("1. DOMAIN ANALYSIS")
+logger.info("=" * 60)
 
 solver = CPSATSolver(
     ctx, family_map, timeout_seconds=15, num_workers=8, soft_objective=False
@@ -71,28 +74,33 @@ for gi, g in enumerate(ind):
     if not qi:
         empty_instr_genes.append((gi, g.course_id, g.course_type))
 
-print(f"Genes with empty valid_starts: {len(empty_start_genes)}")
+logger.info("Genes with empty valid_starts: %d", len(empty_start_genes))
 for x in empty_start_genes[:5]:
-    print(f"  gene {x[0]}: {x[1]}-{x[2]}, dur={x[3]}")
+    logger.info("  gene %d: %s-%s, dur=%d", x[0], x[1], x[2], x[3])
 
-print(f"Genes with NO suitable/type-compat rooms: {len(empty_room_genes)}")
+logger.info("Genes with NO suitable/type-compat rooms: %d", len(empty_room_genes))
 for x_room in empty_room_genes[:5]:
-    print(f"  gene {x_room[0]}: {x_room[1]}-{x_room[2]}")
+    logger.info("  gene %d: %s-%s", x_room[0], x_room[1], x_room[2])
 
-print(
-    f"Genes with 0 suitable rooms (using type-compat fallback): {len(narrow_room_genes)}"
+logger.info(
+    "Genes with 0 suitable rooms (using type-compat fallback): %d",
+    len(narrow_room_genes),
 )
 for x_narrow in narrow_room_genes[:10]:
-    print(
-        f"  gene {x_narrow[0]}: {x_narrow[1]}-{x_narrow[2]}, fallback_rooms={x_narrow[3]}"
+    logger.info(
+        "  gene %d: %s-%s, fallback_rooms=%d",
+        x_narrow[0],
+        x_narrow[1],
+        x_narrow[2],
+        x_narrow[3],
     )
 
-print(f"Genes with NO qualified instructors: {len(empty_instr_genes)}")
+logger.info("Genes with NO qualified instructors: %d", len(empty_instr_genes))
 for x_instr in empty_instr_genes[:5]:
-    print(f"  gene {x_instr[0]}: {x_instr[1]}-{x_instr[2]}")
+    logger.info("  gene %d: %s-%s", x_instr[0], x_instr[1], x_instr[2])
 
 # Room demand analysis
-print()
+logger.info("")
 room_demand: dict[str, int] = defaultdict(int)  # room -> total quanta demanded
 for gi, g in enumerate(ind):
     ckey = (g.course_id, g.course_type)
@@ -103,12 +111,14 @@ for gi, g in enumerate(ind):
         room_demand[r] += g.num_quanta
 
 most_demanded = sorted(room_demand.items(), key=lambda x: -x[1])[:10]
-print("Most demanded rooms (total quanta if all genes went there):")
+logger.info("Most demanded rooms (total quanta if all genes went there):")
 for r, q in most_demanded:
-    print(f"  {r}: {q} quanta (capacity: {len(ctx.available_quanta)} per slot)")
+    logger.info(
+        "  %s: %d quanta (capacity: %d per slot)", r, q, len(ctx.available_quanta)
+    )
 
 # Course room bottleneck
-print()
+logger.info("")
 course_room_count: dict[tuple[str, str], dict[str, int]] = defaultdict(
     lambda: {"suitable": 0, "genes": 0, "total_quanta": 0}
 )
@@ -121,7 +131,7 @@ for gi, g in enumerate(ind):
     d["total_quanta"] += g.num_quanta
 
 bottlenecks = sorted(course_room_count.items(), key=lambda x: x[1]["suitable"])
-print("Courses with fewest suitable rooms:")
+logger.info("Courses with fewest suitable rooms:")
 for ckey, d in bottlenecks[:15]:
     avail_room_quanta = d["suitable"] * len(ctx.available_quanta)
     util = (
@@ -129,26 +139,32 @@ for ckey, d in bottlenecks[:15]:
         if avail_room_quanta > 0
         else float("inf")
     )
-    print(
-        f"  {ckey[0]}-{ckey[1]}: {d['suitable']} rooms, {d['genes']} genes, "
-        f"{d['total_quanta']}q needed, {avail_room_quanta}q avail, util={util:.0f}%"
+    logger.info(
+        "  %s-%s: %d rooms, %d genes, %dq needed, %dq avail, util=%.0f%%",
+        ckey[0],
+        ckey[1],
+        d["suitable"],
+        d["genes"],
+        d["total_quanta"],
+        avail_room_quanta,
+        util,
     )
 
 # Group schedule density
-print()
+logger.info("")
 group_quanta: dict[str, int] = defaultdict(int)
 for g in ind:
     for gid in g.group_ids:
         group_quanta[gid] += g.num_quanta
 
 busiest = sorted(group_quanta.items(), key=lambda x: -x[1])[:10]
-print("Busiest groups (quanta needed):")
+logger.info("Busiest groups (quanta needed):")
 for gid, q in busiest:
     util = q / len(ctx.available_quanta) * 100
-    print(f"  {gid}: {q}/{len(ctx.available_quanta)} quanta ({util:.1f}%)")
+    logger.info("  %s: %d/%d quanta (%.1f%%)", gid, q, len(ctx.available_quanta), util)
 
 # Part-time instructor analysis
-print()
+logger.info("")
 pt_genes = 0
 pt_no_valid = 0
 for gi, g in enumerate(ind):
@@ -175,17 +191,18 @@ for gi, g in enumerate(ind):
     if all_blocked and qi:
         pt_no_valid += 1
 
-print(
-    f"Genes where ALL qualified instructors are blocked (no valid starts): {pt_no_valid}"
+logger.info(
+    "Genes where ALL qualified instructors are blocked (no valid starts): %d",
+    pt_no_valid,
 )
 
 # ======================================================================
 # 2. Incremental solve (find where feasibility breaks)
 # ======================================================================
-print()
-print("=" * 60)
-print("2. INCREMENTAL SOLVE")
-print("=" * 60)
+logger.info("")
+logger.info("=" * 60)
+logger.info("2. INCREMENTAL SOLVE")
+logger.info("=" * 60)
 
 # Group genes by group_id clusters
 group_to_genes = defaultdict(list)
@@ -201,11 +218,11 @@ from src.ga.repair.cp.partitioner import partition_genes
 
 partition = partition_genes(ind, ctx, min_shared_courses=2)
 
-print(f"Clusters: {len(partition.clusters)}")
+logger.info("Clusters: %d", len(partition.clusters))
 for cl in partition.clusters:
     cid = cl.cluster_id
     cl_indices = partition.cluster_gene_indices.get(cid, [])
-    print(f"  {cid}: {len(cl_indices)} genes, {len(cl.group_ids)} groups")
+    logger.info("  %s: %d genes, %d groups", cid, len(cl_indices), len(cl.group_ids))
 
     if cl_indices:
         s = CPSATSolver(
@@ -214,15 +231,15 @@ for cl in partition.clusters:
         t0 = time.time()
         r_result = s.solve(ind, cl_indices, frozen=None, warm_start=True)
         dt = time.time() - t0
-        print(f"    -> {r_result.status} in {dt:.1f}s")
+        logger.info("    -> %s in %.1fs", r_result.status, dt)
 
 # ======================================================================
 # 3. Constraint ablation (which HC causes infeasibility?)
 # ======================================================================
-print()
-print("=" * 60)
-print("3. CONSTRAINT ABLATION (largest cluster)")
-print("=" * 60)
+logger.info("")
+logger.info("=" * 60)
+logger.info("3. CONSTRAINT ABLATION (largest cluster)")
+logger.info("=" * 60)
 
 # Find largest cluster
 largest_cl = max(
@@ -230,7 +247,7 @@ largest_cl = max(
     key=lambda c: len(partition.cluster_gene_indices.get(c.cluster_id, [])),
 )
 largest_indices = partition.cluster_gene_indices.get(largest_cl.cluster_id, [])
-print(f"Testing cluster {largest_cl.cluster_id}: {len(largest_indices)} genes")
+logger.info("Testing cluster %s: %d genes", largest_cl.cluster_id, len(largest_indices))
 
 # Build a stripped-down model to test each constraint
 from ortools.sat.python import cp_model
@@ -358,7 +375,7 @@ def build_and_solve(
     status = s.solve(model)
     dt = time.time() - t0
     sname = s.status_name(status)
-    print(f"  {label:40s} -> {sname:12s} ({dt:.1f}s)")
+    logger.info("  %-40s -> %-12s (%.1fs)", label, sname, dt)
     return sname
 
 

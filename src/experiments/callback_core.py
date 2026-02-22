@@ -1,0 +1,211 @@
+"""Shared callback infrastructure for GA experiment modes.
+
+Provides ``GACallbackBase`` — a pymoo ``Callback`` subclass that handles
+common per-generation bookkeeping:
+
+- timing (``gen_times``)
+- best-individual tracking (``best_hards``, ``best_softs``, ``best_breakdowns``)
+- MOEA quality metrics (hypervolume, spacing, diversity, feasibility, IGD)
+- compact console logging
+
+Mode-specific behaviour lives in ``_on_generation()`` which subclasses
+override.  The base implementation is a no-op (suitable for baseline mode).
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+from pymoo.core.callback import Callback
+
+logger = logging.getLogger(__name__)
+
+# ── Short constraint labels (matches HARD_CONSTRAINT_NAMES order) ────
+_SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp"]
+
+# ── MOEA metrics computed every K generations ────────────────────────
+_METRICS_INTERVAL = 10
+
+
+# =====================================================================
+#  Helper functions (pure / minimal side-effects)
+# =====================================================================
+
+
+def _init_moea_lists(cb: Any) -> None:
+    """Attach empty MOEA metric lists to a callback instance."""
+    cb.hypervolumes = []
+    cb.spacings = []
+    cb.diversities = []
+    cb.feasibility_rates = []
+    cb.igds = []
+    # Running element-wise max of F for adaptive HV reference point
+    cb._hv_running_max = None
+    # Optional reference front for IGD (loaded lazily once)
+    cb._ref_front = None
+    cb._ref_front_checked = False
+
+
+def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) -> None:
+    """Record MOEA metrics every ``_METRICS_INTERVAL`` generations.
+
+    Policy:
+    - HV / spacing / diversity computed on *feasible-only* subset.
+    - ``nan`` stored when no feasible solutions exist.
+    - HV uses an *adaptive* reference point: ``1.1 × element-wise max``
+      of F across all generations seen so far.
+    - IGD recorded only if a reference front file is present.
+    """
+    if algorithm.n_gen % _METRICS_INTERVAL != 0:
+        return
+    from src.experiments.moea_metrics import (
+        compute_diversity,
+        compute_feasibility_rate,
+        compute_hypervolume,
+        compute_igd,
+        compute_spacing,
+        filter_feasible,
+        load_reference_front,
+        update_ref_point_max,
+    )
+
+    # Feasibility rate uses ALL individuals
+    cb.feasibility_rates.append(compute_feasibility_rate(G))
+
+    # Update adaptive reference point from ALL F (not just feasible)
+    cb._hv_running_max, ref_point = update_ref_point_max(cb._hv_running_max, F)
+
+    # Feasible-only subset for quality metrics
+    F_feas = filter_feasible(F, G)
+    if F_feas is None or F_feas.shape[0] == 0:
+        cb.hypervolumes.append(float("nan"))
+        cb.spacings.append(float("nan"))
+        cb.diversities.append(float("nan"))
+        cb.igds.append(float("nan"))
+        return
+
+    cb.hypervolumes.append(compute_hypervolume(F_feas, ref_point=ref_point))
+    cb.spacings.append(compute_spacing(F_feas))
+    cb.diversities.append(compute_diversity(F_feas))
+
+    # IGD — lazy-load reference front once
+    if not cb._ref_front_checked:
+        cb._ref_front_checked = True
+        root = Path(__file__).resolve().parent.parent.parent
+        for ext in (".npy", ".csv"):
+            rf = load_reference_front(root / f"reference_front{ext}")
+            if rf is not None:
+                cb._ref_front = rf
+                break
+    if cb._ref_front is not None:
+        cb.igds.append(compute_igd(F_feas, cb._ref_front))
+    else:
+        cb.igds.append(float("nan"))
+
+
+def _progress_payload(algorithm: Any) -> tuple:
+    """Extract F, G, cv, best_idx from current population."""
+    F = algorithm.pop.get("F")
+    G = algorithm.pop.get("G")
+    cv = G.sum(axis=1).clip(0)
+    best_idx = int(np.argmin(cv))
+    return F, G, cv, best_idx
+
+
+def _constraint_breakdown(G_row: np.ndarray) -> dict[str, int]:
+    """Return {short_name: violation_count} for one individual."""
+    return {n: int(v) for n, v in zip(_SHORT, G_row, strict=False)}
+
+
+def _log_gen(algorithm: Any, log_interval: int) -> tuple:
+    """Log generation summary and return (F, G, cv, best_idx)."""
+    F, G, cv, best_idx = _progress_payload(algorithm)
+    if algorithm.n_gen == 1 or algorithm.n_gen % log_interval == 0:
+        bd = G[best_idx]
+        parts = " ".join(f"{n}={int(v)}" for n, v in zip(_SHORT, bd, strict=False))
+        logger.info(
+            "Gen %4d: hard=%.0f  [%s]  soft=%.0f  cv=%.0f  feasible=%d/%d",
+            algorithm.n_gen,
+            F[best_idx, 0],
+            parts,
+            F[best_idx, 1],
+            cv.min(),
+            int((cv == 0).sum()),
+            len(algorithm.pop),
+        )
+    return F, G, cv, best_idx
+
+
+# =====================================================================
+#  GACallbackBase — shared callback for all GA modes
+# =====================================================================
+
+
+class GACallbackBase(Callback):
+    """Shared pymoo callback with common per-generation tracking.
+
+    Handles:
+    - per-generation timing
+    - best hard/soft/breakdown recording
+    - MOEA metric recording (HV, spacing, diversity, feasibility, IGD)
+    - compact console logging
+
+    Subclasses override ``_on_generation()`` for mode-specific logic
+    (repair, escalation, CP polish, etc.).  The base implementation is
+    a no-op, suitable for baseline mode.
+
+    Parameters
+    ----------
+    log_interval : int
+        Generations between detailed console log lines.
+    """
+
+    def __init__(self, log_interval: int) -> None:
+        super().__init__()
+        self.log_interval = log_interval
+        self.best_hards: list[float] = []
+        self.best_softs: list[float] = []
+        self.best_breakdowns: list[dict[str, int]] = []
+        self.gen_times: list[float] = []
+        self._gen_t0: float = time.time()
+        _init_moea_lists(self)
+
+    def notify(self, algorithm: Any) -> None:
+        """Per-generation hook: track metrics, then delegate to mode hook."""
+        now = time.time()
+        self.gen_times.append(now - self._gen_t0)
+        self._gen_t0 = now
+
+        F, G, cv, best_idx = _log_gen(algorithm, self.log_interval)
+        self.best_hards.append(float(F[best_idx, 0]))
+        self.best_softs.append(float(F[best_idx, 1]))
+        self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
+        _record_moea_metrics(self, algorithm, F, G)
+
+        self._on_generation(algorithm, F, G, cv, best_idx)
+
+    def _on_generation(
+        self,
+        algorithm: Any,
+        F: np.ndarray,
+        G: np.ndarray,
+        cv: np.ndarray,
+        best_idx: int,
+    ) -> None:
+        """Override in mode subclasses for per-generation behaviour.
+
+        Called after common tracking is complete.  ``self.best_hards[-1]``
+        is already the current generation's best hard violation.
+
+        Parameters
+        ----------
+        algorithm : pymoo Algorithm
+        F : ndarray, shape (pop_size, n_obj)
+        G : ndarray, shape (pop_size, n_constr)
+        cv : ndarray, shape (pop_size,) — clipped constraint violation sum
+        best_idx : int — index of best individual (lowest cv)
+        """

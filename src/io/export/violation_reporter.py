@@ -5,6 +5,7 @@ Generates detailed human-readable reports of all constraint violations
 in a schedule. Outputs to log_violations.log in the output directory.
 """
 
+import logging
 from collections import defaultdict
 
 from src.domain.course import Course
@@ -122,7 +123,7 @@ def generate_violation_report(
     with report_file.open("w", encoding="utf-8") as f:
         f.write("\n".join(report_lines))
 
-    print(f"Violation report saved: {report_file}")
+    logging.getLogger(__name__).info("Violation report saved: %s", report_file)
 
 
 def _check_group_overlaps(

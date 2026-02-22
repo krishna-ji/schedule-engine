@@ -8,6 +8,7 @@ Guarantees:
 """
 
 import hashlib
+import logging
 import pickle
 import sys
 import time
@@ -15,6 +16,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = 2  # Bump when export format changes
 
@@ -69,9 +72,9 @@ def build_events_with_domains(
     from src.utils.room_compatibility import is_room_suitable_for_course
 
     data_hash = _compute_data_hash(data_dir)
-    print(f"Data hash: {data_hash[:16]}...")
+    logger.info("Data hash: %s...", data_hash[:16])
 
-    print("Loading data and generating reference individual...")
+    logger.info("Loading data and generating reference individual...")
     store = DataStore.from_json(data_dir)
     ctx = store.to_context()
     qts = QuantumTimeSystem()
@@ -91,17 +94,19 @@ def build_events_with_domains(
                     course.specific_lab_features = []
                     n_fixed += 1
         if n_fixed:
-            print(f"  Fixed {n_fixed} courses with tutorial-practical room mismatch")
+            logger.info(
+                "  Fixed %d courses with tutorial-practical room mismatch", n_fixed
+            )
 
     pop = generate_pure_random_population(1, ctx, parallel=False)
     raw_genes = pop[0]
-    print(f"Raw genes from generator: {len(raw_genes)}")
+    logger.info("Raw genes from generator: %d", len(raw_genes))
 
     # --- 1. Sort genes by stable event_key ---
     indexed_genes = list(enumerate(raw_genes))
     indexed_genes.sort(key=lambda pair: _make_event_key(pair[1]))
     genes = [g for _, g in indexed_genes]
-    print(f"Sorted {len(genes)} events by stable event_key")
+    logger.info("Sorted %d events by stable event_key", len(genes))
 
     # --- 2. Build mapping tables (sorted for determinism) ---
     room_ids_sorted = sorted(ctx.rooms.keys())
@@ -142,7 +147,7 @@ def build_events_with_domains(
     t0 = time.time()
     for e, gene in enumerate(genes):
         if e % 100 == 0:
-            print(f"  Processing event {e}/{len(genes)}")
+            logger.debug("  Processing event %d/%d", e, len(genes))
 
         # Overlap-model assertions: all durations/starts are integer quanta
         assert isinstance(
@@ -217,19 +222,28 @@ def build_events_with_domains(
         allowed_starts.append(start_indices)
 
     elapsed = time.time() - t0
-    print(f"Domain computation: {elapsed:.2f}s for {len(genes)} events")
+    logger.info("Domain computation: %.2fs for %d events", elapsed, len(genes))
 
     rlens = [len(r) for r in allowed_rooms]
     ilens = [len(i) for i in allowed_instructors]
     slens = [len(s) for s in allowed_starts]
-    print(
-        f"Rooms   min={min(rlens)} max={max(rlens)} avg={sum(rlens) / len(rlens):.1f}"
+    logger.info(
+        "Rooms   min=%d max=%d avg=%.1f",
+        min(rlens),
+        max(rlens),
+        sum(rlens) / len(rlens),
     )
-    print(
-        f"Instr   min={min(ilens)} max={max(ilens)} avg={sum(ilens) / len(ilens):.1f}"
+    logger.info(
+        "Instr   min=%d max=%d avg=%.1f",
+        min(ilens),
+        max(ilens),
+        sum(ilens) / len(ilens),
     )
-    print(
-        f"Starts  min={min(slens)} max={max(slens)} avg={sum(slens) / len(slens):.1f}"
+    logger.info(
+        "Starts  min=%d max=%d avg=%.1f",
+        min(slens),
+        max(slens),
+        sum(slens) / len(slens),
     )
 
     # --- 6. Export ---
@@ -257,10 +271,10 @@ def build_events_with_domains(
     }
 
     pkl_path = "events_with_domains.pkl"
-    print(f"Saving {pkl_path} ...")
+    logger.info("Saving %s ...", pkl_path)
     with open(pkl_path, "wb") as f:
         pickle.dump(export_data, f, protocol=pickle.HIGHEST_PROTOCOL)
-    print(f"  {pkl_path}: {Path(pkl_path).stat().st_size / 1024:.1f} KB")
+    logger.info("  %s: %.1f KB", pkl_path, Path(pkl_path).stat().st_size / 1024)
 
     return export_data
 

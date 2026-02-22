@@ -6,6 +6,7 @@ effective heuristics at each step.
 """
 
 import copy
+import logging
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -486,7 +487,7 @@ class ScheduleEnv(gym.Env):
         if self.render_mode == "ansi":
             return self._render_ansi()
         if self.render_mode == "human":
-            print(self._render_ansi())
+            logging.getLogger(__name__).info(self._render_ansi())
             return None
         return None
 

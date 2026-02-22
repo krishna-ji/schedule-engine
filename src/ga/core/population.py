@@ -321,8 +321,8 @@ def generate_course_group_pairs(
 
             if not matching_courses:
                 if not silent:
-                    print(
-                        f"[!] Warning: Course {course_code} not found for group {parent_prefix}"
+                    logger.warning(
+                        "Course %s not found for group %s", course_code, parent_prefix
                     )
                 continue
 
@@ -591,7 +591,7 @@ def _create_single_individual_wrapper(
     if genes:
         return genes
     if not silent:
-        print(f"Warning: Individual {individual_idx + 1} has no genes!")
+        logger.warning("Individual %s has no genes!", individual_idx + 1)
     return None
 
 
@@ -660,11 +660,11 @@ def generate_course_group_aware_population(
 
     if not course_group_pairs:
         if not silent:
-            print("Warning: No valid course-group pairs found!")
+            logger.warning("No valid course-group pairs found!")
         return []
 
     if not silent:
-        print(f"Found {len(course_group_pairs)} course-group pairs to schedule")
+        logger.info("Found %s course-group pairs to schedule", len(course_group_pairs))
 
     # Determine parallelization strategy - USE ALL AVAILABLE CORES
     num_workers = get_cpu_count() if parallel else 1
@@ -680,7 +680,7 @@ def generate_course_group_aware_population(
             if ind is not None:
                 population.append(ind)
             elif not silent:
-                print(f"Warning: Individual {individual_idx + 1} has no genes!")
+                logger.warning("Individual %s has no genes!", individual_idx + 1)
 
     else:
         # PARALLEL: Generate individuals concurrently
@@ -712,17 +712,19 @@ def generate_course_group_aware_population(
         population = [ind for ind in results if ind is not None]
 
         if len(population) < n and not silent:
-            print(
-                f"Warning: Only generated {len(population)}/{n} individuals successfully"
+            logger.warning(
+                "Only generated %s/%s individuals successfully", len(population), n
             )
 
     if not silent:
         if population:
-            print(
-                f"Generated {len(population)} individuals with average {sum(len(ind) for ind in population) / len(population):.1f} genes each"
+            logger.info(
+                "Generated %s individuals with average %.1f genes each",
+                len(population),
+                sum(len(ind) for ind in population) / len(population),
             )
         else:
-            print("Warning: Failed to generate any individuals!")
+            logger.warning("Failed to generate any individuals!")
 
     return population
 
@@ -967,7 +969,9 @@ def create_course_component_sessions(
     if gene:
         session_genes.append(gene)
     else:
-        print(f"[!]  Failed to create gene for {course_id} with group {group_id}")
+        logger.warning(
+            "Failed to create gene for %s with group %s", course_id, group_id
+        )
 
     return session_genes
 
@@ -1024,8 +1028,10 @@ def create_course_component_sessions_with_conflict_avoidance(
     if gene:
         session_genes.append(gene)
     else:
-        print(
-            f"[!]  Failed to create gene for {course_id} with group {group_id} (conflict-avoidance)"
+        logger.warning(
+            "Failed to create gene for %s with group %s (conflict-avoidance)",
+            course_id,
+            group_id,
         )
 
     return session_genes
@@ -1216,10 +1222,14 @@ def create_session_gene_with_conflict_avoidance(
 
     # DEBUG: Verify num_q matches quanta_needed
     if num_q != quanta_needed:
-        print(
-            f" CONVERSION BUG: {course_id} {session_type}: quanta_list_to_contiguous gave num_q={num_q} but quanta_needed={quanta_needed}"
+        logger.error(
+            "CONVERSION BUG: %s %s: quanta_list_to_contiguous gave num_q=%s but quanta_needed=%s",
+            course_id,
+            session_type,
+            num_q,
+            quanta_needed,
         )
-        print(f"   assigned_quanta length={len(assigned_quanta)}")
+        logger.error("assigned_quanta length=%s", len(assigned_quanta))
 
     session_gene = SessionGene(
         course_id=actual_course_id,
@@ -1402,8 +1412,10 @@ def assign_conflict_free_quanta(
     consecutive_block = _find_consecutive_block(free_quanta, quanta_needed)
     if consecutive_block:
         if len(consecutive_block) != quanta_needed:
-            print(
-                f" BUG: _find_consecutive_block returned {len(consecutive_block)} but needed {quanta_needed}"
+            logger.error(
+                "BUG: _find_consecutive_block returned %s but needed %s",
+                len(consecutive_block),
+                quanta_needed,
             )
         return consecutive_block
 
@@ -1412,8 +1424,10 @@ def assign_conflict_free_quanta(
     consecutive_block = _find_consecutive_block(available_quanta, quanta_needed)
     if consecutive_block:
         if len(consecutive_block) != quanta_needed:
-            print(
-                f" BUG: _find_consecutive_block (all quanta) returned {len(consecutive_block)} but needed {quanta_needed}"
+            logger.error(
+                "BUG: _find_consecutive_block (all quanta) returned %s but needed %s",
+                len(consecutive_block),
+                quanta_needed,
             )
         return consecutive_block
 
@@ -1482,7 +1496,7 @@ def create_component_session(
         qualified_instructors = list(context.instructors.values())
 
     if not qualified_instructors:
-        print(f"Warning: No instructors available for course {course_id}")
+        logger.warning("No instructors available for course %s", course_id)
         return None  # type: ignore[return-value]
 
     instructor = random.choice(qualified_instructors)
@@ -1496,7 +1510,7 @@ def create_component_session(
         suitable_rooms = list(context.rooms.values())
 
     if not suitable_rooms:
-        print(f"Warning: No rooms available for course {course_id}")
+        logger.warning("No rooms available for course %s", course_id)
         return None  # type: ignore[return-value]
 
     room = random.choice(suitable_rooms)
@@ -1897,8 +1911,11 @@ def generate_hybrid_population(n: int, context: SchedulingContext) -> list[Indiv
 
     silent = os.environ.get("_GA_WORKER_PROCESS") == "1"
     if not silent:
-        print(
-            f"Hybrid initialization: {greedy_count} greedy, {smart_count} smart, {random_count} random"
+        logger.info(
+            "Hybrid initialization: %s greedy, %s smart, %s random",
+            greedy_count,
+            smart_count,
+            random_count,
         )
 
     hierarchy = analyze_group_hierarchy(context.groups)

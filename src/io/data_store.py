@@ -15,6 +15,7 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -268,7 +269,11 @@ def load_input_data(
     store = DataStore.from_json(data_dir, extra_cohort_pairs=extra_pairs)
 
     elapsed = time.time() - start_time
-    print(f"[!info] Filtered {len(store.courses)} courses, loading took {elapsed:.2f}s")
+    logging.getLogger(__name__).info(
+        "Filtered %d courses, loading took %.2fs",
+        len(store.courses),
+        elapsed,
+    )
 
     if config is None:
         raise ValueError("Config must be provided")

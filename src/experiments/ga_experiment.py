@@ -10,6 +10,7 @@ All modes share the same pipeline:
 
 from __future__ import annotations
 
+import logging
 import pickle
 import time
 from pathlib import Path
@@ -18,6 +19,9 @@ from typing import Any
 import numpy as np
 
 from .base import PROJECT_ROOT, BaseExperiment
+from .callback_core import GACallbackBase
+
+logger = logging.getLogger(__name__)
 
 __version__ = "3.0.0"  # pymoo runner v3
 
@@ -62,6 +66,7 @@ class GAExperiment(BaseExperiment):
         n_offsprings_mult: float = 1.0,
         log_interval: int | None = None,
         export_pdf: bool = True,
+        force_pdf: bool = False,
         # BaseExperiment kwargs
         seed: int = 42,
         data_dir: Path | str | None = None,
@@ -85,6 +90,7 @@ class GAExperiment(BaseExperiment):
         self.n_offsprings_mult = n_offsprings_mult
         self.log_interval = log_interval or max(1, ngen // 20)
         self.export_pdf = export_pdf
+        self.force_pdf = force_pdf
 
     # ── Pipeline helpers ──────────────────────────────────────────
 
@@ -100,7 +106,7 @@ class GAExperiment(BaseExperiment):
 
     def _build_callback(self, pkl_path: str) -> Any:
         """Override in subclasses for mode-specific callbacks."""
-        return _make_progress_cb(self.log_interval)
+        return GACallbackBase(self.log_interval)
 
     # ── Output generation (plots + PDFs) ─────────────────────────
 
@@ -130,10 +136,7 @@ class GAExperiment(BaseExperiment):
                 )
             return genes
         except Exception as exc:
-            import traceback
-
-            traceback.print_exc()
-            print(f"  [!] chromosome -> genes bridge error: {exc}")
+            logger.exception("chromosome -> genes bridge error: %s", exc)
             return None
 
     def _generate_outputs(
@@ -306,15 +309,26 @@ class GAExperiment(BaseExperiment):
 
         # ── 5. Schedule PDFs (calendar, instructor, room) ─────────
         if self.export_pdf:
-            X_best = res.pop[best_idx].get("X")
-            genes = self._chromosome_to_genes(X_best, pkl_data)
-            if genes is not None:
-                self._safe_call(
-                    "schedule decode + export",
-                    lambda: (self._export_schedule_pdfs(genes, ctx, qts, out)),
-                )
+            G = res.pop.get("G")
+            cv = G.sum(axis=1).clip(0)
+            has_feasible = int((cv == 0).sum()) > 0
+            if has_feasible or self.force_pdf:
+                X_best = res.pop[best_idx].get("X")
+                genes = self._chromosome_to_genes(X_best, pkl_data)
+                if genes is not None:
+                    self._safe_call(
+                        "schedule decode + export",
+                        lambda: (self._export_schedule_pdfs(genes, ctx, qts, out)),
+                    )
+                else:
+                    self.logger.warning(
+                        "Skipping schedule PDF export — gene bridge failed"
+                    )
             else:
-                self.logger.warning("Skipping schedule PDF export — gene bridge failed")
+                self.logger.info(
+                    "  [skip] No feasible solution — schedule PDFs skipped "
+                    "(use force_pdf=True or --force-pdf to override)"
+                )
         else:
             self.logger.info("  [skip] PDF export disabled (export_pdf=False)")
 
@@ -519,10 +533,26 @@ class GAExperiment(BaseExperiment):
             best_idx=best_idx,
         )
 
+        # Per-gen timing summary
+        gen_times: list[float] = getattr(callback, "gen_times", [])
+        timing_summary: dict[str, Any] = {}
+        if gen_times:
+            gt = np.array(gen_times)
+            timing_summary = {
+                "mean_s": round(float(gt.mean()), 4),
+                "std_s": round(float(gt.std()), 4),
+                "min_s": round(float(gt.min()), 4),
+                "max_s": round(float(gt.max()), 4),
+                "p50_s": round(float(np.median(gt)), 4),
+                "p95_s": round(float(np.percentile(gt, 95)), 4),
+            }
+
         return {
             "solver": "pymoo",
             "mode": self.mode,
             "version": __version__,
+            "experiment_class": type(self).__name__,
+            "framework": "experiments_v3",
             "config": self._config_dict(),
             "best_hard": float(F[best_idx, 0]),
             "best_soft": float(F[best_idx, 1]),
@@ -530,6 +560,7 @@ class GAExperiment(BaseExperiment):
             "n_feasible": int((cv == 0).sum()),
             "elapsed_s": round(elapsed, 2),
             "sec_per_gen": round(elapsed / self.ngen, 3) if self.ngen else 0,
+            "timing_per_gen": timing_summary,
             "convergence_hard": getattr(callback, "best_hards", []),
             "convergence_soft": getattr(callback, "best_softs", []),
             "convergence_constraints": getattr(callback, "best_breakdowns", []),
@@ -538,138 +569,9 @@ class GAExperiment(BaseExperiment):
             "diversities": getattr(callback, "diversities", []),
             "feasibility_rates": getattr(callback, "feasibility_rates", []),
             "igds": getattr(callback, "igds", []),
+            "final_F": F.tolist(),
+            "final_G": G.tolist(),
         }
-
-
-# =====================================================================
-#  Callbacks (shared helpers, kept private)
-# =====================================================================
-
-# Short labels for compact per-constraint logging (matches HARD_CONSTRAINT_NAMES order)
-_SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp"]
-
-# Compute MOEA metrics (HV, spacing, diversity, feasibility) every K generations
-_METRICS_INTERVAL = 10
-
-
-def _init_moea_lists(cb):
-    """Attach empty MOEA metric lists to a callback instance."""
-    cb.hypervolumes: list[float] = []
-    cb.spacings: list[float] = []
-    cb.diversities: list[float] = []
-    cb.feasibility_rates: list[float] = []
-    cb.igds: list[float] = []
-    # Running element-wise max of F for adaptive HV reference point
-    cb._hv_running_max: np.ndarray | None = None
-    # Optional reference front for IGD (loaded lazily once)
-    cb._ref_front: np.ndarray | None = None
-    cb._ref_front_checked: bool = False
-
-
-def _record_moea_metrics(cb, algorithm, F, G):
-    """Record MOEA metrics every ``_METRICS_INTERVAL`` generations.
-
-    Policy:
-    - HV / spacing / diversity computed on *feasible-only* subset.
-    - ``nan`` stored when no feasible solutions exist.
-    - HV uses an *adaptive* reference point: ``1.1 × element-wise max``
-      of F across all generations seen so far.
-    - IGD recorded only if a reference front file is present.
-    """
-    if algorithm.n_gen % _METRICS_INTERVAL != 0:
-        return
-    from src.experiments.moea_metrics import (
-        compute_diversity,
-        compute_feasibility_rate,
-        compute_hypervolume,
-        compute_igd,
-        compute_spacing,
-        filter_feasible,
-        load_reference_front,
-        update_ref_point_max,
-    )
-
-    # Feasibility rate uses ALL individuals
-    cb.feasibility_rates.append(compute_feasibility_rate(G))
-
-    # Update adaptive reference point from ALL F (not just feasible)
-    cb._hv_running_max, ref_point = update_ref_point_max(cb._hv_running_max, F)
-
-    # Feasible-only subset for quality metrics
-    F_feas = filter_feasible(F, G)
-    if F_feas is None or F_feas.shape[0] == 0:
-        cb.hypervolumes.append(float("nan"))
-        cb.spacings.append(float("nan"))
-        cb.diversities.append(float("nan"))
-        cb.igds.append(float("nan"))
-        return
-
-    cb.hypervolumes.append(compute_hypervolume(F_feas, ref_point=ref_point))
-    cb.spacings.append(compute_spacing(F_feas))
-    cb.diversities.append(compute_diversity(F_feas))
-
-    # IGD — lazy-load reference front once
-    if not cb._ref_front_checked:
-        cb._ref_front_checked = True
-        root = Path(__file__).resolve().parent.parent.parent
-        for ext in (".npy", ".csv"):
-            rf = load_reference_front(root / f"reference_front{ext}")
-            if rf is not None:
-                cb._ref_front = rf
-                break
-    if cb._ref_front is not None:
-        cb.igds.append(compute_igd(F_feas, cb._ref_front))
-    else:
-        cb.igds.append(float("nan"))
-
-
-def _progress_payload(algorithm):
-    F = algorithm.pop.get("F")
-    G = algorithm.pop.get("G")
-    cv = G.sum(axis=1).clip(0)
-    best_idx = int(np.argmin(cv))
-    return F, G, cv, best_idx
-
-
-def _constraint_breakdown(G_row: np.ndarray) -> dict[str, int]:
-    """Return {short_name: violation_count} for one individual."""
-    return {n: int(v) for n, v in zip(_SHORT, G_row, strict=False)}
-
-
-def _log_gen(algorithm, log_interval):
-    F, G, cv, best_idx = _progress_payload(algorithm)
-    if algorithm.n_gen == 1 or algorithm.n_gen % log_interval == 0:
-        bd = G[best_idx]
-        parts = " ".join(f"{n}={int(v)}" for n, v in zip(_SHORT, bd, strict=False))
-        print(
-            f"  Gen {algorithm.n_gen:4d}: "
-            f"hard={F[best_idx, 0]:.0f}  [{parts}]  "
-            f"soft={F[best_idx, 1]:.0f}  "
-            f"cv={cv.min():.0f}  "
-            f"feasible={int((cv == 0).sum())}/{len(algorithm.pop)}"
-        )
-    return F, G, cv, best_idx
-
-
-def _make_progress_cb(log_interval: int):
-    from pymoo.core.callback import Callback
-
-    class CB(Callback):
-        def __init__(self):
-            super().__init__()
-            self.best_hards: list[float] = []
-            self.best_softs: list[float] = []
-            self.best_breakdowns: list[dict[str, int]] = []
-            _init_moea_lists(self)
-
-        def notify(self, algorithm):
-            F, G, cv, best_idx = _log_gen(algorithm, log_interval)
-            self.best_hards.append(float(F[best_idx, 0]))
-            self.best_softs.append(float(F[best_idx, 1]))
-            self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
-            _record_moea_metrics(self, algorithm, F, G)
-
-    return CB()
 
 
 # =====================================================================
@@ -715,8 +617,6 @@ class MemeticExperiment(GAExperiment):
         self.repair_iters = repair_iters
 
     def _build_callback(self, pkl_path: str):
-        from pymoo.core.callback import Callback
-
         from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
 
         repairer = BitsetSchedulingRepair(pkl_path)
@@ -724,21 +624,8 @@ class MemeticExperiment(GAExperiment):
         elite_pct = self.elite_pct
         repair_iters = self.repair_iters
 
-        class CB(Callback):
-            def __init__(self):
-                super().__init__()
-                self.best_hards: list[float] = []
-                self.best_softs: list[float] = []
-                self.best_breakdowns: list[dict[str, int]] = []
-                _init_moea_lists(self)
-
-            def notify(self, algorithm):
-                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
-                self.best_hards.append(float(F[best_idx, 0]))
-                self.best_softs.append(float(F[best_idx, 1]))
-                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
-                _record_moea_metrics(self, algorithm, F, G)
-
+        class CB(GACallbackBase):
+            def _on_generation(self, algorithm, F, G, cv, best_idx):
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
                 elite_idxs = np.argsort(cv)[:n_elite]
@@ -748,7 +635,7 @@ class MemeticExperiment(GAExperiment):
                         X = repairer.repair(X)
                     pop[idx].set("X", X)
 
-        return CB()
+        return CB(log_interval)
 
 
 class AggressiveExperiment(GAExperiment):
@@ -774,29 +661,14 @@ class AggressiveExperiment(GAExperiment):
         self.repair_iters = repair_iters
 
     def _build_callback(self, pkl_path: str):
-        from pymoo.core.callback import Callback
-
         from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
 
         repairer = BitsetSchedulingRepair(pkl_path)
         log_interval = self.log_interval
         repair_iters = self.repair_iters
 
-        class CB(Callback):
-            def __init__(self):
-                super().__init__()
-                self.best_hards: list[float] = []
-                self.best_softs: list[float] = []
-                self.best_breakdowns: list[dict[str, int]] = []
-                _init_moea_lists(self)
-
-            def notify(self, algorithm):
-                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
-                self.best_hards.append(float(F[best_idx, 0]))
-                self.best_softs.append(float(F[best_idx, 1]))
-                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
-                _record_moea_metrics(self, algorithm, F, G)
-
+        class CB(GACallbackBase):
+            def _on_generation(self, algorithm, F, G, cv, best_idx):
                 pop = algorithm.pop
                 for i in range(len(pop)):
                     X = pop[i].get("X").copy()
@@ -804,7 +676,7 @@ class AggressiveExperiment(GAExperiment):
                         X = repairer.repair(X)
                     pop[i].set("X", X)
 
-        return CB()
+        return CB(log_interval)
 
 
 class AdaptiveExperiment(GAExperiment):
@@ -837,8 +709,6 @@ class AdaptiveExperiment(GAExperiment):
         self.repair_iters = repair_iters
 
     def _build_callback(self, pkl_path: str):
-        from pymoo.core.callback import Callback
-
         from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
 
         repairer = BitsetSchedulingRepair(pkl_path)
@@ -849,23 +719,14 @@ class AdaptiveExperiment(GAExperiment):
         elite_pct = self.elite_pct
         repair_iters = self.repair_iters
 
-        class CB(Callback):
-            def __init__(self):
-                super().__init__()
-                self.best_hards: list[float] = []
-                self.best_softs: list[float] = []
-                self.best_breakdowns: list[dict[str, int]] = []
-                _init_moea_lists(self)
+        class CB(GACallbackBase):
+            def __init__(self, _log_interval):
+                super().__init__(_log_interval)
                 self._stagnant = 0
                 self._escalated = False
 
-            def notify(self, algorithm):
-                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
-                cur_hard = float(F[best_idx, 0])
-                self.best_hards.append(cur_hard)
-                self.best_softs.append(float(F[best_idx, 1]))
-                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
-                _record_moea_metrics(self, algorithm, F, G)
+            def _on_generation(self, algorithm, F, G, cv, best_idx):
+                cur_hard = self.best_hards[-1]
 
                 if len(self.best_hards) >= 2 and cur_hard >= self.best_hards[-2]:
                     self._stagnant += 1
@@ -878,9 +739,10 @@ class AdaptiveExperiment(GAExperiment):
                 if self._stagnant >= stagnation_window and not self._escalated:
                     self._set_mutation(algorithm, mutation_hi)
                     self._escalated = True
-                    print(
-                        f"    >> stagnation @ gen {algorithm.n_gen}"
-                        f" — mutation -> {mutation_hi}, elite repair ON"
+                    logging.getLogger(__name__).info(
+                        "stagnation @ gen %d — mutation -> %s, elite repair ON",
+                        algorithm.n_gen,
+                        mutation_hi,
                     )
 
                 if self._escalated:
@@ -899,7 +761,7 @@ class AdaptiveExperiment(GAExperiment):
                 if hasattr(mut, "event_prob"):
                     mut.event_prob = prob
 
-        return CB()
+        return CB(log_interval)
 
 
 class CPHybridExperiment(GAExperiment):
@@ -927,19 +789,13 @@ class CPHybridExperiment(GAExperiment):
         self.cp_timeout = cp_timeout
 
     def _build_callback(self, pkl_path: str):
-        from pymoo.core.callback import Callback
-
         log_interval = self.log_interval
         cp_interval = self.cp_interval
         cp_timeout = self.cp_timeout
 
-        class CB(Callback):
-            def __init__(self):
-                super().__init__()
-                self.best_hards: list[float] = []
-                self.best_softs: list[float] = []
-                self.best_breakdowns: list[dict[str, int]] = []
-                _init_moea_lists(self)
+        class CB(GACallbackBase):
+            def __init__(self, _log_interval):
+                super().__init__(_log_interval)
                 self._pkl_data = None
                 self._ctx = None
                 self._cp_pipeline = None
@@ -951,7 +807,9 @@ class CPHybridExperiment(GAExperiment):
                 try:
                     from ortools.sat.python import cp_model as _  # noqa: F401
                 except ImportError:
-                    print("  !! ortools not installed — CP polish disabled")
+                    logging.getLogger(__name__).warning(
+                        "ortools not installed — CP polish disabled"
+                    )
                     self._initialised = True
                     return False
 
@@ -972,13 +830,7 @@ class CPHybridExperiment(GAExperiment):
                 self._initialised = True
                 return True
 
-            def notify(self, algorithm):
-                F, G, cv, best_idx = _log_gen(algorithm, log_interval)
-                self.best_hards.append(float(F[best_idx, 0]))
-                self.best_softs.append(float(F[best_idx, 1]))
-                self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
-                _record_moea_metrics(self, algorithm, F, G)
-
+            def _on_generation(self, algorithm, F, G, cv, best_idx):
                 if algorithm.n_gen % cp_interval != 0:
                     return
                 if not self._lazy_init() or self._cp_pipeline is None:
@@ -990,21 +842,23 @@ class CPHybridExperiment(GAExperiment):
                 if genes is None:
                     return
 
-                print(f"    CP-SAT polish @ gen {algorithm.n_gen} ...")
+                _cb_log = logging.getLogger(__name__)
+                _cb_log.info("CP-SAT polish @ gen %d ...", algorithm.n_gen)
                 try:
                     repaired_genes, stats = self._cp_pipeline.repair(
                         genes, self._ctx, None
                     )
-                    print(
-                        f"    CP done: {stats.global_phase_status}, "
-                        f"residual_hard={stats.residual_hard:.0f}, "
-                        f"time={stats.total_time:.1f}s"
+                    _cb_log.info(
+                        "CP done: %s, residual_hard=%.0f, time=%.1fs",
+                        stats.global_phase_status,
+                        stats.residual_hard,
+                        stats.total_time,
                     )
                     X_new = self._genes_to_chromosome(repaired_genes)
                     if X_new is not None:
                         pop[best_idx].set("X", X_new)
                 except Exception as exc:
-                    print(f"    CP-SAT error: {exc}")
+                    _cb_log.error("CP-SAT error: %s", exc)
 
             def _chromosome_to_genes(self, X):
                 try:
@@ -1031,7 +885,7 @@ class CPHybridExperiment(GAExperiment):
                         )
                     return genes
                 except Exception as exc:
-                    print(f"    bridge error (->genes): {exc}")
+                    logging.getLogger(__name__).error("bridge error (->genes): %s", exc)
                     return None
 
             def _genes_to_chromosome(self, genes):
@@ -1047,7 +901,9 @@ class CPHybridExperiment(GAExperiment):
                         X[3 * e + 2] = g.start_quanta
                     return X
                 except Exception as exc:
-                    print(f"    bridge error (->chromo): {exc}")
+                    logging.getLogger(__name__).error(
+                        "bridge error (->chromo): %s", exc
+                    )
                     return None
 
-        return CB()
+        return CB(log_interval)
