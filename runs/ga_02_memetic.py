@@ -23,7 +23,7 @@ from src.experiments import MemeticExperiment
 SEED = 42
 
 # GA Core Parameters
-POP_SIZE = 80  # Population size
+POP_SIZE = 50 # Population size
 NGEN = 150  # Number of generations
 CROSSOVER_PROB = 0.6  # Per-event crossover probability
 MUTATION_PROB = 0.08  # Per-event mutation probability

@@ -481,26 +481,35 @@ class GAExperiment(BaseExperiment):
         Returns (store, ctx, qts).
         """
         from src.io.data_store import DataStore
+        from src.io.feasibility import (
+            InfeasibleProblemError,
+            generate_feasibility_report_file,
+        )
         from src.io.time_system import QuantumTimeSystem
 
+        feasibility_report = None
         try:
             store = DataStore.from_json(str(self.data_dir))
-        except Exception:
-            # Retry without preflight — GA handles infeasibility internally
+            feasibility_report = store.feasibility_report
+        except InfeasibleProblemError as exc:
+            # Capture the report from the exception, then retry without preflight
+            feasibility_report = exc.report
             self.logger.warning(
                 "Feasibility check failed — running GA anyway "
                 "(the optimizer will try to minimise violations)"
             )
             store = DataStore.from_json(str(self.data_dir), run_preflight=False)
+        except Exception:
+            self.logger.warning("Data loading failed — retrying without preflight")
+            store = DataStore.from_json(str(self.data_dir), run_preflight=False)
+
         ctx = store.to_context()
         qts = QuantumTimeSystem()
 
-        # Save feasibility report to the timestamped output folder
-        if store.feasibility_report is not None:
-            from src.io.feasibility import generate_feasibility_report_file
-
+        # Always save feasibility report to the timestamped output folder
+        if feasibility_report is not None:
             report_path = self.output_dir / "feasibility_report.txt"
-            generate_feasibility_report_file(store.feasibility_report, str(report_path))
+            generate_feasibility_report_file(feasibility_report, str(report_path))
             self.logger.info(f"Feasibility report -> {report_path}")
 
         return store, ctx, qts
@@ -682,11 +691,23 @@ class MemeticExperiment(GAExperiment):
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
                 elite_idxs = np.argsort(cv)[:n_elite]
+                gen = algorithm.n_gen or 0
                 modified = []
                 for idx in elite_idxs:
                     X = pop[idx].get("X").copy()
-                    for _ in range(repair_iters):
-                        X = repairer.repair(X)
+                    for p in range(repair_iters):
+                        # Odd passes: stochastic exploration (unique seed
+                        # per gen/individual/pass so different basins are
+                        # explored).  Even passes: deterministic polish
+                        # to tighten the current basin.
+                        if p % 2 == 0:
+                            rng_p = np.random.default_rng([gen, int(idx), p])
+                        else:
+                            rng_p = None
+                        X_new = repairer.repair(X, rng=rng_p)
+                        if np.array_equal(X_new, X):
+                            break  # converged
+                        X = X_new
                     pop[idx].set("X", X)
                     modified.append(pop[idx])
                 _reeval_modified(algorithm, modified)
@@ -726,11 +747,19 @@ class AggressiveExperiment(GAExperiment):
         class CB(GACallbackBase):
             def _on_generation(self, algorithm, F, G, cv, best_idx):
                 pop = algorithm.pop
+                gen = algorithm.n_gen or 0
                 modified = []
                 for i in range(len(pop)):
                     X = pop[i].get("X").copy()
-                    for _ in range(repair_iters):
-                        X = repairer.repair(X)
+                    for p in range(repair_iters):
+                        if p % 2 == 0:
+                            rng_p = np.random.default_rng([gen, i, p])
+                        else:
+                            rng_p = None
+                        X_new = repairer.repair(X, rng=rng_p)
+                        if np.array_equal(X_new, X):
+                            break
+                        X = X_new
                     pop[i].set("X", X)
                     modified.append(pop[i])
                 _reeval_modified(algorithm, modified)

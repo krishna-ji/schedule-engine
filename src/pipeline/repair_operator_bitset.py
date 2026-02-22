@@ -250,8 +250,22 @@ class BitsetSchedulingRepair:
 
         return out
 
-    def repair(self, chromosome: np.ndarray) -> np.ndarray:
-        """Repair a 3*E interleaved chromosome (returns copy)."""
+    def repair(
+        self,
+        chromosome: np.ndarray,
+        rng: np.random.Generator | None = None,
+    ) -> np.ndarray:
+        """Repair a 3*E interleaved chromosome (returns copy).
+
+        Parameters
+        ----------
+        chromosome : ndarray, shape (3*E,)
+        rng : numpy Generator, optional
+            When provided, introduces stochastic tie-breaking in placement
+            and randomised conflict-processing order so that successive
+            repair passes explore *different* local-minimum basins instead
+            of converging to the same deterministic fixed point.
+        """
         expected = 3 * self.n_events
         if len(chromosome) != expected:
             raise ValueError(
@@ -264,8 +278,8 @@ class BitsetSchedulingRepair:
         time = out[2::3]
 
         self._fix_domains(inst, room, time)
-        self._fix_conflicts(inst, room, time)
-        self._fix_group_conflicts(inst, room, time)
+        self._fix_conflicts(inst, room, time, rng=rng)
+        self._fix_group_conflicts(inst, room, time, rng=rng)
 
         return out
 
@@ -298,7 +312,7 @@ class BitsetSchedulingRepair:
     # Stage 2 — conflict fixing
     # ------------------------------------------------------------------
 
-    def _fix_conflicts(self, inst, room, time):
+    def _fix_conflicts(self, inst, room, time, *, rng=None):
         rc, ic, gc = self._build_counts(inst, room, time)
 
         max_passes = 8
@@ -312,7 +326,12 @@ class BitsetSchedulingRepair:
             if not conflict_events:
                 break
 
-            if _pass % 2 == 0:
+            if rng is not None:
+                # Stochastic: shuffle so different orderings explore
+                # different greedy paths (still prioritise worst first
+                # on average via partial sort + shuffle within tiers).
+                rng.shuffle(conflict_events)
+            elif _pass % 2 == 0:
                 conflict_events.sort(reverse=True)
             else:
                 conflict_events.sort()
@@ -323,17 +342,22 @@ class BitsetSchedulingRepair:
                     continue
 
                 self._remove(e, inst, room, time, rc, ic, gc)
-                self._find_placement(e, inst, room, time, rc, ic, gc)
+                self._find_placement(e, inst, room, time, rc, ic, gc, rng=rng)
                 self._add(e, inst, room, time, rc, ic, gc)
 
     # ------------------------------------------------------------------
     # Find placement
     # ------------------------------------------------------------------
 
-    def _find_placement(self, e, inst, room, time, rc, ic, gc) -> bool:
+    def _find_placement(self, e, inst, room, time, rc, ic, gc, *, rng=None) -> bool:
         """Find best (inst, room, time) placement for event e.
         Event must already be removed from count arrays.
-        Vectorizes over rooms using numpy for fast scoring."""
+        Vectorizes over rooms using numpy for fast scoring.
+
+        When *rng* is provided, ties (placements with equal cost) are
+        broken randomly instead of deterministically, enabling different
+        repair passes to explore different local-minimum basins.
+        """
         ai = self.allowed_instructors[e]
         ar_list = self.allowed_rooms[e]
         cur_i = int(inst[e])
@@ -345,6 +369,9 @@ class BitsetSchedulingRepair:
             return True
 
         best_i, best_r, best_t = cur_i, cur_r, cur_t
+        # When stochastic, collect all placements that tie for the best
+        # score and pick one randomly at the end.
+        tied_best: list[tuple[int, int, int]] = [(cur_i, cur_r, cur_t)]
         dur = int(self.durations[e])
         gidxs = self.event_group_indices[e]
 
@@ -354,9 +381,12 @@ class BitsetSchedulingRepair:
         ra = self.room_avail_arr
 
         def _score_all_rooms(i_idx, t):
-            """Score all allowed rooms for (i_idx, t). Returns (best_cost, best_room_idx)."""
+            """Score all allowed rooms for (i_idx, t).
+
+            Returns (best_cost, best_room_idx).  When *rng* is set,
+            ties among rooms with equal min-cost are broken randomly.
+            """
             if len(ar) == 0:
-                # No valid rooms — return current room with max penalty
                 return 10000, cur_r
             end = t + dur
             # Instructor+group cost is fixed across rooms
@@ -370,17 +400,31 @@ class BitsetSchedulingRepair:
                     if gc[gidx, q] > 0:
                         fixed += 1
 
-            # Vectorize room costs: shape (n_rooms, dur) -> (n_rooms,)
+            # Vectorize room costs
             room_slice = rc[ar, t:end]  # (n_rooms, dur)
             room_conflicts = np.sum(room_slice > 0, axis=1)  # (n_rooms,)
-
-            # Room availability penalty
             ra_slice = ra[ar, t:end]  # (n_rooms, dur) bool
             room_avail_pen = 100 * np.sum(~ra_slice, axis=1)  # (n_rooms,)
-
             total = fixed + room_conflicts + room_avail_pen  # (n_rooms,)
-            j = int(np.argmin(total))
-            return int(total[j]), int(ar[j])
+
+            min_cost = int(np.min(total))
+            if rng is not None:
+                # Random tie-break among all rooms with min cost
+                ties = np.flatnonzero(total == min_cost)
+                j = int(rng.choice(ties))
+            else:
+                j = int(np.argmin(total))
+            return min_cost, int(ar[j])
+
+        def _record(c, i_idx, r_idx, t):
+            """Update best / tied_best tracking."""
+            nonlocal best_conflicts, best_i, best_r, best_t, tied_best
+            if c < best_conflicts:
+                best_conflicts = c
+                best_i, best_r, best_t = i_idx, r_idx, t
+                tied_best = [(i_idx, r_idx, t)]
+            elif rng is not None and c == best_conflicts:
+                tied_best.append((i_idx, r_idx, t))
 
         # Phase 1: Find GROUP-conflict-free time slots
         group_free_times = []
@@ -397,21 +441,29 @@ class BitsetSchedulingRepair:
             if not group_conflict:
                 group_free_times.append(t)
 
+        # Shuffle candidate lists when stochastic
+        if rng is not None and group_free_times:
+            rng.shuffle(group_free_times)
+
         # Phase 2: Try group-free times with vectorized room search
         if group_free_times:
             for t in group_free_times:
                 c, r_best = _score_all_rooms(cur_i, t)
-                if c == 0:
+                if c == 0 and rng is None:
                     room[e] = r_best
                     time[e] = t
                     return True
-                if c < best_conflicts:
-                    best_conflicts = c
-                    best_i, best_r, best_t = cur_i, r_best, t
+                _record(c, cur_i, r_best, t)
 
         # Phase 3: Try different instructors with group-free times
-        for i_idx in ai[:8]:
+        instr_order = list(ai[:8])
+        if rng is not None:
+            rng.shuffle(instr_order)
+        for i_idx in instr_order:
             i_free_times = self._valid_starts_for(e, i_idx) or self.allowed_starts[e]
+            if rng is not None:
+                i_free_times = list(i_free_times)
+                rng.shuffle(i_free_times)
             for t in i_free_times:
                 group_conflict = False
                 for gidx in gidxs:
@@ -424,22 +476,25 @@ class BitsetSchedulingRepair:
                 if group_conflict:
                     continue
                 c, r_best = _score_all_rooms(i_idx, t)
-                if c == 0:
+                if c == 0 and rng is None:
                     inst[e] = i_idx
                     room[e] = r_best
                     time[e] = t
                     return True
-                if c < best_conflicts:
-                    best_conflicts = c
-                    best_i, best_r, best_t = i_idx, r_best, t
+                _record(c, i_idx, r_best, t)
 
         # Phase 4: Fallback — scan all times if no group-free times found
         if not group_free_times:
-            for t in time_candidates:
+            tc = list(time_candidates)
+            if rng is not None:
+                rng.shuffle(tc)
+            for t in tc:
                 c, r_best = _score_all_rooms(cur_i, t)
-                if c < best_conflicts:
-                    best_conflicts = c
-                    best_i, best_r, best_t = cur_i, r_best, t
+                _record(c, cur_i, r_best, t)
+
+        # Final assignment — random tie-break when stochastic
+        if rng is not None and tied_best and best_conflicts > 0:
+            best_i, best_r, best_t = tied_best[rng.integers(len(tied_best))]
 
         inst[e] = best_i
         room[e] = best_r
@@ -450,7 +505,7 @@ class BitsetSchedulingRepair:
     # Stage 3 — group deconfliction
     # ------------------------------------------------------------------
 
-    def _fix_group_conflicts(self, inst, room, time):
+    def _fix_group_conflicts(self, inst, room, time, *, rng=None):
         rc, ic, gc = self._build_counts(inst, room, time)
 
         grp_events: dict[str, list[int]] = defaultdict(list)
@@ -464,7 +519,13 @@ class BitsetSchedulingRepair:
 
         for _round in range(4):
             any_fix = False
-            for gid in sorted_groups:
+            # Stochastic: shuffle group order so different passes
+            # break symmetry in different ways.
+            round_groups = list(sorted_groups)
+            if rng is not None:
+                rng.shuffle(round_groups)
+
+            for gid in round_groups:
                 evts = grp_events[gid]
                 gidx = self.group_to_idx[gid]
 
@@ -488,10 +549,12 @@ class BitsetSchedulingRepair:
                 for e in evts:
                     self._remove(e, inst, room, time, rc, ic, gc)
 
-                # Re-insert longest first
+                # Re-insert longest first (shuffle ties when stochastic)
                 evts_sorted = sorted(evts, key=lambda e: -self.events[e]["num_quanta"])
+                if rng is not None:
+                    rng.shuffle(evts_sorted)
                 for e in evts_sorted:
-                    self._find_placement(e, inst, room, time, rc, ic, gc)
+                    self._find_placement(e, inst, room, time, rc, ic, gc, rng=rng)
                     self._add(e, inst, room, time, rc, ic, gc)
 
             if not any_fix:
@@ -506,13 +569,16 @@ class BitsetSchedulingRepair:
                     conflict_events.append((cc, e))
             if not conflict_events:
                 break
-            conflict_events.sort(reverse=True)
+            if rng is not None:
+                rng.shuffle(conflict_events)
+            else:
+                conflict_events.sort(reverse=True)
             for _, e in conflict_events:
                 cc = self._count_conflicts(e, inst, room, time, rc, ic, gc)
                 if cc == 0:
                     continue
                 self._remove(e, inst, room, time, rc, ic, gc)
-                self._find_placement(e, inst, room, time, rc, ic, gc)
+                self._find_placement(e, inst, room, time, rc, ic, gc, rng=rng)
                 self._add(e, inst, room, time, rc, ic, gc)
 
     # ------------------------------------------------------------------
