@@ -41,8 +41,14 @@ def _reeval_modified(algorithm: Any, modified_inds: list) -> None:
         ind.set("F", None)
         ind.set("G", None)
         ind.set("CV", None)
-        ind.set("feasible", None)
-        ind.evaluated = set()  # pymoo >=0.6 uses a set
+
+        # Remove from the evaluated set (crucial for pymoo to trigger re-evaluation)
+        if "F" in ind.evaluated:
+            ind.evaluated.remove("F")
+        if "G" in ind.evaluated:
+            ind.evaluated.remove("G")
+        if "CV" in ind.evaluated:
+            ind.evaluated.remove("CV")
     eval_pop = Population.create(*modified_inds)
     Evaluator().eval(algorithm.problem, eval_pop)
 
