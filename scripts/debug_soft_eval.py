@@ -294,7 +294,12 @@ for gid in sorted(group_daily.keys()):
             gidx = group_to_idx.get(gid, -1)
             logger.debug(
                 "  Group %s (idx=%d), %s: occ=%s, break=%s, oop_gap=%d",
-                gid, gidx, day_name, sorted_q, sorted(break_q), oop_gap
+                gid,
+                gidx,
+                day_name,
+                sorted_q,
+                sorted(break_q),
+                oop_gap,
             )
             gap_examples += 1
 
@@ -338,7 +343,11 @@ for gidx in range(min(n_groups_v, 10)):
         if vec_occ != oop_occ:
             logger.warning(
                 "  MISMATCH %s (idx=%d), %s: vec=%s, oop=%s",
-                gid, gidx, day_name, sorted(vec_occ), sorted(oop_occ)
+                gid,
+                gidx,
+                day_name,
+                sorted(vec_occ),
+                sorted(oop_occ),
             )
             mismatch_count += 1
     if mismatch_count > 20:
@@ -376,19 +385,30 @@ else:
         if on_target or any(d == target_day for d, _ in all_days):
             logger.debug(
                 "    Event %d (%s): start=%d, dur=%d, quanta=%s, day_within=%s",
-                e, ev['course_id'], start, dur, quanta, days_within
+                e,
+                ev["course_id"],
+                start,
+                dur,
+                quanta,
+                days_within,
             )
 
     # Now show what OOP has for BAM1A Wednesday
     oop_bam1a_wed = group_daily.get(target_gid, {}).get(target_day_name, set())
-    logger.debug("\n  OOP %s %s: %s", target_gid, target_day_name, sorted(oop_bam1a_wed))
+    logger.debug(
+        "\n  OOP %s %s: %s", target_gid, target_day_name, sorted(oop_bam1a_wed)
+    )
     logger.debug(
         "  Vec %s %s: %s",
-        target_gid, target_day_name, sorted(set(np.where(occ_v[0, target_gidx, target_day])[0]))
+        target_gid,
+        target_day_name,
+        sorted(set(np.where(occ_v[0, target_gidx, target_day])[0])),
     )
 
     # Also trace events at continuous quanta 21, 22 (Wednesday q0, q1) for any group
-    logger.debug("\n  Events yielding continuous quanta 21-22 (Wed q0-q1) for %s:", target_gid)
+    logger.debug(
+        "\n  Events yielding continuous quanta 21-22 (Wed q0-q1) for %s:", target_gid
+    )
     for e, ev in bam1a_events:
         start = int(time_v[e])
         dur = ev["num_quanta"]
@@ -396,7 +416,11 @@ else:
         if any(q in [21, 22] for q in quanta):
             logger.debug(
                 "    Event %d (%s): start=%d, dur=%d, quanta=%s",
-                e, ev['course_id'], start, dur, quanta
+                e,
+                ev["course_id"],
+                start,
+                dur,
+                quanta,
             )
 
     # Now compare: what events does the expansion array map to Wednesday for BAM1A?
@@ -415,7 +439,12 @@ else:
             ev = events[e_idx]
             logger.debug(
                 "    Event %d (%s): start=%d, offsets=%s, quanta=%s, days_within=%s",
-                e_idx, ev['course_id'], start, list(offsets), quanta, days_within
+                e_idx,
+                ev["course_id"],
+                start,
+                list(offsets),
+                quanta,
+                days_within,
             )
 
 # Also compare instructor occupancy for first few instructors
@@ -461,7 +490,11 @@ for iid in range(min(n_inst_v, 200)):
         if vec_occ_i != oop_occ_i:
             logger.warning(
                 "  MISMATCH inst %s (idx=%d), %s: vec=%s, oop=%s",
-                iname, iid, day_name, sorted(vec_occ_i), sorted(oop_occ_i)
+                iname,
+                iid,
+                day_name,
+                sorted(vec_occ_i),
+                sorted(oop_occ_i),
             )
             mismatch_inst += 1
             if mismatch_inst > 20:

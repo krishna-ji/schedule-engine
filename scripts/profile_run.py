@@ -78,7 +78,12 @@ logger.info("\n=== TOP 15 BY TOTTIME ===")
 for h in stats_list[:15]:
     logger.info(
         "  %-45s %8.3fs tot  %8.3fs cum  (%6d calls)  [%s:%s]",
-        h['function'], h['tottime'], h['cumtime'], h['ncalls'], h['file'], h['lineno']
+        h["function"],
+        h["tottime"],
+        h["cumtime"],
+        h["ncalls"],
+        h["file"],
+        h["lineno"],
     )
 
 # Save JSON summary
