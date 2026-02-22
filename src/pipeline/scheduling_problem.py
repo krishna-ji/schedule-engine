@@ -141,6 +141,9 @@ class SchedulingProblem(Problem):
         # ---- Soft evaluation (vectorized over full population) ----
         F[:, 1] = eval_soft_vectorized(x, self._soft_data)
 
+        # ---- Defensive NaN/Inf guard on soft scores ----
+        F[:, 1] = np.nan_to_num(F[:, 1], nan=1e6, posinf=1e6, neginf=0.0)
+
         # ---- Optional: OOP soft eval fallback (legacy, per-individual) ----
         # Uncomment to use original Evaluator instead of vectorized:
         # if self._evaluator is not None and self.ctx is not None:

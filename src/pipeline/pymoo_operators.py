@@ -56,6 +56,44 @@ class ConstructiveSampling(Sampling):
         return X
 
 
+class RandomDomainSampling(Sampling):
+    """Generate initial population by sampling random domain-valid chromosomes.
+
+    Much faster than ``ConstructiveSampling`` (~100ms vs ~10s for pop=50).
+    Quality is lower (no conflict avoidance), but pymoo's repair pass —
+    which runs automatically after sampling — handles conflict resolution.
+    """
+
+    def __init__(self, pkl_path: str = "events_with_domains.pkl"):
+        super().__init__()
+        with open(pkl_path, "rb") as f:
+            data = pickle.load(f)
+        self._ai = data["allowed_instructors"]
+        self._ar = data["allowed_rooms"]
+        self._at = data["allowed_starts"]
+        self._n_events = len(data["events"])
+
+    def _do(self, problem, n_samples, **kwargs):
+        import time as _time
+
+        t0 = _time.perf_counter()
+        E = self._n_events
+        X = np.zeros((n_samples, problem.n_var), dtype=int)
+        for i in range(n_samples):
+            rng = np.random.default_rng(i)
+            x = X[i]
+            for e in range(E):
+                ai = self._ai[e]
+                ar = self._ar[e]
+                at = self._at[e]
+                x[3 * e] = rng.choice(ai) if ai else 0
+                x[3 * e + 1] = rng.choice(ar) if ar else 0
+                x[3 * e + 2] = rng.choice(at) if at else 0
+        elapsed = _time.perf_counter() - t0
+        print(f"  Random domain sampling: {n_samples} ({elapsed:.1f}s)")
+        return X
+
+
 # =====================================================================
 # Crossover: Event-block crossover
 # =====================================================================
@@ -77,28 +115,16 @@ class EventBlockCrossover(Crossover):
         # X shape: (n_parents, n_matings, n_var) — pymoo swaps axes before calling
         _, n_matings, n_var = X.shape
         E = n_var // 3
-        # Output shape: (n_offsprings, n_matings, n_var)
-        Y = np.zeros((self.n_offsprings, n_matings, n_var), dtype=X.dtype)
 
-        for k in range(n_matings):
-            p1 = X[0, k]  # first parent
-            p2 = X[1, k]  # second parent
+        # Random boolean mask per (mating, event): True = take from parent 1
+        mask_events = np.random.random((n_matings, E)) < self.prob  # (n_matings, E)
+        # Expand to gene-level: repeat each bool 3× for the (instr, room, start) triple
+        mask_genes = np.repeat(mask_events, 3, axis=1)  # (n_matings, n_var)
 
-            # Random mask: which events come from parent 1 vs parent 2
-            mask = np.random.random(E) < self.prob
-
-            # Offspring 1: events from p1 where mask, else p2
-            # Offspring 2: inverse
-            o1 = p1.copy()
-            o2 = p2.copy()
-
-            for e in range(E):
-                if not mask[e]:
-                    o1[3 * e : 3 * e + 3] = p2[3 * e : 3 * e + 3]
-                    o2[3 * e : 3 * e + 3] = p1[3 * e : 3 * e + 3]
-
-            Y[0, k] = o1
-            Y[1, k] = o2
+        # Build both offspring via np.where (fully vectorized)
+        Y = np.empty((self.n_offsprings, n_matings, n_var), dtype=X.dtype)
+        Y[0] = np.where(mask_genes, X[0], X[1])
+        Y[1] = np.where(mask_genes, X[1], X[0])
 
         return Y
 
@@ -131,27 +157,75 @@ class EventLocalMutation(Mutation):
         self.event_prob = event_prob
 
     def _do(self, problem, X, **kwargs):
+        n_ind, n_var = X.shape
+        E = self.n_events
         Y = X.copy()
-        for i in range(Y.shape[0]):
-            for e in range(self.n_events):
-                if np.random.random() > self.event_prob:
-                    continue
 
-                ai = self.allowed_instructors[e]
-                ar = self.allowed_rooms[e]
-                at = self.allowed_starts[e]
+        # --- Vectorized mask generation ---
+        # Which (individual, event) pairs to mutate
+        event_mask = np.random.random((n_ind, E)) < self.event_prob  # (n_ind, E)
 
-                # Randomly choose which genes to mutate (at least one)
-                which = np.random.random(3) < 0.5
-                if not which.any():
-                    which[np.random.randint(3)] = True
+        # Which gene(s) to mutate per selected event: shape (n_ind, E, 3)
+        gene_coin = np.random.random((n_ind, E, 3)) < 0.5
+        # Ensure at least one gene selected per event
+        none_selected = ~gene_coin.any(axis=2)  # (n_ind, E)
+        forced_gene = np.random.randint(0, 3, size=(n_ind, E))  # fallback gene
+        # Set the forced gene where none were selected
+        fi, fe = np.nonzero(none_selected)
+        gene_coin[fi, fe, forced_gene[fi, fe]] = True
 
-                if which[0] and ai:
-                    Y[i, 3 * e + 0] = np.random.choice(ai)
-                if which[1] and ar:
-                    Y[i, 3 * e + 1] = np.random.choice(ar)
-                if which[2] and at:
-                    Y[i, 3 * e + 2] = np.random.choice(at)
+        # Combine: only care about genes in mutated events
+        # gene_mutate[i, e, g] = True  iff  event (i,e) selected AND gene g chosen
+        gene_mutate = event_mask[:, :, np.newaxis] & gene_coin  # (n_ind, E, 3)
+
+        # --- Pre-pad ragged domain arrays for vectorized sampling ---
+        # For each of the 3 gene types, build a padded domain matrix and sample
+        domain_lists = [
+            self.allowed_instructors,
+            self.allowed_rooms,
+            self.allowed_starts,
+        ]
+
+        for g, domains in enumerate(domain_lists):
+            # gene_mutate[:, :, g] tells us which (ind, event) need a new value
+            mutate_g = gene_mutate[:, :, g]  # (n_ind, E)
+            if not mutate_g.any():
+                continue
+
+            # Build padded domain array for this gene type
+            max_dom = max((len(d) for d in domains), default=0)
+            if max_dom == 0:
+                continue
+            dom_padded = np.zeros((E, max_dom), dtype=np.int64)
+            dom_lengths = np.empty(E, dtype=np.int64)
+            for e_idx in range(E):
+                d = domains[e_idx]
+                dl = len(d)
+                dom_lengths[e_idx] = dl
+                if dl > 0:
+                    dom_padded[e_idx, :dl] = d
+
+            # For events with empty domains, skip them
+            has_domain = dom_lengths > 0  # (E,)
+            mutate_g = mutate_g & has_domain[np.newaxis, :]  # mask out empty domains
+
+            if not mutate_g.any():
+                continue
+
+            # Get (ind, event) indices of mutations
+            mi, me = np.nonzero(mutate_g)
+
+            # Vectorized random index into each event's domain
+            rand_idx = (np.random.random(len(mi)) * dom_lengths[me]).astype(np.int64)
+            # Clamp to valid range (safety)
+            rand_idx = np.minimum(rand_idx, dom_lengths[me] - 1)
+
+            # Gather new values
+            new_vals = dom_padded[me, rand_idx]
+
+            # Write back into Y at the correct gene column
+            Y[mi, 3 * me + g] = new_vals
+
         return Y
 
 
@@ -186,12 +260,12 @@ def create_algorithm(
     from pymoo.algorithms.moo.nsga2 import NSGA2
     from pymoo.algorithms.soo.nonconvex.ga import GA
 
-    from .repair_operator import PymooSchedulingRepair
+    from .repair_operator_vectorized import PymooVectorizedRepair
 
     sampling = ConstructiveSampling(pkl_path)
     crossover = EventBlockCrossover(prob=crossover_prob)
     mutation = EventLocalMutation(pkl_path=pkl_path, event_prob=mutation_event_prob)
-    repair = PymooSchedulingRepair(pkl_path)
+    repair = PymooVectorizedRepair(pkl_path, passes=5)
 
     if n_offsprings is None:
         n_offsprings = pop_size

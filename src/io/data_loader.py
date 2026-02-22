@@ -37,13 +37,20 @@ def encode_availability(
     Converts human-readable availability into a set of quantum indices.
     Automatically clips availability periods to operating hours.
 
+    Start times are rounded **up** (ceiling) to the next quantum boundary
+    so the instructor is only marked available for quanta they fully cover.
+    End times are rounded **down** (floor) for the same reason.
+
     Args:
-        availability_dict (Dict): Availability per weekday in format {"Monday": [{"start": "08:00", "end": "10:00"}, ...]}.
-        qts (QuantumTimeSystem): An instance for time conversion.
+        availability_dict: Availability per weekday, e.g.
+            ``{"Monday": [{"start": "08:00", "end": "10:00"}]}``.
+        qts: An instance for time conversion.
 
     Returns:
         set: Set of integer quantum indices available.
     """
+    import math
+
     quanta: set[int] = set()
     for day, periods in availability_dict.items():
         day_cap = day.capitalize()
@@ -68,6 +75,10 @@ def encode_availability(
             op_end_str.split(":")[1]
         )
 
+        day_offset = qts.day_quanta_offset[day_cap]
+        if day_offset is None:
+            continue
+
         for period in periods:
             # Parse availability period
             avail_start = period["start"]
@@ -87,13 +98,16 @@ def encode_availability(
             if clipped_start_minutes >= clipped_end_minutes:
                 continue
 
-            # Convert back to HH:MM format
-            clipped_start = (
-                f"{clipped_start_minutes // 60:02d}:{clipped_start_minutes % 60:02d}"
-            )
+            # ── Quantum-safe rounding ──────────────────────────────
+            # Start: round UP (ceil) — instructor must be available for
+            # the ENTIRE quantum, not just the tail end.
+            start_from_day = clipped_start_minutes - op_start_minutes
+            start_q = day_offset + math.ceil(start_from_day / qts.QUANTUM_MINUTES)
 
-            # For end time, if it equals operating hours end, use the last quantum
-            # instead of trying to convert the boundary time
+            # End: round DOWN (floor) — same logic for the last quantum.
+            # For end time, if it equals operating hours end, use the
+            # last quantum boundary instead of trying to convert the
+            # boundary time.
             operating_hours = qts.operating_hours[day_cap]
             if operating_hours is None:
                 raise ValueError(f"Day {day_cap} has no operating hours")
@@ -102,23 +116,17 @@ def encode_availability(
             op_end_minutes_check = op_end_hour * 60 + op_end_minute
 
             if clipped_end_minutes >= op_end_minutes_check:
-                # Available until end of operating hours - use total day quanta
-                day_offset = qts.day_quanta_offset[day_cap]
                 day_count = qts.day_quanta_count[day_cap]
-
-                if day_offset is None or day_count is None:
+                if day_count is None:
                     raise ValueError(f"Day {day_cap} has incomplete configuration")
-
-                start_q = qts.time_to_quanta(day_cap, clipped_start)
                 end_q = day_offset + day_count  # Exclusive end
             else:
-                clipped_end = (
-                    f"{clipped_end_minutes // 60:02d}:{clipped_end_minutes % 60:02d}"
-                )
-                start_q = qts.time_to_quanta(day_cap, clipped_start)
-                end_q = qts.time_to_quanta(day_cap, clipped_end)
+                end_from_day = clipped_end_minutes - op_start_minutes
+                end_q = day_offset + end_from_day // qts.QUANTUM_MINUTES
 
-            quanta.update(range(start_q, end_q))
+            # Only add if at least one full quantum fits
+            if start_q < end_q:
+                quanta.update(range(start_q, end_q))
 
     return quanta
 

@@ -46,6 +46,9 @@ class GAExperiment(BaseExperiment):
         Offspring multiplier (1.0 = pop_size offspring per gen).
     log_interval : int | None
         Generations between detailed logs.  ``None`` → auto (ngen / 20).
+    export_pdf : bool
+        Generate schedule PDFs (calendar, instructor, room).
+        Set ``False`` for fast dev iterations (saves ~55s per run).
     """
 
     def __init__(
@@ -58,6 +61,7 @@ class GAExperiment(BaseExperiment):
         mutation_event_prob: float = 0.05,
         n_offsprings_mult: float = 1.0,
         log_interval: int | None = None,
+        export_pdf: bool = True,
         # BaseExperiment kwargs
         seed: int = 42,
         data_dir: Path | str | None = None,
@@ -80,6 +84,7 @@ class GAExperiment(BaseExperiment):
         self.mutation_event_prob = mutation_event_prob
         self.n_offsprings_mult = n_offsprings_mult
         self.log_interval = log_interval or max(1, ngen // 20)
+        self.export_pdf = export_pdf
 
     # ── Pipeline helpers ──────────────────────────────────────────
 
@@ -97,17 +102,334 @@ class GAExperiment(BaseExperiment):
         """Override in subclasses for mode-specific callbacks."""
         return _make_progress_cb(self.log_interval)
 
+    # ── Output generation (plots + PDFs) ─────────────────────────
+
+    @staticmethod
+    def _chromosome_to_genes(X: np.ndarray, pkl_data: dict) -> list | None:
+        """Convert a flat pymoo chromosome back to a list of SessionGene."""
+        try:
+            from src.domain.gene import SessionGene
+
+            events = pkl_data["events"]
+            idx_to_inst = pkl_data["idx_to_instructor"]
+            idx_to_room = pkl_data["idx_to_room"]
+            E = len(events)
+            genes = []
+            for e in range(E):
+                ev = events[e]
+                genes.append(
+                    SessionGene(
+                        course_id=ev["course_id"],
+                        course_type=ev["course_type"],
+                        instructor_id=idx_to_inst[int(X[3 * e])],
+                        group_ids=list(ev["group_ids"]),
+                        room_id=idx_to_room[int(X[3 * e + 1])],
+                        start_quanta=int(X[3 * e + 2]),
+                        num_quanta=ev["num_quanta"],
+                    )
+                )
+            return genes
+        except Exception as exc:
+            import traceback
+
+            traceback.print_exc()
+            print(f"  [!] chromosome -> genes bridge error: {exc}")
+            return None
+
+    def _generate_outputs(
+        self,
+        *,
+        res: Any,
+        callback: Any,
+        pkl_data: dict,
+        ctx: Any,
+        qts: Any,
+        best_idx: int,
+    ) -> None:
+        """Generate all plots, schedule PDFs, and reports.
+
+        Called automatically at the end of ``_execute()``.  Failures in
+        individual export steps are logged but never propagate — the
+        experiment result is always returned.
+        """
+        import matplotlib as mpl
+
+        mpl.use("Agg")  # non-interactive backend for headless envs
+
+        out = str(self.output_dir)
+        F = res.pop.get("F")
+        best_hards: list[float] = getattr(callback, "best_hards", [])
+        best_softs: list[float] = getattr(callback, "best_softs", [])
+        best_breakdowns: list[dict] = getattr(callback, "best_breakdowns", [])
+
+        # ── 1. Convergence plots ───────────────────────────────────
+        self._safe_call(
+            "hard-violation plot",
+            lambda: (
+                __import__(
+                    "src.io.export.plothard",
+                    fromlist=["plot_hard_constraint_violation_over_generation"],
+                ).plot_hard_constraint_violation_over_generation(best_hards, out)
+            ),
+        )
+        self._safe_call(
+            "soft-penalty plot",
+            lambda: (
+                __import__(
+                    "src.io.export.plotsoft",
+                    fromlist=["plot_soft_constraint_violation_over_generation"],
+                ).plot_soft_constraint_violation_over_generation(best_softs, out)
+            ),
+        )
+
+        # ── 2. Per-constraint trend plots ──────────────────────────
+        if best_breakdowns:
+            # Transpose list[dict] -> dict[str, list[int]]
+            all_keys = best_breakdowns[0].keys()
+            hard_trends: dict[str, list[int]] = {
+                k: [bd.get(k, 0) for bd in best_breakdowns] for k in all_keys
+            }
+            self._safe_call(
+                "individual constraint plots",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_detailed_constraints",
+                        fromlist=["plot_individual_hard_constraints"],
+                    ).plot_individual_hard_constraints(hard_trends, out)
+                ),
+            )
+
+        # ── 3. Convergence rate analysis ───────────────────────────
+        if len(best_hards) >= 11:
+            self._safe_call(
+                "convergence rate plot",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_convergence",
+                        fromlist=["plot_convergence_rate"],
+                    ).plot_convergence_rate(best_hards, out, "Hard Violations")
+                ),
+            )
+
+        # ── 4. Pareto front (pymoo F matrix) ──────────────────────
+        self._safe_call(
+            "Pareto front plot",
+            lambda: (
+                __import__(
+                    "src.io.export.plotpareto",
+                    fromlist=["plot_pareto_front_from_F"],
+                ).plot_pareto_front_from_F(F, out)
+            ),
+        )
+
+        # ── 4b. MOEA metric plots (HV, spacing, diversity, feasibility) ──
+        hv_hist: list[float] = getattr(callback, "hypervolumes", [])
+        sp_hist: list[float] = getattr(callback, "spacings", [])
+        div_hist: list[float] = getattr(callback, "diversities", [])
+        feas_hist: list[float] = getattr(callback, "feasibility_rates", [])
+        igd_hist: list[float] = getattr(callback, "igds", [])
+
+        if hv_hist:
+            self._safe_call(
+                "hypervolume trend",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_hypervolume",
+                        fromlist=["plot_hypervolume_trend"],
+                    ).plot_hypervolume_trend(hv_hist, out)
+                ),
+            )
+        if sp_hist:
+            self._safe_call(
+                "spacing trend",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_spacing",
+                        fromlist=["plot_spacing_trend"],
+                    ).plot_spacing_trend(sp_hist, out)
+                ),
+            )
+        if div_hist:
+            self._safe_call(
+                "diversity trend",
+                lambda: (
+                    __import__(
+                        "src.io.export.plotdiversity",
+                        fromlist=["plot_diversity_trend"],
+                    ).plot_diversity_trend(div_hist, out)
+                ),
+            )
+        if feas_hist:
+            self._safe_call(
+                "feasibility rate trend",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_convergence",
+                        fromlist=["plot_constraint_satisfaction_evolution"],
+                    ).plot_constraint_satisfaction_evolution(feas_hist, out)
+                ),
+            )
+
+        # ── 4c. IGD trend (only if reference front was available) ──
+        # Filter out nan values to check if any real IGD values exist
+        igd_real = [v for v in igd_hist if v == v]  # nan != nan
+        if igd_real:
+            self._safe_call(
+                "IGD trend",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_igd",
+                        fromlist=["plot_igd_trend"],
+                    ).plot_igd_trend(igd_hist, out)
+                ),
+            )
+
+        # Convergence dashboard (needs all 6 inputs)
+        if hv_hist and sp_hist and div_hist and feas_hist:
+            self._safe_call(
+                "convergence dashboard",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_convergence",
+                        fromlist=["plot_convergence_dashboard"],
+                    ).plot_convergence_dashboard(
+                        best_hards,
+                        best_softs,
+                        div_hist,
+                        hv_hist,
+                        sp_hist,
+                        feas_hist,
+                        out,
+                    )
+                ),
+            )
+
+        # ── 5. Schedule PDFs (calendar, instructor, room) ─────────
+        if self.export_pdf:
+            X_best = res.pop[best_idx].get("X")
+            genes = self._chromosome_to_genes(X_best, pkl_data)
+            if genes is not None:
+                self._safe_call(
+                    "schedule decode + export",
+                    lambda: (self._export_schedule_pdfs(genes, ctx, qts, out)),
+                )
+            else:
+                self.logger.warning("Skipping schedule PDF export — gene bridge failed")
+        else:
+            self.logger.info("  [skip] PDF export disabled (export_pdf=False)")
+
+        self.logger.info(f"Output artefacts written to {self.output_dir}")
+
+    def _export_schedule_pdfs(
+        self,
+        genes: list,
+        ctx: Any,
+        qts: Any,
+        output_dir: str,
+    ) -> None:
+        """Decode genes -> CourseSession list, then export all PDFs + reports."""
+        from src.io.decoder import decode_individual
+        from src.io.export.exporter import export_everything
+        from src.io.export.schedule_views import (
+            generate_instructor_schedules_pdf,
+            generate_room_schedules_pdf,
+        )
+        from src.io.export.violation_reporter import generate_violation_report
+
+        sessions = decode_individual(
+            genes,
+            ctx.courses,
+            ctx.instructors,
+            ctx.groups,
+            ctx.rooms,
+        )
+
+        # Build course lookup {(course_id, course_type): Course}
+        course_lookup: dict[tuple[str, str], Any] = ctx.courses
+
+        # 5a. schedule.json + calendar.pdf (group-wise)
+        self._safe_call(
+            "calendar PDF",
+            lambda: (
+                export_everything(
+                    sessions,
+                    output_dir,
+                    qts,
+                    course_lookup=course_lookup,
+                    parallel=False,
+                )
+            ),
+        )
+
+        # 5b. instructor_schedules.pdf
+        self._safe_call(
+            "instructor PDF",
+            lambda: (
+                generate_instructor_schedules_pdf(
+                    sessions,
+                    ctx.instructors,
+                    course_lookup,
+                    qts,
+                    output_dir,
+                )
+            ),
+        )
+
+        # 5c. room_schedules.pdf
+        self._safe_call(
+            "room PDF",
+            lambda: (
+                generate_room_schedules_pdf(
+                    sessions,
+                    ctx.rooms,
+                    course_lookup,
+                    qts,
+                    output_dir,
+                    groups=ctx.groups,
+                )
+            ),
+        )
+
+        # 5d. log_violations.log
+        self._safe_call(
+            "violation report",
+            lambda: (
+                generate_violation_report(sessions, course_lookup, qts, output_dir)
+            ),
+        )
+
+    def _safe_call(self, label: str, fn: Any) -> None:
+        """Execute *fn* and swallow any exception, logging it instead."""
+        try:
+            fn()
+            self.logger.info(f"  [ok] {label}")
+        except Exception as exc:
+            self.logger.warning(f"  [FAIL] {label}: {exc}")
+
     # ── Core execution ─────────────────────────────────────────────
 
     def _load_data(self) -> tuple[Any, Any, Any]:
         """Load scheduling data and save feasibility report to output dir.
+
+        If the data has known infeasibilities (e.g. instructor qualification
+        bottleneck), the GA still runs — it's designed to *optimise toward*
+        feasibility.  The feasibility report is saved, but the exception
+        is not propagated.
 
         Returns (store, ctx, qts).
         """
         from src.io.data_store import DataStore
         from src.io.time_system import QuantumTimeSystem
 
-        store = DataStore.from_json(str(self.data_dir))
+        try:
+            store = DataStore.from_json(str(self.data_dir))
+        except Exception:
+            # Retry without preflight — GA handles infeasibility internally
+            self.logger.warning(
+                "Feasibility check failed — running GA anyway "
+                "(the optimizer will try to minimise violations)"
+            )
+            store = DataStore.from_json(str(self.data_dir), run_preflight=False)
         ctx = store.to_context()
         qts = QuantumTimeSystem()
 
@@ -187,6 +509,16 @@ class GAExperiment(BaseExperiment):
             f"soft={F[best_idx, 1]:.0f}  cv={cv[best_idx]:.0f}"
         )
 
+        # ── Generate all output artefacts (plots + PDFs) ─────────
+        self._generate_outputs(
+            res=res,
+            callback=callback,
+            pkl_data=pkl_data,
+            ctx=ctx,
+            qts=qts,
+            best_idx=best_idx,
+        )
+
         return {
             "solver": "pymoo",
             "mode": self.mode,
@@ -201,6 +533,11 @@ class GAExperiment(BaseExperiment):
             "convergence_hard": getattr(callback, "best_hards", []),
             "convergence_soft": getattr(callback, "best_softs", []),
             "convergence_constraints": getattr(callback, "best_breakdowns", []),
+            "hypervolumes": getattr(callback, "hypervolumes", []),
+            "spacings": getattr(callback, "spacings", []),
+            "diversities": getattr(callback, "diversities", []),
+            "feasibility_rates": getattr(callback, "feasibility_rates", []),
+            "igds": getattr(callback, "igds", []),
         }
 
 
@@ -210,6 +547,80 @@ class GAExperiment(BaseExperiment):
 
 # Short labels for compact per-constraint logging (matches HARD_CONSTRAINT_NAMES order)
 _SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp"]
+
+# Compute MOEA metrics (HV, spacing, diversity, feasibility) every K generations
+_METRICS_INTERVAL = 10
+
+
+def _init_moea_lists(cb):
+    """Attach empty MOEA metric lists to a callback instance."""
+    cb.hypervolumes: list[float] = []
+    cb.spacings: list[float] = []
+    cb.diversities: list[float] = []
+    cb.feasibility_rates: list[float] = []
+    cb.igds: list[float] = []
+    # Running element-wise max of F for adaptive HV reference point
+    cb._hv_running_max: np.ndarray | None = None
+    # Optional reference front for IGD (loaded lazily once)
+    cb._ref_front: np.ndarray | None = None
+    cb._ref_front_checked: bool = False
+
+
+def _record_moea_metrics(cb, algorithm, F, G):
+    """Record MOEA metrics every ``_METRICS_INTERVAL`` generations.
+
+    Policy:
+    - HV / spacing / diversity computed on *feasible-only* subset.
+    - ``nan`` stored when no feasible solutions exist.
+    - HV uses an *adaptive* reference point: ``1.1 × element-wise max``
+      of F across all generations seen so far.
+    - IGD recorded only if a reference front file is present.
+    """
+    if algorithm.n_gen % _METRICS_INTERVAL != 0:
+        return
+    from src.experiments.moea_metrics import (
+        compute_diversity,
+        compute_feasibility_rate,
+        compute_hypervolume,
+        compute_igd,
+        compute_spacing,
+        filter_feasible,
+        load_reference_front,
+        update_ref_point_max,
+    )
+
+    # Feasibility rate uses ALL individuals
+    cb.feasibility_rates.append(compute_feasibility_rate(G))
+
+    # Update adaptive reference point from ALL F (not just feasible)
+    cb._hv_running_max, ref_point = update_ref_point_max(cb._hv_running_max, F)
+
+    # Feasible-only subset for quality metrics
+    F_feas = filter_feasible(F, G)
+    if F_feas is None or F_feas.shape[0] == 0:
+        cb.hypervolumes.append(float("nan"))
+        cb.spacings.append(float("nan"))
+        cb.diversities.append(float("nan"))
+        cb.igds.append(float("nan"))
+        return
+
+    cb.hypervolumes.append(compute_hypervolume(F_feas, ref_point=ref_point))
+    cb.spacings.append(compute_spacing(F_feas))
+    cb.diversities.append(compute_diversity(F_feas))
+
+    # IGD — lazy-load reference front once
+    if not cb._ref_front_checked:
+        cb._ref_front_checked = True
+        root = Path(__file__).resolve().parent.parent.parent
+        for ext in (".npy", ".csv"):
+            rf = load_reference_front(root / f"reference_front{ext}")
+            if rf is not None:
+                cb._ref_front = rf
+                break
+    if cb._ref_front is not None:
+        cb.igds.append(compute_igd(F_feas, cb._ref_front))
+    else:
+        cb.igds.append(float("nan"))
 
 
 def _progress_payload(algorithm):
@@ -249,12 +660,14 @@ def _make_progress_cb(log_interval: int):
             self.best_hards: list[float] = []
             self.best_softs: list[float] = []
             self.best_breakdowns: list[dict[str, int]] = []
+            _init_moea_lists(self)
 
         def notify(self, algorithm):
             F, G, cv, best_idx = _log_gen(algorithm, log_interval)
             self.best_hards.append(float(F[best_idx, 0]))
             self.best_softs.append(float(F[best_idx, 1]))
             self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
+            _record_moea_metrics(self, algorithm, F, G)
 
     return CB()
 
@@ -317,12 +730,14 @@ class MemeticExperiment(GAExperiment):
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
                 self.best_breakdowns: list[dict[str, int]] = []
+                _init_moea_lists(self)
 
             def notify(self, algorithm):
                 F, G, cv, best_idx = _log_gen(algorithm, log_interval)
                 self.best_hards.append(float(F[best_idx, 0]))
                 self.best_softs.append(float(F[best_idx, 1]))
                 self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
+                _record_moea_metrics(self, algorithm, F, G)
 
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
@@ -373,12 +788,14 @@ class AggressiveExperiment(GAExperiment):
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
                 self.best_breakdowns: list[dict[str, int]] = []
+                _init_moea_lists(self)
 
             def notify(self, algorithm):
                 F, G, cv, best_idx = _log_gen(algorithm, log_interval)
                 self.best_hards.append(float(F[best_idx, 0]))
                 self.best_softs.append(float(F[best_idx, 1]))
                 self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
+                _record_moea_metrics(self, algorithm, F, G)
 
                 pop = algorithm.pop
                 for i in range(len(pop)):
@@ -438,6 +855,7 @@ class AdaptiveExperiment(GAExperiment):
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
                 self.best_breakdowns: list[dict[str, int]] = []
+                _init_moea_lists(self)
                 self._stagnant = 0
                 self._escalated = False
 
@@ -447,6 +865,7 @@ class AdaptiveExperiment(GAExperiment):
                 self.best_hards.append(cur_hard)
                 self.best_softs.append(float(F[best_idx, 1]))
                 self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
+                _record_moea_metrics(self, algorithm, F, G)
 
                 if len(self.best_hards) >= 2 and cur_hard >= self.best_hards[-2]:
                     self._stagnant += 1
@@ -520,6 +939,7 @@ class CPHybridExperiment(GAExperiment):
                 self.best_hards: list[float] = []
                 self.best_softs: list[float] = []
                 self.best_breakdowns: list[dict[str, int]] = []
+                _init_moea_lists(self)
                 self._pkl_data = None
                 self._ctx = None
                 self._cp_pipeline = None
@@ -557,6 +977,7 @@ class CPHybridExperiment(GAExperiment):
                 self.best_hards.append(float(F[best_idx, 0]))
                 self.best_softs.append(float(F[best_idx, 1]))
                 self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
+                _record_moea_metrics(self, algorithm, F, G)
 
                 if algorithm.n_gen % cp_interval != 0:
                     return

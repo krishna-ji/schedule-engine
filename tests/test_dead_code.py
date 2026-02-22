@@ -115,9 +115,9 @@ class TestNewPackageStructure:
     def test_output_plots_ga(self):
         """io.export has GA plotting functions."""
         from src.io.export.plotdiversity import plot_diversity_trend
-        from src.io.export.plotpareto import plot_pareto_front
+        from src.io.export.plotpareto import plot_pareto_front_from_F
 
-        assert callable(plot_pareto_front)
+        assert callable(plot_pareto_front_from_F)
         assert callable(plot_diversity_trend)
 
     @pytest.mark.xfail(
