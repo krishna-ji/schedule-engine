@@ -177,14 +177,50 @@ class GACallbackBase(Callback):
     def notify(self, algorithm: Any) -> None:
         """Per-generation hook: track metrics, then delegate to mode hook."""
         now = time.time()
-        self.gen_times.append(now - self._gen_t0)
+        gen_dt = now - self._gen_t0
+        self.gen_times.append(gen_dt)
         self._gen_t0 = now
 
         F, G, cv, best_idx = _log_gen(algorithm, self.log_interval)
-        self.best_hards.append(float(F[best_idx, 0]))
-        self.best_softs.append(float(F[best_idx, 1]))
+        cur_hard = float(F[best_idx, 0])
+        cur_soft = float(F[best_idx, 1])
+        self.best_hards.append(cur_hard)
+        self.best_softs.append(cur_soft)
         self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
         _record_moea_metrics(self, algorithm, F, G)
+
+        # ── Debug: improvement / stagnation detection ────────────
+        gen = algorithm.n_gen
+        n_hards = len(self.best_hards)
+        if n_hards >= 2:
+            prev_hard = self.best_hards[-2]
+            delta = prev_hard - cur_hard
+            if delta > 0:
+                logger.debug(
+                    "Gen %4d: IMPROVED  hard %.0f -> %.0f (delta=%.0f)  dt=%.2fs",
+                    gen, prev_hard, cur_hard, delta, gen_dt,
+                )
+            elif n_hards >= 10 and cur_hard == self.best_hards[-10]:
+                logger.debug(
+                    "Gen %4d: STAGNANT  hard=%.0f unchanged for 10 gens  dt=%.2fs",
+                    gen, cur_hard, gen_dt,
+                )
+        else:
+            logger.debug(
+                "Gen %4d: INIT  hard=%.0f  soft=%.0f  dt=%.2fs",
+                gen, cur_hard, cur_soft, gen_dt,
+            )
+
+        # ── Debug: population diversity snapshot ─────────────────
+        if gen % self.log_interval == 0:
+            unique_hard = len(np.unique(F[:, 0]))
+            mean_cv = float(cv.mean())
+            logger.debug(
+                "Gen %4d: pop diversity=%d unique hard values, mean_cv=%.1f, "
+                "min_cv=%.0f, feasible=%d/%d",
+                gen, unique_hard, mean_cv, cv.min(),
+                int((cv == 0).sum()), len(cv),
+            )
 
         self._on_generation(algorithm, F, G, cv, best_idx)
 

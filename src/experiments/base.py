@@ -107,11 +107,7 @@ class BaseExperiment(ABC):
 
         Returns the results dict.
         """
-        self.logger.info("=" * 60)
-        self.logger.info(self.name.upper())
-        self.logger.info("=" * 60)
-        self.logger.info(f"Seed:   {self.seed}")
-        self.logger.info(f"Output: {self.output_dir}")
+        self.logger.info("[START] %s  seed=%d  output=%s", self.name, self.seed, self.output_dir)
 
         t0 = time.time()
         try:
@@ -150,9 +146,7 @@ class BaseExperiment(ABC):
                 log_summary["counts"].get("WARNING", 0),
                 log_summary["counts"].get("ERROR", 0),
             )
-        self.logger.info("=" * 60)
-        self.logger.info(f"{self.name.upper()} COMPLETE")
-        self.logger.info("=" * 60)
+        self.logger.info("[DONE] %s  elapsed=%.1fs", self.name, elapsed)
 
         return results
 

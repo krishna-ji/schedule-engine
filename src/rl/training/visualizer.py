@@ -495,9 +495,7 @@ def generate_visualizations(
         experiment_name: Optional experiment name for plot titles
     """
 
-    logger.info("=" * 60)
-    logger.info("RL TRAINING VISUALIZATION")
-    logger.info("=" * 60)
+    logger.info("[START] RL training visualization")
 
     # Create visualization output directory
     viz_dir = output_dir / "rl_analysis"
@@ -519,9 +517,7 @@ def generate_visualizations(
         export_individual_charts(data, viz_dir)  # NEW: Individual charts for thesis
         export_csv_data(data, viz_dir)
 
-        logger.info("=" * 60)
-        logger.info(f"[OK] Visualizations saved to: {viz_dir}")
-        logger.info("=" * 60)
+        logger.info("[OK] Visualizations saved to: %s", viz_dir)
 
     except Exception as e:
         logger.error(f"Visualization failed: {e}", exc_info=True)

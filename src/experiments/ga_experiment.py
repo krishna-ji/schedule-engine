@@ -67,6 +67,7 @@ class GAExperiment(BaseExperiment):
         log_interval: int | None = None,
         export_pdf: bool = True,
         force_pdf: bool = False,
+        use_repair: bool = True,
         # BaseExperiment kwargs
         seed: int = 42,
         data_dir: Path | str | None = None,
@@ -91,6 +92,7 @@ class GAExperiment(BaseExperiment):
         self.log_interval = log_interval or max(1, ngen // 20)
         self.export_pdf = export_pdf
         self.force_pdf = force_pdf
+        self.use_repair = use_repair
 
     # ── Pipeline helpers ──────────────────────────────────────────
 
@@ -496,6 +498,7 @@ class GAExperiment(BaseExperiment):
             mutation_event_prob=self.mutation_event_prob,
             algorithm="nsga2",
             seed=self.seed,
+            use_repair=self.use_repair,
         )
 
         callback = self._build_callback(pkl_path)
@@ -580,10 +583,14 @@ class GAExperiment(BaseExperiment):
 
 
 class BaselineExperiment(GAExperiment):
-    """Pure NSGA-II — no repair, no local search.
+    """NSGA-II + vectorized repair — no local search, no memetic callbacks.
+
+    This is the simplest *working* mode: plain NSGA-II with the
+    per-generation vectorized repair operator that enforces domain
+    feasibility.  No elite repair, no stagnation adaptation, no CP.
 
     Default config:
-        pop_size=100, ngen=200, cx=0.5, mut=0.05
+        pop_size=100, ngen=200, cx=0.5, mut=0.05, use_repair=True
     """
 
     def __init__(self, **kwargs):

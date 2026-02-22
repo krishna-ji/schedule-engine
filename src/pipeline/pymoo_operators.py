@@ -132,6 +132,13 @@ class EventBlockCrossover(Crossover):
         Y[0] = np.where(mask_genes, X[0], X[1])
         Y[1] = np.where(mask_genes, X[1], X[0])
 
+        swapped = int(mask_events.sum())
+        total = n_matings * E
+        logging.getLogger(__name__).debug(
+            "Crossover: %d matings, %d/%d events swapped (%.1f%%)",
+            n_matings, swapped, total, 100 * swapped / total if total else 0,
+        )
+
         return Y
 
 
@@ -170,6 +177,7 @@ class EventLocalMutation(Mutation):
         # --- Vectorized mask generation ---
         # Which (individual, event) pairs to mutate
         event_mask = np.random.random((n_ind, E)) < self.event_prob  # (n_ind, E)
+        n_mutated_events = int(event_mask.sum())
 
         # Which gene(s) to mutate per selected event: shape (n_ind, E, 3)
         gene_coin = np.random.random((n_ind, E, 3)) < 0.5
@@ -232,6 +240,12 @@ class EventLocalMutation(Mutation):
             # Write back into Y at the correct gene column
             Y[mi, 3 * me + g] = new_vals
 
+        logging.getLogger(__name__).debug(
+            "Mutation: %d individuals, %d/%d events mutated (%.1f%%)",
+            n_ind, n_mutated_events, n_ind * E,
+            100 * n_mutated_events / (n_ind * E) if (n_ind * E) else 0,
+        )
+
         return Y
 
 
@@ -248,6 +262,7 @@ def create_algorithm(
     mutation_event_prob: float = 0.05,
     algorithm: str = "nsga2",
     seed: int = 42,
+    use_repair: bool = True,
 ):
     """Create a fully-configured pymoo algorithm for scheduling.
 
@@ -259,6 +274,9 @@ def create_algorithm(
         mutation_event_prob: Per-event mutation probability.
         algorithm: Algorithm name ("nsga2" or "ga").
         seed: Random seed.
+        use_repair: If True (default), apply PymooVectorizedRepair every
+            generation.  Set to False for a pure baseline without any
+            repair operator.
 
     Returns:
         Configured pymoo algorithm instance.
@@ -266,12 +284,15 @@ def create_algorithm(
     from pymoo.algorithms.moo.nsga2 import NSGA2
     from pymoo.algorithms.soo.nonconvex.ga import GA
 
-    from .repair_operator_vectorized import PymooVectorizedRepair
-
     sampling = ConstructiveSampling(pkl_path)
     crossover = EventBlockCrossover(prob=crossover_prob)
     mutation = EventLocalMutation(pkl_path=pkl_path, event_prob=mutation_event_prob)
-    repair = PymooVectorizedRepair(pkl_path, passes=5)
+
+    repair = None
+    if use_repair:
+        from .repair_operator_vectorized import PymooVectorizedRepair
+
+        repair = PymooVectorizedRepair(pkl_path, passes=5)
 
     if n_offsprings is None:
         n_offsprings = pop_size

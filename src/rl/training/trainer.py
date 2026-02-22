@@ -404,9 +404,7 @@ class RLTrainer:
             batch_size = getattr(self.agent, "batch_size", 64)
             n_epochs = getattr(self.agent, "n_epochs", 10)
             logger.info("")
-            logger.info("=" * 60)
-            logger.info("PPO TRAINING DIAGNOSTICS")
-            logger.info("=" * 60)
+            logger.info("[PPO DIAGNOSTICS]")
             logger.info(
                 f"Rollout buffer: {n_steps} steps/env x {self.n_envs} envs = {n_steps * self.n_envs} total steps"
             )
@@ -430,7 +428,6 @@ class RLTrainer:
             logger.info(
                 "If no environment logs appear within 1 minute, training is likely frozen."
             )
-            logger.info("=" * 60)
             logger.info("")
 
         logger.info("Starting rollout collection now...")
