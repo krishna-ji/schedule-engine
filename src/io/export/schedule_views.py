@@ -457,8 +457,8 @@ def generate_instructor_schedules_pdf(
             gs = fig.add_gridspec(
                 2,
                 1,
-                height_ratios=[1.2, num_hours],
-                hspace=0.05,
+                height_ratios=[1.8, num_hours],
+                hspace=0.08,
                 left=0.07,
                 right=0.97,
                 top=0.97,
@@ -496,7 +496,7 @@ def generate_instructor_schedules_pdf(
             )
             ax_hdr.text(
                 0.0,
-                0.78,
+                0.85,
                 line1,
                 fontsize=11,
                 fontweight="bold",
@@ -508,9 +508,9 @@ def generate_instructor_schedules_pdf(
             )
             ax_hdr.text(
                 0.0,
-                0.25,
+                0.35,
                 f"Availability: {avail_text}",
-                fontsize=8.5,
+                fontsize=9,
                 family="monospace",
                 color="#555555",
                 va="top",
