@@ -164,7 +164,7 @@ def check_feasibility(
             (
                 "specific_lab_features",
                 _check_specific_lab_features,
-                (courses, rooms),
+                (courses, rooms, qts),
             )
         )
 
@@ -606,6 +606,7 @@ def _check_room_feature_bottleneck(
         feature_demand[course.required_room_features] += course.quanta_per_week
 
     # Calculate supply for each feature
+    # "both" type rooms contribute to both "lecture" and "practical" supply
     feature_supply: dict[str, int] = defaultdict(int)
     for room in rooms.values():
         if room.available_quanta:
@@ -613,6 +614,9 @@ def _check_room_feature_bottleneck(
         else:
             availability = len(all_operating_quanta)
 
+        if room.room_features == "both":
+            feature_supply["lecture"] += availability
+            feature_supply["practical"] += availability
         feature_supply[room.room_features] += availability
 
     # Check each feature
@@ -623,8 +627,13 @@ def _check_room_feature_bottleneck(
 
         if demand > adjusted_supply:
             shortage = demand - supply
-            # Count rooms with this feature
-            room_count = sum(1 for r in rooms.values() if r.room_features == feature)
+            # Count rooms with this feature (including "both" rooms for lecture/practical)
+            room_count = sum(
+                1
+                for r in rooms.values()
+                if r.room_features == feature
+                or (r.room_features == "both" and feature in ("lecture", "practical"))
+            )
 
             bottlenecks.append(
                 {
@@ -686,21 +695,25 @@ def _check_room_feature_bottleneck(
 def _check_specific_lab_features(
     courses: dict[tuple, Course],
     rooms: dict[str, Room],
+    qts: QuantumTimeSystem,
 ) -> FeasibilityResult:
     """
     Check 6: Specific Lab Feature Availability
 
-    Verifies that every specific lab feature required by practical courses
-    (e.g., "networking lab", "general programming lab") exists in at least
-    one room's specific_features list.
+    Three-layer analysis for practical room features:
 
-    This goes beyond the room-type check (lecture vs practical) and validates
-    that the actual lab equipment/capabilities are available.
+    Layer 1 — Existence:  Does the feature exist in ANY room?
+    Layer 2 — Type match: Does it exist on a practical-capable room
+              (type = "practical" or "both")?
+    Layer 3 — Capacity:   Is total quanta supply from rooms carrying
+              that feature ≥ the quanta demand from courses needing it?
 
-    Also checks per-feature capacity: for each required lab feature, are there
-    enough rooms with that feature to handle the total demand?
+    Theory courses are NOT checked here — they only need the broad
+    "lecture" type match (handled by ``_check_room_feature_bottleneck``).
     """
-    # Collect all specific features required by enrolled courses
+    all_operating_quanta = qts.get_all_operating_quanta()
+
+    # ── 1. Collect demand per specific feature ──────────────────────
     # feature -> list of course keys that need it
     feature_demand: dict[str, list[tuple]] = defaultdict(list)
     feature_quanta: dict[str, int] = defaultdict(int)
@@ -723,39 +736,67 @@ def _check_specific_lab_features(
             details={"required_features": 0, "available_features": 0},
         )
 
-    # Collect all specific features available across rooms,
-    # split by room type so we can verify practical courses get practical rooms.
+    # ── 2. Collect supply per specific feature ──────────────────────
     available_features: set[str] = set()
     practical_features: set[str] = set()
     feature_rooms: dict[str, list[str]] = defaultdict(list)
     feature_practical_rooms: dict[str, list[str]] = defaultdict(list)
+    # Per-feature quanta supply (only from practical-capable rooms)
+    feature_supply_quanta: dict[str, int] = defaultdict(int)
+
     for room in rooms.values():
+        is_practical_capable = room.room_features in ("practical", "both")
+        room_avail = (
+            len(room.available_quanta)
+            if room.available_quanta
+            else len(all_operating_quanta)
+        )
+
         for feat in room.specific_features:
             available_features.add(feat)
             feature_rooms[feat].append(room.room_id)
-            if room.room_features == "practical":
+            if is_practical_capable:
                 practical_features.add(feat)
                 feature_practical_rooms[feat].append(room.room_id)
+                feature_supply_quanta[feat] += room_avail
 
-    # Check for completely missing features
+    # ── 3. Layer 1 — Existence check ───────────────────────────────
     required_features = set(feature_demand.keys())
     missing_features = required_features - available_features
     present_features = required_features & available_features
 
-    # Also check for features only available in lecture rooms (type mismatch).
-    # Practical courses can only use practical rooms, so a feature that only
-    # exists on lecture rooms is effectively missing for scheduling.
+    # ── 4. Layer 2 — Type match check ──────────────────────────────
     type_mismatch_features: set[str] = set()
     for feat in present_features:
-        # All courses needing this feature are practical (they have specific_lab_features)
         if feat not in practical_features:
-            # Feature exists but ONLY on lecture rooms — unusable for practical courses
             type_mismatch_features.add(feat)
 
-    # Combine: truly missing + type-mismatched = effectively missing
-    _ = missing_features | type_mismatch_features  # union kept for documentation
+    # ── 5. Layer 3 — Capacity check (per-feature supply vs demand) ─
+    capacity_bottlenecks: list[dict[str, Any]] = []
+    for feat in sorted(present_features - type_mismatch_features):
+        demand = feature_quanta[feat]
+        supply = feature_supply_quanta.get(feat, 0)
+        adjusted_supply = supply * (1 + _TOLERANCE_MARGIN)
+        if demand > adjusted_supply:
+            shortage = demand - supply
+            course_keys = feature_demand[feat]
+            course_names = [
+                f"{ck[0]} ({ck[1]})" for ck in course_keys[:5] if ck in courses
+            ]
+            capacity_bottlenecks.append(
+                {
+                    "feature": feat,
+                    "demand_quanta": demand,
+                    "supply_quanta": supply,
+                    "shortage_quanta": shortage,
+                    "room_count": len(feature_practical_rooms.get(feat, [])),
+                    "rooms": feature_practical_rooms.get(feat, []),
+                    "required_by_courses": len(course_keys),
+                    "sample_courses": course_names,
+                }
+            )
 
-    # Build details for completely missing features (critical)
+    # ── 6. Build missing-feature details (Layer 1 failures) ────────
     missing_details: list[dict[str, Any]] = []
     for feat in sorted(missing_features):
         course_keys = feature_demand[feat]
@@ -770,16 +811,11 @@ def _check_specific_lab_features(
             }
         )
 
-    # Build details for type-mismatched features (warning only — scheduler
-    # doesn't use specific_lab_features for room assignment, and some courses
-    # legitimately list "Lecture Hall" in PracticalRoomFeatures for tutorials).
+    # ── 7. Build type-mismatch details (Layer 2 warnings) ──────────
     mismatch_details: list[dict[str, Any]] = []
     for feat in sorted(type_mismatch_features):
         course_keys = feature_demand[feat]
-        course_names = []
-        for ck in course_keys[:5]:
-            if ck in courses:
-                course_names.append(f"{ck[0]} ({ck[1]})")
+        course_names = [f"{ck[0]} ({ck[1]})" for ck in course_keys[:5] if ck in courses]
         mismatch_details.append(
             {
                 "feature": feat,
@@ -793,61 +829,101 @@ def _check_specific_lab_features(
             }
         )
 
-    # CRITICAL failure only for completely missing features.
-    # Type-mismatch is a warning (doesn't block scheduling).
-    passed = len(missing_features) == 0
+    # ── 8. Determine pass/fail ─────────────────────────────────────
+    # CRITICAL: missing features OR capacity bottlenecks
+    # WARNING:  type mismatches
+    passed = len(missing_features) == 0 and len(capacity_bottlenecks) == 0
+
+    usable_count = len(present_features - type_mismatch_features)
 
     if passed and not type_mismatch_features:
         message = (
-            f"All {len(required_features)} specific lab features are available "
-            f"in practical rooms ({len(practical_features)} practical room features) [!ok]"
+            f"All {len(required_features)} required practical room features exist "
+            f"with sufficient capacity ({usable_count} matched, "
+            f"{len(practical_features)} in practical rooms) [!ok]"
         )
     elif passed:
         message = (
-            f"All {len(required_features)} specific lab features found in rooms; "
+            f"All {len(required_features)} features found; "
             f"{len(type_mismatch_features)} only on lecture rooms (warning) [!ok]"
         )
     else:
+        parts = []
+        if missing_features:
+            parts.append(f"{len(missing_features)} MISSING from all rooms")
+        if capacity_bottlenecks:
+            parts.append(f"{len(capacity_bottlenecks)} have insufficient room capacity")
         message = (
-            f"{len(missing_features)}/{len(required_features)} specific lab feature(s) "
-            f"completely MISSING from all rooms ✗"
+            f"{' + '.join(parts)} out of {len(required_features)} "
+            f"required practical features ✗"
         )
         if type_mismatch_features:
             message += f" (+ {len(type_mismatch_features)} only on lecture rooms)"
 
+    # ── 9. Recommendations ─────────────────────────────────────────
     recommendations = []
+
     if missing_details:
-        recommendations.append("MISSING lab features (no room provides these):")
+        recommendations.append("MISSING features (no room provides these):")
         for d in missing_details:
             samples = ", ".join(d["sample_courses"])
             recommendations.append(
                 f"  • '{d['feature']}': {d['reason']} — needed by "
-                f"{d['required_by_courses']} course(s) ({d['total_quanta_demand']} quanta) "
-                f"— e.g. {samples}"
+                f"{d['required_by_courses']} course(s) "
+                f"({d['total_quanta_demand']} quanta) — e.g. {samples}"
             )
         recommendations.extend(
             [
                 "",
                 "Solutions:",
-                "• Add the missing features to the correct practical rooms in Rooms.json",
-                "• Ensure lab rooms (type=Practical) have their features listed",
-                "• Re-map course PracticalRoomFeatures in Course.json to existing room features",
+                "• Add the missing features to practical rooms in Rooms.json",
+                "• Re-map course PracticalRoomFeatures in Course.json "
+                "to existing room features",
             ]
         )
-    if mismatch_details:
+
+    if capacity_bottlenecks:
         if missing_details:
             recommendations.append("")
         recommendations.append(
-            "WARNING: Features only on lecture rooms (practical courses may need re-mapping):"
+            "CAPACITY bottlenecks (feature exists but not enough room-hours):"
+        )
+        for b in capacity_bottlenecks:
+            samples = ", ".join(b["sample_courses"])
+            recommendations.append(
+                f"  • '{b['feature']}': demand={b['demand_quanta']}q, "
+                f"supply={b['supply_quanta']}q, "
+                f"shortage={b['shortage_quanta']}q — "
+                f"{b['room_count']} room(s) {b['rooms']} — "
+                f"e.g. {samples}"
+            )
+        recommendations.extend(
+            [
+                "",
+                "Solutions:",
+                "• Add the feature to more practical/both rooms in Rooms.json",
+                "• Increase room availability hours",
+                "• Reduce practical hours for courses using these features",
+            ]
+        )
+
+    if mismatch_details:
+        if missing_details or capacity_bottlenecks:
+            recommendations.append("")
+        recommendations.append(
+            "WARNING: Features only on lecture rooms "
+            "(practical courses may need re-mapping):"
         )
         for d in mismatch_details:
             samples = ", ".join(d["sample_courses"])
             recommendations.append(
                 f"  • '{d['feature']}': {d['reason']} — e.g. {samples}"
             )
+
     if passed and not type_mismatch_features:
         recommendations.append(
-            f"All {len(present_features)} required lab features matched to practical rooms"
+            f"All {usable_count} required practical features matched "
+            f"to rooms with sufficient capacity"
         )
 
     return FeasibilityResult(
@@ -861,9 +937,11 @@ def _check_specific_lab_features(
             "practical_features": len(practical_features),
             "missing_count": len(missing_features),
             "type_mismatch_count": len(type_mismatch_features),
+            "capacity_bottleneck_count": len(capacity_bottlenecks),
             "missing_features": missing_details,
             "type_mismatch_warnings": mismatch_details,
-            "present_count": len(present_features - type_mismatch_features),
+            "capacity_bottlenecks": capacity_bottlenecks,
+            "present_count": usable_count,
         },
         recommendations=recommendations,
     )
@@ -1055,7 +1133,7 @@ def generate_feasibility_report_file(
     report: FeasibilityReport, output_path: str
 ) -> None:
     """
-    Generate a detailed text report file with feasibility analysis results.
+    Generate a detailed markdown report file with feasibility analysis results.
 
     Args:
         report: FeasibilityReport to save
@@ -1065,79 +1143,142 @@ def generate_feasibility_report_file(
     from pathlib import Path
 
     with Path(output_path).open("w", encoding="utf-8") as f:
-        f.write("=" * 80 + "\n")
-        f.write("FEASIBILITY ANALYSIS REPORT\n")
-        f.write("=" * 80 + "\n")
-        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Status: {report.summary['status'].upper()}\n")
-        f.write("\n")
+        status = report.summary["status"].upper()
+        status_icon = "✅" if status == "FEASIBLE" else "❌"
 
-        f.write("SUMMARY\n")
-        f.write("-" * 80 + "\n")
-        f.write(f"Total Checks: {report.summary['total_checks']}\n")
-        f.write(f"Passed: {report.summary['passed']}\n")
-        f.write(f"Failed: {report.summary['failed']}\n")
-        f.write(f"Critical Failures: {report.summary['critical_failures']}\n")
-        f.write("\n")
+        f.write("# Feasibility Analysis Report\n\n")
+        f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n")
+        f.write(f"**Status:** {status_icon} {status}\n\n")
 
-        f.write("DETAILED RESULTS\n")
-        f.write("=" * 80 + "\n")
+        # Summary table
+        f.write("## Summary\n\n")
+        f.write("| Metric | Value |\n")
+        f.write("|--------|-------|\n")
+        f.write(f"| Total Checks | {report.summary['total_checks']} |\n")
+        f.write(f"| Passed | {report.summary['passed']} |\n")
+        f.write(f"| Failed | {report.summary['failed']} |\n")
+        f.write(f"| Critical Failures | {report.summary['critical_failures']} |\n")
+        f.write("\n---\n\n")
+
+        # Detailed results
+        f.write("## Detailed Results\n\n")
 
         for i, result in enumerate(report.results, 1):
-            f.write(f"\n{i}. {result.check_name}\n")
-            f.write("-" * 80 + "\n")
-            f.write(f"Status: {'PASS' if result.passed else 'FAIL'}\n")
-            f.write(f"Severity: {result.severity.upper()}\n")
-            f.write(f"Message: {result.message}\n")
-            f.write("\n")
+            pass_icon = "✅" if result.passed else "❌"
+            severity_badge = f"`{result.severity.upper()}`"
 
-            # Write detailed information in human-readable format
+            f.write(f"### {i}. {result.check_name}\n\n")
+            f.write("| | |\n|---|---|\n")
+            f.write(
+                f"| **Status** | {pass_icon} {'PASS' if result.passed else 'FAIL'} |\n"
+            )
+            f.write(f"| **Severity** | {severity_badge} |\n")
+            f.write(f"| **Message** | {result.message} |\n\n")
+
+            # Write detailed information
             if result.details:
-                f.write("Details:\n")
+                f.write("#### Details\n\n")
 
-                # Format details based on check type
                 if result.details.get("bottlenecks"):
-                    f.write(
-                        f"  Bottlenecks Found: {len(result.details['bottlenecks'])}\n\n"
-                    )
-                    for j, bottleneck in enumerate(result.details["bottlenecks"], 1):
-                        f.write(f"  Bottleneck {j}:\n")
-                        for key, value in bottleneck.items():
-                            f.write(f"    {key}: {value}\n")
+                    bottlenecks = result.details["bottlenecks"]
+                    f.write(f"**Bottlenecks Found:** {len(bottlenecks)}\n\n")
+
+                    # Render bottlenecks as a table if they have consistent keys
+                    if bottlenecks:
+                        keys = list(bottlenecks[0].keys())
+                        f.write(
+                            "| # | "
+                            + " | ".join(k.replace("_", " ").title() for k in keys)
+                            + " |\n"
+                        )
+                        f.write("|---" * (len(keys) + 1) + "|\n")
+                        for j, bottleneck in enumerate(bottlenecks, 1):
+                            vals = [str(bottleneck.get(k, "")) for k in keys]
+                            f.write(f"| {j} | " + " | ".join(vals) + " |\n")
                         f.write("\n")
 
-                # Check for overloaded groups (stored in 'details' subkey for group pigeonhole)
                 elif (
                     "details" in result.details
                     and isinstance(result.details["details"], list)
                     and result.details["details"]
                 ):
-                    f.write(
-                        f"  Overloaded Groups: {len(result.details['details'])}\n\n"
-                    )
-                    for j, group_info in enumerate(result.details["details"], 1):
-                        f.write(f"  Group {j}:\n")
-                        for key, value in group_info.items():
-                            f.write(f"    {key}: {value}\n")
+                    groups_list = result.details["details"]
+                    f.write(f"**Overloaded Groups:** {len(groups_list)}\n\n")
+
+                    if groups_list:
+                        keys = list(groups_list[0].keys())
+                        f.write(
+                            "| # | "
+                            + " | ".join(k.replace("_", " ").title() for k in keys)
+                            + " |\n"
+                        )
+                        f.write("|---" * (len(keys) + 1) + "|\n")
+                        for j, group_info in enumerate(groups_list, 1):
+                            vals = [str(group_info.get(k, "")) for k in keys]
+                            f.write(f"| {j} | " + " | ".join(vals) + " |\n")
                         f.write("\n")
 
                 else:
-                    # Generic detail printing for other metrics
+                    # Generic key-value details
+                    has_simple = False
                     for key, value in result.details.items():
-                        if key not in ["bottlenecks", "details"] and not isinstance(
-                            value, list | dict
-                        ):
-                            f.write(f"  {key}: {value}\n")
-                    f.write("\n")
+                        if key not in (
+                            "bottlenecks",
+                            "details",
+                            "missing_features",
+                            "type_mismatch_warnings",
+                        ) and not isinstance(value, list | dict):
+                            if not has_simple:
+                                f.write("| Key | Value |\n|-----|-------|\n")
+                                has_simple = True
+                            f.write(f"| {key.replace('_', ' ').title()} | {value} |\n")
+                    if has_simple:
+                        f.write("\n")
+
+                    # Handle missing_features and type_mismatch_warnings lists
+                    for list_key in ("missing_features", "type_mismatch_warnings"):
+                        if result.details.get(list_key):
+                            items = result.details[list_key]
+                            header = list_key.replace("_", " ").title()
+                            f.write(f"**{header}:**\n\n")
+                            for item in items:
+                                if isinstance(item, dict):
+                                    feat = item.get("feature", "?")
+                                    reason = item.get("reason", "")
+                                    samples = ", ".join(item.get("sample_courses", []))
+                                    f.write(f"- **{feat}**: {reason}")
+                                    if samples:
+                                        f.write(f" — e.g. {samples}")
+                                    f.write("\n")
+                            f.write("\n")
 
             if result.recommendations:
-                f.write("Recommendations:\n")
+                f.write("#### Recommendations\n\n")
                 for rec in result.recommendations:
-                    f.write(f"  {rec}\n")
+                    rec_stripped = rec.strip()
+                    if not rec_stripped:
+                        continue
+                    # Detect section headers (lines ending with :)
+                    if rec_stripped.endswith(":") and not rec_stripped.startswith("•"):
+                        f.write(f"**{rec_stripped}**\n\n")
+                    elif rec_stripped.startswith("•"):
+                        f.write(f"- {rec_stripped[1:].strip()}\n")
+                    elif rec_stripped.startswith("  •"):
+                        f.write(f"  - {rec_stripped[3:].strip()}\n")
+                    else:
+                        f.write(f"- {rec_stripped}\n")
                 f.write("\n")
 
-            f.write("\n")
+            f.write("---\n\n")
 
-        f.write("=" * 80 + "\n")
-        f.write("END OF REPORT\n")
-        f.write("=" * 80 + "\n")
+        # Footer
+        if report.is_feasible:
+            f.write(
+                "> ✅ **Problem is feasible** — all critical checks passed. GA should find a solution.  \n"
+            )
+            f.write("> *Note: this doesn't guarantee a perfect solution exists.*\n")
+        else:
+            f.write(
+                f"> ❌ **Problem is INFEASIBLE** — {report.summary['critical_failures']} critical issue(s) found.  \n"
+            )
+            f.write("> *GA will not find a valid solution until these are fixed.*\n")

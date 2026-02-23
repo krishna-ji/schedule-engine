@@ -729,7 +729,7 @@ Each run produces (in `output/ga_<mode>/<timestamp>/`):
 |------|---------|
 | `results.json` | Full results including convergence history |
 | `run.log` | Detailed text log |
-| `feasibility_report.txt` | Pre-run data quality check |
+| `feasibility_report.md` | Pre-run data quality check |
 | `hard_violations.png` | Hard penalty convergence plot |
 | `soft_violations.png` | Soft penalty convergence plot |
 | `pareto_front.png` | Final population in objective space |

@@ -586,13 +586,13 @@
     "availability": {
       "Tuesday": [
         {
-          "start": "11:30",
+          "start": "11:00",
           "end": "13:00"
         }
       ],
       "Wednesday": [
         {
-          "start": "11:30",
+          "start": "11:00",
           "end": "13:00"
         }
       ]
@@ -789,13 +789,13 @@
     "availability": {
       "Friday": [
         {
-          "start": "14:30",
+          "start": "14:00",
           "end": "16:00"
         }
       ],
       "Sunday": [
         {
-          "start": "14:30",
+          "start": "14:00",
           "end": "16:00"
         }
       ]
@@ -1886,8 +1886,8 @@
       ],
       "Tuesday": [
         {
-          "start": "12:15",
-          "end": "13:45"
+          "start": "12:00",
+          "end": "14:00"
         }
       ]
     }
@@ -3649,13 +3649,13 @@
     "availability": {
       "Thursday": [
         {
-          "start": "11:30",
+          "start": "11:00",
           "end": "13:00"
         }
       ],
       "Wednesday": [
         {
-          "start": "11:30",
+          "start": "11:00",
           "end": "13:00"
         }
       ]
@@ -4639,13 +4639,13 @@
     "availability": {
       "Friday": [
         {
-          "start": "14:30",
+          "start": "14:00",
           "end": "16:00"
         }
       ],
       "Wednesday": [
         {
-          "start": "14:30",
+          "start": "14:00",
           "end": "16:00"
         }
       ]

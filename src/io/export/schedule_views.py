@@ -188,20 +188,6 @@ def _draw_calendar(
     )
     ax.tick_params(axis="y", length=0, pad=8)
 
-    # ── Alternating row shading ──
-    for h in range(start_hour, end_hour):
-        if (h - start_hour) % 2 == 0:
-            ax.add_patch(
-                plt.Rectangle(
-                    (0, h),
-                    num_days,
-                    1,
-                    facecolor=_ALT_ROW_COLOR,
-                    edgecolor="none",
-                    zorder=0,
-                )
-            )
-
     # ── Grid lines ──
     for h in range(start_hour, end_hour + 1):
         ax.axhline(y=h, color=_GRID_LINE_COLOR, linewidth=0.6, zorder=1)
@@ -291,10 +277,10 @@ def _draw_availability_bands(
                 (x, y0),
                 1.0,
                 y1 - y0,
-                facecolor="#D5F5D5",
+                facecolor="#8CD98C",
                 edgecolor="none",
                 alpha=0.45,
-                zorder=0,
+                zorder=0.5,
             )
             ax.add_patch(rect)
 
@@ -463,12 +449,27 @@ def generate_instructor_schedules_pdf(
             my_viol = viol.get(iid, {})
 
             fig_w = max(11, num_days * 2.4)
-            fig_h = max(6, num_hours * 0.95 + 2.5)
-            fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+            fig_h = max(7, num_hours * 0.95 + 3.5)
+
+            # Two-row layout: header text row (fixed height) + calendar row.
+            # gridspec height_ratios ensures the header never overlaps.
+            fig = plt.figure(figsize=(fig_w, fig_h))
+            gs = fig.add_gridspec(
+                2,
+                1,
+                height_ratios=[1.2, num_hours],
+                hspace=0.05,
+                left=0.07,
+                right=0.97,
+                top=0.97,
+                bottom=0.04,
+            )
+            ax_hdr = fig.add_subplot(gs[0])
+            ax = fig.add_subplot(gs[1])
             fig.patch.set_facecolor("#FFFFFF")
             ax.set_facecolor("#FFFFFF")
 
-            # ── Header ──
+            # ── Header (drawn in its own axes — structurally above calendar) ──
             avail_text = _format_instructor_availability(inst, qts)
             total_v = sum(my_viol.values())
             viol_detail = ", ".join(
@@ -482,19 +483,39 @@ def generate_instructor_schedules_pdf(
             n_sessions = len(my_sessions)
             total_quanta = sum(len(s.session_quanta) for s in my_sessions)
 
-            title = (
-                f"{inst.name}  ({iid})\n"
-                f"Availability: {avail_text}\n"
+            # Render header lines in the dedicated header axes (2 lines only)
+            # Line 1: Name + ID + session stats + violations (merged)
+            # Line 2: Availability
+            ax_hdr.set_xlim(0, 1)
+            ax_hdr.set_ylim(0, 1)
+            ax_hdr.axis("off")
+
+            line1 = (
+                f"{inst.name}  ({iid})    |    "
                 f"Sessions: {n_sessions}   Quanta: {total_quanta}   {viol_line}"
             )
-            ax.set_title(
-                title,
-                fontsize=12,
+            ax_hdr.text(
+                0.0,
+                0.78,
+                line1,
+                fontsize=11,
                 fontweight="bold",
-                pad=28,
-                loc="left",
                 family="monospace",
                 color="#2C3E6B",
+                va="top",
+                ha="left",
+                transform=ax_hdr.transAxes,
+            )
+            ax_hdr.text(
+                0.0,
+                0.25,
+                f"Availability: {avail_text}",
+                fontsize=8.5,
+                family="monospace",
+                color="#555555",
+                va="top",
+                ha="left",
+                transform=ax_hdr.transAxes,
             )
 
             # ── Availability bands ──
@@ -514,7 +535,6 @@ def generate_instructor_schedules_pdf(
                 active_days=active_days,
             )
 
-            plt.tight_layout()
             pdf.savefig(fig, bbox_inches="tight")
             plt.close(fig)
 
