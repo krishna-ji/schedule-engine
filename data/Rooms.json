@@ -179,9 +179,9 @@
   },
   {
     "room_id": "B202",
-    "name": "Lecture Room [B-202]",
+    "name": "Language & Communication Lab [B-202]",
     "capacity": 48,
-    "type": "Lecture",
+    "type": "Both",
     "features": [
       "Language and Communication Lab"
     ]
@@ -206,9 +206,9 @@
   },
   {
     "room_id": "B207",
-    "name": "Lecture Room [B-207]",
+    "name": "Design Studio / Seminar [B-207]",
     "capacity": 48,
-    "type": "Lecture",
+    "type": "Both",
     "features": [
       "Design Studio",
       "Seminar Room"
@@ -225,9 +225,9 @@
   },
   {
     "room_id": "B308",
-    "name": "Lecture Room [B-308]",
+    "name": "Metrology Lab / Workshop [B-308]",
     "capacity": 48,
-    "type": "Lecture",
+    "type": "Both",
     "features": [
       "Metrology Lab",
       "Production Workshop"
@@ -244,9 +244,9 @@
   },
   {
     "room_id": "B310",
-    "name": "Lecture Room [B-310]",
+    "name": "Workshop / Seminar [B-310]",
     "capacity": 48,
-    "type": "Lecture",
+    "type": "Both",
     "features": [
       "Production Workshop",
       "Seminar Room"
@@ -579,27 +579,30 @@
     "room_id": "B303",
     "name": "Seminar Hall [B-303]",
     "capacity": 48,
-    "type": "Lecture",
+    "type": "Both",
     "features": [
-      "Seminar Room"
+      "Seminar Room",
+      "Lecture Hall"
     ]
   },
   {
     "room_id": "E104",
     "name": "Seminar Hall [E-104]",
     "capacity": 48,
-    "type": "Lecture",
+    "type": "Both",
     "features": [
-      "Seminar Room"
+      "Seminar Room",
+      "Lecture Hall"
     ]
   },
   {
     "room_id": "E405",
     "name": "Seminar Hall [E-405]",
     "capacity": 48,
-    "type": "Lecture",
+    "type": "Both",
     "features": [
-      "Seminar Room"
+      "Seminar Room",
+      "Lecture Hall"
     ]
   },
   {

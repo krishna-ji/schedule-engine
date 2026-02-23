@@ -57,6 +57,10 @@ def is_room_type_compatible(required: str, room_type: str) -> bool:
     if req == room:
         return True
 
+    # "Both" type rooms are compatible with any requirement
+    if room in ["both", "multipurpose"]:
+        return True
+
     # Lecture/theory courses: Accept lecture, classroom, auditorium, seminar, tutorial
     if req in ["lecture", "classroom", "theory"] and room in [
         "lecture",

@@ -10,6 +10,7 @@ All modes share the same pipeline:
 
 from __future__ import annotations
 
+import csv
 import logging
 import pickle
 import time
@@ -355,32 +356,84 @@ class GAExperiment(BaseExperiment):
                 ),
             )
 
-        # ── 5. Schedule PDFs (calendar, instructor, room) ─────────
+        # ── 5. Generation-wise CSV log ─────────────────────────────
+        self._safe_call(
+            "convergence CSV",
+            lambda: self._write_convergence_csv(
+                out,
+                best_hards,
+                best_softs,
+                best_breakdowns,
+                best_soft_breakdowns,
+            ),
+        )
+
+        # ── 6. Schedule PDFs (calendar, instructor, room) ─────────
+        # Always attempt PDF export on the best individual found,
+        # even when hard > 0.  This is essential for thesis reporting.
         if self.export_pdf:
-            G = res.pop.get("G")
-            cv = G.sum(axis=1).clip(0)
-            has_feasible = int((cv == 0).sum()) > 0
-            if has_feasible or self.force_pdf:
-                X_best = res.pop[best_idx].get("X")
-                genes = self._chromosome_to_genes(X_best, pkl_data)
-                if genes is not None:
-                    self._safe_call(
-                        "schedule decode + export",
-                        lambda: (self._export_schedule_pdfs(genes, ctx, qts, out)),
-                    )
-                else:
-                    self.logger.warning(
-                        "Skipping schedule PDF export — gene bridge failed"
-                    )
+            X_best = res.pop[best_idx].get("X")
+            genes = self._chromosome_to_genes(X_best, pkl_data)
+            if genes is not None:
+                self._safe_call(
+                    "schedule decode + export",
+                    lambda: self._export_schedule_pdfs(genes, ctx, qts, out),
+                )
             else:
-                self.logger.info(
-                    "  [skip] No feasible solution — schedule PDFs skipped "
-                    "(use force_pdf=True or --force-pdf to override)"
+                self.logger.error(
+                    "Skipping schedule PDF export — chromosome-to-gene "
+                    "bridge returned None (see traceback above)"
                 )
         else:
             self.logger.info("  [skip] PDF export disabled (export_pdf=False)")
 
         self.logger.info(f"Output artefacts written to {self.output_dir}")
+
+    # ── CSV helpers ────────────────────────────────────────────
+
+    @staticmethod
+    def _write_convergence_csv(
+        output_dir: str,
+        best_hards: list[float],
+        best_softs: list[float],
+        best_breakdowns: list[dict],
+        best_soft_breakdowns: list[dict],
+    ) -> None:
+        """Write ``convergence_history.csv`` with per-gen constraint data."""
+        path = Path(output_dir) / "convergence_history.csv"
+
+        # Hard constraint short names
+        hc_keys = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp", "sib"]
+        # Soft constraint short names
+        sc_keys = ["sComp", "iComp", "lunch", "paired"]
+
+        header = (
+            ["Gen", "Best_Hard", "Best_Soft"]
+            + [f"hc_{k}" for k in hc_keys]
+            + [f"sc_{k}" for k in sc_keys]
+        )
+
+        n_gens = len(best_hards)
+        with open(path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for g in range(n_gens):
+                hc_vals = [
+                    best_breakdowns[g].get(k, 0) if g < len(best_breakdowns) else 0
+                    for k in hc_keys
+                ]
+                sc_vals = [
+                    (
+                        best_soft_breakdowns[g].get(k, 0)
+                        if g < len(best_soft_breakdowns) and best_soft_breakdowns[g]
+                        else 0
+                    )
+                    for k in sc_keys
+                ]
+                writer.writerow(
+                    [g + 1, int(best_hards[g]), int(best_softs[g])] + hc_vals + sc_vals
+                )
+        logger.info("  convergence CSV -> %s (%d rows)", path, n_gens)
 
     def _export_schedule_pdfs(
         self,
@@ -461,12 +514,12 @@ class GAExperiment(BaseExperiment):
         )
 
     def _safe_call(self, label: str, fn: Any) -> None:
-        """Execute *fn* and swallow any exception, logging it instead."""
+        """Execute *fn* and swallow any exception, logging it with full traceback."""
         try:
             fn()
             self.logger.info(f"  [ok] {label}")
         except Exception as exc:
-            self.logger.warning(f"  [FAIL] {label}: {exc}")
+            self.logger.error("  [FAIL] %s: %s", label, exc, exc_info=True)
 
     # ── Core execution ─────────────────────────────────────────────
 
@@ -508,7 +561,7 @@ class GAExperiment(BaseExperiment):
 
         # Always save feasibility report to the timestamped output folder
         if feasibility_report is not None:
-            report_path = self.output_dir / "feasibility_report.txt"
+            report_path = self.output_dir / "feasibility_report.md"
             generate_feasibility_report_file(feasibility_report, str(report_path))
             self.logger.info(f"Feasibility report -> {report_path}")
 
@@ -638,20 +691,22 @@ class GAExperiment(BaseExperiment):
 
 
 class BaselineExperiment(GAExperiment):
-    """NSGA-II + vectorized repair — no local search, no memetic callbacks.
+    """Pure NSGA-II control group — NO repair operator.
 
-    This is the simplest *working* mode: plain NSGA-II with the
-    per-generation vectorized repair operator that enforces domain
-    feasibility.  No elite repair, no stagnation adaptation, no CP.
+    This is the thesis control: plain NSGA-II with crossover + mutation
+    only.  No vectorized repair, no elite repair, no stagnation
+    adaptation, no CP.  Provides the unassisted search baseline against
+    which Memetic / Aggressive / Adaptive modes are compared.
 
     Default config:
-        pop_size=100, ngen=200, cx=0.5, mut=0.05, use_repair=True
+        pop_size=100, ngen=200, cx=0.5, mut=0.05, use_repair=False
     """
 
     def __init__(self, **kwargs):
         kwargs.setdefault("mode", "baseline")
         kwargs.setdefault("crossover_prob", 0.5)
         kwargs.setdefault("mutation_event_prob", 0.05)
+        kwargs.setdefault("use_repair", False)
         super().__init__(**kwargs)
 
 
