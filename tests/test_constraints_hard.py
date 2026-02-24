@@ -11,8 +11,8 @@ Hard constraints:
     HC4: InstructorQualifications  — instructors must be qualified for their course
     HC5: RoomSuitability           — rooms must match course type (lecture/lab)
     HC6: InstructorTimeAvailability — part-time instructors only available at certain times
-    HC7: RoomTimeAvailability      — rooms only available at certain times
-    HC8: CourseCompleteness        — each course-group must get exactly the required quanta
+    HC7: CourseCompleteness        — each course-group must get exactly the required quanta
+    HC8: SiblingSameDay            — sub-sessions must not be on the same day
 """
 
 from __future__ import annotations
@@ -38,7 +38,6 @@ from src.constraints.constraints import (
     InstructorTimeAvailability,
     RoomExclusivity,
     RoomSuitability,
-    RoomTimeAvailability,
     StudentGroupExclusivity,
 )
 from src.domain.timetable import Timetable
@@ -634,76 +633,6 @@ class TestInstructorTimeAvailability:
         )
         tt = Timetable([gene], ctx)
         assert_constraint_positive(self.constraint, tt, expected=1)
-
-
-# HC7: RoomTimeAvailability
-
-
-class TestRoomTimeAvailability:
-    """Rooms only available during specific time slots."""
-
-    constraint = RoomTimeAvailability()
-
-    def test_room_available(self):
-        """Room available at scheduled time → no violation."""
-        room = make_room("R1", available_quanta={0, 1})
-        gene = make_gene(room_id="R1", start=0, duration=2)
-        ctx = make_context(rooms=[room])
-        tt = Timetable([gene], ctx)
-        assert_constraint_zero(self.constraint, tt)
-
-    def test_room_unavailable(self):
-        """Room not available at scheduled time → penalty per quantum."""
-        room = make_room("R1", available_quanta={2, 3})
-        gene = make_gene(room_id="R1", start=0, duration=2)
-        ctx = make_context(rooms=[room])
-        tt = Timetable([gene], ctx)
-        assert_constraint_positive(self.constraint, tt, expected=2)
-
-    def test_room_partially_available(self):
-        """Room available for first quantum only → 1 violation."""
-        room = make_room("R1", available_quanta={0})
-        gene = make_gene(room_id="R1", start=0, duration=2)
-        ctx = make_context(rooms=[room])
-        tt = Timetable([gene], ctx)
-        assert_constraint_positive(self.constraint, tt, expected=1)
-
-    def test_room_missing_raises(self):
-        """Gene references unknown room → KeyError from Timetable."""
-        gene = make_gene(room_id="GHOST")
-        ctx = make_context()
-        tt = Timetable([gene], ctx)
-        with pytest.raises(KeyError):
-            self.constraint.evaluate(tt)
-
-    def test_empty_available_quanta(self):
-        """Room with empty available_quanta set → every quantum is unavailable.
-        NOTE: The constraint treats empty set as 'never available', not 'always available'.
-        This documents the current behavior — see Room model for design discussion."""
-        room = make_room("R1", available_quanta=set())
-        gene = make_gene(room_id="R1", start=0, duration=2)
-        ctx = make_context(rooms=[room])
-        tt = Timetable([gene], ctx)
-        assert_constraint_positive(self.constraint, tt, expected=2)
-
-    def test_boundary_exactly_at_available_edge(self):
-        """Gene spans q=2-4, room available at {2,3} → q=4 is the only violation."""
-        room = make_room("R1", available_quanta={2, 3})
-        gene = make_gene(room_id="R1", start=2, duration=3)
-        ctx = make_context(
-            courses=[make_course("CS101", quanta=3)],
-            rooms=[room],
-        )
-        tt = Timetable([gene], ctx)
-        assert_constraint_positive(self.constraint, tt, expected=1)
-
-    def test_full_availability_no_violations(self):
-        """Room available for all quanta → 0 violations (sanity check)."""
-        room = make_room("R1", available_quanta=set(range(42)))
-        gene = make_gene(room_id="R1", start=0, duration=2)
-        ctx = make_context(rooms=[room])
-        tt = Timetable([gene], ctx)
-        assert_constraint_zero(self.constraint, tt)
 
 
 # HC8: CourseCompleteness

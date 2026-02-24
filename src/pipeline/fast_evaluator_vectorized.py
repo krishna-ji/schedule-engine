@@ -7,7 +7,7 @@ in a single numpy call.
 Public API
 ----------
     prepare_vectorized_data(pkl_data) -> VectorizedEvalData
-    fast_evaluate_hard_vectorized(X, vdata) -> G   # shape (N, 9)
+    fast_evaluate_hard_vectorized(X, vdata) -> G   # shape (N, 8)
 
 The result is numerically identical to ``fast_evaluate_hard_batch``.
 """
@@ -28,7 +28,6 @@ HARD_CONSTRAINT_NAMES = [
     "instructor_qualifications",
     "room_suitability",
     "instructor_time_availability",
-    "room_time_availability",
     "course_completeness",
     "sibling_same_day",
 ]
@@ -220,7 +219,7 @@ def fast_evaluate_hard_vectorized(
 
     Returns
     -------
-    G : ndarray, shape (N, 9), int64
+    G : ndarray, shape (N, 8), int64
         Per-constraint violation counts.  Column order matches
         ``HARD_CONSTRAINT_NAMES``.
     """
@@ -320,27 +319,16 @@ def fast_evaluate_hard_vectorized(
     ).astype(np.int64)
 
     # ================================================================
-    # Room time-availability
-    # ================================================================
-    unavail_room = ~vdata.room_avail_bool[r_flat, q_flat]  # (N*Q,) bool
-    room_avail_viol = np.bincount(
-        n_idx_ri,
-        weights=unavail_room.view(np.uint8).astype(np.float64),
-        minlength=N,
-    ).astype(np.int64)
-
-    # ================================================================
     # Assemble G
     # ================================================================
-    G = np.empty((N, 9), dtype=np.int64)
+    G = np.empty((N, 8), dtype=np.int64)
     G[:, 0] = group_viol
     G[:, 1] = inst_viol
     G[:, 2] = room_viol
     G[:, 3] = qual_viol
     G[:, 4] = suit_viol
     G[:, 5] = inst_avail_viol
-    G[:, 6] = room_avail_viol
-    G[:, 7] = 0  # course_completeness — always 0
+    G[:, 6] = 0  # course_completeness — always 0
 
     # ================================================================
     # Sibling same-day: penalize sub-sessions of the same course on
@@ -354,8 +342,8 @@ def fast_evaluate_hard_vectorized(
         sp_j = sibling_pairs[:, 1]  # (P,)
         # days[:, sp_i] and days[:, sp_j] are (N, P)
         same_day = days[:, sp_i] == days[:, sp_j]  # (N, P) bool
-        G[:, 8] = same_day.sum(axis=1)  # (N,)
+        G[:, 7] = same_day.sum(axis=1)  # (N,)
     else:
-        G[:, 8] = 0
+        G[:, 7] = 0
 
     return G

@@ -1,6 +1,62 @@
 import random
+from typing import TYPE_CHECKING
 
 from src.domain.gene import SessionGene
+
+if TYPE_CHECKING:
+    from src.domain.types import SchedulingContext
+
+
+def _is_swap_valid(
+    gene1: SessionGene,
+    gene2: SessionGene,
+    context: "SchedulingContext",
+) -> bool:
+    """Check if swapping instructor/room between gene1 and gene2 would
+    violate instructor qualification or room suitability constraints.
+
+    Both genes must be for the same course offering (same course_id, group_ids).
+    """
+    from src.utils.room_compatibility import is_room_suitable_for_course
+
+    course_key1 = (gene1.course_id, gene1.course_type)
+    course_key2 = (gene2.course_id, gene2.course_type)
+
+    # --- Instructor qualification check ---
+    # After swap: gene1 gets gene2's instructor, gene2 gets gene1's instructor
+    inst1 = context.instructors.get(gene2.instructor_id)
+    inst2 = context.instructors.get(gene1.instructor_id)
+
+    if inst1 and course_key1 not in getattr(inst1, "qualified_courses", []):
+        return False
+    if inst2 and course_key2 not in getattr(inst2, "qualified_courses", []):
+        return False
+
+    # --- Room suitability check ---
+    for gene, incoming_room_id in [(gene1, gene2.room_id), (gene2, gene1.room_id)]:
+        course_key = (gene.course_id, gene.course_type)
+        course = context.courses.get(course_key)
+        room = context.rooms.get(incoming_room_id)
+        if not course or not room:
+            continue
+
+        required = getattr(course, "required_room_features", "lecture")
+        req_str = (
+            (required if isinstance(required, str) else str(required)).lower().strip()
+        )
+        room_type = getattr(room, "room_features", "lecture")
+        room_str = (
+            (room_type if isinstance(room_type, str) else str(room_type))
+            .lower()
+            .strip()
+        )
+        lab_feats = getattr(course, "specific_lab_features", None)
+        room_spec = getattr(room, "specific_features", None)
+
+        if not is_room_suitable_for_course(req_str, room_str, lab_feats, room_spec):
+            return False
+
+    return True
 
 
 def crossover_course_group_aware(
@@ -8,6 +64,7 @@ def crossover_course_group_aware(
     ind2: list[SessionGene],
     cx_prob: float = 0.5,
     validate: bool = True,
+    context: "SchedulingContext | None" = None,
 ) -> tuple[list[SessionGene], list[SessionGene]]:
     """
     Position-Independent Crossover that preserves (course, group) structure.
@@ -78,6 +135,10 @@ def crossover_course_group_aware(
         if random.random() < cx_prob:
             gene1 = gene_map1[key]
             gene2 = gene_map2[key]
+
+            # STRICT: reject swap if it would violate qualification or suitability
+            if context is not None and not _is_swap_valid(gene1, gene2, context):
+                continue
 
             # Swap ONLY mutable attributes (NOT course_id or group_ids)
             # This preserves the fundamental chromosome structure

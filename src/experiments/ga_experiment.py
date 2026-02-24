@@ -445,10 +445,8 @@ class GAExperiment(BaseExperiment):
         """Decode genes -> CourseSession list, then export all PDFs + reports."""
         from src.io.decoder import decode_individual
         from src.io.export.exporter import export_everything
-        from src.io.export.schedule_views import (
-            generate_instructor_schedules_pdf,
-            generate_room_schedules_pdf,
-        )
+        from src.io.export.schedule_views import (generate_instructor_schedules_pdf,
+                                                  generate_room_schedules_pdf)
         from src.io.export.violation_reporter import generate_violation_report
 
         sessions = decode_individual(
@@ -534,10 +532,8 @@ class GAExperiment(BaseExperiment):
         Returns (store, ctx, qts).
         """
         from src.io.data_store import DataStore
-        from src.io.feasibility import (
-            InfeasibleProblemError,
-            generate_feasibility_report_file,
-        )
+        from src.io.feasibility import (InfeasibleProblemError,
+                                        generate_feasibility_report_file)
         from src.io.time_system import QuantumTimeSystem
 
         feasibility_report = None
@@ -625,7 +621,10 @@ class GAExperiment(BaseExperiment):
         # Extract best
         F = res.pop.get("F")
         G = res.pop.get("G")
-        cv = G.sum(axis=1).clip(0)
+        # Exclude tolerated columns (iAvl col 5) from cv
+        from src.pipeline.scheduling_problem import _TOLERATED_HARD_COLS
+        _strict = [i for i in range(G.shape[1]) if i not in _TOLERATED_HARD_COLS]
+        cv = G[:, _strict].sum(axis=1).clip(0)
         best_idx = int(np.argmin(cv))
 
         self.logger.info(f"Done in {elapsed:.1f}s  ({elapsed / self.ngen:.2f}s/gen)")

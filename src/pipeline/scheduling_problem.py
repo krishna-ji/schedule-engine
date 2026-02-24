@@ -18,17 +18,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from .encoding import EncodingSpec, chromosome_views
-from .fast_evaluator_vectorized import (
-    VectorizedEvalData,
-    fast_evaluate_hard_vectorized,
-    prepare_vectorized_data,
-)
-from .soft_evaluator_vectorized import (
-    SoftVectorizedData,
-    eval_soft_vectorized_breakdown,
-    evaluate_paired_cohorts_vectorized,
-    prepare_soft_vectorized_data,
-)
+from .fast_evaluator_vectorized import (VectorizedEvalData,
+                                        fast_evaluate_hard_vectorized,
+                                        prepare_vectorized_data)
+from .soft_evaluator_vectorized import (SoftVectorizedData,
+                                        eval_soft_vectorized_breakdown,
+                                        evaluate_paired_cohorts_vectorized,
+                                        prepare_soft_vectorized_data)
 from .vectorized_lookups import VectorizedLookups, build_vectorized_lookups
 
 if TYPE_CHECKING:
@@ -49,10 +45,17 @@ HARD_CONSTRAINT_NAMES = [
     "instructor_qualifications",
     "room_suitability",
     "instructor_time_availability",
-    "room_time_availability",
     "course_completeness",
     "sibling_same_day",
 ]
+
+# Indices of G columns that are TOLERATED (excluded from hard objective,
+# added to soft instead).  instructor_time_availability (col 5) is
+# structurally infeasible for some events, so we treat it as soft.
+_TOLERATED_HARD_COLS = frozenset({5})  # iAvl
+_STRICT_HARD_COLS = np.array(
+    [i for i in range(len(HARD_CONSTRAINT_NAMES)) if i not in _TOLERATED_HARD_COLS]
+)
 
 
 class SchedulingProblem(Problem):
@@ -142,7 +145,12 @@ class SchedulingProblem(Problem):
 
         # ---- Objectives ----
         F = np.zeros((pop_size, 2))
-        F[:, 0] = G.sum(axis=1)  # total hard penalty
+        # Only strict hard columns contribute to F[0]; tolerated ones
+        # (e.g. iAvl) are shifted to the soft objective.
+        F[:, 0] = G[:, _STRICT_HARD_COLS].sum(axis=1)  # strict hard penalty
+        # Add tolerated hard-constraint violations as soft penalty
+        for col in _TOLERATED_HARD_COLS:
+            F[:, 1] += G[:, col]
 
         # ---- Soft evaluation (vectorized over full population) ----
         soft_total, soft_bd = eval_soft_vectorized_breakdown(x, self._soft_data)

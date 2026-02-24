@@ -293,31 +293,6 @@ class InstructorTimeAvailability:
         return violations
 
 
-class RoomTimeAvailability:
-    """Rooms only used during their available time slots."""
-
-    kind: str = "hard"
-
-    def __init__(self, weight: float = 1.0):
-        self.name = "room_time_availability"
-        self.weight = weight
-
-    def evaluate(self, tt: Timetable) -> float:
-        """Check room availability for each session."""
-        violations = 0
-
-        for gene in tt.genes:
-            room = tt.room_for_gene(gene)
-            if not room:
-                continue
-
-            for q in range(gene.start_quanta, gene.start_quanta + gene.num_quanta):
-                if q not in room.available_quanta:
-                    violations += 1
-
-        return violations
-
-
 class CourseCompleteness:
     """Each course scheduled for exactly required quanta per week."""
 
@@ -701,7 +676,6 @@ HARD_CONSTRAINT_CLASSES: list[Constraint] = [
     InstructorQualifications(),
     RoomSuitability(),
     InstructorTimeAvailability(),
-    RoomTimeAvailability(),
     CourseCompleteness(),
     SiblingSameDay(),
 ]
@@ -732,7 +706,6 @@ def build_constraints(
     instructor_qualifications_weight: float | None = None,
     room_suitability_weight: float | None = None,
     instructor_time_availability_weight: float | None = None,
-    room_time_availability_weight: float | None = None,
     course_completeness_weight: float | None = None,
     sibling_same_day_weight: float | None = None,
     student_schedule_compactness_weight: float | None = None,
@@ -827,13 +800,6 @@ def build_constraints(
             weight=(
                 instructor_time_availability_weight
                 if instructor_time_availability_weight is not None
-                else hard_weight
-            )
-        ),
-        RoomTimeAvailability(
-            weight=(
-                room_time_availability_weight
-                if room_time_availability_weight is not None
                 else hard_weight
             )
         ),

@@ -44,7 +44,6 @@ from src.constraints.constraints import (  # Individual constraint classes
     PairedCohortPracticalAlignment,
     RoomExclusivity,
     RoomSuitability,
-    RoomTimeAvailability,
     SessionContinuity,
     SiblingSameDay,
     StudentGroupExclusivity,
@@ -79,7 +78,6 @@ __all__ = [
     "PairedCohortPracticalAlignment",
     "RoomExclusivity",
     "RoomSuitability",
-    "RoomTimeAvailability",
     "SessionContinuity",
     "SiblingSameDay",
     # Individual classes (for custom configs)

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Fast numeric evaluator for pymoo migration.
 
-Computes ALL 9 hard constraints that the original Evaluator uses:
+Computes ALL 8 hard constraints that the original Evaluator uses:
   1. student_group_exclusivity   – (group, quantum) double-booking
   2. instructor_exclusivity      – (instructor, quantum) double-booking
   3. room_exclusivity            – (room, quantum) double-booking
   4. instructor_qualifications   – instructor not in course.qualified_instructor_ids
   5. room_suitability            – room not in precomputed suitable rooms
   6. instructor_time_availability – part-time instructor assigned outside available_quanta
-  7. room_time_availability      – room assigned outside its available_quanta
-  8. course_completeness         – always 0 (gene list is fixed, quanta match by construction)
-  9. sibling_same_day            – sub-sessions of same course on same day
+  7. course_completeness         – always 0 (gene list is fixed, quanta match by construction)
+  8. sibling_same_day            – sub-sessions of same course on same day
 
 Returns per-constraint breakdown dict identical to Evaluator.breakdown().
 """
@@ -37,7 +36,7 @@ def fast_evaluate_hard(
     All counts use the SAME convention as the original Evaluator:
     overlapping slots counted as sum(len(bucket)-1 for bucket if len>1).
 
-    Returns dict with the 9 constraint names as keys.
+    Returns dict with the 8 constraint names as keys.
     """
     n_events = len(events)
     instructor_assign = np.asarray(instructor_assign, dtype=int)
@@ -81,12 +80,10 @@ def fast_evaluate_hard(
 
     # ---------- time-availability ---------------------------------------------
     inst_avail_violations = 0
-    room_avail_violations = 0
     for e in range(n_events):
         s = int(time_assign[e])
         dur = events[e]["num_quanta"]
         inst = int(instructor_assign[e])
-        rm = int(room_assign[e])
 
         # Instructor availability
         inst_slots = instructor_available_quanta.get(inst)
@@ -94,13 +91,6 @@ def fast_evaluate_hard(
             for q in range(s, s + dur):
                 if q not in inst_slots:
                     inst_avail_violations += 1
-
-        # Room availability
-        room_slots = room_available_quanta.get(rm)
-        if room_slots is not None:  # None means always available
-            for q in range(s, s + dur):
-                if q not in room_slots:
-                    room_avail_violations += 1
 
     # ---------- sibling same-day ------------------------------------------------
     # Sub-sessions of the same course (same course_id, course_type, group_ids)
@@ -130,7 +120,6 @@ def fast_evaluate_hard(
         "instructor_qualifications": qual_violations,
         "room_suitability": suit_violations,
         "instructor_time_availability": inst_avail_violations,
-        "room_time_availability": room_avail_violations,
         "course_completeness": 0,  # fixed by construction
         "sibling_same_day": sibling_same_day,
     }
@@ -174,6 +163,5 @@ def fast_conflict_evaluator(
         result["instructor_qualifications"]
         + result["room_suitability"]
         + result["instructor_time_availability"]
-        + result["room_time_availability"]
     )
     return room_conf, inst_conf, group_conf, soft_penalty

@@ -331,7 +331,7 @@ def create_algorithm(
     if use_repair:
         from .repair_operator_vectorized import PymooVectorizedRepair
 
-        repair = PymooVectorizedRepair(pkl_path, passes=5)
+        repair = PymooVectorizedRepair(pkl_path, passes=7)
 
     if n_offsprings is None:
         n_offsprings = pop_size
