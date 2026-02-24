@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 import pickle
 import time
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +29,54 @@ from .callback_core import GACallbackBase
 logger = logging.getLogger(__name__)
 
 __version__ = "3.0.0"  # pymoo runner v3
+
+
+# ── Module-level worker for ProcessPoolExecutor (must be picklable) ──
+
+
+def _repair_single_elite(
+    X: np.ndarray,
+    pkl_path: str,
+    repair_iters: int,
+    gen: int,
+    idx: int,
+) -> np.ndarray:
+    """Run the repair loop for one elite individual in a worker process.
+
+    Instantiates its own ``BitsetSchedulingRepair`` (each process needs its
+    own copy since the repairer is not fork-safe / not picklable).
+
+    Parameters
+    ----------
+    X : ndarray, shape (3*E,)
+        Chromosome to repair (already copied by the caller).
+    pkl_path : str
+        Path to events_with_domains.pkl.
+    repair_iters : int
+        Number of alternating stochastic/deterministic repair passes.
+    gen : int
+        Current generation (used to seed stochastic passes).
+    idx : int
+        Individual index (used to seed stochastic passes).
+
+    Returns
+    -------
+    ndarray
+        Repaired chromosome.
+    """
+    from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
+
+    repairer = BitsetSchedulingRepair(pkl_path)
+    for p in range(repair_iters):
+        if p % 2 == 0:
+            rng_p = np.random.default_rng([gen, idx, p])
+        else:
+            rng_p = None
+        X_new = repairer.repair(X, rng=rng_p)
+        if np.array_equal(X_new, X):
+            break
+        X = X_new
+    return X
 
 
 def _reeval_modified(algorithm: Any, modified_inds: list) -> None:
@@ -740,13 +790,12 @@ class MemeticExperiment(GAExperiment):
         self.repair_frequency = repair_frequency
 
     def _build_callback(self, pkl_path: str):
-        from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
-
-        repairer = BitsetSchedulingRepair(pkl_path)
         log_interval = self.log_interval
         elite_pct = self.elite_pct
         repair_iters = self.repair_iters
         repair_frequency = self.repair_frequency
+        _pkl_path = pkl_path  # captured for worker pickling
+        n_workers = max(1, (os.cpu_count() or 1) - 1)
 
         class CB(GACallbackBase):
             def _on_generation(self, algorithm, F, G, cv, best_idx):
@@ -757,23 +806,26 @@ class MemeticExperiment(GAExperiment):
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
                 elite_idxs = np.argsort(cv)[:n_elite]
+
+                # Dispatch independent repair chains to process pool
+                X_copies = [pop[idx].get("X").copy() for idx in elite_idxs]
+                with ProcessPoolExecutor(max_workers=n_workers) as pool:
+                    futures = [
+                        pool.submit(
+                            _repair_single_elite,
+                            X_copies[j],
+                            _pkl_path,
+                            repair_iters,
+                            gen,
+                            int(elite_idxs[j]),
+                        )
+                        for j in range(len(elite_idxs))
+                    ]
+                    results = [f.result() for f in futures]
+
                 modified = []
-                for idx in elite_idxs:
-                    X = pop[idx].get("X").copy()
-                    for p in range(repair_iters):
-                        # Odd passes: stochastic exploration (unique seed
-                        # per gen/individual/pass so different basins are
-                        # explored).  Even passes: deterministic polish
-                        # to tighten the current basin.
-                        if p % 2 == 0:
-                            rng_p = np.random.default_rng([gen, int(idx), p])
-                        else:
-                            rng_p = None
-                        X_new = repairer.repair(X, rng=rng_p)
-                        if np.array_equal(X_new, X):
-                            break  # converged
-                        X = X_new
-                    pop[idx].set("X", X)
+                for j, idx in enumerate(elite_idxs):
+                    pop[idx].set("X", results[j])
                     modified.append(pop[idx])
                 _reeval_modified(algorithm, modified)
 
@@ -803,29 +855,35 @@ class AggressiveExperiment(GAExperiment):
         self.repair_iters = repair_iters
 
     def _build_callback(self, pkl_path: str):
-        from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
-
-        repairer = BitsetSchedulingRepair(pkl_path)
         log_interval = self.log_interval
         repair_iters = self.repair_iters
+        _pkl_path = pkl_path
+        n_workers = max(1, (os.cpu_count() or 1) - 1)
 
         class CB(GACallbackBase):
             def _on_generation(self, algorithm, F, G, cv, best_idx):
                 pop = algorithm.pop
                 gen = algorithm.n_gen or 0
+                pop_size = len(pop)
+
+                X_copies = [pop[i].get("X").copy() for i in range(pop_size)]
+                with ProcessPoolExecutor(max_workers=n_workers) as pool:
+                    futures = [
+                        pool.submit(
+                            _repair_single_elite,
+                            X_copies[i],
+                            _pkl_path,
+                            repair_iters,
+                            gen,
+                            i,
+                        )
+                        for i in range(pop_size)
+                    ]
+                    results = [f.result() for f in futures]
+
                 modified = []
-                for i in range(len(pop)):
-                    X = pop[i].get("X").copy()
-                    for p in range(repair_iters):
-                        if p % 2 == 0:
-                            rng_p = np.random.default_rng([gen, i, p])
-                        else:
-                            rng_p = None
-                        X_new = repairer.repair(X, rng=rng_p)
-                        if np.array_equal(X_new, X):
-                            break
-                        X = X_new
-                    pop[i].set("X", X)
+                for i in range(pop_size):
+                    pop[i].set("X", results[i])
                     modified.append(pop[i])
                 _reeval_modified(algorithm, modified)
 
@@ -862,15 +920,14 @@ class AdaptiveExperiment(GAExperiment):
         self.repair_iters = repair_iters
 
     def _build_callback(self, pkl_path: str):
-        from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
-
-        repairer = BitsetSchedulingRepair(pkl_path)
         log_interval = self.log_interval
         stagnation_window = self.stagnation_window
         mutation_lo = self.mutation_event_prob
         mutation_hi = self.mutation_hi
         elite_pct = self.elite_pct
         repair_iters = self.repair_iters
+        _pkl_path = pkl_path
+        n_workers = max(1, (os.cpu_count() or 1) - 1)
 
         class CB(GACallbackBase):
             def __init__(self, _log_interval):
@@ -900,14 +957,28 @@ class AdaptiveExperiment(GAExperiment):
 
                 if self._escalated:
                     pop = algorithm.pop
+                    gen = algorithm.n_gen or 0
                     n_elite = max(1, int(len(pop) * elite_pct))
                     elite_idxs = np.argsort(cv)[:n_elite]
+
+                    X_copies = [pop[idx].get("X").copy() for idx in elite_idxs]
+                    with ProcessPoolExecutor(max_workers=n_workers) as pool:
+                        futures = [
+                            pool.submit(
+                                _repair_single_elite,
+                                X_copies[j],
+                                _pkl_path,
+                                repair_iters,
+                                gen,
+                                int(elite_idxs[j]),
+                            )
+                            for j in range(len(elite_idxs))
+                        ]
+                        results = [f.result() for f in futures]
+
                     modified = []
-                    for idx in elite_idxs:
-                        X = pop[idx].get("X").copy()
-                        for _ in range(repair_iters):
-                            X = repairer.repair(X)
-                        pop[idx].set("X", X)
+                    for j, idx in enumerate(elite_idxs):
+                        pop[idx].set("X", results[j])
                         modified.append(pop[idx])
                     _reeval_modified(algorithm, modified)
 
