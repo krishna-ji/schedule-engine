@@ -103,8 +103,37 @@ class VectorizedRepair:
             [group_to_idx[gid] for gid in ev["group_ids"]] for ev in self.events
         ]
 
-        # Group -> events and utilization (for group deconfliction ordering)
-        # (Kept for potential future use; not needed by vectorized repair.)
+        # ---- Paired practical events (for simultaneous placement) ----
+        self.paired_event_map: dict[int, int] = {}
+        for a, b in data.get("paired_practical_events", []):
+            self.paired_event_map[a] = b
+            self.paired_event_map[b] = a
+
+        # Pre-compute paired event arrays for vectorized sync
+        _seen: set[int] = set()
+        _pair_a: list[int] = []
+        _pair_b: list[int] = []
+        for a, b in data.get("paired_practical_events", []):
+            if a not in _seen:
+                _pair_a.append(a)
+                _pair_b.append(b)
+                _seen.add(a)
+                _seen.add(b)
+        self._pair_a = np.array(_pair_a, dtype=np.int64)
+        self._pair_b = np.array(_pair_b, dtype=np.int64)
+        self._n_pairs = len(_pair_a)
+
+        # Precompute common time domains for each pair
+        self._pair_common_times: list[np.ndarray] = []
+        for a, b in zip(_pair_a, _pair_b):
+            set_a = set(at[a]) if at[a] else set()
+            set_b = set(at[b]) if at[b] else set()
+            common = sorted(set_a & set_b)
+            self._pair_common_times.append(
+                np.array(common, dtype=np.int64)
+                if common
+                else np.array(at[a] or [0], dtype=np.int64)
+            )
 
         # ---- Expansion arrays (vectorized occupancy building) ----
         Q = int(self.durations.sum())
@@ -171,11 +200,95 @@ class VectorizedRepair:
 
         Stage 1: Fix domain violations (vectorized across population).
         Stage 2: Stochastic conflict resolution (vectorized across population).
+        Stage 3: Synchronize paired practical events (same start, different rooms).
         """
         X = X.copy().astype(np.int64)
         self._fix_domains_vec(X)
         self._repair_conflicts_vec(X, passes)
+        if self._n_pairs > 0:
+            self._sync_paired_events(X)
         return X
+
+    # ------------------------------------------------------------------
+    # Stage 3: Paired event synchronization
+    # ------------------------------------------------------------------
+
+    def _sync_paired_events(self, X: np.ndarray) -> None:
+        """Synchronize paired practical events across the population.
+
+        For each pair (a, b), force both events to start at the same
+        time from their common domain.  If they already share a start
+        time, leave them alone.  If not, pick a time from the common
+        domain and assign different rooms.
+
+        Fully vectorized across the N-individual population.
+        """
+        N = X.shape[0]
+        pa, pb = self._pair_a, self._pair_b  # (P,) each
+        if len(pa) == 0:
+            return
+
+        time = X[:, 2::3]  # (N, E) view
+        room = X[:, 1::3]  # (N, E) view
+
+        ta = time[:, pa]  # (N, P)
+        tb = time[:, pb]  # (N, P)
+
+        # Mask: which (individual, pair) are out of sync?
+        desync = ta != tb  # (N, P)
+        if not desync.any():
+            # Even if synced on time, ensure rooms differ
+            ra = room[:, pa]
+            rb = room[:, pb]
+            same_room = ra == rb  # (N, P)
+            if same_room.any():
+                self._fix_same_rooms(X, same_room)
+            return
+
+        # For desynchronized pairs: pick a common start time
+        rng = np.random.default_rng()
+        di, dp = np.nonzero(desync)  # (K,) individual indices, (K,) pair indices
+
+        for k in range(len(di)):
+            n, p = int(di[k]), int(dp[k])
+            a_ev, b_ev = int(pa[p]), int(pb[p])
+            common = self._pair_common_times[p]
+            # Pick a random common start time
+            chosen_t = int(common[rng.integers(len(common))])
+            X[n, 3 * a_ev + 2] = chosen_t
+            X[n, 3 * b_ev + 2] = chosen_t
+
+        # After syncing times, fix rooms that collide
+        room = X[:, 1::3]  # refresh view
+        ra_new = room[:, pa]
+        rb_new = room[:, pb]
+        same_room = ra_new == rb_new
+        if same_room.any():
+            self._fix_same_rooms(X, same_room)
+
+    def _fix_same_rooms(self, X: np.ndarray, same_room: np.ndarray) -> None:
+        """For pairs sharing the same room, reassign event b to a different room."""
+        pa, pb = self._pair_a, self._pair_b
+        rng = np.random.default_rng()
+        di, dp = np.nonzero(same_room)
+
+        for k in range(len(di)):
+            n, p = int(di[k]), int(dp[k])
+            b_ev = int(pb[p])
+            a_ev = int(pa[p])
+            cur_room_a = int(X[n, 3 * a_ev + 1])
+            # Pick a different room from b's domain
+            b_domain = self.room_domains[b_ev, : int(self.room_dom_len[b_ev])]
+            alternatives = b_domain[b_domain != cur_room_a]
+            if len(alternatives) > 0:
+                X[n, 3 * b_ev + 1] = int(alternatives[rng.integers(len(alternatives))])
+            elif len(b_domain) > 0:
+                # All rooms in domain match a's room; try a's domain instead
+                a_domain = self.room_domains[a_ev, : int(self.room_dom_len[a_ev])]
+                cur_room_b = int(X[n, 3 * b_ev + 1])
+                a_alts = a_domain[a_domain != cur_room_b]
+                if len(a_alts) > 0:
+                    X[n, 3 * a_ev + 1] = int(a_alts[rng.integers(len(a_alts))])
 
     # ------------------------------------------------------------------
     # Stage 1: domain fix (vectorized across population)

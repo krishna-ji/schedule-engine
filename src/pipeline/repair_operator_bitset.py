@@ -127,6 +127,12 @@ class BitsetSchedulingRepair:
                 self.paired_with_group[li] = ri
                 self.paired_with_group[ri] = li
 
+        # Paired event mapping: event_idx -> paired_event_idx (bidirectional)
+        self.paired_event_map: dict[int, int] = {}
+        for a, b in data.get("paired_practical_events", []):
+            self.paired_event_map[a] = b
+            self.paired_event_map[b] = a
+
         # Practical-event occupancy (rebuilt in _make_counts)
         self._prac_occ = np.zeros((self.n_groups, T), dtype=np.int16)
 
@@ -364,14 +370,29 @@ class BitsetSchedulingRepair:
             else:
                 conflict_events.sort()
 
+            repaired_this_pass: set[int] = set()
             for _, e in conflict_events:
+                if e in repaired_this_pass:
+                    continue
                 cc = self._count_conflicts(e, inst, room, time, rc, ic, gc)
                 if cc == 0:
                     continue
 
-                self._remove(e, inst, room, time, rc, ic, gc)
-                self._find_placement(e, inst, room, time, rc, ic, gc, rng=rng)
-                self._add(e, inst, room, time, rc, ic, gc)
+                if e in self.paired_event_map:
+                    e_pair = self.paired_event_map[e]
+                    self._remove(e, inst, room, time, rc, ic, gc)
+                    self._remove(e_pair, inst, room, time, rc, ic, gc)
+                    self._find_paired_placement(
+                        e, e_pair, inst, room, time, rc, ic, gc, rng=rng
+                    )
+                    self._add(e, inst, room, time, rc, ic, gc)
+                    self._add(e_pair, inst, room, time, rc, ic, gc)
+                    repaired_this_pass.add(e)
+                    repaired_this_pass.add(e_pair)
+                else:
+                    self._remove(e, inst, room, time, rc, ic, gc)
+                    self._find_placement(e, inst, room, time, rc, ic, gc, rng=rng)
+                    self._add(e, inst, room, time, rc, ic, gc)
 
     # ------------------------------------------------------------------
     # Find placement
@@ -638,6 +659,166 @@ class BitsetSchedulingRepair:
         return int(best_cost) == 0
 
     # ------------------------------------------------------------------
+    # Simultaneous paired placement
+    # ------------------------------------------------------------------
+
+    def _find_paired_placement(self, e1, e2, inst, room, time, rc, ic, gc, *, rng=None):
+        """Simultaneous placement of paired practicals at the same start time.
+
+        Both events must already be removed from count arrays.
+        Finds the best common start time and assigns each event to a
+        *different* room, minimising the joint hard-constraint cost.
+
+        Updates *inst*, *room*, *time* arrays for both events.
+
+        Returns
+        -------
+        bool
+            ``True`` if a zero-hard-cost placement was found.
+        """
+        dur1 = int(self.durations[e1])
+        dur2 = int(self.durations[e2])
+
+        ar1_list = self.allowed_rooms[e1]
+        ar2_list = self.allowed_rooms[e2]
+        ai1 = self.allowed_instructors[e1]
+        ai2 = self.allowed_instructors[e2]
+        gidxs1 = self.event_group_indices[e1]
+        gidxs2 = self.event_group_indices[e2]
+        ia = self.inst_avail_arr
+        ra = self.room_avail_arr
+
+        best_cost: float = float("inf")
+        best_i1 = int(inst[e1])
+        best_r1 = int(room[e1])
+        best_i2 = int(inst[e2])
+        best_r2 = int(room[e2])
+        best_t = int(time[e1])
+
+        # Instructor ordering: current first, then alternatives (capped)
+        cur_i1, cur_i2 = int(inst[e1]), int(inst[e2])
+        i1_cands = [cur_i1] + [i for i in ai1 if i != cur_i1]
+        i2_cands = [cur_i2] + [i for i in ai2 if i != cur_i2]
+        i1_cands = i1_cands[:6]
+        i2_cands = i2_cands[:6]
+
+        for i1 in i1_cands:
+            if best_cost == 0:
+                break
+
+            vs1 = self._valid_starts_for(e1, i1) or self.allowed_starts[e1]
+            if not vs1:
+                continue
+            vs1_set = set(vs1)
+
+            for i2 in i2_cands:
+                if best_cost == 0:
+                    break
+
+                # Same instructor at the same time → hard conflict
+                same_inst = i1 == i2
+
+                vs2 = self._valid_starts_for(e2, i2) or self.allowed_starts[e2]
+                if not vs2:
+                    continue
+
+                common_starts = sorted(vs1_set & set(vs2))
+                if not common_starts:
+                    continue
+
+                # --- Vectorised fixed cost (instructor + group) per timeslot ---
+                cs = np.array(common_starts, dtype=np.intp)
+                n_cs = len(cs)
+                fixed_cost = np.zeros(n_cs, dtype=np.int32)
+
+                if same_inst:
+                    fixed_cost[:] += max(dur1, dur2) * 100
+
+                off1 = cs[:, None] + np.arange(dur1, dtype=np.intp)  # (n_cs, dur1)
+                off2 = cs[:, None] + np.arange(dur2, dtype=np.intp)  # (n_cs, dur2)
+
+                # Instructor clashes
+                fixed_cost += np.sum(ic[i1, off1] > 0, axis=1).astype(np.int32)
+                fixed_cost += np.sum(ic[i2, off2] > 0, axis=1).astype(np.int32)
+
+                # Group clashes
+                for gidx in gidxs1:
+                    fixed_cost += np.sum(gc[gidx, off1] > 0, axis=1).astype(np.int32)
+                for gidx in gidxs2:
+                    fixed_cost += np.sum(gc[gidx, off2] > 0, axis=1).astype(np.int32)
+
+                # Evaluate timeslots in ascending fixed-cost order
+                order = np.argsort(fixed_cost)
+
+                for idx in order:
+                    fc = int(fixed_cost[idx])
+                    if fc >= best_cost:
+                        break  # remainder is worse
+
+                    t_s = int(cs[idx])
+
+                    # --- Room costs for this timeslot ---
+                    r1_scores: list[tuple[int, int]] = []
+                    for r in ar1_list:
+                        c = 0
+                        for q in range(t_s, t_s + dur1):
+                            if not ra[r, q]:
+                                c += 100
+                            if rc[r, q] > 0:
+                                c += 1
+                        r1_scores.append((c, r))
+                    r1_scores.sort()
+
+                    r2_scores: list[tuple[int, int]] = []
+                    for r in ar2_list:
+                        c = 0
+                        for q in range(t_s, t_s + dur2):
+                            if not ra[r, q]:
+                                c += 100
+                            if rc[r, q] > 0:
+                                c += 1
+                        r2_scores.append((c, r))
+                    r2_scores.sort()
+
+                    # Best room pair with r1 ≠ r2
+                    for cr1, r1 in r1_scores:
+                        if fc + cr1 >= best_cost:
+                            break
+                        for cr2, r2 in r2_scores:
+                            if r1 == r2:
+                                continue
+                            total = fc + cr1 + cr2
+                            if total < best_cost or (
+                                total == best_cost
+                                and rng is not None
+                                and rng.random() < 0.3
+                            ):
+                                best_cost = total
+                                best_t = t_s
+                                best_i1, best_r1 = i1, r1
+                                best_i2, best_r2 = i2, r2
+                            break  # r2_scores sorted → first valid r2 is best
+
+        if best_cost == float("inf"):
+            # No simultaneous placement found — fall back to sequential
+            self._find_placement(e1, inst, room, time, rc, ic, gc, rng=rng)
+            self._add(e1, inst, room, time, rc, ic, gc)
+            self._find_placement(e2, inst, room, time, rc, ic, gc, rng=rng)
+            # Undo e1 add so caller can add both
+            self._remove(e1, inst, room, time, rc, ic, gc)
+            return False
+
+        # Apply best found placement
+        inst[e1] = best_i1
+        room[e1] = best_r1
+        time[e1] = best_t
+        inst[e2] = best_i2
+        room[e2] = best_r2
+        time[e2] = best_t
+
+        return best_cost == 0
+
+    # ------------------------------------------------------------------
     # Stage 3 — group deconfliction
     # ------------------------------------------------------------------
 
@@ -709,13 +890,28 @@ class BitsetSchedulingRepair:
                 rng.shuffle(conflict_events)
             else:
                 conflict_events.sort(reverse=True)
+            repaired_this_pass: set[int] = set()
             for _, e in conflict_events:
+                if e in repaired_this_pass:
+                    continue
                 cc = self._count_conflicts(e, inst, room, time, rc, ic, gc)
                 if cc == 0:
                     continue
-                self._remove(e, inst, room, time, rc, ic, gc)
-                self._find_placement(e, inst, room, time, rc, ic, gc, rng=rng)
-                self._add(e, inst, room, time, rc, ic, gc)
+                if e in self.paired_event_map:
+                    e_pair = self.paired_event_map[e]
+                    self._remove(e, inst, room, time, rc, ic, gc)
+                    self._remove(e_pair, inst, room, time, rc, ic, gc)
+                    self._find_paired_placement(
+                        e, e_pair, inst, room, time, rc, ic, gc, rng=rng
+                    )
+                    self._add(e, inst, room, time, rc, ic, gc)
+                    self._add(e_pair, inst, room, time, rc, ic, gc)
+                    repaired_this_pass.add(e)
+                    repaired_this_pass.add(e_pair)
+                else:
+                    self._remove(e, inst, room, time, rc, ic, gc)
+                    self._find_placement(e, inst, room, time, rc, ic, gc, rng=rng)
+                    self._add(e, inst, room, time, rc, ic, gc)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -784,14 +980,37 @@ try:
     from pymoo.core.repair import Repair
 
     class PymooBitsetRepair(Repair):
-        """Pymoo-compatible repair operator."""
+        """Pymoo-compatible repair operator with multi-pass stochastic repair."""
 
-        def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
+        def __init__(
+            self,
+            events_data_path: str = ".cache/events_with_domains.pkl",
+            passes: int = 3,
+        ):
             super().__init__()
             self.engine = BitsetSchedulingRepair(events_data_path)
+            self.passes = passes
 
         def _do(self, problem, x, **kwargs):
-            return repair_batch(x, self.engine)
+            import logging as _logging
+
+            if x.ndim == 1:
+                x = x.reshape(1, -1)
+            out = np.empty_like(x)
+            rng = np.random.default_rng()
+            for i in range(x.shape[0]):
+                best = x[i]
+                for p in range(self.passes):
+                    rng_p = np.random.default_rng(rng.integers(2**31) + p)
+                    candidate = self.engine.repair(best, rng=rng_p)
+                    best = candidate
+                out[i] = best
+            _logging.getLogger(__name__).debug(
+                "Repair: %d individuals, %d passes",
+                x.shape[0],
+                self.passes,
+            )
+            return out
 
 except ImportError:
     pass
