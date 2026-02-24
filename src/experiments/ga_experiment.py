@@ -331,6 +331,19 @@ class GAExperiment(BaseExperiment):
         feas_hist: list[float] = getattr(callback, "feasibility_rates", [])
         igd_hist: list[float] = getattr(callback, "igds", [])
 
+        # ── 4a-2. Pareto Evolution scatter (generation-coloured) ──
+        f_history: list = getattr(callback, "f_history", [])
+        if f_history:
+            self._safe_call(
+                "Pareto evolution plot",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_pareto_evolution",
+                        fromlist=["plot_pareto_evolution"],
+                    ).plot_pareto_evolution(f_history, out)
+                ),
+            )
+
         if hv_hist:
             self._safe_call(
                 "hypervolume trend",

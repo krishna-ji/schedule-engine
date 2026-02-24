@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 from src.utils.output_paths import get_constraint_plot_dir
 
 from .thesis_style import (
+    PALETTE,
     apply_thesis_style,
     create_thesis_figure,
     format_axis,
-    get_color,
     save_figure,
 )
 
@@ -18,152 +19,116 @@ def plot_individual_hard_constraints(
     hard_trends: dict[str, list[int]], output_dir: str
 ) -> None:
     """
-    Plot each hard constraint trend and store it under plots/constraints/.
+    Plot a **stacked area chart** of all hard constraints over generations.
+
+    Each constraint type is a coloured band so the reader can see the
+    volume reduction of each constraint over time.
 
     Args:
-        hard_trends: Dictionary mapping constraint names to their trends over generations
+        hard_trends: ``{constraint_name: [violation_per_gen, ...]}``
         output_dir: Base output directory
-
-    Note:
-        CSV data available in csv/constraint_metrics.csv (hard_<constraint> columns)
     """
+    if not hard_trends:
+        return
+
     constraint_dir = get_constraint_plot_dir(output_dir)
+    fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))
 
-    # Individual plots for each hard constraint
-    for constraint_name, trend in hard_trends.items():
-        fig, ax = create_thesis_figure(1, 1, figsize=(10, 5.5))
+    # Build arrays — keys ordered by total violations (largest band at bottom)
+    sorted_keys = sorted(
+        hard_trends.keys(), key=lambda k: sum(hard_trends[k]), reverse=True
+    )
+    labels = [k.replace("_", " ").title() for k in sorted_keys]
+    data = np.array([hard_trends[k] for k in sorted_keys], dtype=float)
+    generations = np.arange(data.shape[1])
 
-        # Main trend line
-        ax.plot(
-            trend,
-            color=get_color("red"),
-            linewidth=2.5,
-            marker="o",
-            markersize=5,
-            markevery=max(1, len(trend) // 15),
-            label=constraint_name.replace("_", " ").title(),
-        )
+    # Stacked area chart with colorblind-safe palette
+    ax.stackplot(
+        generations,
+        data,
+        labels=labels,
+        colors=PALETTE[: len(sorted_keys)],
+        alpha=0.85,
+    )
 
-        # Add statistics
-        final_value = trend[-1]
-        max_value = max(trend)
-        avg_value = sum(trend) / len(trend)
+    # Add a thin total line on top for clarity
+    total = data.sum(axis=0)
+    ax.plot(
+        generations,
+        total,
+        color="black",
+        linewidth=1.2,
+        linestyle="--",
+        label=f"Total (final={int(total[-1])})",
+    )
 
-        # Add horizontal lines for statistics
-        ax.axhline(
-            y=final_value,
-            color=get_color("green"),
-            linestyle="--",
-            alpha=0.5,
-            linewidth=1.5,
-            label=f"Final: {final_value}",
-        )
-        ax.axhline(
-            y=max_value,
-            color=get_color("orange"),
-            linestyle=":",
-            alpha=0.5,
-            linewidth=1.5,
-            label=f"Max: {max_value}",
-        )
-        ax.axhline(
-            y=avg_value,
-            color=get_color("gray"),
-            linestyle="-.",
-            alpha=0.5,
-            linewidth=1.5,
-            label=f"Avg: {avg_value:.1f}",
-        )
+    format_axis(
+        ax,
+        xlabel="Generation",
+        ylabel="Violations",
+        title="Hard Constraint Violations — Stacked Area Breakdown",
+        legend=True,
+        y_from_zero=True,
+    )
+    ax.legend(loc="upper right", fontsize=9, ncol=2, framealpha=0.9)
 
-        format_axis(
-            ax,
-            xlabel="Generation",
-            ylabel="Violations",
-            title=f"Hard Constraint Trend: {constraint_name.replace('_', ' ').title()}",
-            legend=True,
-        )
-
-        plt.tight_layout()
-
-        # Save individual plot
-        filename = f"hard_constraint_{constraint_name}_violations_over_generations.pdf"
-        save_figure(fig, constraint_dir / filename)
+    plt.tight_layout()
+    save_figure(fig, constraint_dir / "hard_constraints_stacked_area.pdf")
 
 
 def plot_individual_soft_constraints(
     soft_trends: dict[str, list[int]], output_dir: str
 ) -> None:
     """
-    Plot each soft constraint trend and store it under plots/constraints/.
+    Plot a **stacked area chart** of all soft constraint penalties over generations.
 
     Args:
-        soft_trends: Dictionary mapping constraint names to their trends over generations
+        soft_trends: ``{constraint_name: [penalty_per_gen, ...]}``
         output_dir: Base output directory
-
-    Note:
-        CSV data available in csv/constraint_metrics.csv (soft_<constraint> columns)
     """
+    if not soft_trends:
+        return
+
     constraint_dir = get_constraint_plot_dir(output_dir)
+    fig, ax = create_thesis_figure(1, 1, figsize=(10, 6))
 
-    # Individual plots for each soft constraint
-    for constraint_name, trend in soft_trends.items():
-        fig, ax = create_thesis_figure(1, 1, figsize=(10, 5.5))
+    sorted_keys = sorted(
+        soft_trends.keys(), key=lambda k: sum(soft_trends[k]), reverse=True
+    )
+    labels = [k.replace("_", " ").title() for k in sorted_keys]
+    data = np.array([soft_trends[k] for k in sorted_keys], dtype=float)
+    generations = np.arange(data.shape[1])
 
-        # Main trend line
-        ax.plot(
-            trend,
-            color=get_color("green"),
-            linewidth=2.5,
-            marker="s",
-            markersize=5,
-            markevery=max(1, len(trend) // 15),
-            label=constraint_name.replace("_", " ").title(),
-        )
+    ax.stackplot(
+        generations,
+        data,
+        labels=labels,
+        colors=PALETTE[: len(sorted_keys)],
+        alpha=0.85,
+    )
 
-        # Add statistics
-        final_value = trend[-1]
-        max_value = max(trend)
-        avg_value = sum(trend) / len(trend)
+    total = data.sum(axis=0)
+    ax.plot(
+        generations,
+        total,
+        color="black",
+        linewidth=1.2,
+        linestyle="--",
+        label=f"Total (final={int(total[-1])})",
+    )
 
-        # Add horizontal lines for statistics
-        ax.axhline(
-            y=final_value,
-            color=get_color("green"),
-            linestyle="--",
-            alpha=0.5,
-            linewidth=1.5,
-            label=f"Final: {final_value}",
-        )
-        ax.axhline(
-            y=max_value,
-            color=get_color("orange"),
-            linestyle=":",
-            alpha=0.5,
-            linewidth=1.5,
-            label=f"Max: {max_value}",
-        )
-        ax.axhline(
-            y=avg_value,
-            color=get_color("gray"),
-            linestyle="-.",
-            alpha=0.5,
-            linewidth=1.5,
-            label=f"Avg: {avg_value:.1f}",
-        )
+    format_axis(
+        ax,
+        xlabel="Generation",
+        ylabel="Penalty",
+        title="Soft Constraint Penalties — Stacked Area Breakdown",
+        legend=True,
+        y_from_zero=True,
+    )
+    ax.legend(loc="upper right", fontsize=9, ncol=2, framealpha=0.9)
 
-        format_axis(
-            ax,
-            xlabel="Generation",
-            ylabel="Penalty",
-            title=f"Soft Constraint Trend: {constraint_name.replace('_', ' ').title()}",
-            legend=True,
-        )
-
-        plt.tight_layout()
-
-        # Save individual plot
-        filename = f"soft_constraint_{constraint_name}_penalty_over_generations.pdf"
-        save_figure(fig, constraint_dir / filename)
+    plt.tight_layout()
+    save_figure(fig, constraint_dir / "soft_constraints_stacked_area.pdf")
 
 
 def plot_constraint_summary(
