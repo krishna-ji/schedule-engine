@@ -311,6 +311,7 @@ def build_events_with_domains(
         "instructor_available_quanta": instructor_available_quanta,
         "room_available_quanta": room_available_quanta,
         "paired_practical_events": paired_practical_events,
+        "cohort_pairs": [(l, r) for l, r in (cohort_pairs or [])],
         "fix_tutorial_practicals": fix_tutorial_practicals,
         "metadata": {
             "n_events": len(genes),

@@ -104,7 +104,11 @@ class VectorizedLookups:
     quanta_per_day: int  # QPD constant (default 7)
 
     # ---- Paired cohort practical alignment ----
-    cohort_event_pairs: np.ndarray  # (P, 2) int32 — (event_A, event_B) practical pairs
+    cohort_event_pairs: (
+        np.ndarray
+    )  # (P, 2) int32 — (event_A, event_B) practical pairs (legacy)
+    cohort_subgroup_pairs: np.ndarray  # (S, 2) int32 — (group_idx_A, group_idx_B) pairs
+    is_practical: np.ndarray  # (E,) bool — True if event is a practical
 
 
 def build_vectorized_lookups(pkl_data: dict) -> VectorizedLookups:
@@ -209,6 +213,49 @@ def build_vectorized_lookups(pkl_data: dict) -> VectorizedLookups:
         cohort_event_pairs = np.array(raw_pairs, dtype=np.int32)  # (P, 2)
     else:
         cohort_event_pairs = np.empty((0, 2), dtype=np.int32)
+
+    # ---- Cohort subgroup pairs (group-index level) ----
+    # Prefer explicit cohort_pairs (string IDs) from pkl; fall back to
+    # deriving from legacy paired_practical_events.
+    raw_cohort_pairs = pkl_data.get("cohort_pairs", [])
+    if raw_cohort_pairs:
+        _sg_pairs_list = []
+        _sg_seen: set[tuple[int, int]] = set()
+        for left_id, right_id in raw_cohort_pairs:
+            li = group_to_idx.get(left_id)
+            ri = group_to_idx.get(right_id)
+            if li is not None and ri is not None:
+                key = (min(li, ri), max(li, ri))
+                if key not in _sg_seen:
+                    _sg_seen.add(key)
+                    _sg_pairs_list.append((li, ri))
+        cohort_subgroup_pairs = (
+            np.array(_sg_pairs_list, dtype=np.int32)
+            if _sg_pairs_list
+            else np.empty((0, 2), dtype=np.int32)
+        )
+    elif raw_pairs:
+        # Derive from legacy event pairs: extract unique group pairs
+        _sg_pairs_list = []
+        _sg_seen_set: set[tuple[int, int]] = set()
+        for ea, eb in raw_pairs:
+            for ga in event_group_lists[ea]:
+                for gb in event_group_lists[eb]:
+                    if ga != gb:
+                        key = (min(ga, gb), max(ga, gb))
+                        if key not in _sg_seen_set:
+                            _sg_seen_set.add(key)
+                            _sg_pairs_list.append((ga, gb))
+        cohort_subgroup_pairs = (
+            np.array(_sg_pairs_list, dtype=np.int32)
+            if _sg_pairs_list
+            else np.empty((0, 2), dtype=np.int32)
+        )
+    else:
+        cohort_subgroup_pairs = np.empty((0, 2), dtype=np.int32)
+
+    # ---- Per-event is_practical boolean ----
+    _is_practical = is_prac.astype(np.bool_)  # (E,) bool
 
     # ================================================================
     # Expansion arrays — fully vectorized via np.repeat
@@ -355,4 +402,6 @@ def build_vectorized_lookups(pkl_data: dict) -> VectorizedLookups:
         sibling_event_to_course=sibling_event_to_course,
         quanta_per_day=quanta_per_day,
         cohort_event_pairs=cohort_event_pairs,
+        cohort_subgroup_pairs=cohort_subgroup_pairs,
+        is_practical=_is_practical,
     )

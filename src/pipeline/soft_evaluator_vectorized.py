@@ -526,7 +526,7 @@ def eval_soft_vectorized_breakdown(
 
 
 # ------------------------------------------------------------------
-# Paired Cohort Practical Alignment (vectorized XOR penalty)
+# Paired Cohort Practical Alignment (group-level XOR penalty)
 # ------------------------------------------------------------------
 
 
@@ -536,26 +536,35 @@ def evaluate_paired_cohorts_vectorized(
 ) -> np.ndarray:
     """Compute paired-cohort practical alignment penalty for full population.
 
-    For each pair (event_A, event_B) representing the same practical course
-    for two paired cohorts, penalise misalignment by the symmetric
-    difference in occupied quanta.  When durations match (guaranteed for
-    the same course), misalignment equals ``duration * 2`` if starts
-    differ, or ``0`` if they coincide.
+    **Redesigned**: instead of pairing individual events from the same
+    course, we operate at the *subgroup* level.  For every pair of
+    sibling subgroups (A, B) we build a boolean practical-occupancy
+    vector over the T timeslots and penalise the symmetric difference
+    (XOR).  This catches cross-subject misalignment — e.g. when
+    subgroup A is in an ENME-103 lab while subgroup B should be doing
+    *some* practical (possibly a different subject) at the same time.
+
+    Algorithm (fully vectorized, no Python per-individual loops):
+      1. Build ``is_prac_occ[N, G, T]`` — True where a practical event
+         occupies group G at quantum q for individual n.
+      2. For each subgroup pair (A, B), XOR their occupancy rows and
+         sum the mismatched quanta.
 
     Parameters
     ----------
     X : ndarray, shape (N, 3*E), int
         Population matrix (interleaved [I,R,T] per event).
     lookups : VectorizedLookups
-        Must contain ``cohort_event_pairs`` of shape (P, 2) and
-        ``durations`` of shape (E,).
+        Must contain ``cohort_subgroup_pairs`` (S, 2) int32,
+        ``is_practical`` (E,) bool, ``durations`` (E,) int32,
+        and group expansion arrays.
 
     Returns
     -------
     penalty : ndarray, shape (N,), float64
         Per-individual misalignment penalty.
     """
-    pairs = lookups.cohort_event_pairs  # (P, 2) int32
+    pairs = lookups.cohort_subgroup_pairs  # (S, 2) int32
     if pairs.shape[0] == 0:
         N = X.shape[0] if X.ndim == 2 else 1
         return np.zeros(N, dtype=np.float64)
@@ -563,18 +572,100 @@ def evaluate_paired_cohorts_vectorized(
     X = np.asarray(X, dtype=np.int64)
     if X.ndim == 1:
         X = X.reshape(1, -1)
+    N = X.shape[0]
 
-    left_idx = pairs[:, 0]  # (P,)
-    right_idx = pairs[:, 1]  # (P,)
+    is_prac = lookups.is_practical  # (E,) bool
+    durations = lookups.durations  # (E,) int32
+    n_groups = lookups.n_groups
+    T_total = int(lookups.durations.sum() * 0 + 42)  # T = 42 (6 days × 7 QPD)
+    # Use the module-level T from bitset_time imported at top of this file
+    from .bitset_time import T as T_val
 
-    starts_left = X[:, left_idx * 3 + 2]  # (N, P)
-    starts_right = X[:, right_idx * 3 + 2]  # (N, P)
+    T_total = T_val
 
-    durations = lookups.durations  # (E,)
-    dur_left = durations[left_idx]  # (P,)  — broadcast to (N, P)
+    # -- Filter to practical events only --
+    prac_mask = np.flatnonzero(is_prac)  # indices of practical events
+    if len(prac_mask) == 0:
+        return np.zeros(N, dtype=np.float64)
 
-    # If starts differ → fully misaligned → penalty = duration * 2 (XOR)
-    misaligned = (starts_left != starts_right).astype(np.float64)  # (N, P)
-    penalty_per_pair = misaligned * dur_left[np.newaxis, :] * 2  # (N, P)
+    # Get group expansion arrays but only for practical events
+    # We need: for each practical event, its groups, its start time, its duration
+    # Build occupancy tensor is_prac_occ[N, n_groups, T_total] via scatter
+
+    # Practical event starts: (N, n_prac)
+    prac_starts = X[:, prac_mask * 3 + 2]  # (N, n_prac)
+    prac_durs = durations[prac_mask]  # (n_prac,)
+
+    # Group membership for practical events
+    grp_mem_prac = lookups.group_membership[prac_mask]  # (n_prac, n_groups) bool
+
+    # Expand: for each (prac_event, quantum_offset, group) → mark occupancy
+    # Build expansion: prac_event × duration offsets
+    n_prac = len(prac_mask)
+    # Create offset arrays for each practical event
+    max_dur = int(prac_durs.max()) if n_prac > 0 else 0
+
+    # Expand practical events by their durations
+    prac_rep = np.repeat(np.arange(n_prac, dtype=np.int32), prac_durs)  # (PQ,)
+    _pcum = np.zeros(n_prac + 1, dtype=np.int64)
+    np.cumsum(prac_durs, out=_pcum[1:])
+    _pstarts = np.repeat(_pcum[:n_prac], prac_durs)
+    prac_offsets = np.arange(int(prac_durs.sum()), dtype=np.int32) - _pstarts.astype(
+        np.int32
+    )  # (PQ,)
+
+    # Groups for each expanded entry
+    prac_groups_per_event = []
+    prac_event_idx_per_group = []
+    for pi in range(n_prac):
+        gidxs = np.flatnonzero(grp_mem_prac[pi])  # groups this prac event belongs to
+        for g in gidxs:
+            prac_groups_per_event.append(g)
+            prac_event_idx_per_group.append(pi)
+
+    if not prac_groups_per_event:
+        return np.zeros(N, dtype=np.float64)
+
+    prac_g_arr = np.array(prac_groups_per_event, dtype=np.int32)  # (PG,)
+    prac_ei_arr = np.array(prac_event_idx_per_group, dtype=np.int32)  # (PG,)
+    prac_d_arr = prac_durs[prac_ei_arr]  # (PG,) durations
+
+    # Now expand by duration: PG × dur → PGQ entries
+    pgq_g = np.repeat(prac_g_arr, prac_d_arr)  # (PGQ,) group index
+    pgq_ei = np.repeat(prac_ei_arr, prac_d_arr)  # (PGQ,) prac event index
+    _pgcum = np.zeros(len(prac_g_arr) + 1, dtype=np.int64)
+    np.cumsum(prac_d_arr, out=_pgcum[1:])
+    _pgstarts = np.repeat(_pgcum[:-1], prac_d_arr)
+    pgq_off = np.arange(int(prac_d_arr.sum()), dtype=np.int32) - _pgstarts.astype(
+        np.int32
+    )  # (PGQ,) offset
+
+    # Absolute quanta for each individual: prac_starts[:, pgq_ei] + pgq_off
+    # prac_starts is (N, n_prac), pgq_ei indexes into n_prac
+    abs_quanta = prac_starts[:, pgq_ei] + pgq_off[np.newaxis, :]  # (N, PGQ)
+
+    # Clamp to valid range
+    abs_quanta = np.clip(abs_quanta, 0, T_total - 1)
+
+    # Build flat index: n * (n_groups * T_total) + g * T_total + q
+    stride = n_groups * T_total
+    n_idx = np.repeat(np.arange(N, dtype=np.int64), len(pgq_g))
+    g_flat = np.tile(pgq_g, N).astype(np.int64)
+    q_flat = abs_quanta.ravel()
+
+    flat_idx = n_idx * stride + g_flat * T_total + q_flat
+
+    occ_flat = np.bincount(flat_idx.astype(np.int64), minlength=N * stride)
+    is_prac_occ = occ_flat.reshape(N, n_groups, T_total) > 0  # (N, G, T) bool
+
+    # -- XOR penalty between paired subgroups --
+    left_idx = pairs[:, 0]  # (S,) group indices
+    right_idx = pairs[:, 1]  # (S,) group indices
+
+    left_occ = is_prac_occ[:, left_idx, :]  # (N, S, T)
+    right_occ = is_prac_occ[:, right_idx, :]  # (N, S, T)
+
+    xor_mismatch = left_occ ^ right_occ  # (N, S, T) bool
+    penalty_per_pair = xor_mismatch.sum(axis=2).astype(np.float64)  # (N, S)
 
     return penalty_per_pair.sum(axis=1)  # (N,)

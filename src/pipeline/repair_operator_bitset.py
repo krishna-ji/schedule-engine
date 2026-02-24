@@ -368,7 +368,7 @@ class BitsetSchedulingRepair:
         cur_t = int(time[e])
 
         # Quick check: current placement already conflict-free?
-        best_cost = self._check_placement(e, cur_i, cur_r, cur_t, rc, ic, gc)
+        best_cost = float(self._check_placement(e, cur_i, cur_r, cur_t, rc, ic, gc))
         if best_cost == 0:
             return True
 
@@ -390,24 +390,31 @@ class BitsetSchedulingRepair:
         def _score_instructor(i_idx, starts):
             """Compute cost matrix (n_times, n_rooms) for *i_idx*.
 
-            Also returns *fixed_costs* (n_times,) — the instructor +
-            group component that is independent of room choice.
+            The matrix has **integer** hard-constraint costs plus a small
+            **fractional** soft-constraint proxy (< 1.0 total) that acts
+            as a tie-breaker without ever overriding hard priorities.
+
+            Soft proxies (all multiplied by 0.01 so they stay sub-integer):
+              - Lunch penalty:  +1 per quantum that overlaps the lunch
+                window (within-day quanta 2 and 3).
+              - Compactness bonus: −0.5 per quantum that is adjacent to
+                an already-occupied group slot, encouraging contiguous
+                placement.
 
             Returns
             -------
-            total : ndarray, shape (n_times, n_rooms)
+            total : ndarray, shape (n_times, n_rooms), float64
             starts_arr : ndarray of the start times used
             """
             at = np.asarray(starts, dtype=np.intp)
             n_times = len(at)
             if n_times == 0:
-                return np.empty((0, n_rooms), dtype=np.int32), at
+                return np.empty((0, n_rooms), dtype=np.float64), at
 
             # Build offset indices: (n_times, dur)
             offsets = at[:, None] + np.arange(dur, dtype=np.intp)  # (nT, dur)
 
             # ── Fixed cost: instructor availability penalty ──────
-            # ia[i_idx, offsets] → (nT, dur) bool; unavailable quanta
             inst_unavail = ~ia[i_idx, offsets]  # (nT, dur)
             inst_avail_pen = np.count_nonzero(inst_unavail, axis=1) * 100  # (nT,)
 
@@ -417,9 +424,7 @@ class BitsetSchedulingRepair:
             # ── Fixed cost: group exclusivity ────────────────────
             if n_groups_e > 0:
                 gidx_arr = np.array(gidxs, dtype=np.intp)
-                # gc[gidx_arr][:, offsets] → index as gc[gidx_arr]
-                # then advanced-index columns:  shape (n_groups, nT, dur)
-                gc_vals = gc[gidx_arr][:, offsets]  # (nG, nT, dur)  — fancy ix
+                gc_vals = gc[gidx_arr][:, offsets]  # (nG, nT, dur)
                 grp_clash = np.count_nonzero(gc_vals > 0, axis=(0, 2))  # (nT,)
             else:
                 grp_clash = np.zeros(n_times, dtype=np.intp)
@@ -427,8 +432,6 @@ class BitsetSchedulingRepair:
             fixed_costs = inst_avail_pen + inst_clash + grp_clash  # (nT,)
 
             # ── Room cost: room exclusivity ──────────────────────
-            # rc[ar][:, offsets] → (nR, nT, dur)   but fancy ix both
-            # dims at once is tricky; use a reshape trick:
             rc_vals = rc[ar[:, None, None], offsets[None, :, :]]  # (nR, nT, dur)
             room_clash = np.count_nonzero(rc_vals > 0, axis=2)  # (nR, nT)
 
@@ -438,20 +441,49 @@ class BitsetSchedulingRepair:
 
             room_costs = room_clash + room_avail_pen  # (nR, nT)
 
-            # Total: fixed_costs[nT] broadcast + room_costs[nR, nT]
-            total = fixed_costs[None, :] + room_costs  # (nR, nT)
+            # Integer hard total: fixed_costs[nT] broadcast + room_costs[nR, nT]
+            total_hard = (fixed_costs[None, :] + room_costs).astype(
+                np.float64
+            )  # (nR, nT)
+
+            # ── Soft proxy: lunch penalty (within-day quanta 2, 3) ──
+            # offsets are absolute quanta; within-day = offset % QPD
+            _QPD = 7
+            within_day = offsets % _QPD  # (nT, dur)
+            lunch_hits = ((within_day == 2) | (within_day == 3)).sum(axis=1)  # (nT,)
+
+            # ── Soft proxy: compactness bonus ─────────────────────
+            # For each group, check if quanta immediately before or
+            # after the proposed block are already occupied → bonus
+            compact_bonus = np.zeros(n_times, dtype=np.float64)
+            if n_groups_e > 0:
+                # Quanta just before and after the block
+                before_q = at - 1  # (nT,)  quantum before block start
+                after_q = at + dur  # (nT,)  quantum after block end
+                for gidx in gidxs:
+                    # Check adjacency (guard bounds)
+                    safe_before = np.clip(before_q, 0, gc.shape[1] - 1)
+                    safe_after = np.clip(after_q, 0, gc.shape[1] - 1)
+                    adj_before = (before_q >= 0) & (gc[gidx, safe_before] > 0)
+                    adj_after = (after_q < gc.shape[1]) & (gc[gidx, safe_after] > 0)
+                    compact_bonus += adj_before.astype(np.float64) * 0.5
+                    compact_bonus += adj_after.astype(np.float64) * 0.5
+
+            # Combine: fractional soft (stays < 1.0 even worst case)
+            soft_proxy = lunch_hits.astype(np.float64) - compact_bonus  # (nT,)
+            total = total_hard + 0.01 * soft_proxy[None, :]  # (nR, nT)
 
             # Return as (nT, nR) for consistency with (time, room) axes
-            return total.T.astype(np.int32), at
+            return total.T, at
 
         # ── Helper: extract best from cost matrix ────────────────
         def _pick_best(cost_matrix, starts_arr, i_idx):
-            """Update best_* from a (nT, nR) cost matrix."""
+            """Update best_* from a (nT, nR) float64 cost matrix."""
             nonlocal best_cost, best_i, best_r, best_t
             if cost_matrix.size == 0:
                 return False  # nothing to pick
 
-            min_val = int(cost_matrix.min())
+            min_val = float(cost_matrix.min())
             if min_val > best_cost and rng is None:
                 return False  # can't improve
 
@@ -465,8 +497,8 @@ class BitsetSchedulingRepair:
                 best_t = int(starts_arr[pick[0]])
                 best_r = int(ar[pick[1]])
                 best_i = i_idx
-                if min_val == 0:
-                    return True  # perfect
+                if int(min_val) == 0:
+                    return True  # hard cost zero — perfect
             elif rng is not None and min_val == best_cost:
                 # Accumulate ties for stochastic selection later —
                 # but for speed just do a single random pick within
@@ -543,7 +575,7 @@ class BitsetSchedulingRepair:
         inst[e] = best_i
         room[e] = best_r
         time[e] = best_t
-        return best_cost == 0
+        return int(best_cost) == 0
 
     # ------------------------------------------------------------------
     # Stage 3 — group deconfliction
