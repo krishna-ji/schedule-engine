@@ -445,8 +445,10 @@ class GAExperiment(BaseExperiment):
         """Decode genes -> CourseSession list, then export all PDFs + reports."""
         from src.io.decoder import decode_individual
         from src.io.export.exporter import export_everything
-        from src.io.export.schedule_views import (generate_instructor_schedules_pdf,
-                                                  generate_room_schedules_pdf)
+        from src.io.export.schedule_views import (
+            generate_instructor_schedules_pdf,
+            generate_room_schedules_pdf,
+        )
         from src.io.export.violation_reporter import generate_violation_report
 
         sessions = decode_individual(
@@ -532,8 +534,10 @@ class GAExperiment(BaseExperiment):
         Returns (store, ctx, qts).
         """
         from src.io.data_store import DataStore
-        from src.io.feasibility import (InfeasibleProblemError,
-                                        generate_feasibility_report_file)
+        from src.io.feasibility import (
+            InfeasibleProblemError,
+            generate_feasibility_report_file,
+        )
         from src.io.time_system import QuantumTimeSystem
 
         feasibility_report = None
@@ -623,6 +627,7 @@ class GAExperiment(BaseExperiment):
         G = res.pop.get("G")
         # Exclude tolerated columns (iAvl col 5) from cv
         from src.pipeline.scheduling_problem import _TOLERATED_HARD_COLS
+
         _strict = [i for i in range(G.shape[1]) if i not in _TOLERATED_HARD_COLS]
         cv = G[:, _strict].sum(axis=1).clip(0)
         best_idx = int(np.argmin(cv))
@@ -721,6 +726,7 @@ class MemeticExperiment(GAExperiment):
         *,
         elite_pct: float = 0.05,
         repair_iters: int = 5,
+        repair_frequency: int = 5,
         **kwargs,
     ):
         kwargs.setdefault("mode", "memetic")
@@ -731,6 +737,7 @@ class MemeticExperiment(GAExperiment):
         super().__init__(**kwargs)
         self.elite_pct = elite_pct
         self.repair_iters = repair_iters
+        self.repair_frequency = repair_frequency
 
     def _build_callback(self, pkl_path: str):
         from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
@@ -739,13 +746,17 @@ class MemeticExperiment(GAExperiment):
         log_interval = self.log_interval
         elite_pct = self.elite_pct
         repair_iters = self.repair_iters
+        repair_frequency = self.repair_frequency
 
         class CB(GACallbackBase):
             def _on_generation(self, algorithm, F, G, cv, best_idx):
+                gen = algorithm.n_gen or 0
+                # Throttle: only run expensive repair every Nth generation
+                if gen % repair_frequency != 0:
+                    return
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
                 elite_idxs = np.argsort(cv)[:n_elite]
-                gen = algorithm.n_gen or 0
                 modified = []
                 for idx in elite_idxs:
                     X = pop[idx].get("X").copy()

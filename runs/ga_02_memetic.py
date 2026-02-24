@@ -35,6 +35,7 @@ ELITE_PCT = (
     0.15  # Fraction of pop to repair each generation (was 0.05 — wider repair coverage)
 )
 REPAIR_ITERS = 8  # Repair passes per elite individual (was 5 — deeper local search)
+REPAIR_FREQUENCY = 5  # Only run repair every Nth generation (throttle)
 
 # Data Paths
 DATA_DIR = PROJECT_ROOT / "data"
@@ -55,6 +56,7 @@ def main() -> None:
         mutation_event_prob=MUTATION_PROB,
         elite_pct=ELITE_PCT,
         repair_iters=REPAIR_ITERS,
+        repair_frequency=REPAIR_FREQUENCY,
         data_dir=DATA_DIR,
         output_dir=OUTPUT_DIR,
         log_interval=LOG_INTERVAL,

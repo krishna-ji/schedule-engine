@@ -351,12 +351,15 @@ class BitsetSchedulingRepair:
 
     def _find_placement(self, e, inst, room, time, rc, ic, gc, *, rng=None) -> bool:
         """Find best (inst, room, time) placement for event e.
-        Event must already be removed from count arrays.
-        Vectorizes over rooms using numpy for fast scoring.
 
-        When *rng* is provided, ties (placements with equal cost) are
-        broken randomly instead of deterministically, enabling different
-        repair passes to explore different local-minimum basins.
+        Fully vectorized: computes a 2-D cost matrix of shape
+        ``(len(time_candidates), len(allowed_rooms))`` per instructor
+        in one shot — no per-timeslot Python loop.
+
+        Event must already be removed from count arrays.
+
+        When *rng* is provided, ties are broken randomly so successive
+        repair passes explore different local-minimum basins.
         """
         ai = self.allowed_instructors[e]
         ar_list = self.allowed_rooms[e]
@@ -364,142 +367,183 @@ class BitsetSchedulingRepair:
         cur_r = int(room[e])
         cur_t = int(time[e])
 
-        best_conflicts = self._check_placement(e, cur_i, cur_r, cur_t, rc, ic, gc)
-        if best_conflicts == 0:
+        # Quick check: current placement already conflict-free?
+        best_cost = self._check_placement(e, cur_i, cur_r, cur_t, rc, ic, gc)
+        if best_cost == 0:
             return True
 
         best_i, best_r, best_t = cur_i, cur_r, cur_t
-        # When stochastic, collect all placements that tie for the best
-        # score and pick one randomly at the end.
-        tied_best: list[tuple[int, int, int]] = [(cur_i, cur_r, cur_t)]
         dur = int(self.durations[e])
         gidxs = self.event_group_indices[e]
+        n_groups_e = len(gidxs)
 
-        # Pre-compute numpy array of allowed rooms for vectorized lookup
+        # Allowed rooms as numpy array (reused across instructors)
         ar = np.array(ar_list, dtype=np.intp) if ar_list else np.empty(0, dtype=np.intp)
+        n_rooms = len(ar)
+        if n_rooms == 0:
+            return best_cost == 0
+
         ia = self.inst_avail_arr
         ra = self.room_avail_arr
 
-        def _score_all_rooms(i_idx, t):
-            """Score all allowed rooms for (i_idx, t).
+        # ── Helper: build 2-D cost matrix for one instructor ─────
+        def _score_instructor(i_idx, starts):
+            """Compute cost matrix (n_times, n_rooms) for *i_idx*.
 
-            Returns (best_cost, best_room_idx).  When *rng* is set,
-            ties among rooms with equal min-cost are broken randomly.
+            Also returns *fixed_costs* (n_times,) — the instructor +
+            group component that is independent of room choice.
+
+            Returns
+            -------
+            total : ndarray, shape (n_times, n_rooms)
+            starts_arr : ndarray of the start times used
             """
-            if len(ar) == 0:
-                return 10000, cur_r
-            end = t + dur
-            # Instructor+group cost is fixed across rooms
-            fixed = 0
-            for q in range(t, end):
-                if not ia[i_idx, q]:
-                    fixed += 100
-                if ic[i_idx, q] > 0:
-                    fixed += 1
-                for gidx in gidxs:
-                    if gc[gidx, q] > 0:
-                        fixed += 1
+            at = np.asarray(starts, dtype=np.intp)
+            n_times = len(at)
+            if n_times == 0:
+                return np.empty((0, n_rooms), dtype=np.int32), at
 
-            # Vectorize room costs
-            room_slice = rc[ar, t:end]  # (n_rooms, dur)
-            room_conflicts = np.sum(room_slice > 0, axis=1)  # (n_rooms,)
-            ra_slice = ra[ar, t:end]  # (n_rooms, dur) bool
-            room_avail_pen = 100 * np.sum(~ra_slice, axis=1)  # (n_rooms,)
-            total = fixed + room_conflicts + room_avail_pen  # (n_rooms,)
+            # Build offset indices: (n_times, dur)
+            offsets = at[:, None] + np.arange(dur, dtype=np.intp)  # (nT, dur)
 
-            min_cost = int(np.min(total))
-            if rng is not None:
-                # Random tie-break among all rooms with min cost
-                ties = np.flatnonzero(total == min_cost)
-                j = int(rng.choice(ties))
+            # ── Fixed cost: instructor availability penalty ──────
+            # ia[i_idx, offsets] → (nT, dur) bool; unavailable quanta
+            inst_unavail = ~ia[i_idx, offsets]  # (nT, dur)
+            inst_avail_pen = np.count_nonzero(inst_unavail, axis=1) * 100  # (nT,)
+
+            # ── Fixed cost: instructor exclusivity ───────────────
+            inst_clash = np.count_nonzero(ic[i_idx, offsets] > 0, axis=1)  # (nT,)
+
+            # ── Fixed cost: group exclusivity ────────────────────
+            if n_groups_e > 0:
+                gidx_arr = np.array(gidxs, dtype=np.intp)
+                # gc[gidx_arr][:, offsets] → index as gc[gidx_arr]
+                # then advanced-index columns:  shape (n_groups, nT, dur)
+                gc_vals = gc[gidx_arr][:, offsets]  # (nG, nT, dur)  — fancy ix
+                grp_clash = np.count_nonzero(gc_vals > 0, axis=(0, 2))  # (nT,)
             else:
-                j = int(np.argmin(total))
-            return min_cost, int(ar[j])
+                grp_clash = np.zeros(n_times, dtype=np.intp)
 
-        def _record(c, i_idx, r_idx, t):
-            """Update best / tied_best tracking."""
-            nonlocal best_conflicts, best_i, best_r, best_t, tied_best
-            if c < best_conflicts:
-                best_conflicts = c
-                best_i, best_r, best_t = i_idx, r_idx, t
-                tied_best = [(i_idx, r_idx, t)]
-            elif rng is not None and c == best_conflicts:
-                tied_best.append((i_idx, r_idx, t))
+            fixed_costs = inst_avail_pen + inst_clash + grp_clash  # (nT,)
 
-        # Phase 1: Find GROUP-conflict-free time slots
-        group_free_times = []
+            # ── Room cost: room exclusivity ──────────────────────
+            # rc[ar][:, offsets] → (nR, nT, dur)   but fancy ix both
+            # dims at once is tricky; use a reshape trick:
+            rc_vals = rc[ar[:, None, None], offsets[None, :, :]]  # (nR, nT, dur)
+            room_clash = np.count_nonzero(rc_vals > 0, axis=2)  # (nR, nT)
+
+            # ── Room cost: room availability penalty ─────────────
+            ra_vals = ra[ar[:, None, None], offsets[None, :, :]]  # (nR, nT, dur)
+            room_avail_pen = np.count_nonzero(~ra_vals, axis=2) * 100  # (nR, nT)
+
+            room_costs = room_clash + room_avail_pen  # (nR, nT)
+
+            # Total: fixed_costs[nT] broadcast + room_costs[nR, nT]
+            total = fixed_costs[None, :] + room_costs  # (nR, nT)
+
+            # Return as (nT, nR) for consistency with (time, room) axes
+            return total.T.astype(np.int32), at
+
+        # ── Helper: extract best from cost matrix ────────────────
+        def _pick_best(cost_matrix, starts_arr, i_idx):
+            """Update best_* from a (nT, nR) cost matrix."""
+            nonlocal best_cost, best_i, best_r, best_t
+            if cost_matrix.size == 0:
+                return False  # nothing to pick
+
+            min_val = int(cost_matrix.min())
+            if min_val > best_cost and rng is None:
+                return False  # can't improve
+
+            if min_val < best_cost:
+                best_cost = min_val
+                if rng is not None:
+                    ties = np.argwhere(cost_matrix == min_val)
+                    pick = ties[rng.integers(len(ties))]
+                else:
+                    pick = np.unravel_index(cost_matrix.argmin(), cost_matrix.shape)
+                best_t = int(starts_arr[pick[0]])
+                best_r = int(ar[pick[1]])
+                best_i = i_idx
+                if min_val == 0:
+                    return True  # perfect
+            elif rng is not None and min_val == best_cost:
+                # Accumulate ties for stochastic selection later —
+                # but for speed just do a single random pick within
+                # this matrix and compare with current best via coin flip.
+                ties = np.argwhere(cost_matrix == min_val)
+                pick = ties[rng.integers(len(ties))]
+                # 50/50 chance to replace current best with this tie
+                if rng.random() < len(ties) / (len(ties) + 1):
+                    best_t = int(starts_arr[pick[0]])
+                    best_r = int(ar[pick[1]])
+                    best_i = i_idx
+            return False
+
+        # ── Phase 1: Current instructor, group-free times ────────
         time_candidates = self._valid_starts_for(e, cur_i) or self.allowed_starts[e]
-        for t in time_candidates:
-            group_conflict = False
-            for gidx in gidxs:
-                for q in range(t, t + dur):
-                    if gc[gidx, q] > 0:
-                        group_conflict = True
-                        break
-                if group_conflict:
-                    break
-            if not group_conflict:
-                group_free_times.append(t)
 
-        # Shuffle candidate lists when stochastic
-        if rng is not None and group_free_times:
-            rng.shuffle(group_free_times)
+        # Vectorized group-free filter
+        tc_arr = np.asarray(time_candidates, dtype=np.intp)
+        if n_groups_e > 0 and len(tc_arr) > 0:
+            gidx_arr = np.array(gidxs, dtype=np.intp)
+            tc_offsets = tc_arr[:, None] + np.arange(dur, dtype=np.intp)  # (nT, dur)
+            gc_check = gc[gidx_arr][:, tc_offsets]  # (nG, nT, dur)
+            has_grp_conflict = np.any(gc_check > 0, axis=(0, 2))  # (nT,)
+            group_free_mask = ~has_grp_conflict
+            group_free_times = tc_arr[group_free_mask]
+        else:
+            group_free_times = tc_arr
 
-        # Phase 2: Try group-free times with vectorized room search
-        if group_free_times:
-            for t in group_free_times:
-                c, r_best = _score_all_rooms(cur_i, t)
-                if c == 0 and rng is None:
-                    room[e] = r_best
-                    time[e] = t
-                    return True
-                _record(c, cur_i, r_best, t)
+        # Score all group-free times for current instructor at once
+        if len(group_free_times) > 0:
+            cost_mat, starts = _score_instructor(cur_i, group_free_times)
+            if _pick_best(cost_mat, starts, cur_i):
+                inst[e] = best_i
+                room[e] = best_r
+                time[e] = best_t
+                return True
 
-        # Phase 3: Try different instructors with group-free times
+        # ── Phase 2: Other instructors, group-free times ─────────
         instr_order = list(ai[:8])
         if rng is not None:
             rng.shuffle(instr_order)
+
         for i_idx in instr_order:
-            i_free_times = self._valid_starts_for(e, i_idx) or self.allowed_starts[e]
-            if rng is not None:
-                i_free_times = list(i_free_times)
-                rng.shuffle(i_free_times)
-            for t in i_free_times:
-                group_conflict = False
-                for gidx in gidxs:
-                    for q in range(t, t + dur):
-                        if gc[gidx, q] > 0:
-                            group_conflict = True
-                            break
-                    if group_conflict:
-                        break
-                if group_conflict:
-                    continue
-                c, r_best = _score_all_rooms(i_idx, t)
-                if c == 0 and rng is None:
-                    inst[e] = i_idx
-                    room[e] = r_best
-                    time[e] = t
-                    return True
-                _record(c, i_idx, r_best, t)
+            i_times = self._valid_starts_for(e, i_idx) or self.allowed_starts[e]
+            i_tc = np.asarray(i_times, dtype=np.intp)
+            if len(i_tc) == 0:
+                continue
 
-        # Phase 4: Fallback — scan all times if no group-free times found
-        if not group_free_times:
-            tc = list(time_candidates)
-            if rng is not None:
-                rng.shuffle(tc)
-            for t in tc:
-                c, r_best = _score_all_rooms(cur_i, t)
-                _record(c, cur_i, r_best, t)
+            # Group-free filter for this instructor's times
+            if n_groups_e > 0:
+                i_offsets = i_tc[:, None] + np.arange(dur, dtype=np.intp)
+                gc_check_i = gc[gidx_arr][:, i_offsets]
+                i_gf_mask = ~np.any(gc_check_i > 0, axis=(0, 2))
+                i_gf_times = i_tc[i_gf_mask]
+            else:
+                i_gf_times = i_tc
 
-        # Final assignment — random tie-break when stochastic
-        if rng is not None and tied_best and best_conflicts > 0:
-            best_i, best_r, best_t = tied_best[rng.integers(len(tied_best))]
+            if len(i_gf_times) == 0:
+                continue
 
+            cost_mat, starts = _score_instructor(i_idx, i_gf_times)
+            if _pick_best(cost_mat, starts, i_idx):
+                inst[e] = best_i
+                room[e] = best_r
+                time[e] = best_t
+                return True
+
+        # ── Phase 3: Fallback — all times (incl. group conflicts) ─
+        if len(group_free_times) == 0:
+            cost_mat, starts = _score_instructor(cur_i, tc_arr)
+            _pick_best(cost_mat, starts, cur_i)
+
+        # ── Assign best found ────────────────────────────────────
         inst[e] = best_i
         room[e] = best_r
         time[e] = best_t
-        return best_conflicts == 0
+        return best_cost == 0
 
     # ------------------------------------------------------------------
     # Stage 3 — group deconfliction
