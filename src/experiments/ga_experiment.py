@@ -676,6 +676,17 @@ class GAExperiment(BaseExperiment):
                     if any(f in ("lecture hall", "seminar room") for f in feats_lower):
                         course.specific_lab_features = []
 
+        # ── Pre-feasibility report (runs before GA, survives crashes) ──
+        self._safe_call(
+            "pre-feasibility report",
+            lambda: (
+                __import__(
+                    "src.io.export.feasibility_reporter",
+                    fromlist=["generate_pre_feasibility_report"],
+                ).generate_pre_feasibility_report(pkl_data, self.output_dir)
+            ),
+        )
+
         n_offsprings = int(self.pop_size * self.n_offsprings_mult)
         self.logger.info(
             f"Mode: {self.mode}  |  pop={self.pop_size}  "

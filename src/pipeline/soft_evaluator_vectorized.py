@@ -39,7 +39,7 @@ import numpy as np
 _DEFAULT_N_DAYS = 6
 _DEFAULT_QUANTA_PER_DAY = 7
 _DEFAULT_BREAK_WITHIN_DAY = {2}  # midday break at within-day quantum 2
-_DEFAULT_BREAK_WINDOW = {2, 3}  # break window: within-day quanta 2-3
+_DEFAULT_BREAK_WINDOW = {2, 3}  # break window: within-day quanta 2-3 (12:00-14:00)
 
 
 @dataclass(frozen=True, slots=True)

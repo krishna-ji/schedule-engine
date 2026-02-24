@@ -519,6 +519,11 @@ class BitsetSchedulingRepair:
             soft_proxy = (
                 lunch_hits.astype(np.float64) - compact_bonus - alignment_bonus
             )  # (nT,)
+            # Prevent reward hacking: shift array so minimum is 0.0
+            # Without this, negative proxies (e.g. -0.02) combined with
+            # hard cost 1 yield 0.98, and int(0.98)==0 tricks the
+            # algorithm into thinking the hard constraint is satisfied.
+            soft_proxy = soft_proxy - np.min(soft_proxy)
             total = total_hard + 0.01 * soft_proxy[None, :]  # (nR, nT)
 
             # Return as (nT, nR) for consistency with (time, room) axes
