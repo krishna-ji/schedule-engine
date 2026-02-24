@@ -75,7 +75,7 @@ def apply_thesis_style() -> None:
             "font.family": "serif",
             "font.serif": ["Times New Roman", "DejaVu Serif", "Liberation Serif"],
             "font.size": 11,
-            "axes.titlesize": 13,
+            "axes.titlesize": 14,
             "axes.labelsize": 12,
             "xtick.labelsize": 10,
             "ytick.labelsize": 10,

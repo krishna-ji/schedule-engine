@@ -51,6 +51,8 @@ def _init_moea_lists(cb: Any) -> None:
     # Optional reference front for IGD (loaded lazily once)
     cb._ref_front = None
     cb._ref_front_checked = False
+    # Per-generation F snapshots for Pareto Evolution plot
+    cb.f_history: list[np.ndarray] = []
 
 
 def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) -> None:
@@ -65,12 +67,16 @@ def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) 
     """
     if algorithm.n_gen % _METRICS_INTERVAL != 0:
         return
-    from src.experiments.moea_metrics import (compute_diversity,
-                                              compute_feasibility_rate,
-                                              compute_hypervolume, compute_igd,
-                                              compute_spacing, filter_feasible,
-                                              load_reference_front,
-                                              update_ref_point_max)
+    from src.experiments.moea_metrics import (
+        compute_diversity,
+        compute_feasibility_rate,
+        compute_hypervolume,
+        compute_igd,
+        compute_spacing,
+        filter_feasible,
+        load_reference_front,
+        update_ref_point_max,
+    )
 
     # Feasibility rate uses ALL individuals
     cb.feasibility_rates.append(compute_feasibility_rate(G))
@@ -80,12 +86,9 @@ def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) 
 
     # Feasible-only subset for quality metrics
     F_feas = filter_feasible(F, G)
-    if F_feas is None or F_feas.shape[0] == 0:
-        cb.hypervolumes.append(float("nan"))
-        cb.spacings.append(float("nan"))
-        cb.diversities.append(float("nan"))
-        cb.igds.append(float("nan"))
-        return
+    if F_feas is None or F_feas.shape[0] < 2:
+        # Fall back to full population so metrics are never all-NaN
+        F_feas = F
 
     cb.hypervolumes.append(compute_hypervolume(F_feas, ref_point=ref_point))
     cb.spacings.append(compute_spacing(F_feas))
@@ -224,6 +227,8 @@ class GACallbackBase(Callback):
         self.best_softs.append(cur_soft)
         self.best_breakdowns.append(_constraint_breakdown(G[best_idx]))
         self.best_soft_breakdowns.append(_soft_breakdown(algorithm.problem, best_idx))
+        # Snapshot entire population F for Pareto Evolution scatter
+        self.f_history.append(F.copy())
         _record_moea_metrics(self, algorithm, F, G)
 
         # ── Debug: improvement / stagnation detection ────────────
