@@ -65,16 +65,12 @@ def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) 
     """
     if algorithm.n_gen % _METRICS_INTERVAL != 0:
         return
-    from src.experiments.moea_metrics import (
-        compute_diversity,
-        compute_feasibility_rate,
-        compute_hypervolume,
-        compute_igd,
-        compute_spacing,
-        filter_feasible,
-        load_reference_front,
-        update_ref_point_max,
-    )
+    from src.experiments.moea_metrics import (compute_diversity,
+                                              compute_feasibility_rate,
+                                              compute_hypervolume, compute_igd,
+                                              compute_spacing, filter_feasible,
+                                              load_reference_front,
+                                              update_ref_point_max)
 
     # Feasibility rate uses ALL individuals
     cb.feasibility_rates.append(compute_feasibility_rate(G))
@@ -110,11 +106,17 @@ def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) 
         cb.igds.append(float("nan"))
 
 
+# G columns treated as tolerated (soft) — must match scheduling_problem._TOLERATED_HARD_COLS
+_TOLERATED_COLS = frozenset({5})  # iAvl
+
+
 def _progress_payload(algorithm: Any) -> tuple:
     """Extract F, G, cv, best_idx from current population."""
     F = algorithm.pop.get("F")
     G = algorithm.pop.get("G")
-    cv = G.sum(axis=1).clip(0)
+    # cv uses only strict hard columns (excludes tolerated like iAvl)
+    strict_cols = [i for i in range(G.shape[1]) if i not in _TOLERATED_COLS]
+    cv = G[:, strict_cols].sum(axis=1).clip(0)
     best_idx = int(np.argmin(cv))
     return F, G, cv, best_idx
 
@@ -151,7 +153,11 @@ def _log_gen(algorithm: Any, log_interval: int) -> tuple:
     F, G, cv, best_idx = _progress_payload(algorithm)
     if algorithm.n_gen == 1 or algorithm.n_gen % log_interval == 0:
         bd = G[best_idx]
-        parts = " ".join(f"{n}={int(v)}" for n, v in zip(_SHORT, bd, strict=False))
+        # Mark tolerated columns with ~ prefix so logs show e.g. ~iAvl=15
+        parts = " ".join(
+            f"{'~' if i in _TOLERATED_COLS else ''}{n}={int(v)}"
+            for i, (n, v) in enumerate(zip(_SHORT, bd, strict=False))
+        )
         # Soft breakdown from problem
         sbd = _soft_breakdown(algorithm.problem, best_idx)
         soft_parts = " ".join(f"{k}={v}" for k, v in sbd.items()) if sbd else ""

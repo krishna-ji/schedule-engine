@@ -9,7 +9,7 @@ Exposes:
     fast_evaluate_hard_batch(X, data) -> G
         X: shape (N, 3E) interleaved chromosome matrix
         data: precomputed BatchEvalData (from prepare_batch_data)
-        G: shape (N, 9) per-constraint violation counts
+        G: shape (N, 8) per-constraint violation counts
 
 Constraint order matches fast_evaluator_vectorized.py exactly:
     0: student_group_exclusivity
@@ -18,9 +18,8 @@ Constraint order matches fast_evaluator_vectorized.py exactly:
     3: instructor_qualifications
     4: room_suitability
     5: instructor_time_availability
-    6: room_time_availability
-    7: course_completeness (always 0)
-    8: sibling_same_day (not computed in batch fallback — always 0)
+    6: course_completeness (always 0)
+    7: sibling_same_day (not computed in batch fallback — always 0)
 
 Violation counting convention (must match original):
     Exclusivity: For each (resource, quantum), if k events overlap, count k-1.
@@ -70,7 +69,6 @@ HARD_CONSTRAINT_NAMES = [
     "instructor_qualifications",
     "room_suitability",
     "instructor_time_availability",
-    "room_time_availability",
     "course_completeness",
     "sibling_same_day",
 ]
@@ -204,7 +202,7 @@ def fast_evaluate_hard_batch(
 
     Returns
     -------
-    G : ndarray, shape (N, 9)
+    G : ndarray, shape (N, 8)
         Per-constraint violation counts. Column order matches
         HARD_CONSTRAINT_NAMES.
     """
@@ -212,7 +210,7 @@ def fast_evaluate_hard_batch(
     if X.ndim == 1:
         X = X.reshape(1, -1)
     N = X.shape[0]
-    G = np.zeros((N, 9), dtype=np.int64)
+    G = np.zeros((N, 8), dtype=np.int64)
 
     E = data.n_events
     durations = data.durations
@@ -244,7 +242,6 @@ def fast_evaluate_hard_batch(
         qual_viol = 0
         suit_viol = 0
         inst_avail_viol = 0
-        room_avail_viol = 0
 
         for e in range(E):
             i_idx = int(inst_assign[e])
@@ -285,19 +282,14 @@ def fast_evaluate_hard_batch(
             if unavail:
                 inst_avail_viol += fpc(unavail)
 
-            unavail = int(event_mask & ~room_avail[r_idx])
-            if unavail:
-                room_avail_viol += fpc(unavail)
-
         G[n, 0] = group_viol
         G[n, 1] = inst_viol
         G[n, 2] = room_viol
         G[n, 3] = qual_viol
         G[n, 4] = suit_viol
         G[n, 5] = inst_avail_viol
-        G[n, 6] = room_avail_viol
-        G[n, 7] = 0  # course_completeness always 0
-        G[n, 8] = 0  # sibling_same_day — not computed in batch fallback
+        G[n, 6] = 0  # course_completeness always 0
+        G[n, 7] = 0  # sibling_same_day — not computed in batch fallback
 
     return G
 

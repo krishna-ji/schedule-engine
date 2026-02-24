@@ -100,7 +100,7 @@ class TestHardEvaluatorEquivalence:
 
         vec_data = prepare_vectorized_data(pkl_data)
         G = fast_evaluate_hard_vectorized(population[0:1], vec_data)
-        assert G.shape == (1, 9)
+        assert G.shape == (1, 8)
         assert G.dtype == np.int64
 
     def test_1d_input(self, pkl_data, population):
@@ -112,7 +112,7 @@ class TestHardEvaluatorEquivalence:
 
         vec_data = prepare_vectorized_data(pkl_data)
         G = fast_evaluate_hard_vectorized(population[0], vec_data)
-        assert G.shape == (1, 9)
+        assert G.shape == (1, 8)
 
 
 # ------------------------------------------------------------------
@@ -129,7 +129,7 @@ class TestBatchAPIContract:
 
         G = eval_hard_batch(population, batch_ctx)
         N = population.shape[0]
-        assert G.shape == (N, 9)
+        assert G.shape == (N, 8)
         assert G.dtype == np.int64
         assert (G >= 0).all(), "Violation counts must be non-negative"
 
@@ -189,7 +189,7 @@ class TestBatchAPIContract:
         from src.pipeline.batch_api import eval_hard_batch
 
         G = eval_hard_batch(population[0], batch_ctx)
-        assert G.shape == (1, 9)
+        assert G.shape == (1, 8)
 
 
 # ------------------------------------------------------------------
@@ -220,4 +220,4 @@ class TestSchedulingProblemCanonical:
         assert "F" in out
         assert "G" in out
         assert out["F"].shape == (population.shape[0], 2)
-        assert out["G"].shape == (population.shape[0], 9)
+        assert out["G"].shape == (population.shape[0], 8)

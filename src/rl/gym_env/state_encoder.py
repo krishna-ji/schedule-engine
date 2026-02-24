@@ -76,7 +76,6 @@ class StateEncoder:
         "instructor_qualifications",
         "room_suitability",
         "instructor_time_availability",
-        "room_time_availability",
         "course_completeness",
         "sibling_same_day",
     ]

@@ -533,13 +533,13 @@ class TestRegistries:
     """Test module-level constraint registries."""
 
     def test_hard_constraint_count(self):
-        assert len(HARD_CONSTRAINT_CLASSES) == 9
+        assert len(HARD_CONSTRAINT_CLASSES) == 8
 
     def test_soft_constraint_count(self):
         assert len(SOFT_CONSTRAINT_CLASSES) == 6
 
     def test_all_constraints_is_sum(self):
-        assert len(ALL_CONSTRAINTS) == 15
+        assert len(ALL_CONSTRAINTS) == 14
         assert ALL_CONSTRAINTS == HARD_CONSTRAINT_CLASSES + SOFT_CONSTRAINT_CLASSES
 
     def test_all_implement_protocol(self):
@@ -560,9 +560,9 @@ class TestRegistries:
 class TestBuildConstraints:
     """Test the build_constraints() factory function."""
 
-    def test_default_returns_15(self):
+    def test_default_returns_14(self):
         constraints = build_constraints()
-        assert len(constraints) == 15
+        assert len(constraints) == 14
 
     def test_default_weights_are_one(self):
         constraints = build_constraints()

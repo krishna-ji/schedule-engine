@@ -23,14 +23,18 @@ from src.experiments import MemeticExperiment
 SEED = 42
 
 # GA Core Parameters
-POP_SIZE = 50 # Population size
-NGEN = 150  # Number of generations
-CROSSOVER_PROB = 0.6  # Per-event crossover probability
-MUTATION_PROB = 0.08  # Per-event mutation probability
+POP_SIZE = 120  # Population size (was 50 — more diversity)
+NGEN = 200  # Number of generations (was 150 — more time to converge)
+CROSSOVER_PROB = 0.4  # Per-event crossover probability (was 0.6 — less destructive)
+MUTATION_PROB = (
+    0.10  # Per-event mutation probability (was 0.08 — slightly more exploration)
+)
 
 # Memetic Parameters
-ELITE_PCT = 0.05  # Fraction of pop to repair each generation
-REPAIR_ITERS = 5  # Repair passes per elite individual
+ELITE_PCT = (
+    0.15  # Fraction of pop to repair each generation (was 0.05 — wider repair coverage)
+)
+REPAIR_ITERS = 8  # Repair passes per elite individual (was 5 — deeper local search)
 
 # Data Paths
 DATA_DIR = PROJECT_ROOT / "data"

@@ -215,7 +215,7 @@ class TestConstraintProtocol:
     def test_known_hard_constraint_count(self):
         from src.constraints import HARD_CONSTRAINT_CLASSES
 
-        assert len(HARD_CONSTRAINT_CLASSES) == 9
+        assert len(HARD_CONSTRAINT_CLASSES) == 8
 
     def test_known_soft_constraint_count(self):
         from src.constraints import SOFT_CONSTRAINT_CLASSES
@@ -238,7 +238,7 @@ class TestEvaluator:
         from src.constraints import Evaluator
 
         ev = Evaluator()
-        assert len(ev.hard) == 9
+        assert len(ev.hard) == 8
         assert len(ev.soft) == 6
 
     def test_evaluator_custom_constraints(self):
@@ -278,7 +278,7 @@ class TestEvaluator:
         genes = [_make_gene(start=0, duration=2)]
         bd = ev.breakdown(genes, ctx)
         assert isinstance(bd, dict)
-        assert len(bd) == 15  # 9 hard + 6 soft
+        assert len(bd) == 14  # 8 hard + 6 soft
 
     def test_breakdown_from_timetable(self):
         from src.constraints import Evaluator
@@ -288,7 +288,7 @@ class TestEvaluator:
         genes = [_make_gene(start=0, duration=2)]
         tt = Timetable(genes, ctx)
         bd = ev.breakdown_from_timetable(tt)
-        assert len(bd) == 15
+        assert len(bd) == 14
 
     def test_hard_breakdown_only_hard(self):
         from src.constraints import Evaluator
@@ -297,7 +297,7 @@ class TestEvaluator:
         ctx = _simple_context()
         tt = Timetable([_make_gene()], ctx)
         hb = ev.hard_breakdown(tt)
-        assert len(hb) == 9
+        assert len(hb) == 8
 
     def test_soft_breakdown_only_soft(self):
         from src.constraints import Evaluator

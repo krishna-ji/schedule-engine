@@ -46,10 +46,11 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     # If current instructor is qualified, keep with high probability (70%)
     if gene.instructor_id in qualified_instructors and random.random() < 0.7:
         new_instructor = gene.instructor_id
+    elif qualified_instructors:
+        new_instructor = random.choice(qualified_instructors)
     else:
-        new_instructor = random.choice(
-            qualified_instructors if qualified_instructors else [gene.instructor_id]
-        )
+        # STRICT: never assign unqualified — keep current
+        new_instructor = gene.instructor_id
     # ROOM: Mutate intelligently
     # Smart room selection with capacity and feature constraints
     # Use first group for room suitability check
@@ -62,10 +63,11 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
     )
     if gene.room_id in suitable_rooms and random.random() < 0.5:
         new_room = gene.room_id  # Keep current room if suitable
+    elif suitable_rooms:
+        new_room = random.choice(suitable_rooms)
     else:
-        new_room = random.choice(
-            suitable_rooms if suitable_rooms else list(context.rooms.keys())
-        )
+        # STRICT: never assign unsuitable room — keep current
+        new_room = gene.room_id
     # TIME: Mutate intelligently (preserve quanta count!)
     # CRITICAL: Keep the SAME number of quanta to preserve course requirements
     new_quanta = mutate_time_quanta(gene, course, context, individual=None)
@@ -200,7 +202,8 @@ def find_suitable_rooms_for_course(
         ):
             suitable_room_ids.append(room_id)
 
-    return suitable_room_ids if suitable_room_ids else list(context.rooms.keys())
+    # STRICT: never allow unsuitable rooms — return empty if none suitable
+    return suitable_room_ids
 
 
 def mutate_individual(
@@ -260,12 +263,11 @@ def mutate_individual(
             ]
             if gene.instructor_id in qualified_instructors and random.random() < 0.5:
                 new_instructor = gene.instructor_id
+            elif qualified_instructors:
+                new_instructor = random.choice(qualified_instructors)
             else:
-                new_instructor = random.choice(
-                    qualified_instructors
-                    if qualified_instructors
-                    else [gene.instructor_id]
-                )
+                # STRICT: never assign unqualified — keep current
+                new_instructor = gene.instructor_id
 
             # Room: type-aware
             primary_group = gene.group_ids[0] if gene.group_ids else None
@@ -277,10 +279,11 @@ def mutate_individual(
             )
             if gene.room_id in suitable_rooms and random.random() < 0.3:
                 new_room = gene.room_id
+            elif suitable_rooms:
+                new_room = random.choice(suitable_rooms)
             else:
-                new_room = random.choice(
-                    suitable_rooms if suitable_rooms else list(context.rooms.keys())
-                )
+                # STRICT: never assign unsuitable room — keep current
+                new_room = gene.room_id
 
             individual[i] = SessionGene(
                 course_id=gene.course_id,

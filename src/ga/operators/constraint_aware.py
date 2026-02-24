@@ -165,10 +165,11 @@ def mutate_gene_constraint_aware(
 
     if gene.instructor_id in qualified_instructors and random.random() < 0.7:
         new_instructor = gene.instructor_id
+    elif qualified_instructors:
+        new_instructor = random.choice(qualified_instructors)
     else:
-        new_instructor = random.choice(
-            qualified_instructors if qualified_instructors else [gene.instructor_id]
-        )
+        # STRICT: never assign unqualified — keep current
+        new_instructor = gene.instructor_id
     # ROOM: Mutate with suitability check
     from src.ga.operators.mutation import find_suitable_rooms_for_course
 
@@ -179,10 +180,11 @@ def mutate_gene_constraint_aware(
 
     if gene.room_id in suitable_rooms and random.random() < 0.5:
         new_room = gene.room_id
+    elif suitable_rooms:
+        new_room = random.choice(suitable_rooms)
     else:
-        new_room = random.choice(
-            suitable_rooms if suitable_rooms else list(context.rooms.keys())
-        )
+        # STRICT: never assign unsuitable room — keep current
+        new_room = gene.room_id
     # TIME: Mutate ONLY if it doesn't create conflicts
     new_start = gene.start_quanta  # Default: keep current time
 
@@ -281,6 +283,13 @@ def crossover_constraint_aware(
 
         if would_conflict_in_1 or would_conflict_in_2:
             # Reject this swap - would create conflicts
+            swaps_rejected += 1
+            continue
+
+        # STRICT: reject swap if it would violate qualification or suitability
+        from src.ga.operators.crossover import _is_swap_valid
+
+        if not _is_swap_valid(gene1, gene2, context):
             swaps_rejected += 1
             continue
 

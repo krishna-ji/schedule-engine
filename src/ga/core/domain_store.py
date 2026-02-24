@@ -14,10 +14,13 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from src.utils.room_compatibility import is_room_suitable_for_course
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from src.domain.gene import SessionGene
@@ -206,8 +209,13 @@ class GeneDomainStore:
         if not result:
             # Include part-time with zero availability as last resort
             result = part_time_empty
-        # Fallback: if nobody qualified, allow all (repair will handle)
-        return result if result else list(self.context.instructors.keys())
+        # STRICT: never allow unqualified instructors — log warning if empty
+        if not result:
+            logger.warning(
+                "No qualified instructors found for %s — gene will keep current instructor",
+                course_key,
+            )
+        return result
 
     def _suitable_rooms(
         self,
@@ -254,7 +262,13 @@ class GeneDomainStore:
             if is_room_suitable_for_course(req_str, room_str, lab_feats, room_spec):
                 result.append(room_id)
 
-        return result if result else list(self.context.rooms.keys())
+        # STRICT: never allow unsuitable rooms — log warning if empty
+        if not result:
+            logger.warning(
+                "No suitable rooms found for %s — gene will keep current room",
+                course_key,
+            )
+        return result
 
     def _valid_starts(self, num_quanta: int) -> list[int]:
         """All start positions where num_quanta fit within a single day.

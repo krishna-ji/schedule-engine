@@ -6,7 +6,7 @@ no per-individual Python loops in the caller.
 Shapes & dtypes
 ~~~~~~~~~~~~~~~
     X : int64, (N, 3*E)    — population matrix (interleaved chromosomes)
-    G : int64, (N, 9)      — hard constraint violation counts (9 constraints)
+    G : int64, (N, 8)      — hard constraint violation counts (8 constraints)
     F : float64, (N, 2)    — objectives [hard_total, soft_total]
     S : float64, (N,)      — soft penalty per individual
     hv, igd, spacing : float64 scalars
@@ -110,12 +110,12 @@ def eval_hard_batch(
 
     Returns
     -------
-    G : ndarray, shape (N, 9), int64
+    G : ndarray, shape (N, 8), int64
         Per-constraint violation counts.
     """
     X = _assert_population(X, ctx.n_events)
     G = fast_evaluate_hard_vectorized(X, ctx.vdata)
-    assert G.shape == (X.shape[0], 9), f"G shape mismatch: {G.shape}"
+    assert G.shape == (X.shape[0], 8), f"G shape mismatch: {G.shape}"
     assert G.dtype == np.int64, f"G dtype mismatch: {G.dtype}"
     return G
 

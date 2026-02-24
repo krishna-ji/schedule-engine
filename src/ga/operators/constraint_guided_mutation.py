@@ -498,16 +498,14 @@ def _mutate_session(
             )
             if suitable:
                 gene.room_id = random.choice(suitable)
-            else:
-                gene.room_id = random.choice(list(context.rooms.keys()))
+            # STRICT: never assign unsuitable room — keep current if none suitable
 
     elif mutation_type < 0.9:
         course_key = (gene.course_id, gene.course_type)
         course = context.courses.get(course_key)
         if course and course.qualified_instructor_ids:
             gene.instructor_id = random.choice(course.qualified_instructor_ids)
-        elif context.instructors:
-            gene.instructor_id = random.choice(list(context.instructors.keys()))
+        # STRICT: never assign unqualified — keep current if no qualified found
 
     else:
         num_quanta = gene.num_quanta
@@ -529,5 +527,4 @@ def _mutate_session(
             )
             if suitable:
                 gene.room_id = random.choice(suitable)
-            else:
-                gene.room_id = random.choice(list(context.rooms.keys()))
+            # STRICT: never assign unsuitable room — keep current if none suitable

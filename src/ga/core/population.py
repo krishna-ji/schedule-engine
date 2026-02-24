@@ -508,10 +508,16 @@ def _create_pure_random_gene(
 
     instructor_id = random.choice(qualified_instructors)
 
-    # Random room (ignore suitability - will be caught by constraints)
-    if not context.rooms:
+    # Room: suitability-aware selection (type + capacity + features)
+    from src.ga.operators.mutation import find_suitable_rooms_for_course
+
+    primary_group = group_ids[0] if group_ids else ""
+    suitable_rooms = find_suitable_rooms_for_course(
+        course_code, course_type, primary_group, context
+    )
+    if not suitable_rooms:
         return None
-    room_id = random.choice(list(context.rooms.keys()))
+    room_id = random.choice(suitable_rooms)
 
     # Random start time (ensure enough space for duration)
     total_quanta = len(context.available_quanta) if context.available_quanta else 42

@@ -312,13 +312,52 @@ class VectorizedRepair:
 
         return scores[:NE].reshape(N, E).astype(np.int32)
 
+    def _score_inst_avail_batch(self, X: np.ndarray) -> np.ndarray:
+        """Per-event instructor-specific conflict scores (inst clash + avail).
+
+        Returns
+        -------
+        scores : ndarray, shape (N, E), float64
+            Instructor double-booking (1 per quantum) + instructor
+            availability violations (10 per quantum) for each event.
+        """
+        N = X.shape[0]
+        E = self.n_events
+        NE = N * E
+
+        inst = np.clip(X[:, 0::3], 0, self.n_instructors - 1).astype(np.int64)
+        time = X[:, 2::3].astype(np.int64)
+        n_idx = np.arange(N, dtype=np.int64)[:, None]
+
+        starts_exp = time[:, self.exp_event]
+        quanta_exp = np.clip(starts_exp + self.exp_offset[None, :], 0, T - 1)
+        insts_exp = inst[:, self.exp_event]
+
+        event_lin = (n_idx * E + self.exp_event[None, :]).ravel()
+
+        # Instructor double-booking
+        nIT = np.int64(self.n_instructors) * np.int64(T)
+        inst_keys = (n_idx * nIT + insts_exp * T + quanta_exp).ravel()
+        inst_cnt = np.bincount(inst_keys, minlength=int(N * nIT))
+        inst_conflict = (inst_cnt[inst_keys] > 1).astype(np.float64)
+
+        # Instructor availability
+        inst_unavail = (~self.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]).astype(
+            np.float64
+        ) * 10.0
+
+        q_score = inst_conflict + inst_unavail
+        scores = np.bincount(event_lin, weights=q_score, minlength=NE)
+        return scores[:NE].reshape(N, E)
+
     def _repair_conflicts_vec(self, X: np.ndarray, passes: int = 3) -> None:
         """Population-level stochastic conflict resolution (in-place).
 
         For each pass:
           1. Compute per-event conflict scores for all (N, E)
           2. Identify events with score > 0
-          3. Resample time (always) and room (50%) from domain matrices
+          3. Resample time (always), room (~50%), and instructor
+             (for events with instructor-related conflicts) from domains
           4. Repeat
 
         This replaces the serial per-individual greedy repair with a
@@ -336,6 +375,10 @@ class VectorizedRepair:
             if not conflict_mask.any():
                 break
 
+            # Compute instructor-specific scores to decide which events
+            # need instructor reassignment (not just time/room)
+            inst_scores = self._score_inst_avail_batch(X)  # (N, E)
+
             # Only mutate a subset of conflicts per pass to avoid thrashing
             mutation_mask = conflict_mask & (rng.random((N, E)) < 0.3)
             if not mutation_mask.any():
@@ -347,6 +390,19 @@ class VectorizedRepair:
                 continue
 
             bi, be = np.nonzero(mutation_mask)
+
+            # --- Resample instructor for events with instructor conflicts ---
+            # (instructor double-booking or availability violations)
+            inst_conflict_mask = inst_scores[bi, be] > 0
+            i_bi, i_be = bi[inst_conflict_mask], be[inst_conflict_mask]
+            if len(i_bi) > 0:
+                i_dl = self.inst_dom_len[i_be]
+                i_valid = i_dl > 1  # need >1 option to resample
+                i_bi_v, i_be_v, i_dl_v = i_bi[i_valid], i_be[i_valid], i_dl[i_valid]
+                if len(i_bi_v) > 0:
+                    i_idx = (rng.random(len(i_bi_v)) * i_dl_v).astype(np.int64)
+                    i_idx = np.minimum(i_idx, i_dl_v - 1)
+                    X[i_bi_v, 3 * i_be_v] = self.inst_domains[i_be_v, i_idx]
 
             # --- Resample time slot ---
             t_dl = self.time_dom_len[be]
