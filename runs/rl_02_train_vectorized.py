@@ -53,7 +53,7 @@ logger = logging.getLogger("rl_02_train_vectorized")
 SEED = 42
 POP_SIZE = 120
 MAX_GENERATIONS = 50  # episode length (env steps)
-TOTAL_TIMESTEPS = 2_000  # PPO training budget
+TOTAL_TIMESTEPS = 100_000  # PPO training budget
 EVAL_GENERATIONS = 50  # evaluation episode length
 LEARNING_RATE = 3e-4
 CLIP_RANGE = 0.2
@@ -479,7 +479,9 @@ def main() -> None:
     evaluate(model, run_dir)
 
     # -- 3. Plot ------------------------------------------------------------
-    pdfs = generate_thesis_plots(run_dir)
+    from src.rl.training.plot_thesis_figures import generate_plots
+
+    pdfs = generate_plots(run_dir)
 
     # -- Summary ------------------------------------------------------------
     logger.info("=" * 60)
