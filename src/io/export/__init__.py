@@ -20,6 +20,10 @@ from src.io.export.plot_detailed_constraints import (
 )
 from src.io.export.plot_hypervolume import plot_hypervolume_trend
 from src.io.export.plot_igd import plot_igd_trend
+from src.io.export.plot_memetic import (
+    plot_pareto_repair_shift,
+    plot_repair_interventions,
+)
 from src.io.export.plot_pareto_evolution import plot_pareto_evolution
 from src.io.export.plot_spacing import plot_spacing_trend
 from src.io.export.plotdiversity import plot_diversity_trend
@@ -47,6 +51,8 @@ __all__ = [
     # Plots
     "plot_pareto_evolution",
     "plot_pareto_front_from_F",
+    "plot_pareto_repair_shift",
+    "plot_repair_interventions",
     "plot_soft_constraint_violation_over_generation",
     "plot_spacing_trend",
 ]

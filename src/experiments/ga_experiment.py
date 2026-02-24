@@ -450,6 +450,29 @@ class GAExperiment(BaseExperiment):
         else:
             self.logger.info("  [skip] PDF export disabled (export_pdf=False)")
 
+        # ── 7. Memetic / repair-specific thesis plots ─────────────
+        repair_gens: list[int] = getattr(callback, "repair_gens", [])
+        if repair_gens:
+            self._safe_call(
+                "repair intervention plot",
+                lambda: (
+                    __import__(
+                        "src.io.export.plot_memetic",
+                        fromlist=["plot_repair_interventions"],
+                    ).plot_repair_interventions(best_hards, repair_gens, out)
+                ),
+            )
+            if f_history:
+                self._safe_call(
+                    "Pareto repair shift plot",
+                    lambda: (
+                        __import__(
+                            "src.io.export.plot_memetic",
+                            fromlist=["plot_pareto_repair_shift"],
+                        ).plot_pareto_repair_shift(f_history, repair_gens, out)
+                    ),
+                )
+
         self.logger.info(f"Output artefacts written to {self.output_dir}")
 
     # ── CSV helpers ────────────────────────────────────────────
@@ -816,6 +839,7 @@ class MemeticExperiment(GAExperiment):
                 # Throttle: only run expensive repair every Nth generation
                 if gen % repair_frequency != 0:
                     return
+                self.repair_gens.append(gen)  # track for thesis plots
                 pop = algorithm.pop
                 n_elite = max(1, int(len(pop) * elite_pct))
                 elite_idxs = np.argsort(cv)[:n_elite]
@@ -969,6 +993,7 @@ class AdaptiveExperiment(GAExperiment):
                     )
 
                 if self._escalated:
+                    self.repair_gens.append(algorithm.n_gen or 0)
                     pop = algorithm.pop
                     gen = algorithm.n_gen or 0
                     n_elite = max(1, int(len(pop) * elite_pct))

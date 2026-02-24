@@ -53,6 +53,8 @@ def _init_moea_lists(cb: Any) -> None:
     cb._ref_front_checked = False
     # Per-generation F snapshots for Pareto Evolution plot
     cb.f_history: list[np.ndarray] = []
+    # Generations where repair operator actually fired (1-based)
+    cb.repair_gens: list[int] = []
 
 
 def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) -> None:
