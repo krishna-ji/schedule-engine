@@ -70,8 +70,8 @@ class PymooHyperHeuristicEnv(gym.Env):
         constraint class.
 
     **Reward**:
-        Hard-penalty delta (improvement) + feasibility bonus − time
-        penalty.  All computed via vectorised aggregations on ``pop.F``.
+        Pure delta-based: hard-penalty improvement + 0.1 × soft-penalty
+        improvement + one-time feasibility bonus.  No time penalty.
 
     **Termination**:
         ``done = True`` when the best individual is fully feasible
@@ -107,7 +107,6 @@ class PymooHyperHeuristicEnv(gym.Env):
         seed: int = 42,
         reward_scale: float = 1.0,
         feasibility_bonus: float = 10.0,
-        time_penalty_weight: float = 0.001,
     ):
         super().__init__()
 
@@ -119,7 +118,6 @@ class PymooHyperHeuristicEnv(gym.Env):
         self.seed = seed
         self.reward_scale = reward_scale
         self.feasibility_bonus = feasibility_bonus
-        self.time_penalty_weight = time_penalty_weight
 
         # -- Gym spaces ---------------------------------------------------
         self.observation_space = spaces.Box(
@@ -145,6 +143,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         self._algorithm = None
         self._gen: int = 0
         self._prev_best_hard: float = np.inf
+        self._prev_best_soft: float = np.inf
         self._found_feasible: bool = False
         self._episode_start: float = 0.0
 
@@ -225,6 +224,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         # Extract initial state
         self._gen = 1
         self._prev_best_hard = np.inf
+        self._prev_best_soft = np.inf
         self._found_feasible = False
         self._episode_start = _time.perf_counter()
 
@@ -235,6 +235,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         obs = self._encoder.encode(F, G, X, soft_breakdown=soft_bd)
 
         self._prev_best_hard = float(F[:, 0].min())
+        self._prev_best_soft = float(F[:, 1].min())
 
         info = self._build_info(F, G)
         return obs, info
@@ -285,11 +286,13 @@ class PymooHyperHeuristicEnv(gym.Env):
 
         # -- Termination checks -------------------------------------------
         best_hard = float(F[:, 0].min())
+        best_soft = float(F[:, 1].min())
         terminated = bool(best_hard == 0.0)
         truncated = self._gen >= self.max_generations
 
         # Update tracking
         self._prev_best_hard = best_hard
+        self._prev_best_soft = best_soft
 
         info = self._build_info(F, G)
         info["step_time_s"] = step_time
@@ -315,21 +318,30 @@ class PymooHyperHeuristicEnv(gym.Env):
     def _compute_reward(
         self, F: np.ndarray, G: np.ndarray
     ) -> float:
-        """Vectorized reward from F and G matrices."""
+        r"""Pure delta-based reward from F and G matrices.
+
+        .. math::
+
+            R_t = \Delta_{\text{hard}} + 0.1 \cdot \Delta_{\text{soft}}
+                  + \text{feasibility\_bonus}
+
+        where $\Delta = \text{prev\_best} - \text{best}$ (positive means
+        improvement).  No time penalty — the agent is rewarded strictly
+        for **making things better**.
+        """
         best_hard = float(F[:, 0].min())
-        mean_hard = float(F[:, 0].mean())
+        best_soft = float(F[:, 1].min())
 
-        # -- Component 1: hard-penalty improvement -----------------------
-        if self._prev_best_hard > 0:
-            improvement = (self._prev_best_hard - best_hard) / max(
-                self._prev_best_hard, 1e-8
-            )
-        else:
-            improvement = 0.0
+        # -- Component 1: absolute hard-penalty improvement --------------
+        delta_hard = self._prev_best_hard - best_hard  # >0 = got better
+        # Normalise by initial magnitude so reward scale stays ~O(1)
+        norm_hard = max(self._prev_best_hard, 1.0)
+        hard_reward = delta_hard / norm_hard
 
-        # -- Component 2: feasibility fraction gain ----------------------
-        frac_feasible = float((G.sum(axis=1) == 0).mean())
-        feas_reward = frac_feasible * 0.5
+        # -- Component 2: absolute soft-penalty improvement --------------
+        delta_soft = self._prev_best_soft - best_soft
+        norm_soft = max(self._prev_best_soft, 1.0)
+        soft_reward = delta_soft / norm_soft
 
         # -- Component 3: one-time feasibility bonus ---------------------
         first_feasible_bonus = 0.0
@@ -337,16 +349,13 @@ class PymooHyperHeuristicEnv(gym.Env):
             first_feasible_bonus = self.feasibility_bonus
             self._found_feasible = True
 
-        # -- Component 4: time penalty -----------------------------------
-        time_penalty = self.time_penalty_weight * self._gen
-
-        # -- Combine ------------------------------------------------------
+        # -- Combine (no time penalty) ------------------------------------
         reward = (
-            improvement + feas_reward + first_feasible_bonus - time_penalty
+            hard_reward + 0.1 * soft_reward + first_feasible_bonus
         ) * self.reward_scale
 
-        # Clip to [-5, 15] (feasibility bonus can spike)
-        return float(np.clip(reward, -5.0, 15.0))
+        # Clip to [-5, 5]  (feasibility bonus handled separately)
+        return float(np.clip(reward, -5.0, 5.0))
 
     # ------------------------------------------------------------------
     # Helpers
@@ -366,9 +375,14 @@ class PymooHyperHeuristicEnv(gym.Env):
     def _build_info(
         self, F: np.ndarray, G: np.ndarray
     ) -> dict[str, Any]:
-        """Build the info dict returned by step/reset."""
+        """Build the info dict returned by step/reset.
+
+        Includes per-constraint violation means (8 hard + 4 soft) so
+        that evaluation scripts can export a full constraint breakdown
+        without re-parsing the observation vector.
+        """
         total_viol = G.sum(axis=1)
-        return {
+        info: dict[str, Any] = {
             "generation": self._gen,
             "best_hard": float(F[:, 0].min()),
             "mean_hard": float(F[:, 0].mean()),
@@ -379,6 +393,28 @@ class PymooHyperHeuristicEnv(gym.Env):
             "pop_size": F.shape[0],
             "elapsed_s": _time.perf_counter() - self._episode_start,
         }
+
+        # -- Per-hard-constraint mean violations (8 columns) -------------
+        from src.rl.gym_env.fast_state_encoder import (
+            HARD_CONSTRAINT_NAMES,
+            SOFT_CONSTRAINT_NAMES,
+        )
+
+        for i, name in enumerate(HARD_CONSTRAINT_NAMES):
+            if i < G.shape[1]:
+                info[f"cv_{name}"] = float(G[:, i].mean())
+            else:
+                info[f"cv_{name}"] = 0.0
+
+        # -- Per-soft-constraint mean penalties (4 soft) -----------------
+        soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
+        for name in SOFT_CONSTRAINT_NAMES:
+            if soft_bd and name in soft_bd:
+                info[f"cv_{name}"] = float(np.asarray(soft_bd[name]).mean())
+            else:
+                info[f"cv_{name}"] = 0.0
+
+        return info
 
     def render(self) -> None:
         """No rendering — headless environment."""

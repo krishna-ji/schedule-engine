@@ -52,9 +52,9 @@ logger = logging.getLogger("rl_02_train_vectorized")
 
 SEED = 42
 POP_SIZE = 120
-MAX_GENERATIONS = 50          # episode length (env steps)
-TOTAL_TIMESTEPS = 2_000       # PPO training budget
-EVAL_GENERATIONS = 50         # evaluation episode length
+MAX_GENERATIONS = 50  # episode length (env steps)
+TOTAL_TIMESTEPS = 2_000  # PPO training budget
+EVAL_GENERATIONS = 50  # evaluation episode length
 LEARNING_RATE = 3e-4
 CLIP_RANGE = 0.2
 NET_ARCH = [64, 64]
@@ -64,6 +64,7 @@ PKL_PATH = ".cache/events_with_domains.pkl"
 # ======================================================================
 # 1. Training
 # ======================================================================
+
 
 def train(run_dir: Path) -> None:
     """Train PPO and save model + CSVs."""
@@ -75,7 +76,12 @@ def train(run_dir: Path) -> None:
     logger.info("=" * 60)
     logger.info("Phase 36 — PPO Training on PymooHyperHeuristicEnv")
     logger.info("  run_dir : %s", run_dir)
-    logger.info("  pop_size: %d  max_gen: %d  timesteps: %d", POP_SIZE, MAX_GENERATIONS, TOTAL_TIMESTEPS)
+    logger.info(
+        "  pop_size: %d  max_gen: %d  timesteps: %d",
+        POP_SIZE,
+        MAX_GENERATIONS,
+        TOTAL_TIMESTEPS,
+    )
     logger.info("=" * 60)
 
     # -- Environment -------------------------------------------------------
@@ -120,10 +126,38 @@ def train(run_dir: Path) -> None:
 # 2. Evaluation
 # ======================================================================
 
+
+def _build_eval_row(info: dict, action_id: int, action_name: str, reward: float) -> dict:
+    """Build one evaluation CSV row with full constraint breakdown."""
+    from src.rl.gym_env.fast_state_encoder import (
+        HARD_CONSTRAINT_NAMES,
+        SOFT_CONSTRAINT_NAMES,
+    )
+
+    row: dict[str, object] = {
+        "generation": info["generation"],
+        "action_id": action_id,
+        "action_name": action_name,
+        "best_hard": info["best_hard"],
+        "best_soft": info["best_soft"],
+        "mean_hard": info["mean_hard"],
+        "mean_soft": info["mean_soft"],
+        "feasible_frac": info["feasible_frac"],
+        "reward": reward,
+    }
+    # 8 hard constraint columns
+    for name in HARD_CONSTRAINT_NAMES:
+        row[f"cv_{name}"] = info.get(f"cv_{name}", 0.0)
+    # 4 soft constraint columns
+    for name in SOFT_CONSTRAINT_NAMES:
+        row[f"cv_{name}"] = info.get(f"cv_{name}", 0.0)
+    return row
+
+
 def evaluate(model, run_dir: Path) -> Path:
-    """Run deterministic 50-generation evaluation and export CSV."""
-    from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
+    """Run deterministic evaluation and export CSV with constraint breakdown."""
     from src.rl.actions.vectorized_ops import ACTION_NAMES
+    from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
 
     logger.info("-" * 60)
     logger.info("Deterministic evaluation (%d generations)", EVAL_GENERATIONS)
@@ -141,17 +175,7 @@ def evaluate(model, run_dir: Path) -> Path:
     rows: list[dict] = []
 
     # Record initial state (gen 1 from reset)
-    rows.append({
-        "generation": info["generation"],
-        "action_id": -1,
-        "action_name": "init",
-        "best_hard": info["best_hard"],
-        "best_soft": info["best_soft"],
-        "mean_hard": info["mean_hard"],
-        "mean_soft": info["mean_soft"],
-        "feasible_frac": info["feasible_frac"],
-        "reward": 0.0,
-    })
+    rows.append(_build_eval_row(info, action_id=-1, action_name="init", reward=0.0))
 
     cumulative_reward = 0.0
     for gen in range(EVAL_GENERATIONS - 1):  # -1 because reset already ran gen 1
@@ -160,23 +184,24 @@ def evaluate(model, run_dir: Path) -> Path:
         obs, reward, terminated, truncated, info = env.step(action)
         cumulative_reward += reward
 
-        rows.append({
-            "generation": info["generation"],
-            "action_id": action,
-            "action_name": ACTION_NAMES.get(action, f"action_{action}"),
-            "best_hard": info["best_hard"],
-            "best_soft": info["best_soft"],
-            "mean_hard": info["mean_hard"],
-            "mean_soft": info["mean_soft"],
-            "feasible_frac": info["feasible_frac"],
-            "reward": reward,
-        })
+        rows.append(
+            _build_eval_row(
+                info,
+                action_id=action,
+                action_name=ACTION_NAMES.get(action, f"action_{action}"),
+                reward=reward,
+            )
+        )
 
         logger.info(
             "  Gen %2d | act=%d (%s) | hard=%.0f soft=%.0f | feas=%.2f | r=%.4f",
-            info["generation"], action, ACTION_NAMES.get(action, "?"),
-            info["best_hard"], info["best_soft"],
-            info["feasible_frac"], reward,
+            info["generation"],
+            action,
+            ACTION_NAMES.get(action, "?"),
+            info["best_hard"],
+            info["best_soft"],
+            info["feasible_frac"],
+            reward,
         )
 
         if terminated or truncated:
@@ -217,31 +242,34 @@ _CB_COLORS = [
 def _setup_thesis_style():
     """Configure matplotlib for Times New Roman academic styling."""
     import matplotlib
+
     matplotlib.use("Agg")  # non-interactive backend
     import matplotlib.pyplot as plt
 
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
-        "font.size": 11,
-        "axes.labelsize": 12,
-        "axes.titlesize": 13,
-        "legend.fontsize": 9,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-        "savefig.bbox": "tight",
-        "savefig.pad_inches": 0.05,
-        "axes.grid": True,
-        "grid.alpha": 0.3,
-        "grid.linestyle": "--",
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "lines.linewidth": 1.5,
-        "lines.markersize": 5,
-        "text.usetex": False,
-    })
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
+            "font.size": 11,
+            "axes.labelsize": 12,
+            "axes.titlesize": 13,
+            "legend.fontsize": 9,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "figure.dpi": 300,
+            "savefig.dpi": 300,
+            "savefig.bbox": "tight",
+            "savefig.pad_inches": 0.05,
+            "axes.grid": True,
+            "grid.alpha": 0.3,
+            "grid.linestyle": "--",
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "lines.linewidth": 1.5,
+            "lines.markersize": 5,
+            "text.usetex": False,
+        }
+    )
     return plt
 
 
@@ -269,12 +297,25 @@ def generate_thesis_plots(run_dir: Path) -> list[Path]:
         cum_rewards = np.cumsum(ep_rewards).tolist()
 
         fig, ax1 = plt.subplots(figsize=(6.5, 4))
-        ax1.plot(episodes, cum_rewards, color=_CB_COLORS[4], linewidth=2, label="Cumulative Reward")
+        ax1.plot(
+            episodes,
+            cum_rewards,
+            color=_CB_COLORS[4],
+            linewidth=2,
+            label="Cumulative Reward",
+        )
         ax1.fill_between(episodes, 0, cum_rewards, alpha=0.1, color=_CB_COLORS[4])
 
         # Overlay per-episode reward on secondary axis
         ax2 = ax1.twinx()
-        ax2.bar(episodes, ep_rewards, alpha=0.35, color=_CB_COLORS[0], width=0.8, label="Episode Reward")
+        ax2.bar(
+            episodes,
+            ep_rewards,
+            alpha=0.35,
+            color=_CB_COLORS[0],
+            width=0.8,
+            label="Episode Reward",
+        )
         ax2.set_ylabel("Episode Reward", color=_CB_COLORS[0])
         ax2.tick_params(axis="y", labelcolor=_CB_COLORS[0])
         ax2.spines["right"].set_visible(True)
@@ -336,12 +377,16 @@ def generate_thesis_plots(run_dir: Path) -> list[Path]:
             )
 
         # Stepped line connecting them
-        ax.step(gens, actions, where="mid", color="gray", alpha=0.4, linewidth=1, zorder=1)
+        ax.step(
+            gens, actions, where="mid", color="gray", alpha=0.4, linewidth=1, zorder=1
+        )
 
         ax.set_xlabel("Generation")
         ax.set_ylabel("Action ID")
         ax.set_yticks(list(action_labels.keys()))
-        ax.set_yticklabels([action_labels[k] for k in sorted(action_labels.keys())], fontsize=8)
+        ax.set_yticklabels(
+            [action_labels[k] for k in sorted(action_labels.keys())], fontsize=8
+        )
         ax.set_title("Learned Heuristic Selection Policy")
         ax.legend(loc="upper right", fontsize=7, ncol=2, framealpha=0.9)
         fig.tight_layout()
@@ -369,14 +414,31 @@ def generate_thesis_plots(run_dir: Path) -> list[Path]:
         fig, ax_h = plt.subplots(figsize=(6.5, 4))
 
         # Hard penalty (left y-axis)
-        ln1 = ax_h.plot(all_gens, best_hard, color=_CB_COLORS[5], linewidth=2, marker="o", markersize=3, label="Best Hard Penalty")
+        ln1 = ax_h.plot(
+            all_gens,
+            best_hard,
+            color=_CB_COLORS[5],
+            linewidth=2,
+            marker="o",
+            markersize=3,
+            label="Best Hard Penalty",
+        )
         ax_h.set_xlabel("Generation")
         ax_h.set_ylabel("Hard Penalty (violations)", color=_CB_COLORS[5])
         ax_h.tick_params(axis="y", labelcolor=_CB_COLORS[5])
 
         # Soft penalty (right y-axis)
         ax_s = ax_h.twinx()
-        ln2 = ax_s.plot(all_gens, best_soft, color=_CB_COLORS[2], linewidth=2, marker="s", markersize=3, linestyle="--", label="Best Soft Penalty")
+        ln2 = ax_s.plot(
+            all_gens,
+            best_soft,
+            color=_CB_COLORS[2],
+            linewidth=2,
+            marker="s",
+            markersize=3,
+            linestyle="--",
+            label="Best Soft Penalty",
+        )
         ax_s.set_ylabel("Soft Penalty", color=_CB_COLORS[2])
         ax_s.tick_params(axis="y", labelcolor=_CB_COLORS[2])
         ax_s.spines["right"].set_visible(True)
@@ -401,6 +463,7 @@ def generate_thesis_plots(run_dir: Path) -> list[Path]:
 # ======================================================================
 # Main
 # ======================================================================
+
 
 def main() -> None:
     """Full pipeline: train → evaluate → plot."""
