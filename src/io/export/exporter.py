@@ -300,13 +300,14 @@ def _save_json_schedule_as_pdf(
         ax.set_facecolor("#FFFFFF")
 
         # ── Title ──
-        ax.set_title(
+        fig.suptitle(
             f"Weekly Schedule — {group_name}",
             fontsize=18,
             fontweight="bold",
             color="#2C3E6B",
-            pad=28,
+            y=0.98,
         )
+        fig.subplots_adjust(top=0.88)
 
         # Axes limits
         ax.set_xlim(0, num_days)
@@ -434,7 +435,7 @@ def _save_json_schedule_as_pdf(
             spine.set_edgecolor(_BORDER_COLOR)
             spine.set_linewidth(1.0)
 
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.92])
         pdf.savefig(fig, bbox_inches="tight")
         plt.close(fig)
 

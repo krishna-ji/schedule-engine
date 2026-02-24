@@ -592,7 +592,7 @@ def generate_room_schedules_pdf(
             my_viol = viol.get(rid, {})
 
             fig_w = max(11, num_days * 2.4)
-            fig_h = max(6, num_hours * 0.95 + 2.5)
+            fig_h = max(7, num_hours * 0.95 + 3.5)
             fig, ax = plt.subplots(figsize=(fig_w, fig_h))
             fig.patch.set_facecolor("#FFFFFF")
             ax.set_facecolor("#FFFFFF")
@@ -624,15 +624,17 @@ def generate_room_schedules_pdf(
                 f"Sessions: {n_sessions}   Quanta: {total_quanta}/"
                 f"{total_avail} ({util_pct:.0f}%)   {viol_line}"
             )
-            ax.set_title(
+            fig.suptitle(
                 title,
                 fontsize=12,
                 fontweight="bold",
-                pad=28,
-                loc="left",
+                x=0.07,
+                y=0.98,
+                ha="left",
                 family="monospace",
                 color="#2C3E6B",
             )
+            fig.subplots_adjust(top=0.82)
 
             # ── Sessions ──
             cal_sessions = _sessions_to_cal(
@@ -647,7 +649,7 @@ def generate_room_schedules_pdf(
                 active_days=active_days,
             )
 
-            plt.tight_layout()
+            plt.tight_layout(rect=[0, 0, 1, 0.85])
             pdf.savefig(fig, bbox_inches="tight")
             plt.close(fig)
 
