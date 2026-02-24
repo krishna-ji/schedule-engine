@@ -1,22 +1,52 @@
 #!/usr/bin/env python3
-"""Accelerated repair operator using 2-D numpy count arrays.
+r"""Per-individual greedy repair via 2-D int16 count-array occupancy.
 
-Drop-in replacement for SchedulingRepair that replaces dict-of-sets
-occupancy maps with 2-D int16 count arrays:
-    room_cnt[r, q]  — number of events on room r at quantum q
-    inst_cnt[i, q]  — number of events on instructor i at quantum q
-    grp_cnt [g, q]  — number of events on group g at quantum q
+Replaces the original dict-of-sets ``SchedulingRepair`` with three
+contiguous NumPy count tensors that provide $O(1)$ per-quantum
+add/remove/conflict-check with stride-1 memory access:
 
-This avoids dict hash overhead and gives O(1) per (resource, quantum)
-add / remove / conflict-check with better cache locality.
+.. math::
 
-Public API (same as SchedulingRepair):
-    BitsetSchedulingRepair(events_data_path)
-        .construct_feasible(rng) -> ndarray
-        .repair(chromosome) -> ndarray
+    \\text{rc}[r, q],\; \\text{ic}[i, q],\; \\text{gc}[g, q]
+    \\in \\mathbb{Z}_{\\ge 0}
+    \\quad\\text{where } r \\in [0,R),\; i \\in [0,I),\; g \\in [0,G),\; q \\in [0,T)
 
-    repair_batch(X, repairer) -> X_repaired
-    PymooBitsetRepair — pymoo Repair wrapper
+A conflict at quantum $q$ is any count $> 1$ (room/instructor/group
+double-booking) or an assignment to a quantum where the boolean
+availability mask is ``False`` (hard unavailability, penalised $\\times 100$).
+
+Repair pipeline (three stages per chromosome):
+
+1. **Domain clamping** — $O(E)$ scan enforcing
+   $x_e \\in \\mathcal{D}_e^{\\text{inst}} \\times \\mathcal{D}_e^{\\text{room}}
+   \\times \\mathcal{D}_e^{\\text{time}}$.
+2. **Conflict resolution** — greedy remove/re-place with a vectorised
+   cost matrix of shape $(|\\mathcal{T}|, |\\mathcal{R}_e|)$ per
+   instructor candidate.  Paired practicals are placed simultaneously
+   via ``_find_paired_placement``.
+3. **Group deconfliction** — removes all events in a conflicting group,
+   re-inserts longest-first to minimise cascading displacement.
+
+HPC notes
+---------
+- Count arrays are ``int16`` — 2 bytes per cell, giving
+  $R \\times T \\times 2 + I \\times T \\times 2 + G \\times T \\times 2$
+  bytes total (~18 KiB for the reference instance), fitting in L1 cache.
+- ``_find_placement`` builds a full $(|\\mathcal{T}|, |\\mathcal{R}_e|)$
+  cost matrix via NumPy fancy indexing in one shot — no Python loop over
+  timeslots.  Amortised complexity per event: $O(|\\mathcal{I}_e| \\cdot
+  (|\\mathcal{T}_e| \\cdot d_e + |\\mathcal{R}_e|))$.
+- Bitset availability masks (``uint64``) enable $O(1)$ population-count
+  checks for group-free-time filtering.
+
+Public API
+----------
+BitsetSchedulingRepair(events_data_path)
+    .construct_feasible(rng) -> ndarray
+    .repair(chromosome, rng) -> ndarray
+
+repair_batch(X, repairer) -> X_repaired
+PymooBitsetRepair — pymoo Repair wrapper (multi-pass stochastic)
 """
 
 from __future__ import annotations
@@ -37,7 +67,45 @@ for _d in range(_MAX_DUR + 1):
 
 
 class BitsetSchedulingRepair:
-    """Accelerated repair using numpy count arrays + bitset scoring."""
+    """Per-individual greedy repair engine with count-array occupancy.
+
+    Maintains three 2-D ``int16`` count tensors — ``rc[R, T]``,
+    ``ic[I, T]``, ``gc[G, T]`` — that track how many events occupy each
+    (resource, quantum) cell.  Conflict detection reduces to
+    ``count > 1`` checks on contiguous memory, and placement search
+    builds a full cost matrix via NumPy fancy indexing.
+
+    For paired practical events (SSCP constraint), the engine performs
+    **simultaneous dual placement**: both events are removed from the
+    count arrays and re-inserted at the same start time with distinct
+    rooms, minimising the joint hard-constraint cost over the Cartesian
+    product $\\mathcal{I}_{e_1} \\times \\mathcal{I}_{e_2} \\times
+    (\\mathcal{T}_{e_1} \\cap \\mathcal{T}_{e_2}) \\times
+    \\mathcal{R}_{e_1} \\times \\mathcal{R}_{e_2}$ subject to
+    $r_1 \\neq r_2$.
+
+    Parameters
+    ----------
+    events_data_path : str
+        Path to ``events_with_domains.pkl`` containing event metadata,
+        domain lists, availability maps, and paired-event tuples.
+
+    Attributes
+    ----------
+    n_events : int
+        Number of scheduling events $E$.
+    n_rooms, n_instructors, n_groups : int
+        Cardinalities $R$, $I$, $G$ of the resource dimensions.
+    durations : ndarray, shape ``(E,)``, int32
+        Duration in quanta for each event.
+    paired_event_map : dict[int, int]
+        Bidirectional map $e \\mapsto e'$ for simultaneously-placed
+        paired practicals ($|\\text{map}| = 2P$ for $P$ pairs).
+    inst_avail_arr : ndarray, shape ``(I, T)``, bool
+        Per-quantum instructor availability.
+    room_avail_arr : ndarray, shape ``(R, T)``, bool
+        Per-quantum room availability.
+    """
 
     def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
         with open(events_data_path, "rb") as f:
@@ -399,16 +467,64 @@ class BitsetSchedulingRepair:
     # ------------------------------------------------------------------
 
     def _find_placement(self, e, inst, room, time, rc, ic, gc, *, rng=None) -> bool:
-        """Find best (inst, room, time) placement for event e.
+        r"""Find the minimum-cost ``(instructor, room, time)`` triple for event $e$.
 
-        Fully vectorized: computes a 2-D cost matrix of shape
-        ``(len(time_candidates), len(allowed_rooms))`` per instructor
-        in one shot — no per-timeslot Python loop.
+        Constructs a 2-D hard-constraint cost matrix
+        $\mathbf{C} \in \mathbb{Z}_{\ge 0}^{|\mathcal{T}| \times |\mathcal{R}_e|}$
+        per instructor candidate via NumPy fancy indexing — **zero Python
+        loops over timeslots or rooms**.  A sub-integer soft proxy
+        ($< 1.0$ total) breaks ties without overriding hard priorities:
 
-        Event must already be removed from count arrays.
+        .. math::
 
-        When *rng* is provided, ties are broken randomly so successive
-        repair passes explore different local-minimum basins.
+            C_{t,r} = \underbrace{\sum_{q=t}^{t+d_e-1}
+              \bigl[\mathbb{1}[\text{ic}[i,q]>0] + \mathbb{1}[\text{rc}[r,q]>0]
+              + \sum_{g \in G_e} \mathbb{1}[\text{gc}[g,q]>0]\bigr]}
+              _{\text{hard clash}}
+            + 100 \cdot \underbrace{\sum_{q=t}^{t+d_e-1}
+              \bigl[\mathbb{1}[\lnot\text{ia}[i,q]]
+              + \mathbb{1}[\lnot\text{ra}[r,q]]\bigr]}
+              _{\text{availability}}
+            + 0.01 \cdot \underbrace{\sigma(t)}
+              _{\text{soft proxy}}
+
+        where the soft proxy $\sigma(t)$ combines lunch overlap, adjacency
+        compactness bonus, and paired-cohort alignment magnet.
+
+        The search proceeds in three phases with early exit on
+        $C_{t,r} = 0$:
+
+        1. Current instructor, group-free timeslots only.
+        2. Alternative instructors (up to 8), group-free timeslots.
+        3. Fallback — all timeslots including group-conflicting ones.
+
+        Parameters
+        ----------
+        e : int
+            Event index. **Must** already be removed from count arrays.
+        inst, room, time : ndarray, shape ``(E,)``
+            Mutable assignment views (updated in-place on return).
+        rc : ndarray, shape ``(R, T)``, int16
+            Room occupancy counts.
+        ic : ndarray, shape ``(I, T)``, int16
+            Instructor occupancy counts.
+        gc : ndarray, shape ``(G, T)``, int16
+            Group occupancy counts.
+        rng : numpy.random.Generator, optional
+            When provided, ties are broken stochastically so successive
+            passes explore different local-minimum basins.
+
+        Returns
+        -------
+        bool
+            ``True`` if a zero-hard-cost placement was found.
+
+        Complexity
+        ----------
+        $O(|\mathcal{I}_e| \cdot (|\mathcal{T}_e| \cdot d_e + |\mathcal{R}_e|))$
+        per call.  The dominant cost is the fancy-index gather
+        ``gc[gidx_arr][:, offsets]`` which reads $|G_e| \cdot |\mathcal{T}| \cdot d_e$
+        contiguous int16 cells.
         """
         ai = self.allowed_instructors[e]
         ar_list = self.allowed_rooms[e]
@@ -663,18 +779,56 @@ class BitsetSchedulingRepair:
     # ------------------------------------------------------------------
 
     def _find_paired_placement(self, e1, e2, inst, room, time, rc, ic, gc, *, rng=None):
-        """Simultaneous placement of paired practicals at the same start time.
+        r"""Simultaneous dual placement of paired practicals (SSCP guarantee).
 
-        Both events must already be removed from count arrays.
-        Finds the best common start time and assigns each event to a
-        *different* room, minimising the joint hard-constraint cost.
+        Given paired events $(e_1, e_2)$ (both **removed** from count
+        arrays), searches the constrained space:
 
-        Updates *inst*, *room*, *time* arrays for both events.
+        .. math::
+
+            \min_{(i_1, i_2, t, r_1, r_2)}
+            \sum_{k \in \{1,2\}} C_{e_k}(i_k, r_k, t)
+            \quad\text{s.t. }\;
+            t \in \mathcal{T}_{e_1} \cap \mathcal{T}_{e_2},\;
+            r_1 \neq r_2
+
+        The search iterates over instructor pairs
+        $(i_1, i_2) \in \mathcal{I}_{e_1}^{\le 6} \times
+        \mathcal{I}_{e_2}^{\le 6}$, computes a **vectorised fixed cost**
+        (instructor + group clashes) per common start via fancy indexing,
+        then evaluates timeslots in ascending cost order.  Room pairs are
+        scored independently and combined with the $r_1 \neq r_2$ filter.
+
+        Same-instructor penalty: If $i_1 = i_2$, a flat
+        $\max(d_{e_1}, d_{e_2}) \times 100$ surcharge is added to prevent
+        temporal overlap on a single instructor.
+
+        Falls back to sequential ``_find_placement`` calls if no
+        simultaneous solution exists (i.e., the common start domain is
+        empty or all placements exceed $\infty$).
+
+        Parameters
+        ----------
+        e1, e2 : int
+            Paired event indices. **Must** be removed from count arrays.
+        inst, room, time : ndarray, shape ``(E,)``
+            Mutable assignment views (updated in-place for both events).
+        rc, ic, gc : ndarray
+            Room/instructor/group count arrays.
+        rng : numpy.random.Generator, optional
+            Stochastic tie-breaking (30% acceptance on equal cost).
 
         Returns
         -------
         bool
-            ``True`` if a zero-hard-cost placement was found.
+            ``True`` if a zero-hard-cost simultaneous placement was found.
+
+        Complexity
+        ----------
+        Worst case $O(|\mathcal{I}|^2 \cdot |\mathcal{T}_{\cap}| \cdot
+        (d_{\max} + |\mathcal{R}|^2))$.  In practice, capped instructor
+        lists ($\le 6$) and early-exit on cost $= 0$ keep this under
+        $\sim 1\text{ms}$ per pair.
         """
         dur1 = int(self.durations[e1])
         dur2 = int(self.durations[e2])

@@ -1,32 +1,61 @@
-"""Vectorized soft constraint evaluator — operates on full population matrices.
+r"""Vectorized soft constraint evaluator over full population tensors.
 
-Replaces the per-individual OOP Timetable->Evaluator pipeline for the top 3
-soft constraints:
-  1. CSC (Cohort Schedule Contiguity)   — gap penalty per group per day
-  2. FSC (Faculty Schedule Contiguity)   — gap penalty per instructor per day
-  3. MIP (Meridian Interval Preservation) — free quanta in lunch window per group per day
+Replaces the per-individual OOP ``Timetable → Evaluator`` pipeline with
+three population-level NumPy kernels that evaluate all $N$ individuals
+in a single pass with **zero Python loops over $N$, $E$, or $T$**.
+
+Soft constraints
+^^^^^^^^^^^^^^^^
+
+1. **CSC** (Cohort Schedule Contiguity) — gap penalty per group per day.
+
+   For group $g$ on day $d$, let
+   $q_{\min}^{g,d}$ and $q_{\max}^{g,d}$ be the first and last occupied
+   within-day quanta.  The gap count is:
+
+   .. math::
+
+       \text{gap}_{n,g,d} = \sum_{q=q_{\min}}^{q_{\max}}
+         \mathbb{1}[\lnot\text{occ}_{n,g,d,q}]
+         \cdot \mathbb{1}[q \notin \mathcal{B}]
+
+   where $\mathcal{B} = \{2, 3, 4\}$ is the floating lunch exclusion set.
+   Gaps are weighted by a **density ratio** $\rho_g = L_g / (D \cdot Q_d)$
+   so that heavily-loaded groups incur proportionally larger penalties.
+
+2. **FSC** (Faculty Schedule Contiguity) — identical gap computation
+   over the instructor dimension $i$ instead of group $g$.
+
+3. **MIP** (Meridian Interval Preservation) — lunch break penalty.
+
+   For each $(n, g, d)$ with any scheduled class, count free quanta in
+   the lunch window $\mathcal{W} = \{2, 3, 4\}$:
+
+   .. math::
+
+       \text{lunch\_deficit}_{n,g,d} = \max\bigl(
+         \ell_{\min} - (|\mathcal{W}| - |\text{occ} \cap \mathcal{W}|),\; 0
+       \bigr)
+
+HPC notes
+---------
+- Occupancy is built via ``np.bincount`` on linearised flat indices
+  $k = n \cdot G \cdot D \cdot Q_d + g \cdot D \cdot Q_d + d \cdot Q_d + w$,
+  then reshaped into a 4-D boolean tensor
+  $\text{occ} \in \{0,1\}^{N \times G \times D \times Q_d}$.
+- Min/max within-day quantum detection uses ``np.where`` masking
+  with sentinel values ($Q_d$ for min, $-1$ for max) followed by
+  axis-3 reduction — no Python loops.
+- Total memory footprint: $O(N \cdot G \cdot D \cdot Q_d)$ for
+  group occupancy + $O(N \cdot I \cdot D \cdot Q_d)$ for
+  instructor occupancy.
 
 API
 ---
-    prepare_soft_vectorized_data(pkl_data, qts=None) -> SoftVectorizedData
-    eval_soft_vectorized(X, sdata) -> S    # shape (N,) float64
-
-All computation is done with numpy over the full population (N individuals)
-without per-individual Python loops.
-
-Algorithm
----------
-For gap penalty (compactness):
-  1. Expand events into (event, quantum) tuples (like hard evaluator).
-  2. For each (individual, group/instructor, day), find occupied within-day
-     quanta using scatter-into-bins (np.add.at on a boolean tensor).
-  3. For each occupied entity-day, compute gap = (max_q - min_q + 1) - count
-     - break_quanta_in_span, i.e. total range minus occupied minus breaks.
-
-For lunch break:
-  1. Build group-day occupancy tensor.
-  2. For each group-day, count occupied quanta in the break window.
-  3. Penalty = max(0, break_min_quanta - (window_size - occupied_in_window)).
+prepare_soft_vectorized_data(pkl_data) -> SoftVectorizedData
+eval_soft_vectorized(X, sdata) -> S  # shape ``(N,)`` float64
+eval_soft_vectorized_breakdown(X, sdata) -> (S, {"CSC": ..., "FSC": ..., "MIP": ...})
+evaluate_paired_cohorts_vectorized(X, lookups) -> penalty  # shape ``(N,)`` float64
 """
 
 from __future__ import annotations
@@ -48,7 +77,28 @@ _DEFAULT_BREAK_WINDOW = {2, 3, 4}  # lunch window: within-day quanta 2-4 (12:00-
 
 @dataclass(frozen=True, slots=True)
 class SoftVectorizedData:
-    """Precomputed arrays for vectorized soft evaluation."""
+    r"""Immutable precomputed arrays for vectorized soft evaluation.
+
+    Constructed once via ``prepare_soft_vectorized_data`` and reused
+    across all generations.  All arrays are contiguous and typed for
+    optimal NumPy dispatch.
+
+    Expansion arrays
+    ^^^^^^^^^^^^^^^^
+    Events are expanded into quantum-level tuples, yielding two
+    families:
+
+    - **Instructor expansion** ($Q = \sum_e d_e$ entries):
+      ``(exp_event[q'], exp_offset[q'])`` — maps expanded quantum
+      $q'$ back to its owning event and within-event offset.
+
+    - **Group expansion** ($GQ = \sum_e d_e \cdot |G_e|$ entries):
+      ``(grp_exp_event, grp_exp_offset, grp_exp_group)`` — one entry
+      per (event, quantum, group) triple.
+
+    These arrays eliminate per-event Python loops during occupancy
+    tensor construction.
+    """
 
     n_events: int
     n_groups: int
@@ -202,18 +252,31 @@ def eval_soft_vectorized(
     X: np.ndarray,
     sdata: SoftVectorizedData,
 ) -> np.ndarray:
-    """Evaluate soft constraints for the full population.
+    r"""Evaluate soft constraints for the full population in one pass.
+
+    Computes $S_n = \text{CSC}_n + \text{FSC}_n + \text{MIP}_n$ for
+    each individual $n$ using population-level 4-D occupancy tensors.
+
+    Day-boundary clamping is applied first: if $d_e \le Q_d$ but
+    $t_e + d_e > \lceil t_e / Q_d \rceil \cdot Q_d$, the start is
+    shifted backward to prevent cross-day spill.
 
     Parameters
     ----------
-    X : ndarray, shape (N, 3*E), int
-        Population matrix.
+    X : ndarray, shape ``(N, 3*E)``, int
+        Population matrix (interleaved ``[I, R, T]`` per event).
     sdata : SoftVectorizedData
+        Precomputed expansion arrays and configuration.
 
     Returns
     -------
-    S : ndarray, shape (N,), float64
-        Total soft penalty per individual (sum of all soft constraints).
+    S : ndarray, shape ``(N,)``, float64
+        Total soft penalty per individual.
+
+    Complexity
+    ----------
+    $O(N \cdot (GQ + Q + G \cdot D \cdot Q_d + I \cdot D \cdot Q_d))$.
+    Dominated by the 4-D boolean operations on occupancy tensors.
     """
     X = np.asarray(X, dtype=np.int64)
     if X.ndim == 1:
@@ -548,35 +611,47 @@ def evaluate_paired_cohorts_vectorized(
     X: np.ndarray,
     lookups: VectorizedLookups,
 ) -> np.ndarray:
-    """Compute paired-cohort practical alignment penalty for full population.
+    r"""Compute symmetric sub-cohort practical alignment penalty (SSCP).
 
-    **Redesigned**: instead of pairing individual events from the same
-    course, we operate at the *subgroup* level.  For every pair of
-    sibling subgroups (A, B) we build a boolean practical-occupancy
-    vector over the T timeslots and penalise the symmetric difference
-    (XOR).  This catches cross-subject misalignment — e.g. when
-    subgroup A is in an ENME-103 lab while subgroup B should be doing
-    *some* practical (possibly a different subject) at the same time.
+    For every sibling subgroup pair $(A, B)$, builds a practical-event
+    occupancy tensor $\mathbf{P} \in \{0,1\}^{N \times G \times T}$
+    and penalises the symmetric difference (XOR) of their occupancy
+    rows:
 
-    Algorithm (fully vectorized, no Python per-individual loops):
-      1. Build ``is_prac_occ[N, G, T]`` — True where a practical event
-         occupies group G at quantum q for individual n.
-      2. For each subgroup pair (A, B), XOR their occupancy rows and
-         sum the mismatched quanta.
+    .. math::
+
+        \text{SSCP}_n = \sum_{(A,B) \in \mathcal{P}}
+          \max\Bigl(
+            \sum_{q=0}^{T-1} \mathbf{P}_{n,A,q} \oplus \mathbf{P}_{n,B,q}
+            - |L_A - L_B|,\; 0
+          \Bigr)
+
+    where $L_A = \sum_q \mathbf{P}_{n,A,q}$ is the practical load of
+    subgroup $A$, and $|L_A - L_B|$ is the **unavoidable** load
+    difference subtracted as a floor.
+
+    The occupancy tensor is built via ``np.bincount`` on linearised
+    $(n, g, q)$ keys expanded from practical events only (filtered
+    by ``is_practical`` mask).  No Python loops over $N$.
 
     Parameters
     ----------
-    X : ndarray, shape (N, 3*E), int
-        Population matrix (interleaved [I,R,T] per event).
+    X : ndarray, shape ``(N, 3*E)``, int
+        Population matrix.
     lookups : VectorizedLookups
-        Must contain ``cohort_subgroup_pairs`` (S, 2) int32,
-        ``is_practical`` (E,) bool, ``durations`` (E,) int32,
-        and group expansion arrays.
+        Must contain ``cohort_subgroup_pairs`` (S, 2),
+        ``is_practical`` (E,), ``durations`` (E,), and group
+        membership arrays.
 
     Returns
     -------
-    penalty : ndarray, shape (N,), float64
-        Per-individual misalignment penalty.
+    penalty : ndarray, shape ``(N,)``, float64
+        Per-individual XOR-based alignment penalty.
+
+    Complexity
+    ----------
+    $O(N \cdot PGQ + N \cdot S \cdot T)$ where $PGQ$ is the practical
+    group-quantum expansion size and $S$ is the number of subgroup pairs.
     """
     pairs = lookups.cohort_subgroup_pairs  # (S, 2) int32
     if pairs.shape[0] == 0:

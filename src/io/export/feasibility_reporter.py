@@ -1,13 +1,37 @@
-"""Pre-feasibility report generator.
+r"""Pre-feasibility topology analyser for structural bottleneck detection.
 
-Analyses the mathematical topology of the scheduling input data *before*
-the evolutionary optimisation begins.  The report identifies absolute
-structural bottlenecks — resource deficits, forced lunch collisions,
-and cohort cascade risks — that no amount of GA tuning can overcome.
+Executes **before** the evolutionary optimisation begins to identify
+absolute mathematical infeasibilities that no amount of GA tuning can
+overcome.  The report is written as a Markdown file and covers three
+independent constraint topologies:
+
+1. **SRE / FFC** (Spatial Resource Equilibrium) -- per room-feature-class
+   demand-vs-supply analysis.  A deficit $\Delta < 0$ proves that the
+   corresponding events *cannot* all be scheduled without violating
+   room exclusivity:
+
+   .. math::
+
+       \Delta_{\mathcal{F}} = \underbrace{\sum_{r \in \mathcal{F}}
+         |\text{avail}(r)|}_{\text{supply}}
+       - \underbrace{\sum_{e : \mathcal{R}_e = \mathcal{F}}
+         d_e}_{\text{demand}}
+
+2. **FCA / MIP** (Faculty Capacity & Meridian Interval Preservation) --
+   detects instructors whose *entire* availability falls within the
+   lunch window $\mathcal{W} = \{2, 3, 4\}$ (forced MIP violations)
+   and instructors whose assigned load exceeds total available quanta
+   (mathematical infeasibility).
+
+3. **SSCP** (Symmetric Sub-Cohort Parallelism) -- for each cohort pair
+   $(L, R)$, computes the net unique load
+   $L_{\text{total}}^L + L_{\text{total}}^R - \min(L_{\text{prac}}^L,
+   L_{\text{prac}}^R)$ and flags HIGH cascade risk when this exceeds
+   $T = 42$.
 
 Public API
 ----------
-    generate_pre_feasibility_report(pkl_data, output_dir)
+generate_pre_feasibility_report(pkl_data, output_dir) -> Path
 """
 
 from __future__ import annotations
@@ -33,19 +57,34 @@ def generate_pre_feasibility_report(
     pkl_data: dict,
     output_dir: Path | str,
 ) -> Path:
-    """Generate ``pre_feasibility_report.md`` inside *output_dir*.
+    r"""Generate ``pre_feasibility_report.md`` with structural topology analysis.
+
+    Analyses three orthogonal constraint families to detect infeasible
+    regions of the search space *before* launching the GA:
+
+    - **Section 1 (SRE)**: Groups events by room-feature-class
+      $\mathcal{F} = \text{frozenset}(\mathcal{R}_e)$ and computes
+      $\Delta_{\mathcal{F}} = \text{supply} - \text{demand}$.  Aggregate
+      utilisation $U = \sum \text{demand} / \sum \text{supply}$ is also
+      reported.
+    - **Section 2 (FCA/MIP)**: Identifies instructors with
+      $|\text{avail} \setminus \mathcal{W}| = 0$ (forced lunch
+      collisions) and those with load $>$ capacity (overloaded).
+    - **Section 3 (SSCP)**: For each cohort pair, estimates net
+      unique load and flags cascade risk levels (LOW / MEDIUM / HIGH).
 
     Parameters
     ----------
     pkl_data : dict
-        Loaded ``events_with_domains.pkl`` dictionary.
+        Loaded ``events_with_domains.pkl`` dictionary containing
+        events, domains, availability maps, and cohort pairs.
     output_dir : Path or str
         Directory where the report file is written.
 
     Returns
     -------
     Path
-        Absolute path to the generated report.
+        Absolute path to the generated ``.md`` report.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

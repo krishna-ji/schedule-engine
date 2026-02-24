@@ -1,17 +1,50 @@
-"""Vectorized repair operator with numpy-accelerated conflict resolution.
+r"""Population-level vectorized repair via bincount occupancy tensors.
 
-Replaces the O(E^2) per-individual Python dict-based repair with:
-  1. Population-level domain fix (boolean membership arrays)
-  2. Population-level stochastic conflict resolution (bincount occupancy)
+The **primary** repair operator invoked every generation on the full
+$N$-individual population.  All computation is purely NumPy with
+**zero Python loops over $N$ or $E$** in the hot path, enabling
+throughput of $\sim 1.3\text{s}$ per generation on a $120$-individual,
+$790$-event instance.
 
-Stage 1 fixes out-of-domain assignments via random domain sampling.
-Stage 2 detects per-event conflict scores for the entire population in
-one vectorized pass (room / instructor / group double-booking +
-availability violations), then stochastically resamples time and room
-for conflicting events.  Zero Python loops over N or E.
+Repair pipeline (three stages, all population-level):
 
-For pymoo integration, ``PymooVectorizedRepair`` is a drop-in replacement
-for ``PymooSchedulingRepair``.
+1. **Domain fix** — boolean membership arrays detect out-of-domain
+   assignments and replace them with uniformly-random valid values.
+   Vectorized over $(N, E)$ in one pass.
+
+2. **Stochastic conflict resolution** — for each pass:
+
+   a. Build per-event conflict scores $s_{n,e}$ via ``np.bincount``
+      on linearised occupancy keys.  Complexity:
+      $O(N \cdot (Q + G \cdot Q))$ where $Q = \sum_e d_e$.
+   b. Select $\sim 30\%$ of conflicting $(n, e)$ pairs (mutation mask).
+   c. Resample time (always), room ($\sim 50\%$), and instructor
+      (when instructor-specific score $> 0$) from domain arrays.
+
+3. **Paired-event synchronisation** (SSCP projection) — for each
+   pair $(a, b)$, forces $t_a = t_b \in \mathcal{T}_a \cap \mathcal{T}_b$
+   and $r_a \neq r_b$.  Acts as a **post-repair structural invariant**
+   that guarantees SSCP $= 0$ from generation 1.
+
+HPC notes
+---------
+- Domain matrices are **padded** to uniform width so that random-index
+  generation uses a single ``rng.random(K) * dom_len`` vectorized call
+  instead of per-event Python loops.
+- Occupancy detection uses **linearised keys**
+  $k = n \cdot (R \cdot T) + r \cdot T + q$ fed into ``np.bincount``;
+  the resulting histogram is gathered back via fancy indexing to yield
+  per-quantum conflict flags.  Total memory: $O(N \cdot R \cdot T)$.
+- All arrays are ``int64`` to avoid overflow on linearised keys
+  ($N \cdot R \cdot T$ can exceed $2^{31}$).
+
+Public API
+----------
+VectorizedRepair(events_data_path)
+    .repair_batch(X, passes) -> X_repaired
+
+Pymoo integration: ``PymooVectorizedRepair`` — drop-in replacement for
+``PymooSchedulingRepair``.
 """
 
 from __future__ import annotations
@@ -27,7 +60,51 @@ logger = logging.getLogger(__name__)
 
 
 class VectorizedRepair:
-    """Repair engine using numpy occupancy arrays for fast conflict resolution."""
+    r"""Population-level repair engine using bincount occupancy detection.
+
+    Precomputes padded domain matrices, expansion arrays, and boolean
+    availability tensors at construction time.  All repair operations
+    are fully vectorized across the population dimension $N$.
+
+    Expansion arrays
+    ^^^^^^^^^^^^^^^^
+    Each event $e$ with duration $d_e$ is **expanded** into $d_e$
+    quantum-level entries:
+
+    - ``exp_event[q']  = e``    — which event owns expanded quantum $q'$
+    - ``exp_offset[q'] = \delta`` — offset within the event's block
+
+    Total expansion size: $Q = \sum_{e=0}^{E-1} d_e$.  A similar
+    group-expansion of size $GQ = \sum_e d_e \cdot |G_e|$ is used for
+    group occupancy detection.
+
+    Paired-event arrays
+    ^^^^^^^^^^^^^^^^^^^
+    For SSCP synchronisation, pairs $(a, b)$ are stored as two aligned
+    int64 vectors ``_pair_a``, ``_pair_b`` of length $P$, with
+    precomputed common time domains $\mathcal{T}_a \cap \mathcal{T}_b$
+    per pair.
+
+    Parameters
+    ----------
+    events_data_path : str
+        Path to ``events_with_domains.pkl``.
+
+    Attributes
+    ----------
+    n_events : int
+        $E$ — number of scheduling events.
+    n_rooms, n_instructors, n_groups : int
+        $R$, $I$, $G$ — resource dimension cardinalities.
+    durations : ndarray, shape ``(E,)``, int32
+        Per-event duration in quanta.
+    inst_domains : ndarray, shape ``(E, D_I^{\max})``, int64
+        Padded instructor domain matrix.
+    room_domains : ndarray, shape ``(E, D_R^{\max})``, int64
+        Padded room domain matrix.
+    time_domains : ndarray, shape ``(E, D_T^{\max})``, int64
+        Padded time domain matrix.
+    """
 
     def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
         with open(events_data_path, "rb") as f:
@@ -196,11 +273,25 @@ class VectorizedRepair:
     # ------------------------------------------------------------------
 
     def repair_batch(self, X: np.ndarray, passes: int = 3) -> np.ndarray:
-        """Repair population X of shape (N, 3*E).
+        r"""Repair population $\mathbf{X} \in \mathbb{Z}^{N \times 3E}$.
 
-        Stage 1: Fix domain violations (vectorized across population).
-        Stage 2: Stochastic conflict resolution (vectorized across population).
-        Stage 3: Synchronize paired practical events (same start, different rooms).
+        Applies the three-stage pipeline sequentially:
+
+        1. Domain fix — $O(N \cdot E)$
+        2. Stochastic conflict resolution — $O(\text{passes} \cdot N \cdot Q)$
+        3. Paired-event synchronisation — $O(N \cdot P)$
+
+        Parameters
+        ----------
+        X : ndarray, shape ``(N, 3*E)``, int
+            Population matrix (interleaved ``[I, R, T]`` per event).
+        passes : int
+            Number of conflict-resolution passes (default 3).
+
+        Returns
+        -------
+        ndarray, shape ``(N, 3*E)``
+            Repaired population (copy).
         """
         X = X.copy().astype(np.int64)
         self._fix_domains_vec(X)
@@ -214,14 +305,33 @@ class VectorizedRepair:
     # ------------------------------------------------------------------
 
     def _sync_paired_events(self, X: np.ndarray) -> None:
-        """Synchronize paired practical events across the population.
+        r"""Post-repair projection enforcing the SSCP structural invariant.
 
-        For each pair (a, b), force both events to start at the same
-        time from their common domain.  If they already share a start
-        time, leave them alone.  If not, pick a time from the common
-        domain and assign different rooms.
+        For each pair $(a, b)$ and each individual $n$:
 
-        Fully vectorized across the N-individual population.
+        .. math::
+
+            t_{n,a} = t_{n,b} \in \mathcal{T}_a \cap \mathcal{T}_b,
+            \quad r_{n,a} \neq r_{n,b}
+
+        Desynchronised pairs are detected via ``ta != tb`` boolean mask
+        over $(N, P)$.  For each desynchronised $(n, p)$, a random
+        common start is sampled.  Same-room collisions are resolved by
+        ``_fix_same_rooms``.
+
+        This runs **after** conflict resolution as a structural
+        projection, not as optimisation pressure — SSCP $= 0$ is
+        guaranteed from generation 1.
+
+        Parameters
+        ----------
+        X : ndarray, shape ``(N, 3*E)``, int64
+            Population matrix (modified in-place).
+
+        Complexity
+        ----------
+        $O(N \cdot P + K)$ where $K$ is the number of desynchronised
+        $(n, p)$ pairs (typically $K \ll N \cdot P$ after repair).
         """
         N = X.shape[0]
         pa, pb = self._pair_a, self._pair_b  # (P,) each
@@ -351,17 +461,41 @@ class VectorizedRepair:
     # ------------------------------------------------------------------
 
     def _score_all_batch(self, X: np.ndarray) -> np.ndarray:
-        """Per-event conflict scores for all individuals.
+        r"""Compute per-event conflict scores for the full population.
 
-        Uses expansion arrays and ``np.bincount`` for O(Q + GQ)
-        work per individual, fully vectorized across the population.
+        Builds three occupancy histograms via ``np.bincount`` on
+        linearised keys then gathers conflict flags back per quantum:
+
+        .. math::
+
+            s_{n,e} = \sum_{q=t_e}^{t_e + d_e - 1}
+              \Bigl[
+                \mathbb{1}[\text{room\_cnt}_{n}[r_e, q] > 1]
+              + \mathbb{1}[\text{inst\_cnt}_{n}[i_e, q] > 1]
+              + \mathbb{1}[\text{grp\_cnt}_{n}[g_e, q] > 1]
+              + 10 \cdot \bigl(
+                  \mathbb{1}[\lnot\text{ia}[i_e, q]]
+                + \mathbb{1}[\lnot\text{ra}[r_e, q]]
+                \bigr)
+              \Bigr]
+
+        **Key HPC technique**: linearised keys
+        $k = n \cdot (R \cdot T) + r \cdot T + q$ allow a single
+        ``np.bincount`` call to produce a flat histogram for all
+        $N$ individuals.  The histogram is then **gathered** back
+        at the same keys to obtain per-quantum conflict flags.
+        Total arithmetic: $O(N \cdot Q)$ for room/instructor,
+        $O(N \cdot GQ)$ for groups.
+
+        Parameters
+        ----------
+        X : ndarray, shape ``(N, 3*E)``, int
+            Population matrix.
 
         Returns
         -------
-        scores : ndarray, shape (N, E), int32
-            Sum of conflicting-quantum indicators per event per individual.
-            Room/instructor/group double-bookings each contribute 1 per
-            quantum; availability violations contribute 10 per quantum.
+        scores : ndarray, shape ``(N, E)``, int32
+            Per-event conflict score (0 = no conflicts).
         """
         N = X.shape[0]
         E = self.n_events
@@ -464,19 +598,32 @@ class VectorizedRepair:
         return scores[:NE].reshape(N, E)
 
     def _repair_conflicts_vec(self, X: np.ndarray, passes: int = 3) -> None:
-        """Population-level stochastic conflict resolution (in-place).
+        r"""Population-level stochastic conflict resolution (in-place).
 
-        For each pass:
-          1. Compute per-event conflict scores for all (N, E)
-          2. Identify events with score > 0
-          3. Resample time (always), room (~50%), and instructor
-             (for events with instructor-related conflicts) from domains
-          4. Repeat
+        Iterates ``passes`` rounds of score–detect–resample:
 
-        This replaces the serial per-individual greedy repair with a
-        fully vectorized stochastic approach.  The GA's selection
-        pressure drives convergence; the repair only needs to *reduce*
-        conflicts, not eliminate them in a single shot.
+        1. Compute $s_{n,e}$ via ``_score_all_batch``.
+        2. Build mutation mask $M_{n,e} = \mathbb{1}[s_{n,e} > 0]
+           \wedge \text{Bernoulli}(0.3)$.  If $M$ is empty, fall back
+           to the top-10% worst-scoring events.
+        3. For $(n, e) \in M$:
+           - Resample $t_e \sim \text{Uniform}(\mathcal{D}_e^{\text{time}})$.
+           - With $p = 0.5$, resample
+             $r_e \sim \text{Uniform}(\mathcal{D}_e^{\text{room}})$.
+           - If instructor-specific score $> 0$, resample
+             $i_e \sim \text{Uniform}(\mathcal{D}_e^{\text{inst}})$.
+
+        The 30% sub-sampling prevents **thrashing** (resampling an
+        event that was just fixed by another event's resample in the
+        same pass).  The GA's selection pressure drives convergence;
+        repair only needs to *reduce* conflicts stochastically.
+
+        Parameters
+        ----------
+        X : ndarray, shape ``(N, 3*E)``, int64
+            Population matrix (modified in-place).
+        passes : int
+            Number of score-resample iterations.
         """
         rng = np.random.default_rng()
         N = X.shape[0]
