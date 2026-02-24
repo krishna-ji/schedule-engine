@@ -109,12 +109,34 @@ class BitsetSchedulingRepair:
 
         self._inst_time_cache: dict[tuple[int, int], list[int] | None] = {}
 
+        # Per-event practical flag
+        self.is_practical = np.array(
+            [
+                ev.get("course_type", "theory").lower() == "practical"
+                for ev in self.events
+            ],
+            dtype=np.bool_,
+        )
+
+        # Paired cohort group mapping: group_idx -> paired_group_idx
+        self.paired_with_group: dict[int, int] = {}
+        for left_id, right_id in data.get("cohort_pairs", []):
+            li = self.group_to_idx.get(left_id)
+            ri = self.group_to_idx.get(right_id)
+            if li is not None and ri is not None:
+                self.paired_with_group[li] = ri
+                self.paired_with_group[ri] = li
+
+        # Practical-event occupancy (rebuilt in _make_counts)
+        self._prac_occ = np.zeros((self.n_groups, T), dtype=np.int16)
+
     # ------------------------------------------------------------------
     # Count array helpers
     # ------------------------------------------------------------------
 
     def _make_counts(self):
         """Allocate fresh count arrays."""
+        self._prac_occ = np.zeros((self.n_groups, T), dtype=np.int16)
         return (
             np.zeros((self.n_rooms, T), dtype=np.int16),
             np.zeros((self.n_instructors, T), dtype=np.int16),
@@ -132,6 +154,9 @@ class BitsetSchedulingRepair:
         ic[i, s:end] += 1
         for gidx in self.event_group_indices[e]:
             gc[gidx, s:end] += 1
+        if self.is_practical[e]:
+            for gidx in self.event_group_indices[e]:
+                self._prac_occ[gidx, s:end] += 1
 
     def _remove(self, e, inst, room, time, rc, ic, gc):
         """Remove event e from count arrays."""
@@ -144,6 +169,9 @@ class BitsetSchedulingRepair:
         ic[i, s:end] -= 1
         for gidx in self.event_group_indices[e]:
             gc[gidx, s:end] -= 1
+        if self.is_practical[e]:
+            for gidx in self.event_group_indices[e]:
+                self._prac_occ[gidx, s:end] -= 1
 
     def _count_conflicts(self, e, inst, room, time, rc, ic, gc) -> int:
         """Count conflicts for event e (which IS in the maps, so >1 means conflict)."""
@@ -396,10 +424,13 @@ class BitsetSchedulingRepair:
 
             Soft proxies (all multiplied by 0.01 so they stay sub-integer):
               - Lunch penalty:  +1 per quantum that overlaps the lunch
-                window (within-day quanta 2 and 3).
+                window (within-day quantum 2, i.e. 12:00-13:00).
               - Compactness bonus: −0.5 per quantum that is adjacent to
                 an already-occupied group slot, encouraging contiguous
                 placement.
+              - Paired cohort magnet: −0.8 per quantum where the paired
+                subgroup already has a practical scheduled, rewarding
+                temporal alignment of paired cohort practicals.
 
             Returns
             -------
@@ -446,11 +477,11 @@ class BitsetSchedulingRepair:
                 np.float64
             )  # (nR, nT)
 
-            # ── Soft proxy: lunch penalty (within-day quanta 2, 3) ──
+            # ── Soft proxy: lunch penalty (within-day quantum 2 = 12:00-13:00) ──
             # offsets are absolute quanta; within-day = offset % QPD
             _QPD = 7
             within_day = offsets % _QPD  # (nT, dur)
-            lunch_hits = ((within_day == 2) | (within_day == 3)).sum(axis=1)  # (nT,)
+            lunch_hits = (within_day == 2).sum(axis=1)  # (nT,)
 
             # ── Soft proxy: compactness bonus ─────────────────────
             # For each group, check if quanta immediately before or
@@ -469,8 +500,25 @@ class BitsetSchedulingRepair:
                     compact_bonus += adj_before.astype(np.float64) * 0.5
                     compact_bonus += adj_after.astype(np.float64) * 0.5
 
+            # ── Soft proxy: paired cohort alignment magnet ────────
+            alignment_bonus = np.zeros(n_times, dtype=np.float64)
+            if self.is_practical[e] and n_groups_e > 0:
+                for gidx in gidxs:
+                    paired_gidx = self.paired_with_group.get(gidx)
+                    if paired_gidx is not None:
+                        # Reward placing this practical where paired
+                        # subgroup already has a practical scheduled
+                        paired_active = (
+                            self._prac_occ[paired_gidx, offsets] > 0
+                        )  # (nT, dur) bool
+                        alignment_bonus += (
+                            paired_active.sum(axis=1).astype(np.float64) * 0.8
+                        )
+
             # Combine: fractional soft (stays < 1.0 even worst case)
-            soft_proxy = lunch_hits.astype(np.float64) - compact_bonus  # (nT,)
+            soft_proxy = (
+                lunch_hits.astype(np.float64) - compact_bonus - alignment_bonus
+            )  # (nT,)
             total = total_hard + 0.01 * soft_proxy[None, :]  # (nR, nT)
 
             # Return as (nT, nR) for consistency with (time, room) axes

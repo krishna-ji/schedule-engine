@@ -1,0 +1,4 @@
+- fully strictly typed python code: annotated vars, function return types etc. fully ruff blak and mypy discplined codes
+- after doing major task, always run ruff mypy black etc. and fix errors
+- uv package manager and venv run always through uv commands.
+- 
