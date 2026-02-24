@@ -24,7 +24,7 @@ SEED = 42
 
 # GA Core Parameters
 POP_SIZE = 120  # Population size (was 50 — more diversity)
-NGEN = 200  # Number of generations (was 150 — more time to converge)
+NGEN = 50  # Number of generations (trimmed for e2e verification)
 CROSSOVER_PROB = 0.4  # Per-event crossover probability (was 0.6 — less destructive)
 MUTATION_PROB = (
     0.10  # Per-event mutation probability (was 0.08 — slightly more exploration)
