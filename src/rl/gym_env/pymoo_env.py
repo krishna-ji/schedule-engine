@@ -1,0 +1,389 @@
+r"""Pymoo-native Gymnasium environment for RL hyper-heuristic control.
+
+The RL agent selects **which atomic repair operator** (action) is
+injected into the Pymoo algorithm each generation.  One ``step()``
+$\equiv$ one call to ``algorithm.next()``.
+
+Key design invariants
+---------------------
+
+1. **Zero DEAP** — everything operates on ``pop.F``, ``pop.G``,
+   ``pop.X`` NumPy matrices.
+2. **No per-individual loops** — state extraction is $O(1)$ matrix ops
+   (via ``VectorizedStateEncoder``).
+3. **Composable** — any ``pymoo.core.repair.Repair`` can be hot-swapped
+   into ``algorithm.mating.repair`` at each step.
+
+Usage
+-----
+
+.. code-block:: python
+
+    import gymnasium as gym
+    from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
+
+    env = PymooHyperHeuristicEnv(
+        pkl_path=".cache/events_with_domains.pkl",
+        max_generations=300,
+        pop_size=100,
+    )
+    obs, info = env.reset()
+    for _ in range(300):
+        action = env.action_space.sample()
+        obs, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            break
+"""
+
+from __future__ import annotations
+
+import logging
+import time as _time
+from typing import Any
+
+import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
+from numpy.typing import NDArray
+
+from src.rl.actions.vectorized_ops import (
+    VECTORIZED_ACTION_SPACE,
+    NUM_ACTIONS,
+    _AtomicRepairBase,
+)
+from src.rl.gym_env.fast_state_encoder import OBS_DIM, VectorizedStateEncoder
+
+logger = logging.getLogger(__name__)
+
+
+class PymooHyperHeuristicEnv(gym.Env):
+    r"""Gymnasium environment that wraps a Pymoo scheduling algorithm.
+
+    **Observation** (39-D Box $[0,1]$):
+        Fitness stats, constraint violations, diversity, progress,
+        heuristic history — all extracted via NumPy matrix ops on
+        ``pop.F``, ``pop.G``, ``pop.X``.
+
+    **Actions** (Discrete):
+        Integer indexing into ``VECTORIZED_ACTION_SPACE``.  Each action
+        is an atomic ``pymoo.core.repair.Repair`` targeting a single
+        constraint class.
+
+    **Reward**:
+        Hard-penalty delta (improvement) + feasibility bonus − time
+        penalty.  All computed via vectorised aggregations on ``pop.F``.
+
+    **Termination**:
+        ``done = True`` when the best individual is fully feasible
+        (``F[best, 0] == 0``) or when ``max_generations`` is reached.
+
+    Parameters
+    ----------
+    pkl_path : str
+        Path to ``events_with_domains.pkl``.
+    max_generations : int
+        Episode budget.
+    pop_size : int
+        Pymoo population size.
+    algorithm_name : str
+        ``"nsga2"`` or ``"ga"``.
+    seed : int
+        Random seed for the Pymoo algorithm.
+    reward_scale : float
+        Multiplicative scale for the reward signal.
+    feasibility_bonus : float
+        One-time bonus added when first feasible solution is found.
+    """
+
+    metadata: dict[str, Any] = {"render_modes": []}
+
+    def __init__(
+        self,
+        pkl_path: str = ".cache/events_with_domains.pkl",
+        max_generations: int = 300,
+        pop_size: int = 100,
+        n_offsprings: int | None = None,
+        algorithm_name: str = "nsga2",
+        seed: int = 42,
+        reward_scale: float = 1.0,
+        feasibility_bonus: float = 10.0,
+        time_penalty_weight: float = 0.001,
+    ):
+        super().__init__()
+
+        self.pkl_path = pkl_path
+        self.max_generations = max(max_generations, 1)
+        self.pop_size = pop_size
+        self.n_offsprings = n_offsprings or pop_size
+        self.algorithm_name = algorithm_name
+        self.seed = seed
+        self.reward_scale = reward_scale
+        self.feasibility_bonus = feasibility_bonus
+        self.time_penalty_weight = time_penalty_weight
+
+        # -- Gym spaces ---------------------------------------------------
+        self.observation_space = spaces.Box(
+            low=0.0,
+            high=1.0,
+            shape=(OBS_DIM,),
+            dtype=np.float32,
+        )
+        self.action_space = spaces.Discrete(NUM_ACTIONS)
+
+        # -- Pre-instantiate action operators (shared engine) -------------
+        self._action_operators: dict[int, _AtomicRepairBase] = {
+            aid: cls(pkl_path) for aid, cls in VECTORIZED_ACTION_SPACE.items()
+        }
+
+        # -- State encoder ------------------------------------------------
+        self._encoder = VectorizedStateEncoder(
+            max_generations=max_generations,
+        )
+
+        # -- Pymoo objects (initialised in reset()) -----------------------
+        self._problem = None
+        self._algorithm = None
+        self._gen: int = 0
+        self._prev_best_hard: float = np.inf
+        self._found_feasible: bool = False
+        self._episode_start: float = 0.0
+
+    # ------------------------------------------------------------------
+    # Gym API
+    # ------------------------------------------------------------------
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[NDArray[np.float32], dict[str, Any]]:
+        """Reset the environment: create a fresh problem + algorithm.
+
+        Returns
+        -------
+        obs : ndarray(39,)
+        info : dict
+        """
+        super().reset(seed=seed)
+        effective_seed = seed if seed is not None else self.seed
+
+        # Lazy imports to keep module-level fast
+        from src.pipeline.pymoo_operators import (
+            EventBlockCrossover,
+            EventLocalMutation,
+            RandomDomainSampling,
+        )
+        from src.pipeline.scheduling_problem import create_problem
+
+        # Create problem
+        self._problem = create_problem(self.pkl_path)
+        self._encoder = VectorizedStateEncoder(
+            max_generations=self.max_generations,
+            n_events=self._problem.spec.n_events,
+        )
+        self._encoder.reset()
+
+        # Create algorithm — start with the full repair as default
+        default_repair = self._action_operators[5]  # ActionFullRepair
+
+        if self.algorithm_name.lower() == "nsga2":
+            from pymoo.algorithms.moo.nsga2 import NSGA2
+
+            self._algorithm = NSGA2(
+                pop_size=self.pop_size,
+                n_offsprings=self.n_offsprings,
+                sampling=RandomDomainSampling(self.pkl_path),
+                crossover=EventBlockCrossover(prob=0.5),
+                mutation=EventLocalMutation(
+                    pkl_path=self.pkl_path, event_prob=0.05
+                ),
+                repair=default_repair,
+                seed=effective_seed,
+            )
+        else:
+            from pymoo.algorithms.soo.nonconvex.ga import GA
+
+            self._algorithm = GA(
+                pop_size=self.pop_size,
+                n_offsprings=self.n_offsprings,
+                sampling=RandomDomainSampling(self.pkl_path),
+                crossover=EventBlockCrossover(prob=0.5),
+                mutation=EventLocalMutation(
+                    pkl_path=self.pkl_path, event_prob=0.05
+                ),
+                repair=default_repair,
+                seed=effective_seed,
+            )
+
+        # Setup the algorithm with the problem
+        self._algorithm.setup(self._problem, termination=("n_gen", self.max_generations))
+
+        # Run the first generation to initialise the population
+        self._algorithm.next()
+
+        # Extract initial state
+        self._gen = 1
+        self._prev_best_hard = np.inf
+        self._found_feasible = False
+        self._episode_start = _time.perf_counter()
+
+        pop = self._algorithm.pop
+        F, G, X = self._extract_pop(pop)
+        soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
+
+        obs = self._encoder.encode(F, G, X, soft_breakdown=soft_bd)
+
+        self._prev_best_hard = float(F[:, 0].min())
+
+        info = self._build_info(F, G)
+        return obs, info
+
+    def step(
+        self,
+        action: int,
+    ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
+        """Execute one generation with the selected repair action.
+
+        Parameters
+        ----------
+        action : int
+            Index into ``VECTORIZED_ACTION_SPACE``.
+
+        Returns
+        -------
+        obs : ndarray(39,)
+        reward : float
+        terminated : bool  (fully feasible found)
+        truncated : bool   (max generations reached)
+        info : dict
+        """
+        assert self._algorithm is not None, "Call reset() first."
+
+        # -- Inject the chosen operator ----------------------------------
+        operator = self._action_operators[action]
+        self._algorithm.mating.repair = operator
+
+        # -- Run one generational step -----------------------------------
+        t0 = _time.perf_counter()
+        self._algorithm.next()
+        step_time = _time.perf_counter() - t0
+
+        self._gen += 1
+
+        # -- Extract population state ------------------------------------
+        pop = self._algorithm.pop
+        F, G, X = self._extract_pop(pop)
+        soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
+
+        obs = self._encoder.encode(
+            F, G, X, soft_breakdown=soft_bd, action_taken=action
+        )
+
+        # -- Compute reward -----------------------------------------------
+        reward = self._compute_reward(F, G)
+
+        # -- Termination checks -------------------------------------------
+        best_hard = float(F[:, 0].min())
+        terminated = bool(best_hard == 0.0)
+        truncated = self._gen >= self.max_generations
+
+        # Update tracking
+        self._prev_best_hard = best_hard
+
+        info = self._build_info(F, G)
+        info["step_time_s"] = step_time
+        info["action"] = action
+        info["action_name"] = operator.ACTION_NAME
+
+        logger.debug(
+            "Gen %d | action=%d (%s) | hard_best=%.1f | reward=%.4f | %.2fs",
+            self._gen,
+            action,
+            operator.ACTION_NAME,
+            best_hard,
+            reward,
+            step_time,
+        )
+
+        return obs, reward, terminated, truncated, info
+
+    # ------------------------------------------------------------------
+    # Reward computation
+    # ------------------------------------------------------------------
+
+    def _compute_reward(
+        self, F: np.ndarray, G: np.ndarray
+    ) -> float:
+        """Vectorized reward from F and G matrices."""
+        best_hard = float(F[:, 0].min())
+        mean_hard = float(F[:, 0].mean())
+
+        # -- Component 1: hard-penalty improvement -----------------------
+        if self._prev_best_hard > 0:
+            improvement = (self._prev_best_hard - best_hard) / max(
+                self._prev_best_hard, 1e-8
+            )
+        else:
+            improvement = 0.0
+
+        # -- Component 2: feasibility fraction gain ----------------------
+        frac_feasible = float((G.sum(axis=1) == 0).mean())
+        feas_reward = frac_feasible * 0.5
+
+        # -- Component 3: one-time feasibility bonus ---------------------
+        first_feasible_bonus = 0.0
+        if best_hard == 0.0 and not self._found_feasible:
+            first_feasible_bonus = self.feasibility_bonus
+            self._found_feasible = True
+
+        # -- Component 4: time penalty -----------------------------------
+        time_penalty = self.time_penalty_weight * self._gen
+
+        # -- Combine ------------------------------------------------------
+        reward = (
+            improvement + feas_reward + first_feasible_bonus - time_penalty
+        ) * self.reward_scale
+
+        # Clip to [-5, 15] (feasibility bonus can spike)
+        return float(np.clip(reward, -5.0, 15.0))
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_pop(pop) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Extract (F, G, X) from a Pymoo Population object."""
+        F = pop.get("F")  # (N, 2)
+        G = pop.get("G")  # (N, 8)
+        X = pop.get("X")  # (N, 3E)
+        # Defensive: ensure G is never None
+        if G is None:
+            G = np.zeros((F.shape[0], 8), dtype=np.float64)
+        return F, G, X
+
+    def _build_info(
+        self, F: np.ndarray, G: np.ndarray
+    ) -> dict[str, Any]:
+        """Build the info dict returned by step/reset."""
+        total_viol = G.sum(axis=1)
+        return {
+            "generation": self._gen,
+            "best_hard": float(F[:, 0].min()),
+            "mean_hard": float(F[:, 0].mean()),
+            "best_soft": float(F[:, 1].min()),
+            "mean_soft": float(F[:, 1].mean()),
+            "feasible_count": int((total_viol == 0).sum()),
+            "feasible_frac": float((total_viol == 0).mean()),
+            "pop_size": F.shape[0],
+            "elapsed_s": _time.perf_counter() - self._episode_start,
+        }
+
+    def render(self) -> None:
+        """No rendering — headless environment."""
+
+    def close(self) -> None:
+        """Clean up."""
+        self._algorithm = None
+        self._problem = None
