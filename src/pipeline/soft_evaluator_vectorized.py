@@ -2,9 +2,9 @@
 
 Replaces the per-individual OOP Timetable->Evaluator pipeline for the top 3
 soft constraints:
-  1. StudentScheduleCompactness  — gap penalty per group per day
-  2. InstructorScheduleCompactness — gap penalty per instructor per day
-  3. StudentLunchBreak — free quanta in lunch window per group per day
+  1. CSC (Cohort Schedule Contiguity)   — gap penalty per group per day
+  2. FSC (Faculty Schedule Contiguity)   — gap penalty per instructor per day
+  3. MIP (Meridian Interval Preservation) — free quanta in lunch window per group per day
 
 API
 ---
@@ -38,8 +38,12 @@ import numpy as np
 # Default time system constants (6 days, 7 quanta/day)
 _DEFAULT_N_DAYS = 6
 _DEFAULT_QUANTA_PER_DAY = 7
-_DEFAULT_BREAK_WITHIN_DAY = {2}  # midday break at within-day quantum 2
-_DEFAULT_BREAK_WINDOW = {2, 3}  # break window: within-day quanta 2-3 (12:00-14:00)
+_DEFAULT_BREAK_WITHIN_DAY = {
+    2,
+    3,
+    4,
+}  # floating lunch exclusion: quanta 2-4 (12:00-15:00)
+_DEFAULT_BREAK_WINDOW = {2, 3, 4}  # lunch window: within-day quanta 2-4 (12:00-15:00)
 
 
 @dataclass(frozen=True, slots=True)
@@ -301,9 +305,14 @@ def eval_soft_vectorized(
     # Only count where entity has >= 2 occupied quanta on that day
     gap = np.where(any_occ & (occ_count >= 2), gap, 0)
 
-    student_compactness = (
-        gap.sum(axis=(1, 2)).astype(np.float64) * sdata.gap_penalty_per_quantum
-    )
+    # ── Density-Aware Compactness: scale gap penalty by group load ──
+    group_load = np.bincount(sdata.grp_exp_group, minlength=n_groups)
+    density_ratio = group_load.astype(np.float64) / (n_days * qpd)
+    density_scale = density_ratio[np.newaxis, :, np.newaxis]  # (1, G, 1)
+
+    student_compactness = (gap * density_scale).sum(axis=(1, 2)).astype(
+        np.float64
+    ) * sdata.gap_penalty_per_quantum
     S += student_compactness
 
     # ==================================================================
@@ -383,11 +392,11 @@ def eval_soft_vectorized(
     return S
 
 
-# Short labels for soft constraint components (order matches breakdown tuple)
+# Short labels for soft constraint components (Academic Nomenclature)
 SOFT_COMPONENT_NAMES: list[str] = [
-    "student_compactness",
-    "instructor_compactness",
-    "lunch_break",
+    "CSC",  # Cohort Schedule Contiguity
+    "FSC",  # Faculty Schedule Contiguity
+    "MIP",  # Meridian Interval Preservation
 ]
 
 
@@ -401,7 +410,7 @@ def eval_soft_vectorized_breakdown(
     -------
     S : ndarray, shape (N,), float64  — total soft penalty
     breakdown : dict[str, ndarray shape (N,)]
-        Keys: ``student_compactness``, ``instructor_compactness``, ``lunch_break``
+        Keys: ``CSC``, ``FSC``, ``MIP``
     """
     X = np.asarray(X, dtype=np.int64)
     if X.ndim == 1:
@@ -458,9 +467,14 @@ def eval_soft_vectorized_breakdown(
     gap = gap_mask.sum(axis=3).astype(np.int32)
     gap = np.where(any_occ & (occ_count >= 2), gap, 0)
 
-    student_compactness = (
-        gap.sum(axis=(1, 2)).astype(np.float64) * sdata.gap_penalty_per_quantum
-    )
+    # ── Density-Aware Compactness: scale gap penalty by group load ──
+    group_load = np.bincount(sdata.grp_exp_group, minlength=n_groups)
+    density_ratio = group_load.astype(np.float64) / (n_days * qpd)
+    density_scale = density_ratio[np.newaxis, :, np.newaxis]  # (1, G, 1)
+
+    student_compactness = (gap * density_scale).sum(axis=(1, 2)).astype(
+        np.float64
+    ) * sdata.gap_penalty_per_quantum
 
     # ── 2. Instructor compactness ─────────────────────────────────
     Q = sdata.Q
@@ -518,9 +532,9 @@ def eval_soft_vectorized_breakdown(
     S = student_compactness + instructor_compactness + lunch_penalty
 
     breakdown = {
-        "student_compactness": student_compactness,
-        "instructor_compactness": instructor_compactness,
-        "lunch_break": lunch_penalty,
+        "CSC": student_compactness,
+        "FSC": instructor_compactness,
+        "MIP": lunch_penalty,
     }
     return S, breakdown
 
@@ -666,6 +680,12 @@ def evaluate_paired_cohorts_vectorized(
     right_occ = is_prac_occ[:, right_idx, :]  # (N, S, T)
 
     xor_mismatch = left_occ ^ right_occ  # (N, S, T) bool
-    penalty_per_pair = xor_mismatch.sum(axis=2).astype(np.float64)  # (N, S)
+    raw_xor_sum = xor_mismatch.sum(axis=2).astype(np.float64)  # (N, S)
+
+    # ── Subtract unavoidable subcohort load difference (floor) ──
+    left_load = left_occ.sum(axis=2).astype(np.float64)  # (N, S)
+    right_load = right_occ.sum(axis=2).astype(np.float64)  # (N, S)
+    unavoidable_diff = np.abs(left_load - right_load)  # (N, S)
+    penalty_per_pair = np.maximum(raw_xor_sum - unavoidable_diff, 0.0)  # (N, S)
 
     return penalty_per_pair.sum(axis=1)  # (N,)

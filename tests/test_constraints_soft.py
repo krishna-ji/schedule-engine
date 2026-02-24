@@ -587,7 +587,7 @@ class TestBuildConstraints:
             instructor_exclusivity_weight=5.0,
         )
         for c in constraints:
-            if c.name == "instructor_exclusivity":
+            if c.name == "FTE":  # Faculty Time Exclusivity
                 assert c.weight == 5.0
 
     def test_weight_zero_works(self):
@@ -597,7 +597,7 @@ class TestBuildConstraints:
             student_group_exclusivity_weight=0.0,
         )
         for c in constraints:
-            if c.name == "student_group_exclusivity":
+            if c.name == "CTE":  # Cohort Time Exclusivity
                 assert (
                     c.weight == 0.0
                 ), "weight=0.0 should be respected (not fall back to hard_weight)"
@@ -610,9 +610,9 @@ class TestBuildConstraints:
             isolated_slot_penalty=25.0,
         )
         for c in constraints:
-            if c.name == "student_schedule_compactness":
+            if c.name == "CSC":  # Cohort Schedule Compactness
                 assert c.gap_penalty == 2.5
-            elif c.name == "student_lunch_break":
+            elif c.name == "MIP":  # Mandatory Intermission Provision
                 assert c.break_min_quanta == 4
                 assert c.penalty_per_missing == 8.0
             elif c.name == "session_continuity":

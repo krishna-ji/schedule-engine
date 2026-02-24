@@ -122,13 +122,13 @@ class TestEvaluatorEquivalence:
 
         evaluator = Evaluator()
         constraint_names = [
-            "student_group_exclusivity",
-            "instructor_exclusivity",
-            "room_exclusivity",
-            "instructor_qualifications",
-            "room_suitability",
-            "instructor_time_availability",
-            "course_completeness",
+            "CTE",  # Cohort Time Exclusivity
+            "FTE",  # Faculty Time Exclusivity
+            "SRE",  # Space Resource Exclusivity
+            "FPC",  # Faculty-Program Compliance
+            "FFC",  # Facility-Format Compliance
+            "FCA",  # Faculty Chronometric Availability
+            "CQF",  # Curriculum Quantum Fulfillment
         ]
 
         pop = generate_pure_random_population(self.N, ctx, parallel=False)

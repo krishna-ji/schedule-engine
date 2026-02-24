@@ -24,11 +24,11 @@ from pymoo.core.callback import Callback
 
 logger = logging.getLogger(__name__)
 
-# ── Short constraint labels (matches HARD_CONSTRAINT_NAMES order) ────
-_SHORT = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp", "sib"]
+# ── Short constraint labels (Academic Nomenclature) ────────────────
+_SHORT = ["CTE", "FTE", "SRE", "FPC", "FFC", "FCA", "CQF", "ICTD", "sib"]
 
 # ── Short labels for soft constraint components ──────────────────────
-_SHORT_SOFT = ["sComp", "iComp", "lunch", "paired"]
+_SHORT_SOFT = ["CSC", "FSC", "MIP", "SSCP"]
 
 # ── MOEA metrics computed every K generations ────────────────────────
 _METRICS_INTERVAL = 10
@@ -112,7 +112,7 @@ def _record_moea_metrics(cb: Any, algorithm: Any, F: np.ndarray, G: np.ndarray) 
 
 
 # G columns treated as tolerated (soft) — must match scheduling_problem._TOLERATED_HARD_COLS
-_TOLERATED_COLS = frozenset({5})  # iAvl
+_TOLERATED_COLS = frozenset({5})  # FCA
 
 
 def _progress_payload(algorithm: Any) -> tuple:
@@ -137,10 +137,10 @@ def _soft_breakdown(problem: Any, best_idx: int) -> dict[str, int]:
     if bd is None:
         return {}
     keys = [
-        "student_compactness",
-        "instructor_compactness",
-        "lunch_break",
-        "paired_cohort",
+        "CSC",
+        "FSC",
+        "MIP",
+        "SSCP",
     ]
     labels = _SHORT_SOFT
     result = {}

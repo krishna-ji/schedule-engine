@@ -115,23 +115,26 @@ def build_notebook_config(
         },
         heuristics={"master_enabled": True},
         soft_constraints={
-            "student_schedule_compactness": {
+            "CSC": {  # Cohort Schedule Compactness
                 "enabled": True,
                 "weight": 1.0,
                 "gap_penalty_per_quantum": 1,
             },
-            "instructor_schedule_compactness": {
+            "FSC": {  # Faculty Schedule Compactness
                 "enabled": True,
                 "weight": 1.0,
                 "gap_penalty_per_quantum": 1,
             },
-            "student_lunch_break": {
+            "MIP": {  # Mandatory Intermission Provision
                 "enabled": True,
                 "weight": 1.0,
                 "distance_penalty_per_quantum": 1,
             },
             "session_continuity": {"enabled": True, "weight": 1.0},
-            "paired_cohort_practical_alignment": {"enabled": True, "weight": 1.0},
+            "SSCP": {
+                "enabled": True,
+                "weight": 1.0,
+            },  # Subcohort Schedule Congruence Penalty
             "soft_weight_factor": 1.0,
         },
         rl={

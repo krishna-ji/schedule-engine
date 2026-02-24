@@ -18,13 +18,17 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from .encoding import EncodingSpec, chromosome_views
-from .fast_evaluator_vectorized import (VectorizedEvalData,
-                                        fast_evaluate_hard_vectorized,
-                                        prepare_vectorized_data)
-from .soft_evaluator_vectorized import (SoftVectorizedData,
-                                        eval_soft_vectorized_breakdown,
-                                        evaluate_paired_cohorts_vectorized,
-                                        prepare_soft_vectorized_data)
+from .fast_evaluator_vectorized import (
+    VectorizedEvalData,
+    fast_evaluate_hard_vectorized,
+    prepare_vectorized_data,
+)
+from .soft_evaluator_vectorized import (
+    SoftVectorizedData,
+    eval_soft_vectorized_breakdown,
+    evaluate_paired_cohorts_vectorized,
+    prepare_soft_vectorized_data,
+)
 from .vectorized_lookups import VectorizedLookups, build_vectorized_lookups
 
 if TYPE_CHECKING:
@@ -37,22 +41,22 @@ except ImportError as err:
     raise ImportError("pymoo is required: pip install pymoo>=0.6") from err
 
 
-# Hard constraint names in canonical order
+# Hard constraint names in canonical order (Academic Nomenclature)
 HARD_CONSTRAINT_NAMES = [
-    "student_group_exclusivity",
-    "instructor_exclusivity",
-    "room_exclusivity",
-    "instructor_qualifications",
-    "room_suitability",
-    "instructor_time_availability",
-    "course_completeness",
-    "sibling_same_day",
+    "CTE",  # Cohort Temporal Exclusivity
+    "FTE",  # Faculty Temporal Exclusivity
+    "SRE",  # Spatial Resource Exclusivity
+    "FPC",  # Faculty Pedagogical Congruence
+    "FFC",  # Facility Feature Congruence
+    "FCA",  # Faculty Chronological Availability
+    "CQF",  # Curriculum Quanta Fulfillment
+    "ICTD",  # Intra-Course Temporal Dispersion
 ]
 
 # Indices of G columns that are TOLERATED (excluded from hard objective,
 # added to soft instead).  instructor_time_availability (col 5) is
 # structurally infeasible for some events, so we treat it as soft.
-_TOLERATED_HARD_COLS = frozenset({5})  # iAvl
+_TOLERATED_HARD_COLS = frozenset({5})  # FCA
 _STRICT_HARD_COLS = np.array(
     [i for i in range(len(HARD_CONSTRAINT_NAMES)) if i not in _TOLERATED_HARD_COLS]
 )
@@ -159,7 +163,7 @@ class SchedulingProblem(Problem):
         # ---- Paired cohort practical alignment (soft) ----
         paired_penalty = evaluate_paired_cohorts_vectorized(x, self.lookups)
         F[:, 1] += paired_penalty
-        soft_bd["paired_cohort"] = paired_penalty
+        soft_bd["SSCP"] = paired_penalty
 
         # Store latest soft breakdown for callback access
         self._last_soft_breakdown = soft_bd

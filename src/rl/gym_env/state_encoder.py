@@ -68,24 +68,24 @@ class StateEncoder:
     - Heuristic history (dynamic): recent heuristic IDs
     """
 
-    # Hard constraint names (9 total — must match fast_evaluate_hard_vectorized column order)
+    # Hard constraint names (9 total — Academic Nomenclature)
     HARD_CONSTRAINT_NAMES: ClassVar[list[str]] = [
-        "student_group_exclusivity",
-        "instructor_exclusivity",
-        "room_exclusivity",
-        "instructor_qualifications",
-        "room_suitability",
-        "instructor_time_availability",
-        "course_completeness",
-        "sibling_same_day",
+        "CTE",  # Cohort Temporal Exclusivity
+        "FTE",  # Faculty Temporal Exclusivity
+        "SRE",  # Spatial Resource Exclusivity
+        "FPC",  # Faculty Pedagogical Congruence
+        "FFC",  # Facility Feature Congruence
+        "FCA",  # Faculty Chronological Availability
+        "CQF",  # Curriculum Quanta Fulfillment
+        "ICTD",  # Intra-Course Temporal Dispersion
     ]
 
-    # Soft constraint names (4 total)
+    # Soft constraint names (Academic Nomenclature)
     SOFT_CONSTRAINT_NAMES: ClassVar[list[str]] = [
-        "student_schedule_compactness",
-        "instructor_schedule_compactness",
-        "student_lunch_break",
-        "session_continuity",
+        "CSC",  # Cohort Schedule Contiguity
+        "FSC",  # Faculty Schedule Contiguity
+        "MIP",  # Meridian Interval Preservation
+        "SSCP",  # Symmetric Sub-Cohort Parallelism
     ]
 
     def __init__(

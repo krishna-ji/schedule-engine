@@ -19,7 +19,7 @@ Usage:
     from src.ga.repair.detector import detect_violated_genes
 
     violations = detect_violated_genes(individual, context, strategy="hybrid")
-    # Returns: {12: ["group_overlap"], 45: ["instructor_qualifications"]}
+    # Returns: {12: ["group_overlap"], 45: ["FPC"]}
 
     violated_indices = set(violations.keys())
     # Repair only: violated_indices instead of entire individual
@@ -55,7 +55,7 @@ def detect_violated_genes(
 
     Returns:
         Dict mapping gene index to list of violation types
-        Example: {12: ["group_overlap", "room_conflict"], 45: ["instructor_qualifications"]}
+        Example: {12: ["group_overlap", "room_conflict"], 45: ["FPC"]}
 
     Note:
         Empty dict means no violations detected (individual is feasible).
@@ -178,13 +178,13 @@ def _detect_full(
             continue
 
         if course_key not in instructor.qualified_courses:
-            violations[idx].append("instructor_qualifications")
+            violations[idx].append("FPC")  # Faculty-Program Compliance
 
         if not instructor.is_full_time and any(
             q not in instructor.available_quanta
             for q in range(gene.start_quanta, gene.end_quanta)
         ):
-            violations[idx].append("instructor_availability")
+            violations[idx].append("FCA")  # Faculty Chronometric Availability
 
     # Detect room type mismatches
     for idx, gene in enumerate(individual):
@@ -201,7 +201,7 @@ def _detect_full(
         if (course.course_type == "practical" and room.room_features != "lab") or (
             course.course_type == "theory" and room.room_features == "lab"
         ):
-            violations[idx].append("room_suitability")
+            violations[idx].append("FFC")  # Facility-Format Compliance
 
     return dict(violations)
 

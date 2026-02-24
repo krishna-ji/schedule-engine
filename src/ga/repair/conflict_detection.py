@@ -123,26 +123,29 @@ def _evaluate_constraint_with_tracking(
             - Dict with additional details
     """
     # Dispatch to specific tracking function based on constraint type
-    if constraint_name == "student_group_exclusivity":
+    if constraint_name == "CTE":  # Cohort Time Exclusivity
         return _track_student_group_conflicts(sessions)
-    if constraint_name == "instructor_exclusivity":
+    if constraint_name == "FTE":  # Faculty Time Exclusivity
         return _track_instructor_conflicts(sessions)
-    if constraint_name == "room_exclusivity":
+    if constraint_name == "SRE":  # Space Resource Exclusivity
         return _track_room_conflicts(sessions)
-    if constraint_name == "instructor_qualifications":
+    if constraint_name == "FPC":  # Faculty-Program Compliance
         # Courses is required for this constraint
         if courses is None:
             return set(), 0, {}
         return _track_qualification_violations(sessions, courses)
-    if constraint_name in ("room_capacity", "room_suitability"):
+    if constraint_name in ("room_capacity", "FFC"):  # Facility-Format Compliance
         return _track_room_capacity_violations(sessions)
     if constraint_name == "room_features":
         return _track_room_feature_violations(sessions)
-    if constraint_name in ("instructor_availability", "instructor_time_availability"):
+    if constraint_name in (
+        "instructor_availability",
+        "FCA",
+    ):  # Faculty Chronometric Availability
         return _track_instructor_availability_violations(sessions)
     if constraint_name in ("group_availability", "room_time_availability"):
         return _track_group_availability_violations(sessions)
-    if constraint_name == "course_completeness":
+    if constraint_name == "CQF":  # Curriculum Quantum Fulfillment
         # Course completeness is a global constraint, not per-session trackable
         return set(), 0, {}
     # Generic fallback: skip if no constraint function provided

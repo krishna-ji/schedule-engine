@@ -477,11 +477,18 @@ class BitsetSchedulingRepair:
                 np.float64
             )  # (nR, nT)
 
-            # ── Soft proxy: lunch penalty (within-day quantum 2 = 12:00-13:00) ──
-            # offsets are absolute quanta; within-day = offset % QPD
+            # ── Soft proxy: lunch penalty (floating lunch {2,3,4}) ──
+            # A lunch violation ONLY occurs if the proposed block
+            # crushes ALL THREE lunch quanta (12:00-15:00).
             _QPD = 7
             within_day = offsets % _QPD  # (nT, dur)
-            lunch_hits = (within_day == 2).sum(axis=1)  # (nT,)
+            lunch_hits = (
+                (within_day == 2).any(axis=1)
+                & (within_day == 3).any(axis=1)
+                & (within_day == 4).any(axis=1)
+            ).astype(
+                np.float64
+            )  # (nT,)
 
             # ── Soft proxy: compactness bonus ─────────────────────
             # For each group, check if quanta immediately before or

@@ -120,7 +120,7 @@ class StudentGroupExclusivity:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "student_group_exclusivity"
+        self.name = "CTE"  # Cohort Time Exclusivity
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:
@@ -134,7 +134,7 @@ class InstructorExclusivity:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "instructor_exclusivity"
+        self.name = "FTE"  # Faculty Time Exclusivity
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:
@@ -148,7 +148,7 @@ class RoomExclusivity:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "room_exclusivity"
+        self.name = "SRE"  # Space Resource Exclusivity
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:
@@ -162,7 +162,7 @@ class InstructorQualifications:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "instructor_qualifications"
+        self.name = "FPC"  # Faculty-Program Compliance
         self.weight = weight
         self._warned_missing: set[tuple[str, str]] = set()
         self._warned_empty: set[tuple[str, str]] = set()
@@ -221,7 +221,7 @@ class RoomSuitability:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "room_suitability"
+        self.name = "FFC"  # Facility-Format Compliance
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:
@@ -269,7 +269,7 @@ class InstructorTimeAvailability:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "instructor_time_availability"
+        self.name = "FCA"  # Faculty Chronometric Availability
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:
@@ -299,7 +299,7 @@ class CourseCompleteness:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "course_completeness"
+        self.name = "CQF"  # Curriculum Quantum Fulfillment
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:
@@ -337,7 +337,7 @@ class SiblingSameDay:
     kind: str = "hard"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "sibling_same_day"
+        self.name = "ICTD"  # Intra-Course Temporal Distribution
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:
@@ -388,7 +388,7 @@ class StudentScheduleCompactness:
         weight: float = 1.0,
         gap_penalty_per_quantum: float = 1.0,
     ):
-        self.name = "student_schedule_compactness"
+        self.name = "CSC"  # Cohort Schedule Compactness
         self.weight = weight
         self.gap_penalty = gap_penalty_per_quantum
 
@@ -411,7 +411,7 @@ class InstructorScheduleCompactness:
         weight: float = 1.0,
         gap_penalty_per_quantum: float = 1.0,
     ):
-        self.name = "instructor_schedule_compactness"
+        self.name = "FSC"  # Faculty Schedule Compactness
         self.weight = weight
         self.gap_penalty = gap_penalty_per_quantum
 
@@ -435,7 +435,7 @@ class StudentLunchBreak:
         break_min_quanta: int = 1,
         penalty_per_missing_quantum: float = 1.0,
     ):
-        self.name = "student_lunch_break"
+        self.name = "MIP"  # Mandatory Intermission Provision
         self.weight = weight
         self.break_min_quanta = break_min_quanta
         self.penalty_per_missing = penalty_per_missing_quantum
@@ -560,7 +560,7 @@ class PairedCohortPracticalAlignment:
     kind: str = "soft"
 
     def __init__(self, weight: float = 1.0):
-        self.name = "paired_cohort_practical_alignment"
+        self.name = "SSCP"  # Subcohort Schedule Congruence Penalty
         self.weight = weight
 
     def evaluate(self, tt: Timetable) -> float:

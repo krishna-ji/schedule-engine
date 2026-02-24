@@ -331,9 +331,9 @@ class TestEvaluator:
         ctx = _simple_context()
         genes = [_make_gene(start=0, duration=2)]
         bd = ev.breakdown(genes, ctx)
-        assert bd["student_group_exclusivity"] == 0
-        assert bd["instructor_exclusivity"] == 0
-        assert bd["room_exclusivity"] == 0
+        assert bd["CTE"] == 0
+        assert bd["FTE"] == 0
+        assert bd["SRE"] == 0
 
     def test_conflict_gives_nonzero_exclusivity(self):
         """Two overlapping genes for same group -> nonzero penalty."""
@@ -346,7 +346,7 @@ class TestEvaluator:
             _make_gene("CS102", start=0, duration=2),
         ]
         bd = ev.breakdown(genes, ctx)
-        assert bd["student_group_exclusivity"] > 0
+        assert bd["CTE"] > 0
 
     def test_fitness_consistency(self):
         """fitness() == fitness_from_timetable() on same data."""

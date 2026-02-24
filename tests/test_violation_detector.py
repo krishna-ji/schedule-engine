@@ -15,11 +15,7 @@ from conftest import (
     make_room,
 )
 
-from src.ga.repair.detector import (
-    _detect_fast,
-    _detect_full,
-    detect_violated_genes,
-)
+from src.ga.repair.detector import _detect_fast, _detect_full, detect_violated_genes
 
 
 class TestDetectFast:
@@ -92,7 +88,7 @@ class TestDetectFull:
             rooms=[make_room("R1"), make_room("R2")],
         )
         result = _detect_full([g1, g2], ctx)
-        # May still detect "instructor_qualifications" if qualified_courses doesn't
+        # May still detect "FPC" (Faculty-Program Compliance) if qualified_courses doesn't
         # match the (course_id, course_type) key format check. Let's verify:
         # The check is: if course_key not in instructor.qualified_courses
         # qualified_courses is a list[], not set of tuples, so this will likely fire.
@@ -232,6 +228,6 @@ class TestDetectStrategies:
         # Hybrid includes everything from full
         for idx, vtypes in full_result.items():
             for vtype in vtypes:
-                assert vtype in hybrid_result.get(idx, []), (
-                    f"Hybrid missing {vtype} for gene {idx}"
-                )
+                assert vtype in hybrid_result.get(
+                    idx, []
+                ), f"Hybrid missing {vtype} for gene {idx}"

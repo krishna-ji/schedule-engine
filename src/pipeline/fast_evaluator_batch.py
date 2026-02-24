@@ -61,16 +61,16 @@ def _fast_popcount(v: int | np.uint64) -> int:
     )
 
 
-# Hard constraint names in canonical order (same as fast_evaluator_vectorized.py)
+# Hard constraint names in canonical order (Academic Nomenclature)
 HARD_CONSTRAINT_NAMES = [
-    "student_group_exclusivity",
-    "instructor_exclusivity",
-    "room_exclusivity",
-    "instructor_qualifications",
-    "room_suitability",
-    "instructor_time_availability",
-    "course_completeness",
-    "sibling_same_day",
+    "CTE",  # Cohort Temporal Exclusivity
+    "FTE",  # Faculty Temporal Exclusivity
+    "SRE",  # Spatial Resource Exclusivity
+    "FPC",  # Faculty Pedagogical Congruence
+    "FFC",  # Facility Feature Congruence
+    "FCA",  # Faculty Chronological Availability
+    "CQF",  # Curriculum Quanta Fulfillment
+    "ICTD",  # Intra-Course Temporal Dispersion
 ]
 
 

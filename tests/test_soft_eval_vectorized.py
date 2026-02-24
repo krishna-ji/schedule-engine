@@ -70,9 +70,9 @@ def oop_soft_scores(population, pkl_data):
     E = len(events)
 
     scores = {
-        "student_schedule_compactness": [],
-        "instructor_schedule_compactness": [],
-        "student_lunch_break": [],
+        "CSC": [],  # Cohort Schedule Compactness
+        "FSC": [],  # Faculty Schedule Compactness
+        "MIP": [],  # Mandatory Intermission Provision
         "total": [],
     }
 
@@ -97,19 +97,15 @@ def oop_soft_scores(population, pkl_data):
         tt = Timetable(genes, ctx, qts)
         bd = evaluator.soft_breakdown(tt)
 
-        scores["student_schedule_compactness"].append(
-            bd.get("student_schedule_compactness", 0.0)
-        )
-        scores["instructor_schedule_compactness"].append(
-            bd.get("instructor_schedule_compactness", 0.0)
-        )
-        scores["student_lunch_break"].append(bd.get("student_lunch_break", 0.0))
+        scores["CSC"].append(bd.get("CSC", 0.0))
+        scores["FSC"].append(bd.get("FSC", 0.0))
+        scores["MIP"].append(bd.get("MIP", 0.0))
         # Total of these 3 constraints
         total = sum(
             [
-                bd.get("student_schedule_compactness", 0.0),
-                bd.get("instructor_schedule_compactness", 0.0),
-                bd.get("student_lunch_break", 0.0),
+                bd.get("CSC", 0.0),
+                bd.get("FSC", 0.0),
+                bd.get("MIP", 0.0),
             ]
         )
         scores["total"].append(total)

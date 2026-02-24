@@ -212,9 +212,9 @@ for ind_idx in range(X.shape[0]):
         )
     tt = Timetable(genes, ctx, qts)
     bd = evaluator.soft_breakdown(tt)
-    oop_student.append(bd.get("student_schedule_compactness", 0.0))
-    oop_instructor.append(bd.get("instructor_schedule_compactness", 0.0))
-    oop_lunch.append(bd.get("student_lunch_break", 0.0))
+    oop_student.append(bd.get("CSC", 0.0))
+    oop_instructor.append(bd.get("FSC", 0.0))
+    oop_lunch.append(bd.get("MIP", 0.0))
 
 oop_student = np.array(oop_student)
 oop_instructor = np.array(oop_instructor)

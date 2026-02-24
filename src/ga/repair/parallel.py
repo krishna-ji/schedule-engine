@@ -389,12 +389,12 @@ def repair_instructor_conflicts_fast(
     return fixes
 
 
-def get_repair_operators() -> list[
-    tuple[str, Callable[[list[SessionGene], SchedulingContext, OccupiedMap], int]]
-]:
+def get_repair_operators() -> (
+    list[tuple[str, Callable[[list[SessionGene], SchedulingContext, OccupiedMap], int]]]
+):
     """Get list of repair operators in priority order."""
     return [
-        ("instructor_qualifications", repair_instructor_qualifications_fast),
+        ("FPC", repair_instructor_qualifications_fast),  # Faculty-Program Compliance
         ("instructor_conflicts", repair_instructor_conflicts_fast),
         ("group_conflicts", repair_group_conflicts_fast),
         ("room_conflicts", repair_room_conflicts_fast),

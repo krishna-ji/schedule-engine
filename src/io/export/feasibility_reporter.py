@@ -22,7 +22,11 @@ logger = logging.getLogger(__name__)
 _QUANTA_PER_DAY = 7
 _N_DAYS = 6
 _T = _QUANTA_PER_DAY * _N_DAYS  # 42
-_LUNCH_QUANTA = {2, 3}  # within-day quanta forming the lunch window
+_LUNCH_QUANTA = {
+    2,
+    3,
+    4,
+}  # within-day quanta forming the floating lunch window (12:00-15:00)
 
 
 def generate_pre_feasibility_report(
@@ -71,9 +75,9 @@ def generate_pre_feasibility_report(
     )
 
     # ==================================================================
-    # Section 1: Spatial Supply vs. Demand
+    # Section 1: Spatial Demand vs. Supply (SRE / FFC topology)
     # ==================================================================
-    sections.append("## 1. Spatial Supply vs. Demand (Subgroup-Aware)\n")
+    sections.append("## 1. Spatial Supply vs. Demand (SRE / FFC — Subgroup-Aware)\n")
 
     # Group events by their allowed-room set (room "feature class")
     room_class_demand: dict[frozenset[int], int] = defaultdict(int)  # quanta demanded
@@ -149,13 +153,13 @@ def generate_pre_feasibility_report(
     )
 
     # ==================================================================
-    # Section 2: Faculty Meridian Collisions
+    # Section 2: Faculty Load & Meridian Collisions (FCA / MIP)
     # ==================================================================
-    sections.append("## 2. Faculty Meridian Collisions\n")
+    sections.append("## 2. Faculty Load & Meridian Collisions (FCA / MIP)\n")
     sections.append(
         "Instructors whose *entire* availability falls within the lunch "
-        "window (within-day quanta 2–3) are mathematically forced to incur "
-        "``sc_lunch`` penalties on every assigned event.\n"
+        "window (within-day quanta 2\u20134, MIP) are mathematically forced to incur "
+        "MIP penalties on every assigned event.\n"
     )
 
     # Absolute lunch quanta across all days
@@ -214,9 +218,48 @@ def generate_pre_feasibility_report(
     sections.append("")
 
     # ==================================================================
-    # Section 3: Subcohort Topology
+    # Section 2b: Faculty Overload Detection
     # ==================================================================
-    sections.append("## 3. Subcohort Topology\n")
+    sections.append("## 2b. Faculty Overload (FCA)\n")
+    sections.append(
+        "Instructors where Assigned Load > Total Available Quanta "
+        "are mathematically infeasible.\n"
+    )
+
+    inst_assigned_load: dict[int, int] = defaultdict(int)
+    for e, ev in enumerate(events):
+        dur = ev["num_quanta"]
+        for i_idx in allowed_instructors[e]:
+            inst_assigned_load[i_idx] += dur
+
+    overloaded: list[tuple[str, int, int]] = []
+    for i_idx, load in inst_assigned_load.items():
+        avail = inst_avail.get(i_idx)
+        capacity = len(avail) if avail is not None else _T
+        if load > capacity:
+            name = idx_to_inst.get(i_idx, f"Inst#{i_idx}")
+            overloaded.append((name, load, capacity))
+
+    if overloaded:
+        sections.append(
+            "| Instructor | Assigned Load (quanta) | Available (quanta) | Status |"
+        )
+        sections.append("|---|---:|---:|---|")
+        for name, load, cap in sorted(overloaded, key=lambda x: -(x[1] - x[2])):
+            sections.append(f"| {name} | {load} | {cap} | **OVERLOADED** |")
+        sections.append(
+            f"\n> **Warning**: {len(overloaded)} instructor(s) have assigned "
+            f"load exceeding their available quanta."
+        )
+    else:
+        sections.append("> No instructors are overloaded.")
+
+    sections.append("")
+
+    # ==================================================================
+    # Section 3: SSCP Topology (Symmetric Sub-Cohort Parallelism)
+    # ==================================================================
+    sections.append("## 3. SSCP Topology (Symmetric Sub-Cohort Parallelism)\n")
 
     if not cohort_pairs:
         sections.append("> No cohort pairs defined in the data.\n")
@@ -248,9 +291,9 @@ def generate_pre_feasibility_report(
 
         sections.append(
             "| Left | Right | Prac Quanta (L) | Prac Quanta (R) "
-            "| Total Load (L) | Total Load (R) | Cascade Risk |"
+            "| \u0394 Unavoidable | Total Load (L) | Total Load (R) | Cascade Risk |"
         )
-        sections.append("|---|---|---:|---:|---:|---:|---|")
+        sections.append("|---|---|---:|---:|---:|---:|---:|---|")
 
         cascade_risks = 0
         for left_id, right_id in cohort_pairs:
@@ -277,9 +320,10 @@ def generate_pre_feasibility_report(
             if risk == "HIGH":
                 cascade_risks += 1
 
+            prac_diff = abs(l_prac - r_prac)
             sections.append(
                 f"| {left_id} | {right_id} | {l_prac} | {r_prac} "
-                f"| {l_total} | {r_total} | {risk} |"
+                f"| {prac_diff} | {l_total} | {r_total} | {risk} |"
             )
 
         if cascade_risks > 0:

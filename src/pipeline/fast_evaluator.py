@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Fast numeric evaluator for pymoo migration.
 
-Computes ALL 8 hard constraints that the original Evaluator uses:
-  1. student_group_exclusivity   – (group, quantum) double-booking
-  2. instructor_exclusivity      – (instructor, quantum) double-booking
-  3. room_exclusivity            – (room, quantum) double-booking
-  4. instructor_qualifications   – instructor not in course.qualified_instructor_ids
-  5. room_suitability            – room not in precomputed suitable rooms
-  6. instructor_time_availability – part-time instructor assigned outside available_quanta
-  7. course_completeness         – always 0 (gene list is fixed, quanta match by construction)
-  8. sibling_same_day            – sub-sessions of same course on same day
+Computes ALL 8 hard constraints (Academic Nomenclature):
+  1. CTE  — Cohort Temporal Exclusivity (group, quantum double-booking)
+  2. FTE  — Faculty Temporal Exclusivity (instructor, quantum double-booking)
+  3. SRE  — Spatial Resource Exclusivity (room, quantum double-booking)
+  4. FPC  — Faculty Pedagogical Congruence (instructor qualifications)
+  5. FFC  — Facility Feature Congruence (room suitability)
+  6. FCA  — Faculty Chronological Availability (part-time instructor scheduling)
+  7. CQF  — Curriculum Quanta Fulfillment (course completeness)
+  8. ICTD — Intra-Course Temporal Dispersion (sibling same-day)
 
-Returns per-constraint breakdown dict identical to Evaluator.breakdown().
+Returns per-constraint breakdown dict.
 """
 
 from __future__ import annotations
@@ -114,14 +114,14 @@ def fast_evaluate_hard(
                     sibling_same_day += 1
 
     return {
-        "student_group_exclusivity": group_violations,
-        "instructor_exclusivity": instructor_violations,
-        "room_exclusivity": room_violations,
-        "instructor_qualifications": qual_violations,
-        "room_suitability": suit_violations,
-        "instructor_time_availability": inst_avail_violations,
-        "course_completeness": 0,  # fixed by construction
-        "sibling_same_day": sibling_same_day,
+        "CTE": group_violations,
+        "FTE": instructor_violations,
+        "SRE": room_violations,
+        "FPC": qual_violations,
+        "FFC": suit_violations,
+        "FCA": inst_avail_violations,
+        "CQF": 0,  # fixed by construction
+        "ICTD": sibling_same_day,
     }
 
 
@@ -155,13 +155,9 @@ def fast_conflict_evaluator(
         room_avail,
     )
 
-    room_conf = result["room_exclusivity"]
-    inst_conf = result["instructor_exclusivity"]
-    group_conf = result["student_group_exclusivity"]
+    room_conf = result["SRE"]
+    inst_conf = result["FTE"]
+    group_conf = result["CTE"]
     # Sum remaining hard violations into a soft penalty proxy
-    soft_penalty = float(
-        result["instructor_qualifications"]
-        + result["room_suitability"]
-        + result["instructor_time_availability"]
-    )
+    soft_penalty = float(result["FPC"] + result["FFC"] + result["FCA"])
     return room_conf, inst_conf, group_conf, soft_penalty

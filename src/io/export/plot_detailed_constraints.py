@@ -66,7 +66,7 @@ def plot_individual_hard_constraints(
         ax,
         xlabel="Generation",
         ylabel="Violations",
-        title="Hard Constraint Violations — Stacked Area Breakdown",
+        title="Hard Constraint Violations (Academic Nomenclature) \u2014 Stacked Area",
         legend=True,
         y_from_zero=True,
     )
@@ -121,7 +121,7 @@ def plot_individual_soft_constraints(
         ax,
         xlabel="Generation",
         ylabel="Penalty",
-        title="Soft Constraint Penalties — Stacked Area Breakdown",
+        title="Soft Constraint Penalties (Academic Nomenclature) \u2014 Stacked Area",
         legend=True,
         y_from_zero=True,
     )

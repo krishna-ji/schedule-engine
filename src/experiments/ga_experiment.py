@@ -488,10 +488,10 @@ class GAExperiment(BaseExperiment):
         """Write ``convergence_history.csv`` with per-gen constraint data."""
         path = Path(output_dir) / "convergence_history.csv"
 
-        # Hard constraint short names
-        hc_keys = ["grp", "inst", "room", "qual", "suit", "iAvl", "rAvl", "comp", "sib"]
-        # Soft constraint short names
-        sc_keys = ["sComp", "iComp", "lunch", "paired"]
+        # Hard constraint short names (Academic Nomenclature)
+        hc_keys = ["CTE", "FTE", "SRE", "FPC", "FFC", "FCA", "CQF", "ICTD", "sib"]
+        # Soft constraint short names (Academic Nomenclature)
+        sc_keys = ["CSC", "FSC", "MIP", "SSCP"]
 
         header = (
             ["Gen", "Best_Hard", "Best_Soft"]
