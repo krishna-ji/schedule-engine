@@ -78,6 +78,7 @@ $$
 | **SSCP** | Symmetric Sub-Cohort Parallelism | $\sum_{(A,B)} \max(\|\mathbf{P}_A \oplus \mathbf{P}_B\|_1 - |L_A - L_B|,\, 0)$ |
 
 Where:
+
 - $\mathcal{B} = \{2, 3, 4\}$ — floating lunch exclusion quanta
 - $\mathcal{W} = \{2, 3, 4\}$ — lunch window (same set for this instance)
 - $\rho_g = L_g / (D \cdot Q_d)$ — density ratio weighting
