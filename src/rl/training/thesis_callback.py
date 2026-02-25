@@ -116,6 +116,7 @@ class ThesisLoggingCallback(BaseCallback):
                 "best_hard": info_dict.get("best_hard", np.nan),
                 "best_soft": info_dict.get("best_soft", np.nan),
                 "feasible_frac": info_dict.get("feasible_frac", np.nan),
+                "rejected": info_dict.get("rejected", False),
             }
         )
 

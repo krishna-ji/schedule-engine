@@ -53,7 +53,7 @@ logger = logging.getLogger("rl_02_train_vectorized")
 SEED = 42
 POP_SIZE = 120
 MAX_GENERATIONS = 50  # episode length (env steps)
-TOTAL_TIMESTEPS = 100_000  # PPO training budget
+TOTAL_TIMESTEPS = 10_000  # PPO training budget (10k for validation)
 EVAL_GENERATIONS = 50  # evaluation episode length
 LEARNING_RATE = 3e-4
 CLIP_RANGE = 0.2
@@ -91,6 +91,7 @@ def train(run_dir: Path) -> None:
         pop_size=POP_SIZE,
         algorithm_name="nsga2",
         seed=SEED,
+        acceptance_tolerance=0.0,  # strict mode: reject any hard degradation
     )
 
     # -- Agent -------------------------------------------------------------
@@ -144,6 +145,8 @@ def _build_eval_row(info: dict, action_id: int, action_name: str, reward: float)
         "mean_soft": info["mean_soft"],
         "feasible_frac": info["feasible_frac"],
         "reward": reward,
+        "rejected": info.get("rejected", False),
+        "delta_hard": info.get("delta_hard", 0.0),
     }
     # 8 hard constraint columns
     for name in HARD_CONSTRAINT_NAMES:
@@ -169,6 +172,7 @@ def evaluate(model, run_dir: Path) -> Path:
         pop_size=POP_SIZE,
         algorithm_name="nsga2",
         seed=SEED + 1000,  # different seed for eval
+        acceptance_tolerance=0.0,  # strict mode for eval
     )
 
     obs, info = env.reset()
@@ -194,7 +198,7 @@ def evaluate(model, run_dir: Path) -> Path:
         )
 
         logger.info(
-            "  Gen %2d | act=%d (%s) | hard=%.0f soft=%.0f | feas=%.2f | r=%.4f",
+            "  Gen %2d | act=%d (%s) | hard=%.0f soft=%.0f | feas=%.2f | r=%.4f | rej=%s",
             info["generation"],
             action,
             ACTION_NAMES.get(action, "?"),
@@ -202,6 +206,7 @@ def evaluate(model, run_dir: Path) -> Path:
             info["best_soft"],
             info["feasible_frac"],
             reward,
+            info.get("rejected", False),
         )
 
         if terminated or truncated:

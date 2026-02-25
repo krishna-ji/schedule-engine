@@ -93,6 +93,11 @@ class PymooHyperHeuristicEnv(gym.Env):
         Multiplicative scale for the reward signal.
     feasibility_bonus : float
         One-time bonus added when first feasible solution is found.
+    acceptance_tolerance : float
+        Maximum allowed increase in ``best_hard`` before a move is
+        rejected and rolled back.  ``0`` = strict hill-climbing (never
+        accept worse hard).  Positive values allow minor degradation
+        to escape local optima.
     """
 
     metadata: dict[str, Any] = {"render_modes": []}
@@ -107,6 +112,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         seed: int = 42,
         reward_scale: float = 1.0,
         feasibility_bonus: float = 10.0,
+        acceptance_tolerance: float = 0.0,
     ):
         super().__init__()
 
@@ -118,6 +124,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         self.seed = seed
         self.reward_scale = reward_scale
         self.feasibility_bonus = feasibility_bonus
+        self.acceptance_tolerance = acceptance_tolerance
 
         # -- Gym spaces ---------------------------------------------------
         self.observation_space = spaces.Box(
@@ -246,6 +253,12 @@ class PymooHyperHeuristicEnv(gym.Env):
     ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
         """Execute one generation with the selected repair action.
 
+        Implements a **lexicographic safety rail**: if the chosen
+        operator causes ``best_hard`` to increase by more than
+        ``self.acceptance_tolerance``, the population is rolled back
+        to its pre-step snapshot and the agent receives a fixed
+        punishment reward of ``-1.0``.
+
         Parameters
         ----------
         action : int
@@ -265,6 +278,15 @@ class PymooHyperHeuristicEnv(gym.Env):
         operator = self._action_operators[action]
         self._algorithm.mating.repair = operator
 
+        # -- SNAPSHOT: copy essential arrays before the step ----------------
+        snap_X = self._algorithm.pop.get("X").copy()
+        snap_F = self._algorithm.pop.get("F").copy()
+        snap_G = self._algorithm.pop.get("G")
+        if snap_G is not None:
+            snap_G = snap_G.copy()
+        snap_best_hard = self._prev_best_hard
+        snap_best_soft = self._prev_best_soft
+
         # -- Run one generational step -----------------------------------
         t0 = _time.perf_counter()
         self._algorithm.next()
@@ -272,42 +294,65 @@ class PymooHyperHeuristicEnv(gym.Env):
 
         self._gen += 1
 
-        # -- Extract population state ------------------------------------
+        # -- Extract candidate population state --------------------------
         pop = self._algorithm.pop
         F, G, X = self._extract_pop(pop)
-        soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
 
-        obs = self._encoder.encode(
-            F, G, X, soft_breakdown=soft_bd, action_taken=action
-        )
-
-        # -- Compute reward -----------------------------------------------
-        reward = self._compute_reward(F, G)
-
-        # -- Termination checks -------------------------------------------
         best_hard = float(F[:, 0].min())
         best_soft = float(F[:, 1].min())
+
+        # -- DECISION GATE: lexicographic hard-constraint guard ----------
+        delta_hard = best_hard - snap_best_hard  # >0 means WORSE
+        rejected = delta_hard > self.acceptance_tolerance
+
+        if rejected:
+            # ---- ROLLBACK: restore snapshot arrays ---------------------
+            self._algorithm.pop.set("X", snap_X)
+            self._algorithm.pop.set("F", snap_F)
+            if snap_G is not None:
+                self._algorithm.pop.set("G", snap_G)
+            # Re-extract from restored pop for consistent obs
+            F_r, G_r, X_r = self._extract_pop(self._algorithm.pop)
+            soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
+            obs = self._encoder.encode(
+                F_r, G_r, X_r, soft_breakdown=soft_bd, action_taken=action
+            )
+            reward = -1.0
+            best_hard = snap_best_hard
+            best_soft = snap_best_soft
+            # Don't update prev_best — nothing changed
+            logger.debug(
+                "Gen %d | action=%d (%s) | REJECTED (ΔHard=+%.1f) | R=-1.0",
+                self._gen, action, operator.ACTION_NAME, delta_hard,
+            )
+        else:
+            # ---- COMMIT: keep the new population -----------------------
+            soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
+            obs = self._encoder.encode(
+                F, G, X, soft_breakdown=soft_bd, action_taken=action
+            )
+            reward = self._compute_reward(F, G)
+            # Update tracking
+            self._prev_best_hard = best_hard
+            self._prev_best_soft = best_soft
+            logger.debug(
+                "Gen %d | action=%d (%s) | COMMITTED | hard=%.1f | R=%.4f | %.2fs",
+                self._gen, action, operator.ACTION_NAME,
+                best_hard, reward, step_time,
+            )
+
+        # -- Termination checks -------------------------------------------
         terminated = bool(best_hard == 0.0)
         truncated = self._gen >= self.max_generations
 
-        # Update tracking
-        self._prev_best_hard = best_hard
-        self._prev_best_soft = best_soft
-
-        info = self._build_info(F, G)
+        info = self._build_info(
+            *self._extract_pop(self._algorithm.pop)[:2]
+        )
         info["step_time_s"] = step_time
         info["action"] = action
         info["action_name"] = operator.ACTION_NAME
-
-        logger.debug(
-            "Gen %d | action=%d (%s) | hard_best=%.1f | reward=%.4f | %.2fs",
-            self._gen,
-            action,
-            operator.ACTION_NAME,
-            best_hard,
-            reward,
-            step_time,
-        )
+        info["rejected"] = rejected
+        info["delta_hard"] = delta_hard
 
         return obs, reward, terminated, truncated, info
 
