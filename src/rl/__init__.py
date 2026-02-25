@@ -16,7 +16,6 @@ Phase 2 Components:
 - visualization: Training curves and performance plots
 """
 
-from src.rl.gym_env.schedule_env import ScheduleEnv
-from src.rl.hybrid.hybrid_controller import HybridController
-
-__all__ = ["HybridController", "ScheduleEnv"]
+# Legacy DEAP-era imports removed — see src.rl.gym_env.pymoo_env for the
+# current Pymoo-native RL environment.
+__all__: list[str] = []

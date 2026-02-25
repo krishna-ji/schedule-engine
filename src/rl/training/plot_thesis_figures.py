@@ -40,14 +40,16 @@ _CB = [
     "#000000",  # 7 black
 ]
 
-# Canonical action labels (must agree with vectorized_ops.py)
+# Canonical action labels (must agree with vectorized_ops.py Elite 8)
 _ACTION_LABELS: dict[int, str] = {
-    0: "Room Repair (SRE)",
-    1: "Instructor Repair (FTE)",
-    2: "SSCP Sync",
-    3: "Random Perturb",
-    4: "Group Repair (CTE)",
-    5: "Full Repair",
+    0: "Spatial Resource (SRE)",
+    1: "Faculty Temporal (FTE)",
+    2: "Cohort Temporal (CTE)",
+    3: "Subcohort Sync (SSCP)",
+    4: "Universal Feasibility",
+    5: "Quanta Perturbation",
+    6: "Spatial Perturbation",
+    7: "Meridian Compaction",
 }
 
 

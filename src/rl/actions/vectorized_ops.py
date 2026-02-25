@@ -456,16 +456,46 @@ class ActionFullRepair(_AtomicRepairBase):
 
 
 # ======================================================================
-# Action Space Registry
+# Action Space Registry — Elite 8
 # ======================================================================
 
+# Repairs (hard-constraint feasibility projections)
+from src.rl.actions.repairs.spatial_resource_projection import (
+    SpatialResourceProjection,
+)
+from src.rl.actions.repairs.faculty_temporal_projection import (
+    FacultyTemporalProjection,
+)
+from src.rl.actions.repairs.cohort_temporal_projection import (
+    CohortTemporalProjection,
+)
+from src.rl.actions.repairs.symmetric_subcohort_sync import (
+    SymmetricSubcohortSync,
+)
+from src.rl.actions.repairs.universal_feasibility_projection import (
+    UniversalFeasibilityProjection,
+)
+# Perturbations (stochastic neighbourhood exploration)
+from src.rl.actions.perturbations.stochastic_quanta_perturbation import (
+    StochasticQuantaPerturbation,
+)
+from src.rl.actions.perturbations.stochastic_spatial_perturbation import (
+    StochasticSpatialPerturbation,
+)
+# Optimizations (soft-constraint quality-of-life)
+from src.rl.actions.optimizations.meridian_compaction import (
+    MeridianCompactionHeuristic,
+)
+
 VECTORIZED_ACTION_SPACE: dict[int, type[_AtomicRepairBase]] = {
-    0: ActionRepairRoomClash,
-    1: ActionRepairInstructorClash,
-    2: ActionSyncSSCP,
-    3: ActionRandomPerturb,
-    4: ActionRepairGroupClash,
-    5: ActionFullRepair,
+    0: SpatialResourceProjection,
+    1: FacultyTemporalProjection,
+    2: CohortTemporalProjection,
+    3: SymmetricSubcohortSync,
+    4: UniversalFeasibilityProjection,
+    5: StochasticQuantaPerturbation,
+    6: StochasticSpatialPerturbation,
+    7: MeridianCompactionHeuristic,
 }
 
 ACTION_NAMES: dict[int, str] = {

@@ -28,6 +28,8 @@ from typing import Any
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
+from src.rl.actions.vectorized_ops import NUM_ACTIONS
+
 logger = logging.getLogger(__name__)
 
 
@@ -106,14 +108,16 @@ class ThesisLoggingCallback(BaseCallback):
         self._ep_actions[act_val] += 1
 
         # Step-level log
-        self._step_log.append({
-            "timestep": self.num_timesteps,
-            "action": act_val,
-            "reward": rew_val,
-            "best_hard": info_dict.get("best_hard", np.nan),
-            "best_soft": info_dict.get("best_soft", np.nan),
-            "feasible_frac": info_dict.get("feasible_frac", np.nan),
-        })
+        self._step_log.append(
+            {
+                "timestep": self.num_timesteps,
+                "action": act_val,
+                "reward": rew_val,
+                "best_hard": info_dict.get("best_hard", np.nan),
+                "best_soft": info_dict.get("best_soft", np.nan),
+                "feasible_frac": info_dict.get("feasible_frac", np.nan),
+            }
+        )
 
         if self.verbose >= 2:
             logger.info(
@@ -134,7 +138,7 @@ class ThesisLoggingCallback(BaseCallback):
                 "episode_length": self._ep_length,
             }
             # Per-action counts
-            for a in range(6):
+            for a in range(NUM_ACTIONS):
                 row[f"action_{a}_count"] = self._ep_actions.get(a, 0)
 
             self._episodes.append(row)
@@ -166,7 +170,7 @@ class ThesisLoggingCallback(BaseCallback):
                 "episode_reward": round(self._ep_reward, 6),
                 "episode_length": self._ep_length,
             }
-            for a in range(6):
+            for a in range(NUM_ACTIONS):
                 row[f"action_{a}_count"] = self._ep_actions.get(a, 0)
             self._episodes.append(row)
 
@@ -178,7 +182,9 @@ class ThesisLoggingCallback(BaseCallback):
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(self._episodes)
-            logger.info("Saved training curve: %s (%d episodes)", csv_path, len(self._episodes))
+            logger.info(
+                "Saved training curve: %s (%d episodes)", csv_path, len(self._episodes)
+            )
         else:
             logger.warning("No episodes completed during training.")
 

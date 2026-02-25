@@ -7,9 +7,8 @@ Wraps the GA scheduler as a reinforcement learning environment where:
 - Rewards: Fitness improvement + diversity bonus - time penalty
 """
 
-from src.rl.gym_env.action_space import ActionMapper
-from src.rl.gym_env.reward_calculator import RewardCalculator
-from src.rl.gym_env.schedule_env import ScheduleEnv
-from src.rl.gym_env.state_encoder import StateEncoder
+# Legacy DEAP‑era imports removed.  The current Pymoo‑native environment
+# lives in  src.rl.gym_env.pymoo_env  and the fast state encoder in
+# src.rl.gym_env.fast_state_encoder .
 
-__all__ = ["ActionMapper", "RewardCalculator", "ScheduleEnv", "StateEncoder"]
+__all__: list[str] = []
