@@ -57,6 +57,7 @@ _ACTION_LABELS: dict[int, str] = {
 # Style setup
 # ------------------------------------------------------------------
 
+
 def _setup_style():
     """Configure matplotlib for Times New Roman academic styling."""
     import matplotlib as mpl
@@ -109,6 +110,7 @@ def _rolling_mean(arr: np.ndarray, window: int) -> np.ndarray:
 # ------------------------------------------------------------------
 # Figure generators
 # ------------------------------------------------------------------
+
 
 def _fig_01_learning_curve(
     run_dir: Path,
@@ -285,6 +287,7 @@ def _fig_03_convergence(run_dir: Path, plt) -> Path | None:
 # ------------------------------------------------------------------
 # Public entry point
 # ------------------------------------------------------------------
+
 
 def generate_plots(run_dir: str | Path, rolling_window: int = 10) -> list[Path]:
     """Generate all three thesis figures from CSVs in *run_dir*.

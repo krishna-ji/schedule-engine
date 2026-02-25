@@ -128,7 +128,9 @@ def train(run_dir: Path) -> None:
 # ======================================================================
 
 
-def _build_eval_row(info: dict, action_id: int, action_name: str, reward: float) -> dict:
+def _build_eval_row(
+    info: dict, action_id: int, action_name: str, reward: float
+) -> dict:
     """Build one evaluation CSV row with full constraint breakdown."""
     from src.rl.gym_env.fast_state_encoder import (
         HARD_CONSTRAINT_NAMES,

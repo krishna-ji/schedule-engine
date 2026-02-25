@@ -36,15 +36,11 @@ class CohortTemporalProjection(_AtomicRepairBase):
         n_idx = np.arange(N, dtype=np.int64)[:, None]
 
         grp_starts = time[:, eng.grp_exp_event]
-        grp_quanta = np.clip(
-            grp_starts + eng.grp_exp_offset[None, :], 0, T_ - 1
-        )
+        grp_quanta = np.clip(grp_starts + eng.grp_exp_offset[None, :], 0, T_ - 1)
 
         nGT = np.int64(eng.n_groups) * np.int64(T_)
         grp_keys = (
-            n_idx * nGT
-            + eng.grp_exp_group[None, :].astype(np.int64) * T_
-            + grp_quanta
+            n_idx * nGT + eng.grp_exp_group[None, :].astype(np.int64) * T_ + grp_quanta
         ).ravel()
         grp_cnt = np.bincount(grp_keys, minlength=int(N * nGT))
         grp_conflict = (grp_cnt[grp_keys] > 1).astype(np.float64)
@@ -81,5 +77,6 @@ class CohortTemporalProjection(_AtomicRepairBase):
 
         logger.debug(
             "CohortTemporalProjection: %d/%d events repaired",
-            int(conflict_mask.sum()), N * E,
+            int(conflict_mask.sum()),
+            N * E,
         )

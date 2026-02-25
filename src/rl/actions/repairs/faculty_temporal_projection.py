@@ -48,9 +48,9 @@ class FacultyTemporalProjection(_AtomicRepairBase):
         inst_cnt = np.bincount(inst_keys, minlength=int(N * nIT))
         inst_conflict = (inst_cnt[inst_keys] > 1).astype(np.float64)
 
-        inst_unavail = (
-            ~eng.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]
-        ).astype(np.float64) * 5.0
+        inst_unavail = (~eng.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]).astype(
+            np.float64
+        ) * 5.0
 
         q_score = inst_conflict + inst_unavail
         scores = np.bincount(event_lin, weights=q_score, minlength=NE)
@@ -82,5 +82,6 @@ class FacultyTemporalProjection(_AtomicRepairBase):
 
         logger.debug(
             "FacultyTemporalProjection: %d/%d events repaired",
-            int(conflict_mask.sum()), N * E,
+            int(conflict_mask.sum()),
+            N * E,
         )

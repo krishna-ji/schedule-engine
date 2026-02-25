@@ -47,8 +47,8 @@ from gymnasium import spaces
 from numpy.typing import NDArray
 
 from src.rl.actions.vectorized_ops import (
-    VECTORIZED_ACTION_SPACE,
     NUM_ACTIONS,
+    VECTORIZED_ACTION_SPACE,
     _AtomicRepairBase,
 )
 from src.rl.gym_env.fast_state_encoder import OBS_DIM, VectorizedStateEncoder
@@ -201,9 +201,7 @@ class PymooHyperHeuristicEnv(gym.Env):
                 n_offsprings=self.n_offsprings,
                 sampling=RandomDomainSampling(self.pkl_path),
                 crossover=EventBlockCrossover(prob=0.5),
-                mutation=EventLocalMutation(
-                    pkl_path=self.pkl_path, event_prob=0.05
-                ),
+                mutation=EventLocalMutation(pkl_path=self.pkl_path, event_prob=0.05),
                 repair=default_repair,
                 seed=effective_seed,
             )
@@ -215,15 +213,15 @@ class PymooHyperHeuristicEnv(gym.Env):
                 n_offsprings=self.n_offsprings,
                 sampling=RandomDomainSampling(self.pkl_path),
                 crossover=EventBlockCrossover(prob=0.5),
-                mutation=EventLocalMutation(
-                    pkl_path=self.pkl_path, event_prob=0.05
-                ),
+                mutation=EventLocalMutation(pkl_path=self.pkl_path, event_prob=0.05),
                 repair=default_repair,
                 seed=effective_seed,
             )
 
         # Setup the algorithm with the problem
-        self._algorithm.setup(self._problem, termination=("n_gen", self.max_generations))
+        self._algorithm.setup(
+            self._problem, termination=("n_gen", self.max_generations)
+        )
 
         # Run the first generation to initialise the population
         self._algorithm.next()
@@ -323,7 +321,10 @@ class PymooHyperHeuristicEnv(gym.Env):
             # Don't update prev_best — nothing changed
             logger.debug(
                 "Gen %d | action=%d (%s) | REJECTED (ΔHard=+%.1f) | R=-1.0",
-                self._gen, action, operator.ACTION_NAME, delta_hard,
+                self._gen,
+                action,
+                operator.ACTION_NAME,
+                delta_hard,
             )
         else:
             # ---- COMMIT: keep the new population -----------------------
@@ -337,17 +338,19 @@ class PymooHyperHeuristicEnv(gym.Env):
             self._prev_best_soft = best_soft
             logger.debug(
                 "Gen %d | action=%d (%s) | COMMITTED | hard=%.1f | R=%.4f | %.2fs",
-                self._gen, action, operator.ACTION_NAME,
-                best_hard, reward, step_time,
+                self._gen,
+                action,
+                operator.ACTION_NAME,
+                best_hard,
+                reward,
+                step_time,
             )
 
         # -- Termination checks -------------------------------------------
         terminated = bool(best_hard == 0.0)
         truncated = self._gen >= self.max_generations
 
-        info = self._build_info(
-            *self._extract_pop(self._algorithm.pop)[:2]
-        )
+        info = self._build_info(*self._extract_pop(self._algorithm.pop)[:2])
         info["step_time_s"] = step_time
         info["action"] = action
         info["action_name"] = operator.ACTION_NAME
@@ -360,9 +363,7 @@ class PymooHyperHeuristicEnv(gym.Env):
     # Reward computation
     # ------------------------------------------------------------------
 
-    def _compute_reward(
-        self, F: np.ndarray, G: np.ndarray
-    ) -> float:
+    def _compute_reward(self, F: np.ndarray, G: np.ndarray) -> float:
         r"""Pure delta-based reward from F and G matrices.
 
         .. math::
@@ -417,9 +418,7 @@ class PymooHyperHeuristicEnv(gym.Env):
             G = np.zeros((F.shape[0], 8), dtype=np.float64)
         return F, G, X
 
-    def _build_info(
-        self, F: np.ndarray, G: np.ndarray
-    ) -> dict[str, Any]:
+    def _build_info(self, F: np.ndarray, G: np.ndarray) -> dict[str, Any]:
         """Build the info dict returned by step/reset.
 
         Includes per-constraint violation means (8 hard + 4 soft) so

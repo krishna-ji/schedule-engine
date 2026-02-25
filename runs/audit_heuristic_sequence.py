@@ -52,8 +52,9 @@ SEED = 12345
 
 
 def _create_broken_population(problem, pop_size: int, seed: int) -> np.ndarray:
-    from src.pipeline.pymoo_operators import RandomDomainSampling
     from pymoo.core.population import Population
+
+    from src.pipeline.pymoo_operators import RandomDomainSampling
 
     sampler = RandomDomainSampling(PKL_PATH)
     pop = sampler.do(problem, pop_size)
@@ -64,6 +65,7 @@ def _evaluate(problem, X: np.ndarray) -> dict:
     """Full evaluation returning a flat metrics dict."""
     from pymoo.core.evaluator import Evaluator
     from pymoo.core.population import Population
+
     from src.rl.gym_env.fast_state_encoder import (
         HARD_CONSTRAINT_NAMES,
         SOFT_CONSTRAINT_NAMES,
@@ -95,8 +97,9 @@ def _evaluate(problem, X: np.ndarray) -> dict:
     return m
 
 
-def _compute_reward(prev_hard: float, prev_soft: float,
-                    cur_hard: float, cur_soft: float) -> dict:
+def _compute_reward(
+    prev_hard: float, prev_soft: float, cur_hard: float, cur_soft: float
+) -> dict:
     """Replicate the exact reward formula from PymooHyperHeuristicEnv."""
     delta_hard = prev_hard - cur_hard  # >0 means improvement
     delta_soft = prev_soft - cur_soft
@@ -117,8 +120,11 @@ def _compute_reward(prev_hard: float, prev_soft: float,
 
 
 def _run_sequence(
-    problem, X_base: np.ndarray, sequence: list[tuple[int, str]],
-    action_space: dict, seq_name: str,
+    problem,
+    X_base: np.ndarray,
+    sequence: list[tuple[int, str]],
+    action_space: dict,
+    seq_name: str,
 ) -> str:
     """Run a sequence of operators and return Markdown report."""
     from src.rl.gym_env.fast_state_encoder import (
@@ -132,8 +138,16 @@ def _run_sequence(
 
     # Column keys for the table
     constraint_keys = ["SRE", "FTE", "CTE", "SSCP", "MIP", "CSC"]
-    header = "| Step | Action | BestHard | BestSoft | ΔHard | ΔSoft | Reward | " + " | ".join(constraint_keys) + " |"
-    sep = "|-----:|:-------|--------:|---------:|------:|------:|-------:|" + "|".join(["------:" for _ in constraint_keys]) + "|"
+    header = (
+        "| Step | Action | BestHard | BestSoft | ΔHard | ΔSoft | Reward | "
+        + " | ".join(constraint_keys)
+        + " |"
+    )
+    sep = (
+        "|-----:|:-------|--------:|---------:|------:|------:|-------:|"
+        + "|".join(["------:" for _ in constraint_keys])
+        + "|"
+    )
     lines.append(header)
     lines.append(sep)
 
@@ -177,9 +191,13 @@ def _run_sequence(
     lines.append(f"**Net effect**: ΔHard = {total_dh:+.1f}, ΔSoft = {total_ds:+.1f}")
 
     if total_dh > 0 and total_ds < 0:
-        lines.append("**Diagnosis**: Classic Whack-A-Mole — soft improvement destroys hard structure.")
+        lines.append(
+            "**Diagnosis**: Classic Whack-A-Mole — soft improvement destroys hard structure."
+        )
     elif total_dh < 0 and total_ds > 0:
-        lines.append("**Diagnosis**: Hard improvement at soft cost — acceptable trade if hard-dominant.")
+        lines.append(
+            "**Diagnosis**: Hard improvement at soft cost — acceptable trade if hard-dominant."
+        )
     elif total_dh > 0 and total_ds > 0:
         lines.append("**Diagnosis**: CATASTROPHIC — both objectives degraded.")
     else:
@@ -196,10 +214,7 @@ def _run_sequence(
 
 def main() -> None:
     from src.pipeline.scheduling_problem import create_problem
-    from src.rl.actions.vectorized_ops import (
-        VECTORIZED_ACTION_SPACE,
-        ACTION_NAMES,
-    )
+    from src.rl.actions.vectorized_ops import ACTION_NAMES, VECTORIZED_ACTION_SPACE
 
     print(f"Creating scheduling problem from {PKL_PATH} ...")
     problem = create_problem(PKL_PATH)

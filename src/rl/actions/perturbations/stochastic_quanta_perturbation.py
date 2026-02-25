@@ -60,5 +60,7 @@ class StochasticQuantaPerturbation(_AtomicRepairBase):
 
         logger.debug(
             "StochasticQuantaPerturbation: %d/%d time slots perturbed (rate=%.2f)",
-            int(mask.sum()), N * E, self.perturb_rate,
+            int(mask.sum()),
+            N * E,
+            self.perturb_rate,
         )

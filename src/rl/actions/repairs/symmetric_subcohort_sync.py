@@ -29,5 +29,6 @@ class SymmetricSubcohortSync(_AtomicRepairBase):
         if eng._n_pairs > 0:
             eng._sync_paired_events(X)
         logger.debug(
-            "SymmetricSubcohortSync: %d pairs synced", eng._n_pairs,
+            "SymmetricSubcohortSync: %d pairs synced",
+            eng._n_pairs,
         )

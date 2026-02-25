@@ -78,7 +78,7 @@ class _AtomicRepairBase(Repair):
         self.engine: VectorizedRepair = _get_engine(pkl_path)
         self._pkl_path = pkl_path
 
-    def _do(self, problem, x, **kwargs):  # noqa: D401
+    def _do(self, problem, x, **kwargs):
         if x.ndim == 1:
             x = x.reshape(1, -1)
         x = x.copy().astype(np.int64)
@@ -213,9 +213,9 @@ class ActionRepairInstructorClash(_AtomicRepairBase):
         inst_conflict = (inst_cnt[inst_keys] > 1).astype(np.float64)
 
         # Availability violations
-        inst_unavail = (
-            ~eng.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]
-        ).astype(np.float64) * 5.0
+        inst_unavail = (~eng.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]).astype(
+            np.float64
+        ) * 5.0
 
         q_score = inst_conflict + inst_unavail
         scores = np.bincount(event_lin, weights=q_score, minlength=NE)
@@ -375,15 +375,11 @@ class ActionRepairGroupClash(_AtomicRepairBase):
 
         # Group-expanded quanta
         grp_starts = time[:, eng.grp_exp_event]
-        grp_quanta = np.clip(
-            grp_starts + eng.grp_exp_offset[None, :], 0, T_ - 1
-        )
+        grp_quanta = np.clip(grp_starts + eng.grp_exp_offset[None, :], 0, T_ - 1)
 
         nGT = np.int64(eng.n_groups) * np.int64(T_)
         grp_keys = (
-            n_idx * nGT
-            + eng.grp_exp_group[None, :].astype(np.int64) * T_
-            + grp_quanta
+            n_idx * nGT + eng.grp_exp_group[None, :].astype(np.int64) * T_ + grp_quanta
         ).ravel()
         grp_cnt = np.bincount(grp_keys, minlength=int(N * nGT))
         grp_conflict = (grp_cnt[grp_keys] > 1).astype(np.float64)
@@ -460,21 +456,9 @@ class ActionFullRepair(_AtomicRepairBase):
 # ======================================================================
 
 # Repairs (hard-constraint feasibility projections)
-from src.rl.actions.repairs.spatial_resource_projection import (
-    SpatialResourceProjection,
-)
-from src.rl.actions.repairs.faculty_temporal_projection import (
-    FacultyTemporalProjection,
-)
-from src.rl.actions.repairs.cohort_temporal_projection import (
-    CohortTemporalProjection,
-)
-from src.rl.actions.repairs.symmetric_subcohort_sync import (
-    SymmetricSubcohortSync,
-)
-from src.rl.actions.repairs.universal_feasibility_projection import (
-    UniversalFeasibilityProjection,
-)
+# Optimizations (soft-constraint quality-of-life)
+from src.rl.actions.optimizations.meridian_compaction import MeridianCompactionHeuristic
+
 # Perturbations (stochastic neighbourhood exploration)
 from src.rl.actions.perturbations.stochastic_quanta_perturbation import (
     StochasticQuantaPerturbation,
@@ -482,9 +466,12 @@ from src.rl.actions.perturbations.stochastic_quanta_perturbation import (
 from src.rl.actions.perturbations.stochastic_spatial_perturbation import (
     StochasticSpatialPerturbation,
 )
-# Optimizations (soft-constraint quality-of-life)
-from src.rl.actions.optimizations.meridian_compaction import (
-    MeridianCompactionHeuristic,
+from src.rl.actions.repairs.cohort_temporal_projection import CohortTemporalProjection
+from src.rl.actions.repairs.faculty_temporal_projection import FacultyTemporalProjection
+from src.rl.actions.repairs.spatial_resource_projection import SpatialResourceProjection
+from src.rl.actions.repairs.symmetric_subcohort_sync import SymmetricSubcohortSync
+from src.rl.actions.repairs.universal_feasibility_projection import (
+    UniversalFeasibilityProjection,
 )
 
 VECTORIZED_ACTION_SPACE: dict[int, type[_AtomicRepairBase]] = {

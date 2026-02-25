@@ -79,5 +79,6 @@ class SpatialResourceProjection(_AtomicRepairBase):
 
         logger.debug(
             "SpatialResourceProjection: %d/%d events repaired",
-            int(conflict_mask.sum()), N * E,
+            int(conflict_mask.sum()),
+            N * E,
         )

@@ -41,7 +41,7 @@ logger = logging.getLogger("benchmark_heuristics")
 # Configuration
 # ---------------------------------------------------------------------------
 PKL_PATH = ".cache/events_with_domains.pkl"
-POP_SIZE = 60          # smaller pop for speed; still statistically valid
+POP_SIZE = 60  # smaller pop for speed; still statistically valid
 SEED = 12345
 
 
@@ -55,6 +55,7 @@ def _create_broken_population(problem, pop_size: int, seed: int) -> np.ndarray:
 
     sampler = RandomDomainSampling(PKL_PATH)
     from pymoo.core.population import Population
+
     pop = sampler.do(problem, pop_size)
     return pop.get("X").astype(np.int64)
 
@@ -66,6 +67,7 @@ def _evaluate(problem, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     from pymoo.core.evaluator import Evaluator
     from pymoo.core.population import Population
+
     pop = Population.new("X", X)
     Evaluator().eval(problem, pop)
     F = pop.get("F")
@@ -78,9 +80,9 @@ def _evaluate(problem, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 def main() -> None:
     from src.pipeline.scheduling_problem import create_problem
     from src.rl.actions.vectorized_ops import (
-        VECTORIZED_ACTION_SPACE,
         ACTION_NAMES,
         NUM_ACTIONS,
+        VECTORIZED_ACTION_SPACE,
     )
     from src.rl.gym_env.fast_state_encoder import (
         HARD_CONSTRAINT_NAMES,
@@ -145,14 +147,18 @@ def main() -> None:
         delta_cv_hard = {}
         for i, cname in enumerate(HARD_CONSTRAINT_NAMES):
             if i < G_after.shape[1]:
-                delta_cv_hard[cname] = float(G_after[:, i].mean()) - base_cv_hard.get(cname, 0.0)
+                delta_cv_hard[cname] = float(G_after[:, i].mean()) - base_cv_hard.get(
+                    cname, 0.0
+                )
             else:
                 delta_cv_hard[cname] = 0.0
 
         delta_cv_soft = {}
         for cname in SOFT_CONSTRAINT_NAMES:
             if soft_bd_after and cname in soft_bd_after:
-                delta_cv_soft[cname] = float(np.asarray(soft_bd_after[cname]).mean()) - base_cv_soft.get(cname, 0.0)
+                delta_cv_soft[cname] = float(
+                    np.asarray(soft_bd_after[cname]).mean()
+                ) - base_cv_soft.get(cname, 0.0)
             else:
                 delta_cv_soft[cname] = 0.0
 
@@ -178,30 +184,36 @@ def main() -> None:
             verdict = "PASS" if total_delta > 1.0 else "**FAILED**"
         elif action_id == 7:
             # MeridianCompaction — targets MIP/CSC soft metrics
-            soft_improved = (delta_cv_soft.get("MIP", 0.0) < -0.1
-                             or delta_cv_soft.get("CSC", 0.0) < -0.1)
+            soft_improved = (
+                delta_cv_soft.get("MIP", 0.0) < -0.1
+                or delta_cv_soft.get("CSC", 0.0) < -0.1
+            )
             verdict = "PASS" if soft_improved else "**FAILED**"
         else:
             # Perturbations (5-6): any measurable change = PASS
             any_change = abs(delta_hard) > 0.1 or abs(delta_soft) > 0.1
             verdict = "PASS" if any_change else "**FAILED**"
 
-        results.append({
-            "id": action_id,
-            "name": name,
-            "delta_hard": delta_hard,
-            "delta_soft": delta_soft,
-            "delta_SRE": delta_cv_hard.get("SRE", 0.0),
-            "delta_FTE": delta_cv_hard.get("FTE", 0.0),
-            "delta_CTE": delta_cv_hard.get("CTE", 0.0),
-            "delta_SSCP": delta_cv_soft.get("SSCP", 0.0),
-            "delta_MIP": delta_cv_soft.get("MIP", 0.0),
-            "delta_CSC": delta_cv_soft.get("CSC", 0.0),
-            "time_ms": dt * 1000,
-            "verdict": verdict,
-        })
+        results.append(
+            {
+                "id": action_id,
+                "name": name,
+                "delta_hard": delta_hard,
+                "delta_soft": delta_soft,
+                "delta_SRE": delta_cv_hard.get("SRE", 0.0),
+                "delta_FTE": delta_cv_hard.get("FTE", 0.0),
+                "delta_CTE": delta_cv_hard.get("CTE", 0.0),
+                "delta_SSCP": delta_cv_soft.get("SSCP", 0.0),
+                "delta_MIP": delta_cv_soft.get("MIP", 0.0),
+                "delta_CSC": delta_cv_soft.get("CSC", 0.0),
+                "time_ms": dt * 1000,
+                "verdict": verdict,
+            }
+        )
 
-        print(f"  [{action_id}] {name:40s} ΔHard={delta_hard:+8.1f}  ΔSoft={delta_soft:+8.1f}  {verdict}  ({dt*1000:.0f}ms)")
+        print(
+            f"  [{action_id}] {name:40s} ΔHard={delta_hard:+8.1f}  ΔSoft={delta_soft:+8.1f}  {verdict}  ({dt*1000:.0f}ms)"
+        )
 
     # ──────────────────────────────────────────────────────────────
     # Generate Markdown table
@@ -210,10 +222,16 @@ def main() -> None:
     lines.append("")
     lines.append("# Elite 8 Operator Benchmark")
     lines.append("")
-    lines.append(f"Population: N={POP_SIZE}, baseline Hard={base_hard:.1f}, Soft={base_soft:.1f}")
+    lines.append(
+        f"Population: N={POP_SIZE}, baseline Hard={base_hard:.1f}, Soft={base_soft:.1f}"
+    )
     lines.append("")
-    lines.append("| ID | Operator | ΔHard | ΔSoft | ΔSRE | ΔFTE | ΔCTE | ΔSSCP | ΔMIP | ΔCSC | Time(ms) | Verdict |")
-    lines.append("|:--:|:---------|------:|------:|-----:|-----:|-----:|------:|-----:|-----:|---------:|:-------:|")
+    lines.append(
+        "| ID | Operator | ΔHard | ΔSoft | ΔSRE | ΔFTE | ΔCTE | ΔSSCP | ΔMIP | ΔCSC | Time(ms) | Verdict |"
+    )
+    lines.append(
+        "|:--:|:---------|------:|------:|-----:|-----:|-----:|------:|-----:|-----:|---------:|:-------:|"
+    )
 
     for r in results:
         lines.append(

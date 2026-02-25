@@ -106,7 +106,8 @@ class MeridianCompactionHeuristic(_AtomicRepairBase):
             n_evacuated = int(in_lunch.sum()) - len(t_bi) if t_valid.any() else 0
             logger.debug(
                 "MeridianCompaction pass 1: %d/%d events evacuated from lunch",
-                n_evacuated, int(in_lunch.sum()),
+                n_evacuated,
+                int(in_lunch.sum()),
             )
 
         # ── Pass 2: Gap compaction (shift towards earliest slot) ───
@@ -127,5 +128,7 @@ class MeridianCompactionHeuristic(_AtomicRepairBase):
 
             logger.debug(
                 "MeridianCompaction pass 2: %d/%d events compacted (rate=%.2f)",
-                int(compact_mask.sum()), N * E, self.compaction_rate,
+                int(compact_mask.sum()),
+                N * E,
+                self.compaction_rate,
             )

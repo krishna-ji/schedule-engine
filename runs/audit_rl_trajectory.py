@@ -77,8 +77,12 @@ def autopsy_step_log(run_dir: Path) -> str:
     lines.append("")
     lines.append(f"Total timesteps: {n}")
     lines.append("")
-    lines.append("| Action | Count | Mean ΔHard | Mean ΔSoft | Pct Hard↑ | Pct Soft↑ | Mean Reward |")
-    lines.append("|:------:|------:|-----------:|-----------:|----------:|----------:|------------:|")
+    lines.append(
+        "| Action | Count | Mean ΔHard | Mean ΔSoft | Pct Hard↑ | Pct Soft↑ | Mean Reward |"
+    )
+    lines.append(
+        "|:------:|------:|-----------:|-----------:|----------:|----------:|------------:|"
+    )
 
     action_stats: dict[int, dict] = {}
     for a in unique_actions:
@@ -109,8 +113,12 @@ def autopsy_step_log(run_dir: Path) -> str:
     lines.append("")
     lines.append("## 2. Top 20 Worst Soft-Constraint Spikes")
     lines.append("")
-    lines.append("| Rank | Timestep | Action | ΔSoft | ΔHard | Reward | Hard_before | Soft_before |")
-    lines.append("|-----:|---------:|:------:|------:|------:|-------:|------------:|------------:|")
+    lines.append(
+        "| Rank | Timestep | Action | ΔSoft | ΔHard | Reward | Hard_before | Soft_before |"
+    )
+    lines.append(
+        "|-----:|---------:|:------:|------:|------:|-------:|------------:|------------:|"
+    )
 
     # Find indices where soft increased most
     spike_idx = np.argsort(-d_soft)[:20]  # descending by soft increase
@@ -128,8 +136,12 @@ def autopsy_step_log(run_dir: Path) -> str:
     lines.append("")
     lines.append("## 3. Top 20 Worst Hard-Constraint Spikes")
     lines.append("")
-    lines.append("| Rank | Timestep | Action | ΔHard | ΔSoft | Reward | Hard_before | Soft_before |")
-    lines.append("|-----:|---------:|:------:|------:|------:|-------:|------------:|------------:|")
+    lines.append(
+        "| Rank | Timestep | Action | ΔHard | ΔSoft | Reward | Hard_before | Soft_before |"
+    )
+    lines.append(
+        "|-----:|---------:|:------:|------:|------:|-------:|------------:|------------:|"
+    )
 
     spike_h_idx = np.argsort(-d_hard)[:20]
     for rank, idx in enumerate(spike_h_idx, 1):
@@ -153,13 +165,21 @@ def autopsy_step_log(run_dir: Path) -> str:
     hard_flips = int((np.diff(hard_sign) != 0).sum())
     soft_flips = int((np.diff(soft_sign) != 0).sum())
 
-    lines.append(f"- Hard-penalty sign-flips: **{hard_flips}** / {n - 2} steps ({hard_flips / max(n - 2, 1) * 100:.1f}%)")
-    lines.append(f"- Soft-penalty sign-flips: **{soft_flips}** / {n - 2} steps ({soft_flips / max(n - 2, 1) * 100:.1f}%)")
+    lines.append(
+        f"- Hard-penalty sign-flips: **{hard_flips}** / {n - 2} steps ({hard_flips / max(n - 2, 1) * 100:.1f}%)"
+    )
+    lines.append(
+        f"- Soft-penalty sign-flips: **{soft_flips}** / {n - 2} steps ({soft_flips / max(n - 2, 1) * 100:.1f}%)"
+    )
     lines.append("")
 
     # Net progress
-    lines.append(f"- Hard: start={hard[0]:.1f} → end={hard[-1]:.1f} (net Δ={hard[-1] - hard[0]:+.1f})")
-    lines.append(f"- Soft: start={soft[0]:.1f} → end={soft[-1]:.1f} (net Δ={soft[-1] - soft[0]:+.1f})")
+    lines.append(
+        f"- Hard: start={hard[0]:.1f} → end={hard[-1]:.1f} (net Δ={hard[-1] - hard[0]:+.1f})"
+    )
+    lines.append(
+        f"- Soft: start={soft[0]:.1f} → end={soft[-1]:.1f} (net Δ={soft[-1] - soft[0]:+.1f})"
+    )
     lines.append("")
 
     return "\n".join(lines)
@@ -183,8 +203,14 @@ def autopsy_eval_trajectory(run_dir: Path) -> str:
 
     # Build constraint columns list
     constraint_cols = [c for c in rows[0].keys() if c.startswith("cv_")]
-    hard_cols = [c for c in constraint_cols if c.split("_")[1] in ("CTE", "FTE", "SRE", "FPC", "FFC", "FCA", "CQF", "ICTD")]
-    soft_cols = [c for c in constraint_cols if c.split("_")[1] in ("CSC", "FSC", "MIP", "SSCP")]
+    hard_cols = [
+        c
+        for c in constraint_cols
+        if c.split("_")[1] in ("CTE", "FTE", "SRE", "FPC", "FFC", "FCA", "CQF", "ICTD")
+    ]
+    soft_cols = [
+        c for c in constraint_cols if c.split("_")[1] in ("CSC", "FSC", "MIP", "SSCP")
+    ]
 
     lines.append("| Gen | Action | BestHard | BestSoft | ΔHard | ΔSoft | Reward |")
     lines.append("|----:|:-------|--------:|---------:|------:|------:|-------:|")
@@ -211,13 +237,19 @@ def autopsy_eval_trajectory(run_dir: Path) -> str:
         lines.append("")
         lines.append("### Soft Constraint Trajectory (Evaluation)")
         lines.append("")
-        header = "| Gen | Action | " + " | ".join(c.replace("cv_", "") for c in soft_cols) + " |"
+        header = (
+            "| Gen | Action | "
+            + " | ".join(c.replace("cv_", "") for c in soft_cols)
+            + " |"
+        )
         sep = "|----:|:-------|" + "|".join(["------:" for _ in soft_cols]) + "|"
         lines.append(header)
         lines.append(sep)
         for r in rows:
             vals = " | ".join(f"{float(r.get(c, 0)):.1f}" for c in soft_cols)
-            lines.append(f"| {r['generation']} | {r.get('action_name', '?')} | {vals} |")
+            lines.append(
+                f"| {r['generation']} | {r.get('action_name', '?')} | {vals} |"
+            )
 
     lines.append("")
     return "\n".join(lines)

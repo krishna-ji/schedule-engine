@@ -36,5 +36,6 @@ class UniversalFeasibilityProjection(_AtomicRepairBase):
         result = self.engine.repair_batch(X, passes=self.passes)
         X[:] = result
         logger.debug(
-            "UniversalFeasibilityProjection: %d passes", self.passes,
+            "UniversalFeasibilityProjection: %d passes",
+            self.passes,
         )

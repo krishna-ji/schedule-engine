@@ -60,5 +60,7 @@ class StochasticSpatialPerturbation(_AtomicRepairBase):
 
         logger.debug(
             "StochasticSpatialPerturbation: %d/%d rooms perturbed (rate=%.2f)",
-            int(mask.sum()), N * E, self.perturb_rate,
+            int(mask.sum()),
+            N * E,
+            self.perturb_rate,
         )
