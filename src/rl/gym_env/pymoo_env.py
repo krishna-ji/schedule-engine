@@ -356,6 +356,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         info["action_name"] = operator.ACTION_NAME
         info["rejected"] = rejected
         info["delta_hard"] = delta_hard
+        info["delta_soft"] = best_soft - snap_best_soft  # >0 means WORSE
 
         return obs, reward, terminated, truncated, info
 

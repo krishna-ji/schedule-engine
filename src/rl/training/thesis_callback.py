@@ -4,10 +4,14 @@ Tracks per-step and per-episode metrics during PPO training and dumps
 them to ``training_curve.csv`` at the end of training.  No TensorBoard
 — raw CSV for direct LaTeX/pgfplots ingestion.
 
+Also tracks per-action ΔHard and ΔSoft for the **Heuristic Efficacy
+Matrix** — printed at the end of training as empirical proof that each
+of the Elite 8 heuristics contributes meaningfully during the MDP.
+
 Columns in ``training_curve.csv``::
 
     timestep, episode, episode_reward, episode_length,
-    action_0_count, action_1_count, ..., action_5_count
+    action_0_count, action_1_count, ..., action_7_count
 
 Usage::
 
@@ -61,6 +65,11 @@ class ThesisLoggingCallback(BaseCallback):
         # Per-step log (for fine-grained analysis)
         self._step_log: list[dict[str, Any]] = []
 
+        # -- Per-action efficacy tracking (Heuristic Efficacy Matrix) ----
+        self._action_count: dict[int, int] = defaultdict(int)
+        self._action_delta_hard_sum: dict[int, float] = defaultdict(float)
+        self._action_delta_soft_sum: dict[int, float] = defaultdict(float)
+
     def _on_training_start(self) -> None:
         """Reset accumulators at training start."""
         self._ep_reward = 0.0
@@ -69,6 +78,10 @@ class ThesisLoggingCallback(BaseCallback):
         self._episodes = []
         self._step_log = []
         self._episode_count = 0
+        # Reset efficacy trackers
+        self._action_count = defaultdict(int)
+        self._action_delta_hard_sum = defaultdict(float)
+        self._action_delta_soft_sum = defaultdict(float)
 
     def _on_step(self) -> bool:
         """Called at every environment step."""
@@ -107,6 +120,16 @@ class ThesisLoggingCallback(BaseCallback):
         self._ep_length += 1
         self._ep_actions[act_val] += 1
 
+        # -- Per-action efficacy accumulation ---------------------------
+        if act_val >= 0:
+            self._action_count[act_val] += 1
+            delta_hard = info_dict.get("delta_hard", 0.0)
+            delta_soft = info_dict.get("delta_soft", 0.0)
+            if delta_hard is not None and not np.isnan(delta_hard):
+                self._action_delta_hard_sum[act_val] += float(delta_hard)
+            if delta_soft is not None and not np.isnan(delta_soft):
+                self._action_delta_soft_sum[act_val] += float(delta_soft)
+
         # Step-level log
         self._step_log.append(
             {
@@ -117,6 +140,8 @@ class ThesisLoggingCallback(BaseCallback):
                 "best_soft": info_dict.get("best_soft", np.nan),
                 "feasible_frac": info_dict.get("feasible_frac", np.nan),
                 "rejected": info_dict.get("rejected", False),
+                "delta_hard": info_dict.get("delta_hard", 0.0),
+                "delta_soft": info_dict.get("delta_soft", 0.0),
             }
         )
 
@@ -198,3 +223,63 @@ class ThesisLoggingCallback(BaseCallback):
                 writer.writeheader()
                 writer.writerows(self._step_log)
             logger.info("Saved step log: %s (%d steps)", step_csv, len(self._step_log))
+
+        # -- Print Heuristic Efficacy Matrix ----------------------------
+        self._print_efficacy_matrix()
+
+    # ------------------------------------------------------------------
+    # Heuristic Efficacy Matrix
+    # ------------------------------------------------------------------
+
+    def _print_efficacy_matrix(self) -> None:
+        """Print a formatted table of per-action statistics to stdout.
+
+        Columns:
+            Action ID | Action Name | Count | Avg ΔHard | Avg ΔSoft
+        """
+        from src.rl.actions.vectorized_ops import ACTION_NAMES
+
+        total_steps = sum(self._action_count.values())
+        if total_steps == 0:
+            print("\n[Efficacy Matrix] No actions recorded.\n")
+            return
+
+        header = (
+            f"{'ID':>3}  {'Action Name':<32}  {'Count':>7}  "
+            f"{'%Share':>7}  {'Avg ΔHard':>10}  {'Avg ΔSoft':>10}"
+        )
+        sep = "-" * len(header)
+
+        lines: list[str] = [
+            "",
+            "=" * len(header),
+            "  HEURISTIC EFFICACY MATRIX  (Training Phase)",
+            "=" * len(header),
+            header,
+            sep,
+        ]
+
+        for aid in range(NUM_ACTIONS):
+            cnt = self._action_count.get(aid, 0)
+            name = ACTION_NAMES.get(aid, f"action_{aid}")
+            pct = 100.0 * cnt / total_steps if total_steps > 0 else 0.0
+            avg_dh = self._action_delta_hard_sum.get(aid, 0.0) / cnt if cnt > 0 else 0.0
+            avg_ds = self._action_delta_soft_sum.get(aid, 0.0) / cnt if cnt > 0 else 0.0
+            lines.append(
+                f"{aid:>3}  {name:<32}  {cnt:>7}  {pct:>6.1f}%  {avg_dh:>+10.2f}  {avg_ds:>+10.2f}"
+            )
+
+        lines.append(sep)
+        lines.append(f"{'':>3}  {'TOTAL':<32}  {total_steps:>7}  {'100.0':>6}%")
+        lines.append("=" * len(header))
+        lines.append("")
+
+        matrix_text = "\n".join(lines)
+        print(matrix_text)
+        logger.info(matrix_text)
+
+        # Also save to file for archival
+        matrix_path = self.run_dir / "heuristic_efficacy_matrix.txt"
+        with open(matrix_path, "w") as f:
+            f.write(matrix_text)
+        logger.info("Saved efficacy matrix: %s", matrix_path)

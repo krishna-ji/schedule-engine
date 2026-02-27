@@ -167,7 +167,9 @@ def _fig_02_aos_policy(run_dir: Path, plt) -> Path | None:
     """Fig 2: Adaptive Operator Selection policy map."""
     csv_path = run_dir / "evaluation_trajectory.csv"
     if not csv_path.exists():
-        logger.warning("evaluation_trajectory.csv not found — skipping Fig 2")
+        csv_path = run_dir / "evaluation_trajectory_200.csv"
+    if not csv_path.exists():
+        logger.warning("evaluation_trajectory*.csv not found — skipping Fig 2")
         return None
 
     rows = _read_csv(csv_path)
@@ -217,7 +219,9 @@ def _fig_03_convergence(run_dir: Path, plt) -> Path | None:
     """Fig 3: Hard / soft penalty convergence (dual Y-axis)."""
     csv_path = run_dir / "evaluation_trajectory.csv"
     if not csv_path.exists():
-        logger.warning("evaluation_trajectory.csv not found — skipping Fig 3")
+        csv_path = run_dir / "evaluation_trajectory_200.csv"
+    if not csv_path.exists():
+        logger.warning("evaluation_trajectory*.csv not found — skipping Fig 3")
         return None
 
     rows = _read_csv(csv_path)
