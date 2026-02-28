@@ -165,12 +165,12 @@ def main() -> None:
         delta_hard = after_hard - base_hard
         delta_soft = after_soft - base_soft
 
-        # Verdict logic — refined per operator role
-        #   0-2 : targeted hard repairs  → must reduce ΔHard
-        #   3   : soft-constraint sync   → must reduce ΔSSCP
-        #   4   : full pipeline (stochastic) → must show *some* reduction
-        #   5-6 : perturbations          → any measurable Δ
-        #   7   : soft optimization      → must improve soft metrics
+        # Verdict logic -- refined per operator role
+        #   0-2 : targeted hard repairs  -> must reduce Delta_Hard
+        #   3   : soft-constraint sync   -> must reduce Delta_SSCP
+        #   4   : full pipeline (stochastic) -> must show *some* reduction
+        #   5-6 : perturbations          -> any measurable Delta
+        #   7   : soft optimization      -> must improve soft metrics
         if action_id <= 2:
             # Pure hard-constraint repairs
             verdict = "PASS" if delta_hard < -0.5 else "**FAILED**"

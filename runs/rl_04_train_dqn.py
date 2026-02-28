@@ -1,28 +1,24 @@
 #!/usr/bin/env python3
-r"""RL 03 — Capstone Thesis Run: 150k Training + 200-Gen Evaluation.
+r"""RL 04 -- DQN Competitor: 150k Training + 200-Gen Evaluation.
 
-End-to-end pipeline:
-  1. Train PPO (SB3) for 150,000 timesteps with acceptance_tolerance=10.0
-     to allow the agent to cross fitness valleys.
-  2. Print the **Heuristic Efficacy Matrix** (per-action DeltaHard / DeltaSoft).
-  3. Run deterministic 200-generation strict evaluation (tolerance=0.0).
-  4. Export evaluation_trajectory_200.csv.
-  5. Generate thesis-ready PDF figures.
+Identical pipeline to the PPO capstone, but using Stable-Baselines3 DQN.
+
+1. Train DQN for 150,000 timesteps (acceptance_tolerance=10.0).
+2. Print Heuristic Efficacy Matrix.
+3. Run 200-gen strict evaluation (tolerance=0.0).
+4. Export dqn_eval_200.csv to output/baselines/.
 
 Usage::
 
-    python runs/rl_03_capstone_thesis.py
+    python runs/rl_04_train_dqn.py
 
-Outputs (in ``output/rl_capstone/<timestamp>/``)::
+Outputs::
 
-    ppo_capstone_final.zip             — saved SB3 model
-    training_curve.csv                 — per-episode training metrics
-    step_log.csv                       — per-step training metrics
-    heuristic_efficacy_matrix.txt      — per-action efficacy audit
-    evaluation_trajectory_200.csv      — 200-gen evaluation trace
-    fig_01_learning_curve.pdf          — cumulative reward vs episode
-    fig_02_heuristic_policy.pdf        — action selection scatter
-    fig_03_eval_convergence.pdf        — hard/soft descent trajectory
+    output/rl_dqn/<timestamp>/dqn_capstone_final.zip
+    output/rl_dqn/<timestamp>/training_curve.csv
+    output/rl_dqn/<timestamp>/step_log.csv
+    output/rl_dqn/<timestamp>/heuristic_efficacy_matrix.txt
+    output/baselines/dqn_eval_200.csv
 """
 
 from __future__ import annotations
@@ -37,7 +33,7 @@ from pathlib import Path
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# Path bootstrap (allow running from repo root: python runs/rl_03_...)
+# Path bootstrap
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -47,7 +43,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("rl_03_capstone_thesis")
+logger = logging.getLogger("rl_04_train_dqn")
 
 # ======================================================================
 # Configuration
@@ -56,16 +52,21 @@ logger = logging.getLogger("rl_03_capstone_thesis")
 SEED = 42
 POP_SIZE = 120
 MAX_GENERATIONS = 50  # episode length during training
-TOTAL_TIMESTEPS = 150_000  # PPO training budget (capstone)
-EVAL_GENERATIONS = 200  # extended evaluation episode length
-LEARNING_RATE = 3e-4
-CLIP_RANGE = 0.2
+TOTAL_TIMESTEPS = 150_000  # DQN training budget
+EVAL_GENERATIONS = 200
+LEARNING_RATE = 1e-4
 NET_ARCH = [64, 64]
 PKL_PATH = ".cache/events_with_domains.pkl"
 
-# Acceptance tolerance: 10.0 during training (explore), 0.0 during eval (exploit)
 TRAIN_TOLERANCE = 10.0
 EVAL_TOLERANCE = 0.0
+
+# DQN-specific
+BUFFER_SIZE = 100_000
+BATCH_SIZE = 32
+TARGET_UPDATE_INTERVAL = 1000
+EXPLORATION_FRACTION = 0.1
+EXPLORATION_FINAL_EPS = 0.05
 
 
 # ======================================================================
@@ -74,14 +75,14 @@ EVAL_TOLERANCE = 0.0
 
 
 def train(run_dir: Path):
-    """Train PPO with tolerance annealing and save model + CSVs."""
-    from stable_baselines3 import PPO
+    """Train DQN and save model + CSVs."""
+    from stable_baselines3 import DQN
 
     from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
     from src.rl.training.thesis_callback import ThesisLoggingCallback
 
     logger.info("=" * 60)
-    logger.info("Phase 40 — Capstone Thesis Run: PPO Training")
+    logger.info("DQN COMPETITOR -- Training")
     logger.info("  run_dir           : %s", run_dir)
     logger.info(
         "  pop_size: %d  max_gen: %d  timesteps: %d",
@@ -90,47 +91,54 @@ def train(run_dir: Path):
         TOTAL_TIMESTEPS,
     )
     logger.info("  acceptance_tolerance (train): %.1f", TRAIN_TOLERANCE)
+    logger.info(
+        "  buffer_size: %d  batch_size: %d  target_update: %d",
+        BUFFER_SIZE,
+        BATCH_SIZE,
+        TARGET_UPDATE_INTERVAL,
+    )
     logger.info("=" * 60)
 
-    # -- Environment -------------------------------------------------------
     env = PymooHyperHeuristicEnv(
         pkl_path=PKL_PATH,
         max_generations=MAX_GENERATIONS,
         pop_size=POP_SIZE,
         algorithm_name="nsga2",
         seed=SEED,
-        acceptance_tolerance=TRAIN_TOLERANCE,  # allow +10 hard to explore
+        acceptance_tolerance=TRAIN_TOLERANCE,
     )
 
-    # -- Agent -------------------------------------------------------------
-    model = PPO(
+    model = DQN(
         "MlpPolicy",
         env,
         learning_rate=LEARNING_RATE,
-        clip_range=CLIP_RANGE,
+        buffer_size=BUFFER_SIZE,
+        batch_size=BATCH_SIZE,
+        target_update_interval=TARGET_UPDATE_INTERVAL,
+        exploration_fraction=EXPLORATION_FRACTION,
+        exploration_final_eps=EXPLORATION_FINAL_EPS,
         policy_kwargs=dict(net_arch=NET_ARCH),
         seed=SEED,
         verbose=1,
     )
 
-    # -- Callback -----------------------------------------------------------
     callback = ThesisLoggingCallback(run_dir=run_dir, verbose=1)
 
-    # -- Train --------------------------------------------------------------
     t0 = time.perf_counter()
     model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback)
     train_time = time.perf_counter() - t0
-    logger.info("Training complete in %.1fs (%.1f min)", train_time, train_time / 60)
+    logger.info(
+        "DQN training complete in %.1fs (%.1f min)", train_time, train_time / 60
+    )
 
-    # -- Save model ---------------------------------------------------------
-    # Save to run_dir and also to canonical output/models/ path
-    model_run = run_dir / "ppo_capstone_final.zip"
+    # Save model
+    model_run = run_dir / "dqn_capstone_final.zip"
     model.save(str(model_run))
     logger.info("Model saved (run): %s", model_run)
 
     canonical_dir = PROJECT_ROOT / "output" / "models"
     canonical_dir.mkdir(parents=True, exist_ok=True)
-    canonical_path = canonical_dir / "ppo_capstone_final.zip"
+    canonical_path = canonical_dir / "dqn_capstone_final.zip"
     model.save(str(canonical_path))
     logger.info("Model saved (canonical): %s", canonical_path)
 
@@ -146,7 +154,7 @@ def train(run_dir: Path):
 def _build_eval_row(
     info: dict, action_id: int, action_name: str, reward: float
 ) -> dict:
-    """Build one evaluation CSV row with full constraint breakdown."""
+    """Build one evaluation CSV row."""
     from src.rl.gym_env.fast_state_encoder import (
         HARD_CONSTRAINT_NAMES,
         SOFT_CONSTRAINT_NAMES,
@@ -166,23 +174,21 @@ def _build_eval_row(
         "delta_hard": info.get("delta_hard", 0.0),
         "delta_soft": info.get("delta_soft", 0.0),
     }
-    # 8 hard constraint columns
     for name in HARD_CONSTRAINT_NAMES:
         row[f"cv_{name}"] = info.get(f"cv_{name}", 0.0)
-    # 4 soft constraint columns
     for name in SOFT_CONSTRAINT_NAMES:
         row[f"cv_{name}"] = info.get(f"cv_{name}", 0.0)
     return row
 
 
 def evaluate(model, run_dir: Path) -> Path:
-    """Run strict deterministic 200-gen evaluation and export CSV."""
+    """200-gen strict evaluation and export CSV."""
     from src.rl.actions.vectorized_ops import ACTION_NAMES
     from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
 
     logger.info("-" * 60)
     logger.info(
-        "Deterministic evaluation (%d generations, tolerance=%.1f)",
+        "Deterministic DQN evaluation (%d gens, tolerance=%.1f)",
         EVAL_GENERATIONS,
         EVAL_TOLERANCE,
     )
@@ -193,19 +199,17 @@ def evaluate(model, run_dir: Path) -> Path:
         max_generations=EVAL_GENERATIONS,
         pop_size=POP_SIZE,
         algorithm_name="nsga2",
-        seed=SEED + 1000,  # different seed for eval
-        acceptance_tolerance=EVAL_TOLERANCE,  # strict: reject any hard degradation
+        seed=SEED + 1000,
+        acceptance_tolerance=EVAL_TOLERANCE,
     )
 
     obs, info = env.reset()
     rows: list[dict] = []
-
-    # Record initial state (gen 1 from reset)
     rows.append(_build_eval_row(info, action_id=-1, action_name="init", reward=0.0))
 
     cumulative_reward = 0.0
-    for gen in range(EVAL_GENERATIONS - 1):  # -1 because reset already ran gen 1
-        action, _states = model.predict(obs, deterministic=True)
+    for gen in range(EVAL_GENERATIONS - 1):
+        action, _ = model.predict(obs, deterministic=True)
         action = int(action)
         obs, reward, terminated, truncated, info = env.step(action)
         cumulative_reward += reward
@@ -221,7 +225,7 @@ def evaluate(model, run_dir: Path) -> Path:
 
         if gen % 10 == 0 or gen >= EVAL_GENERATIONS - 5:
             logger.info(
-                "  Gen %3d | act=%d (%s) | hard=%.0f soft=%.0f | feas=%.2f | r=%.4f | rej=%s",
+                "  Gen %3d | act=%d (%s) | hard=%.0f soft=%.0f | feas=%.2f | r=%.4f",
                 info["generation"],
                 action,
                 ACTION_NAMES.get(action, "?"),
@@ -229,7 +233,6 @@ def evaluate(model, run_dir: Path) -> Path:
                 info["best_soft"],
                 info["feasible_frac"],
                 reward,
-                info.get("rejected", False),
             )
 
         if terminated or truncated:
@@ -237,20 +240,23 @@ def evaluate(model, run_dir: Path) -> Path:
 
     env.close()
 
-    # -- Export CSV ----------------------------------------------------------
-    csv_path = run_dir / "evaluation_trajectory_200.csv"
-    fieldnames = list(rows[0].keys())
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    # Export to both run_dir and canonical baselines path
+    csv_run = run_dir / "evaluation_trajectory_200.csv"
+    csv_baselines = PROJECT_ROOT / "output" / "baselines" / "dqn_eval_200.csv"
 
-    logger.info("Evaluation CSV saved: %s (%d rows)", csv_path, len(rows))
+    for csv_path in [csv_run, csv_baselines]:
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        fieldnames = list(rows[0].keys())
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        logger.info("DQN eval CSV saved: %s (%d rows)", csv_path, len(rows))
+
     logger.info("Cumulative eval reward: %.4f", cumulative_reward)
 
-    # -- Print final 10 lines -----------------------------------------------
     print("\n" + "=" * 80)
-    print("  FINAL 10 LINES OF evaluation_trajectory_200.csv")
+    print("  FINAL 10 LINES OF DQN evaluation_trajectory_200.csv")
     print("=" * 80)
     for row in rows[-10:]:
         print(
@@ -261,13 +267,13 @@ def evaluate(model, run_dir: Path) -> Path:
         )
     print("=" * 80)
     print(
-        f"  FINAL @ Gen {rows[-1]['generation']}: "
+        f"  DQN FINAL @ Gen {rows[-1]['generation']}: "
         f"Best_Hard = {rows[-1]['best_hard']:.1f}  |  "
         f"Best_Soft = {rows[-1]['best_soft']:.1f}"
     )
     print("=" * 80 + "\n")
 
-    return csv_path
+    return csv_baselines
 
 
 # ======================================================================
@@ -276,14 +282,12 @@ def evaluate(model, run_dir: Path) -> Path:
 
 
 def main() -> None:
-    """Full pipeline: train → evaluate → plot."""
-    # -- Timestamped run directory ----------------------------------------
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = PROJECT_ROOT / "output" / "rl_capstone" / timestamp
+    run_dir = PROJECT_ROOT / "output" / "rl_dqn" / timestamp
     run_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 60)
-    logger.info("CAPSTONE THESIS RUN")
+    logger.info("DQN COMPETITOR RUN")
     logger.info("  Run dir: %s", run_dir)
     logger.info(
         "  Train: %d timesteps, tolerance=%.1f", TOTAL_TIMESTEPS, TRAIN_TOLERANCE
@@ -293,24 +297,17 @@ def main() -> None:
     )
     logger.info("=" * 60)
 
-    # -- 1. Train -----------------------------------------------------------
+    # 1. Train
     model = train(run_dir)
 
-    # -- 2. Evaluate --------------------------------------------------------
+    # 2. Evaluate
     evaluate(model, run_dir)
 
-    # -- 3. Plot ------------------------------------------------------------
-    from src.rl.training.plot_thesis_figures import generate_plots
-
-    pdfs = generate_plots(run_dir)
-
-    # -- Summary ------------------------------------------------------------
+    # 3. Summary
     logger.info("=" * 60)
-    logger.info("Capstone run complete: %s", run_dir)
-    logger.info("  Model   : ppo_capstone_final.zip")
-    logger.info("  CSVs    : training_curve.csv, evaluation_trajectory_200.csv")
-    logger.info("  Efficacy: heuristic_efficacy_matrix.txt")
-    logger.info("  Figures : %s", ", ".join(p.name for p in pdfs))
+    logger.info("DQN competitor run complete: %s", run_dir)
+    logger.info("  Model   : dqn_capstone_final.zip")
+    logger.info("  Baselines CSV: output/baselines/dqn_eval_200.csv")
     logger.info("=" * 60)
 
 

@@ -53,7 +53,7 @@ def _load_csv(path: Path) -> list[dict]:
 def autopsy_step_log(run_dir: Path) -> str:
     step_csv = run_dir / "step_log.csv"
     if not step_csv.exists():
-        return f"⚠ step_log.csv not found in {run_dir}\n"
+        return f"[WARNING] step_log.csv not found in {run_dir}\n"
 
     rows = _load_csv(step_csv)
     n = len(rows)
@@ -78,7 +78,7 @@ def autopsy_step_log(run_dir: Path) -> str:
     lines.append(f"Total timesteps: {n}")
     lines.append("")
     lines.append(
-        "| Action | Count | Mean ΔHard | Mean ΔSoft | Pct Hard↑ | Pct Soft↑ | Mean Reward |"
+        "| Action | Count | Mean Delta_Hard | Mean Delta_Soft | Pct Hard+ | Pct Soft+ | Mean Reward |"
     )
     lines.append(
         "|:------:|------:|-----------:|-----------:|----------:|----------:|------------:|"
@@ -114,7 +114,7 @@ def autopsy_step_log(run_dir: Path) -> str:
     lines.append("## 2. Top 20 Worst Soft-Constraint Spikes")
     lines.append("")
     lines.append(
-        "| Rank | Timestep | Action | ΔSoft | ΔHard | Reward | Hard_before | Soft_before |"
+        "| Rank | Timestep | Action | Delta_Soft | Delta_Hard | Reward | Hard_before | Soft_before |"
     )
     lines.append(
         "|-----:|---------:|:------:|------:|------:|-------:|------------:|------------:|"
@@ -137,7 +137,7 @@ def autopsy_step_log(run_dir: Path) -> str:
     lines.append("## 3. Top 20 Worst Hard-Constraint Spikes")
     lines.append("")
     lines.append(
-        "| Rank | Timestep | Action | ΔHard | ΔSoft | Reward | Hard_before | Soft_before |"
+        "| Rank | Timestep | Action | Delta_Hard | Delta_Soft | Reward | Hard_before | Soft_before |"
     )
     lines.append(
         "|-----:|---------:|:------:|------:|------:|-------:|------------:|------------:|"
@@ -175,10 +175,10 @@ def autopsy_step_log(run_dir: Path) -> str:
 
     # Net progress
     lines.append(
-        f"- Hard: start={hard[0]:.1f} → end={hard[-1]:.1f} (net Δ={hard[-1] - hard[0]:+.1f})"
+        f"- Hard: start={hard[0]:.1f} -> end={hard[-1]:.1f} (net Delta={hard[-1] - hard[0]:+.1f})"
     )
     lines.append(
-        f"- Soft: start={soft[0]:.1f} → end={soft[-1]:.1f} (net Δ={soft[-1] - soft[0]:+.1f})"
+        f"- Soft: start={soft[0]:.1f} -> end={soft[-1]:.1f} (net Delta={soft[-1] - soft[0]:+.1f})"
     )
     lines.append("")
 
@@ -193,7 +193,7 @@ def autopsy_step_log(run_dir: Path) -> str:
 def autopsy_eval_trajectory(run_dir: Path) -> str:
     eval_csv = run_dir / "evaluation_trajectory.csv"
     if not eval_csv.exists():
-        return f"⚠ evaluation_trajectory.csv not found in {run_dir}\n"
+        return f"[WARNING] evaluation_trajectory.csv not found in {run_dir}\n"
 
     rows = _load_csv(eval_csv)
 
@@ -212,7 +212,9 @@ def autopsy_eval_trajectory(run_dir: Path) -> str:
         c for c in constraint_cols if c.split("_")[1] in ("CSC", "FSC", "MIP", "SSCP")
     ]
 
-    lines.append("| Gen | Action | BestHard | BestSoft | ΔHard | ΔSoft | Reward |")
+    lines.append(
+        "| Gen | Action | BestHard | BestSoft | Delta_Hard | Delta_Soft | Reward |"
+    )
     lines.append("|----:|:-------|--------:|---------:|------:|------:|-------:|")
 
     prev_hard = float(rows[0]["best_hard"])

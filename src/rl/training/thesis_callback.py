@@ -4,7 +4,7 @@ Tracks per-step and per-episode metrics during PPO training and dumps
 them to ``training_curve.csv`` at the end of training.  No TensorBoard
 — raw CSV for direct LaTeX/pgfplots ingestion.
 
-Also tracks per-action ΔHard and ΔSoft for the **Heuristic Efficacy
+Also tracks per-action DeltaHard and DeltaSoft for the **Heuristic Efficacy
 Matrix** — printed at the end of training as empirical proof that each
 of the Elite 8 heuristics contributes meaningfully during the MDP.
 
@@ -235,7 +235,7 @@ class ThesisLoggingCallback(BaseCallback):
         """Print a formatted table of per-action statistics to stdout.
 
         Columns:
-            Action ID | Action Name | Count | Avg ΔHard | Avg ΔSoft
+            Action ID | Action Name | Count | Avg DeltaHard | Avg DeltaSoft
         """
         from src.rl.actions.vectorized_ops import ACTION_NAMES
 
@@ -246,7 +246,7 @@ class ThesisLoggingCallback(BaseCallback):
 
         header = (
             f"{'ID':>3}  {'Action Name':<32}  {'Count':>7}  "
-            f"{'%Share':>7}  {'Avg ΔHard':>10}  {'Avg ΔSoft':>10}"
+            f"{'%Share':>7}  {'Avg DHard':>10}  {'Avg DSoft':>10}"
         )
         sep = "-" * len(header)
 

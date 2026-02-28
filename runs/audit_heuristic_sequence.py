@@ -139,7 +139,7 @@ def _run_sequence(
     # Column keys for the table
     constraint_keys = ["SRE", "FTE", "CTE", "SSCP", "MIP", "CSC"]
     header = (
-        "| Step | Action | BestHard | BestSoft | ΔHard | ΔSoft | Reward | "
+        "| Step | Action | BestHard | BestSoft | Delta_Hard | Delta_Soft | Reward | "
         + " | ".join(constraint_keys)
         + " |"
     )
@@ -188,7 +188,9 @@ def _run_sequence(
     total_dh = steps_detail[-1]["best_hard"] - steps_detail[0]["best_hard"]
     total_ds = steps_detail[-1]["best_soft"] - steps_detail[0]["best_soft"]
     lines.append("")
-    lines.append(f"**Net effect**: ΔHard = {total_dh:+.1f}, ΔSoft = {total_ds:+.1f}")
+    lines.append(
+        f"**Net effect**: Delta_Hard = {total_dh:+.1f}, Delta_Soft = {total_ds:+.1f}"
+    )
 
     if total_dh > 0 and total_ds < 0:
         lines.append(

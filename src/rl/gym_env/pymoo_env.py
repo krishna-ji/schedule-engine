@@ -320,7 +320,7 @@ class PymooHyperHeuristicEnv(gym.Env):
             best_soft = snap_best_soft
             # Don't update prev_best — nothing changed
             logger.debug(
-                "Gen %d | action=%d (%s) | REJECTED (ΔHard=+%.1f) | R=-1.0",
+                "Gen %d | action=%d (%s) | REJECTED (Delta_Hard=+%.1f) | R=-1.0",
                 self._gen,
                 action,
                 operator.ACTION_NAME,

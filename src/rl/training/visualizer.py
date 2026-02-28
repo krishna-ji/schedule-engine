@@ -265,7 +265,7 @@ Reward:
 Improvement:
   Start: {values[0]:.3f}
   End: {values[-1]:.3f}
-  Δ: {values[-1] - values[0]:.3f}
+  Delta: {values[-1] - values[0]:.3f}
 """
         ax_stats.text(
             0.1,
