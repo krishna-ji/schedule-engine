@@ -55,6 +55,7 @@ from numpy.typing import NDArray
 from src.rl.actions.vectorized_ops import (
     NUM_ACTIONS,
     VECTORIZED_ACTION_SPACE,
+    PostGenConfig,
     _AtomicRepairBase,
 )
 from src.rl.gym_env.fast_state_encoder import OBS_DIM, VectorizedStateEncoder
@@ -147,7 +148,12 @@ class PymooHyperHeuristicEnv(gym.Env):
         )
 
         # -- Pymoo objects (initialised in reset()) -----------------------
+        # Cache the SchedulingProblem across resets — it's stateless
+        # (evaluations are pure functions on population data) and
+        # recreating it triggers expensive DataStore.from_json() +
+        # feasibility checks every episode.
         self._problem = None
+        self._problem_cached = False
         self._algorithm = None
         self._gen: int = 0
         self._prev_best_hard: float = np.inf
@@ -184,10 +190,16 @@ class PymooHyperHeuristicEnv(gym.Env):
             EventLocalMutation,
             RandomDomainSampling,
         )
-        from src.pipeline.scheduling_problem import create_problem
 
-        # Create problem
-        self._problem = create_problem(self.pkl_path)
+        # Cache the SchedulingProblem across resets — it's stateless
+        # (pure function evaluator on population data).  Avoids
+        # DataStore.from_json() + feasibility checks every episode.
+        if not self._problem_cached:
+            from src.pipeline.scheduling_problem import create_problem
+
+            self._problem = create_problem(self.pkl_path)
+            self._problem_cached = True
+
         self._encoder = VectorizedStateEncoder(
             max_generations=self.max_generations,
             n_events=self._problem.spec.n_events,
@@ -256,9 +268,9 @@ class PymooHyperHeuristicEnv(gym.Env):
     ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
         """Execute one generation with the selected pipeline configuration.
 
-        **Phase 53**: no rollback — every action runs the complete repair
-        pipeline, so no action is destructive.  The agent always sees
-        the committed result and gets a delta-based reward.
+        **Phase 55b**: two-phase repair architecture:
+        1. Mating repair (domain fix + SSCP sync) on offspring
+        2. Post-gen BitsetRepair on BEST K% of surviving population
 
         Parameters
         ----------
@@ -275,16 +287,21 @@ class PymooHyperHeuristicEnv(gym.Env):
         """
         assert self._algorithm is not None, "Call reset() first."
 
-        # -- Inject the chosen pipeline configuration --------------------
+        # -- Inject the chosen mating repair (domain fix + SSCP) ---------
         operator = self._action_operators[action]
         self._algorithm.mating.repair = operator
 
         prev_best_hard = self._prev_best_hard
         prev_best_soft = self._prev_best_soft
 
-        # -- Run one generational step -----------------------------------
+        # -- Phase 1: Run one generational step (mating + survival) ------
         t0 = _time.perf_counter()
         self._algorithm.next()
+
+        # -- Phase 2: Post-gen BitsetRepair on BEST survivors ------------
+        cfg = operator.POST_GEN
+        n_repaired = self._post_gen_repair(operator, cfg)
+
         step_time = _time.perf_counter() - t0
 
         self._gen += 1
@@ -310,7 +327,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         delta_soft = best_soft - prev_best_soft
 
         logger.debug(
-            "Gen %d | action=%d (%s) | hard=%.1f (Δ%.1f) | R=%.4f | %.2fs",
+            "Gen %d | action=%d (%s) | hard=%.1f (Δ%.1f) | R=%.4f | %.2fs | repaired=%d",
             self._gen,
             action,
             operator.ACTION_NAME,
@@ -318,6 +335,7 @@ class PymooHyperHeuristicEnv(gym.Env):
             delta_hard,
             reward,
             step_time,
+            n_repaired,
         )
 
         # -- Termination checks ------------------------------------------
@@ -331,8 +349,83 @@ class PymooHyperHeuristicEnv(gym.Env):
         info["rejected"] = False  # No rollback in Phase 53
         info["delta_hard"] = delta_hard
         info["delta_soft"] = delta_soft
+        info["n_repaired"] = n_repaired
 
         return obs, reward, terminated, truncated, info
+
+    # ------------------------------------------------------------------
+    # Post-generation BitsetRepair on survivors
+    # ------------------------------------------------------------------
+
+    def _post_gen_repair(
+        self,
+        operator: _AtomicRepairBase,
+        cfg: PostGenConfig,
+    ) -> int:
+        """Apply BitsetRepair to the BEST K% of the surviving population.
+
+        Mirrors the memetic GA's callback: select the elite survivors
+        (lowest hard penalty), repair them with ``BitsetSchedulingRepair``,
+        and force re-evaluation so NSGA-II sees updated fitness.
+
+        Parameters
+        ----------
+        operator : _AtomicRepairBase
+            The active LLH operator (provides ``bitset_engine``).
+        cfg : PostGenConfig
+            Post-gen repair parameters from the LLH action.
+
+        Returns
+        -------
+        int
+            Number of individuals repaired.
+        """
+        from pymoo.core.evaluator import Evaluator
+        from pymoo.core.population import Population
+
+        pop = self._algorithm.pop
+        F = pop.get("F")
+        hard_vals = F[:, 0]
+
+        # Select BEST (lowest hard) individuals
+        n_elite = max(1, int(len(pop) * cfg.elite_fraction))
+        elite_idx = np.argsort(hard_vals)[:n_elite]
+        # Only repair those with remaining violations
+        elite_idx = elite_idx[hard_vals[elite_idx] > 0]
+
+        if len(elite_idx) == 0:
+            return 0
+
+        repairer = operator.bitset_engine
+        modified = []
+
+        for idx in elite_idx:
+            xi = pop[idx].get("X").copy()
+            for p in range(cfg.passes):
+                if cfg.stochastic_alternate and p % 2 == 0:
+                    rng = np.random.default_rng()
+                else:
+                    rng = None
+                xi_new = repairer.repair(xi, rng=rng)
+                if np.array_equal(xi_new, xi):
+                    break  # converged
+                xi = xi_new
+
+            pop[idx].set("X", xi)
+            # Clear stale fitness for re-evaluation
+            pop[idx].set("F", None)
+            pop[idx].set("G", None)
+            pop[idx].set("CV", None)
+            for tag in ["F", "G", "CV"]:
+                if tag in pop[idx].evaluated:
+                    pop[idx].evaluated.remove(tag)
+            modified.append(pop[idx])
+
+        if modified:
+            eval_pop = Population.create(*modified)
+            Evaluator().eval(self._problem, eval_pop)
+
+        return len(modified)
 
     # ------------------------------------------------------------------
     # Reward computation

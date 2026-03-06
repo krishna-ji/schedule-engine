@@ -1,72 +1,95 @@
 r"""Pipeline-configuration LLHs for the RL hyper-heuristic.
 
-**Phase 53 architectural redesign** — each Low-Level Heuristic (LLH)
-runs the **complete** three-stage ``VectorizedRepair.repair_batch``
-pipeline with different parameter configurations.  The RL agent
-selects which *configuration* to use each generation, not which
-single repair concern to address.
+**Phase 55b fix** — two-phase repair architecture mirroring the
+memetic GA (``ga_02_memetic.py``):
 
-Previous architecture (Phases 35-52) had 8 atomic operators that each
-fixed ONE constraint type per generation inside the same Pymoo
-``Repair`` slot.  They overwrote each other's work.  The working
-memetic mode ran them ALL in sequence — which is exactly what
-``repair_batch`` does.
+Phase 1 — Mating repair (on OFFSPRING, inside ``algorithm.next()``):
+    Fast vectorized domain fix + SSCP sync.  Applied to ALL offspring.
+    No BitsetRepair here — offspring are too many and too raw.
 
-New architecture
-----------------
+Phase 2 — Post-generation repair (on SURVIVORS, after ``algorithm.next()``):
+    ``BitsetSchedulingRepair`` on the BEST K% of the surviving
+    population (lowest hard penalty).  This directly improves the
+    elite individuals, mirroring the memetic GA's callback.
 
-Each LLH is a ``pymoo.core.repair.Repair`` that calls the full
-pipeline ``engine.repair_batch(X, passes=P)`` with different ``P``,
-then optionally applies a second-stage intensification or
-diversification kernel.
+Root cause of Phase 55a failure: BitsetRepair was in the mating
+pipeline (offspring only), never touching surviving parents.  The
+memetic GA achieves hard=72 because its callback repairs SURVIVING
+elites.  Moving BitsetRepair to post-gen on survivors reproduces
+this: hard < 100 at gen 2, stabilising at ~68-72.
 
-Pipeline configurations::
+Pipeline per LLH action::
 
-    0: ConservativeRepair   — passes=3, exploit (steady progress)
-    1: AggressiveRepair     — passes=7, explore (heavy resampling)
-    2: MemeticEliteRepair   — passes=3 + extra passes on top-15% worst
-    3: SoftFocusRepair      — passes=3 + time-compaction for soft obj
-    4: DestructiveConstructive — ruin 10% worst + passes=5 (escape)
-    5: IntensifiedRepair    — passes=5, balanced middle ground
+    Mating (all offspring):
+        1. Domain fix (vectorized)              — O(N·E), ~1ms
+        2. SSCP paired-event sync               — O(N·P), ~1ms
 
-The RL agent learns *when* to use aggressive vs. conservative, when
-to trigger elite intensification, when to ruin-and-reconstruct to
-escape plateaus.  Every action produces a coherent, fully-repaired
-population.
+    Post-gen (BEST K% survivors):
+        3. BitsetRepair (greedy cost-minimising) — O(K·E²), ~K·400ms
 
-Complexity
-----------
+Different LLH configurations vary K%, number of BitsetRepair passes,
+deterministic vs stochastic, and optional mating-level kernels.
 
-All LLHs are $O(\text{passes} \cdot N \cdot Q)$ with optional
-$+O(N \cdot E)$ intensification.  No action is destructive —
-rollback is unnecessary.
+    0: ConservativeRepair   — 10% best, 2 passes alt
+    1: AggressiveRepair     — 25% best, 3 passes alt
+    2: MemeticEliteRepair   — 15% best, 4 passes alt (memetic clone)
+    3: SoftFocusRepair      — 8% best, 2 passes + time compaction
+    4: DestructiveConstructive — ruin events + 20% best, 2 passes
+    5: IntensifiedRepair    — 20% best, 3 passes deterministic
 """
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
 from pymoo.core.repair import Repair
 
+from src.pipeline.repair_operator_bitset import BitsetSchedulingRepair
 from src.pipeline.repair_operator_vectorized import VectorizedRepair
 
 logger = logging.getLogger(__name__)
 
 
 # ======================================================================
-# Shared engine cache — avoid re-loading pkl per action
+# Post-generation repair parameters (per LLH action)
 # ======================================================================
 
-_ENGINE_CACHE: dict[str, VectorizedRepair] = {}
+
+@dataclass(frozen=True)
+class PostGenConfig:
+    """Parameters for post-generation BitsetRepair on survivors."""
+
+    elite_fraction: float = 0.15  # Fraction of BEST survivors to repair
+    passes: int = 4  # Number of BitsetRepair passes
+    stochastic_alternate: bool = True  # Alternate det/stoch passes
+    # Optional mating-level extras (domain fix + SSCP sync always run)
+    ruin_fraction: float = 0.0  # Fraction of events to ruin before repair
+    compact_soft: bool = False  # Time compaction for soft objectives
 
 
-def _get_engine(pkl_path: str) -> VectorizedRepair:
+# ======================================================================
+# Shared engine caches — avoid re-loading pkl per action
+# ======================================================================
+
+_VEC_ENGINE_CACHE: dict[str, VectorizedRepair] = {}
+_BITSET_ENGINE_CACHE: dict[str, BitsetSchedulingRepair] = {}
+
+
+def _get_vec_engine(pkl_path: str) -> VectorizedRepair:
     """Return (or create & cache) a ``VectorizedRepair`` engine."""
-    if pkl_path not in _ENGINE_CACHE:
-        _ENGINE_CACHE[pkl_path] = VectorizedRepair(pkl_path)
-    return _ENGINE_CACHE[pkl_path]
+    if pkl_path not in _VEC_ENGINE_CACHE:
+        _VEC_ENGINE_CACHE[pkl_path] = VectorizedRepair(pkl_path)
+    return _VEC_ENGINE_CACHE[pkl_path]
+
+
+def _get_bitset_engine(pkl_path: str) -> BitsetSchedulingRepair:
+    """Return (or create & cache) a ``BitsetSchedulingRepair`` engine."""
+    if pkl_path not in _BITSET_ENGINE_CACHE:
+        _BITSET_ENGINE_CACHE[pkl_path] = BitsetSchedulingRepair(pkl_path)
+    return _BITSET_ENGINE_CACHE[pkl_path]
 
 
 # ======================================================================
@@ -77,27 +100,47 @@ def _get_engine(pkl_path: str) -> VectorizedRepair:
 class _AtomicRepairBase(Repair):
     """Base for all pipeline-configuration LLH actions.
 
-    Subclasses override ``_apply`` which receives the population
-    matrix X and applies a complete repair pipeline configuration.
+    Phase 55b: two-phase architecture:
+    - ``_do()`` (mating repair): fast domain fix + SSCP sync on ALL offspring
+    - ``POST_GEN``: parameters for post-gen BitsetRepair on BEST survivors
+      (applied by ``env.step()`` after ``algorithm.next()``)
+
+    Subclasses override ``_apply_mating`` for any mating-level extras
+    (e.g., ruin & recreate, time compaction) and set ``POST_GEN`` for
+    post-gen repair intensity.
     """
 
     ACTION_NAME: ClassVar[str] = "base"
+    POST_GEN: ClassVar[PostGenConfig] = PostGenConfig()
 
     def __init__(self, pkl_path: str = ".cache/events_with_domains.pkl"):
         super().__init__()
-        self.engine: VectorizedRepair = _get_engine(pkl_path)
+        self.vec_engine: VectorizedRepair = _get_vec_engine(pkl_path)
+        self.bitset_engine: BitsetSchedulingRepair = _get_bitset_engine(pkl_path)
         self._pkl_path = pkl_path
 
     def _do(self, problem, x, **kwargs):
+        """Mating repair: domain fix + SSCP sync + optional extras."""
         if x.ndim == 1:
             x = x.reshape(1, -1)
         x = x.copy().astype(np.int64)
-        self._apply(x)
+
+        eng = self.vec_engine
+
+        # Stage 1: fast domain fix (vectorized over full pop)
+        eng._fix_domains_vec(x)
+
+        # Stage 2: subclass-specific mating extras (default: nothing)
+        self._apply_mating(x)
+
+        # Stage 3: SSCP sync
+        if eng._n_pairs > 0:
+            eng._sync_paired_events(x)
+
         return x
 
-    def _apply(self, X: np.ndarray) -> None:
-        """In-place repair kernel.  Override in subclasses."""
-        raise NotImplementedError
+    def _apply_mating(self, X: np.ndarray) -> None:
+        """Optional mating-level extras.  Override in subclasses."""
 
 
 # ======================================================================
@@ -106,22 +149,19 @@ class _AtomicRepairBase(Repair):
 
 
 class ConservativeRepair(_AtomicRepairBase):
-    r"""Full pipeline with low passes — steady exploitation.
+    r"""Domain fix + post-gen BitsetRepair on best 10% — steady exploitation.
 
-    Runs ``repair_batch(X, passes=3)`` — the same configuration used
-    by the working memetic GA.  Minimal disruption to the population,
-    preserving good schemata while resolving the worst conflicts.
-
-    This is the *safe default* action: consistent progress, low
-    variance, no risk of population degradation.
+    Minimal computational budget per generation.  Good schemata are
+    preserved; only the best (near-feasible) survivors get polished.
+    ~10% × 120 = 12 individuals × 400ms × 2 passes ≈ 9.6s/gen.
     """
 
     ACTION_NAME: ClassVar[str] = "conservative_repair"
-
-    def _apply(self, X: np.ndarray) -> None:
-        result = self.engine.repair_batch(X, passes=3)
-        X[:] = result
-        logger.debug("ConservativeRepair: 3 passes (exploit)")
+    POST_GEN: ClassVar[PostGenConfig] = PostGenConfig(
+        elite_fraction=0.10,
+        passes=2,
+        stochastic_alternate=True,
+    )
 
 
 # ======================================================================
@@ -130,25 +170,20 @@ class ConservativeRepair(_AtomicRepairBase):
 
 
 class AggressiveRepair(_AtomicRepairBase):
-    r"""Full pipeline with high passes — aggressive exploration.
+    r"""Domain fix + post-gen BitsetRepair on best 25% — aggressive exploration.
 
-    Runs ``repair_batch(X, passes=7)`` — more than double the
-    standard passes.  Each extra pass rescores the population,
-    applies a fresh 30% stochastic mutation mask, and resamples
-    conflicting events.
-
-    High disruption: many events get resampled multiple times,
-    breaking structural correlations.  Useful when the population
-    is stuck in a penalty plateau — the extra passes explore more
-    of the feasible neighbourhood per generation.
+    High computational budget: quarter of survivors get 3-pass repair
+    with alternating deterministic/stochastic placement.  Use when
+    stuck in a penalty plateau.
+    ~25% × 120 = 30 × 400ms × 3 ≈ 36s/gen.
     """
 
     ACTION_NAME: ClassVar[str] = "aggressive_repair"
-
-    def _apply(self, X: np.ndarray) -> None:
-        result = self.engine.repair_batch(X, passes=7)
-        X[:] = result
-        logger.debug("AggressiveRepair: 7 passes (explore)")
+    POST_GEN: ClassVar[PostGenConfig] = PostGenConfig(
+        elite_fraction=0.25,
+        passes=3,
+        stochastic_alternate=True,
+    )
 
 
 # ======================================================================
@@ -157,67 +192,20 @@ class AggressiveRepair(_AtomicRepairBase):
 
 
 class MemeticEliteRepair(_AtomicRepairBase):
-    r"""Full pipeline + extra targeted repair on worst individuals.
+    r"""Domain fix + post-gen BitsetRepair on best 15% — memetic GA clone.
 
-    1. Standard ``repair_batch(X, passes=3)`` on full population.
-    2. Score population via ``_score_all_batch``.
-    3. Identify top-15% worst individuals (by total conflict score).
-    4. Apply 4 additional repair passes **only** on those elites.
-
-    This concentrates computational budget on the individuals most
-    likely to benefit from extra repair, while leaving already-good
-    individuals untouched.  The RL agent should select this when
-    the population has a wide quality spread (some individuals
-    near-feasible, others heavily infeasible).
+    Directly mirrors ``ga_02_memetic.py``'s callback: repair the top
+    15% of survivors with 4 alternating passes.  This is the
+    configuration that achieves hard=72 at gen 6 in the memetic GA.
+    ~15% × 120 = 18 × 400ms × 4 ≈ 28.8s/gen.
     """
 
     ACTION_NAME: ClassVar[str] = "memetic_elite_repair"
-
-    def __init__(
-        self,
-        pkl_path: str = ".cache/events_with_domains.pkl",
-        elite_fraction: float = 0.15,
-        extra_passes: int = 4,
-    ):
-        super().__init__(pkl_path)
-        self.elite_fraction = elite_fraction
-        self.extra_passes = extra_passes
-
-    def _apply(self, X: np.ndarray) -> None:
-        eng = self.engine
-        N = X.shape[0]
-
-        # Stage 1: full pipeline on everyone
-        result = eng.repair_batch(X, passes=3)
-        X[:] = result
-
-        # Stage 2: score and identify worst individuals
-        scores = eng._score_all_batch(X)  # (N, E)
-        ind_severity = scores.sum(axis=1)  # (N,)
-
-        n_elite = max(1, int(N * self.elite_fraction))
-        worst_idx = np.argsort(-ind_severity)[:n_elite]
-
-        if ind_severity[worst_idx[0]] == 0:
-            # Everyone is already clean — nothing to do
-            logger.debug("MemeticEliteRepair: population clean, skipping elite pass")
-            return
-
-        # Stage 3: extra passes on worst subset only
-        X_elite = X[worst_idx].copy()
-        eng._repair_conflicts_vec(X_elite, passes=self.extra_passes)
-        if eng._n_pairs > 0:
-            eng._sync_paired_events(X_elite)
-        X[worst_idx] = X_elite
-
-        logger.debug(
-            "MemeticEliteRepair: 3+%d passes, %d/%d elites targeted "
-            "(worst_severity=%d)",
-            self.extra_passes,
-            n_elite,
-            N,
-            int(ind_severity[worst_idx[0]]),
-        )
+    POST_GEN: ClassVar[PostGenConfig] = PostGenConfig(
+        elite_fraction=0.15,
+        passes=4,
+        stochastic_alternate=True,
+    )
 
 
 # ======================================================================
@@ -226,76 +214,47 @@ class MemeticEliteRepair(_AtomicRepairBase):
 
 
 class SoftFocusRepair(_AtomicRepairBase):
-    r"""Full pipeline + time-compaction pass for soft-constraint quality.
+    r"""Domain fix + BitsetRepair on best 8% + time compaction.
 
-    1. Standard ``repair_batch(X, passes=3)`` on full population.
-    2. For each individual, compute per-event time-slots and attempt
-       to compact them toward earlier time quanta (reducing gaps).
+    Post-gen: repair top 8% (conservative hard-fix budget).
+    Mating extra: time compaction on conflict-free events toward earlier
+    quanta (reduces gaps → better soft constraints).
 
-    This targets soft-constraint quality (instructor idle-time gaps,
-    student schedule compactness) without degrading hard-constraint
-    feasibility — the compaction only moves events within their
-    valid time domains and re-runs SSCP sync afterward.
-
-    The RL agent should select this when hard penalties are low
-    and soft-constraint improvement pressure is needed.
+    The RL agent should select this when hard penalties are low.
     """
 
     ACTION_NAME: ClassVar[str] = "soft_focus_repair"
+    POST_GEN: ClassVar[PostGenConfig] = PostGenConfig(
+        elite_fraction=0.08,
+        passes=2,
+        stochastic_alternate=True,
+        compact_soft=True,
+    )
 
-    def _apply(self, X: np.ndarray) -> None:
-        eng = self.engine
-        N = X.shape[0]
-        E = eng.n_events
-
-        # Stage 1: full pipeline
-        result = eng.repair_batch(X, passes=3)
-        X[:] = result
-
-        # Stage 2: soft-objective time compaction
-        # Try to move events to earlier valid time slots to reduce
-        # schedule gaps (affects instructor idle time, student compactness)
+    def _apply_mating(self, X: np.ndarray) -> None:
+        """Time compaction: move conflict-free events to earlier quanta."""
+        eng = self.vec_engine
+        N, E = X.shape[0], eng.n_events
         rng = np.random.default_rng()
 
-        # Score to find conflict-free events (candidates for compaction)
         scores = eng._score_all_batch(X)  # (N, E)
-        clean_mask = scores == 0  # (N, E) — no hard conflicts
-
-        # Only compact ~20% of clean events to avoid over-disruption
+        clean_mask = scores == 0
         compact_mask = clean_mask & (rng.random((N, E)) < 0.20)
-        if not compact_mask.any():
-            logger.debug("SoftFocusRepair: no clean events to compact")
-            return
 
-        bi, be = np.nonzero(compact_mask)
-        current_times = X[bi, 3 * be + 2]
+        if compact_mask.any():
+            bi, be = np.nonzero(compact_mask)
+            t_dl = eng.time_dom_len[be]
+            t_valid = t_dl > 0
+            bi, be, t_dl = bi[t_valid], be[t_valid], t_dl[t_valid]
 
-        # For each selected event, try moving to an earlier valid time
-        t_dl = eng.time_dom_len[be]
-        t_valid = t_dl > 0
-        bi, be, t_dl = bi[t_valid], be[t_valid], t_dl[t_valid]
-        current_times = X[bi, 3 * be + 2]
-
-        for k in range(len(bi)):
-            n, e = int(bi[k]), int(be[k])
-            dl = int(t_dl[k])
-            domain = eng.time_domains[e, :dl]
-            cur_t = int(current_times[k])
-
-            # Find earlier times in domain
-            earlier = domain[domain < cur_t]
-            if len(earlier) > 0:
-                # Pick the latest of the earlier options (greedy compaction)
-                X[n, 3 * e + 2] = int(earlier[-1])
-
-        # Stage 3: re-sync paired events (compaction may break SSCP)
-        if eng._n_pairs > 0:
-            eng._sync_paired_events(X)
-
-        logger.debug(
-            "SoftFocusRepair: 3 passes + compaction on %d events",
-            len(bi),
-        )
+            for k in range(len(bi)):
+                n, e = int(bi[k]), int(be[k])
+                dl = int(t_dl[k])
+                domain = eng.time_domains[e, :dl]
+                cur_t = int(X[n, 3 * e + 2])
+                earlier = domain[domain < cur_t]
+                if len(earlier) > 0:
+                    X[n, 3 * e + 2] = int(earlier[-1])
 
 
 # ======================================================================
@@ -304,23 +263,22 @@ class SoftFocusRepair(_AtomicRepairBase):
 
 
 class DestructiveConstructive(_AtomicRepairBase):
-    r"""Ruin worst 10% of events per individual, then full repair.
+    r"""Ruin worst 10% of events per individual, then post-gen BitsetRepair.
 
-    1. Score population to identify per-event conflict severity.
-    2. For each individual, "ruin" the top-10% worst-scoring events
-       by randomising all three genes (inst, room, time) from domains.
-    3. Run ``repair_batch(X, passes=5)`` — the full pipeline rebuilds
-       the ruined events within the context of the surviving structure.
+    Mating extra: score per-event conflict severity, "ruin" the top
+    10% worst events by randomising all three genes.
+    Post-gen: BitsetRepair on best 20% with 2 passes.
 
-    This is the **escape hatch** for local-optima plateaus.  By
-    destroying correlated conflict clusters and letting the pipeline
-    reconstruct them, the population can jump to a different region
-    of the search space.  More aggressive than ``AggressiveRepair``
-    (which just adds passes) because it breaks structural correlations
-    before repairing.
+    This is the **escape hatch** for local-optima plateaus.
     """
 
     ACTION_NAME: ClassVar[str] = "destructive_constructive"
+    POST_GEN: ClassVar[PostGenConfig] = PostGenConfig(
+        elite_fraction=0.20,
+        passes=2,
+        stochastic_alternate=True,
+        ruin_fraction=0.10,
+    )
 
     def __init__(
         self,
@@ -330,32 +288,24 @@ class DestructiveConstructive(_AtomicRepairBase):
         super().__init__(pkl_path)
         self.ruin_fraction = ruin_fraction
 
-    def _apply(self, X: np.ndarray) -> None:
-        eng = self.engine
-        N = X.shape[0]
-        E = eng.n_events
+    def _apply_mating(self, X: np.ndarray) -> None:
+        """Ruin worst events per individual."""
+        eng = self.vec_engine
+        N, E = X.shape[0], eng.n_events
         rng = np.random.default_rng()
 
-        # Stage 1: fix domains so scoring is valid
-        eng._fix_domains_vec(X)
-
-        # Stage 2: score and identify worst events per individual
-        scores = eng._score_all_batch(X)  # (N, E)
+        scores = eng._score_all_batch(X)
         n_ruin = max(1, int(E * self.ruin_fraction))
 
-        total_ruined = 0
         for n in range(N):
             row_scores = scores[n]
             if row_scores.sum() == 0:
                 continue
-
             worst = np.argsort(-row_scores)[:n_ruin]
             has_conflict = row_scores[worst] > 0
             worst = worst[has_conflict]
             if len(worst) == 0:
                 continue
-
-            # Ruin: randomise all genes from valid domains
             for e in worst:
                 i_dl = int(eng.inst_dom_len[e])
                 r_dl = int(eng.room_dom_len[e])
@@ -367,17 +317,6 @@ class DestructiveConstructive(_AtomicRepairBase):
                 if t_dl > 0:
                     X[n, 3 * e + 2] = eng.time_domains[e, rng.integers(t_dl)]
 
-            total_ruined += len(worst)
-
-        # Stage 3: full pipeline reconstructs from the rubble
-        result = eng.repair_batch(X, passes=5)
-        X[:] = result
-
-        logger.debug(
-            "DestructiveConstructive: ruined %d events total, " "then 5-pass repair",
-            total_ruined,
-        )
-
 
 # ======================================================================
 # Action 5 — Intensified Repair (balanced)
@@ -385,33 +324,33 @@ class DestructiveConstructive(_AtomicRepairBase):
 
 
 class IntensifiedRepair(_AtomicRepairBase):
-    r"""Full pipeline with moderate passes — balanced middle ground.
+    r"""Domain fix + post-gen BitsetRepair on best 20% — balanced workhorse.
 
-    Runs ``repair_batch(X, passes=5)`` — between conservative (3)
-    and aggressive (7).  A solid workhorse configuration that provides
-    more repair pressure than conservative without the high disruption
-    of aggressive.
+    Three alternating passes on 20% of survivors.  More coverage
+    than Conservative (10%, 2 pass) with moderate stochastic
+    exploration.  Sits between Conservative and Aggressive in both
+    repair budget and convergence speed.
     """
 
     ACTION_NAME: ClassVar[str] = "intensified_repair"
-
-    def _apply(self, X: np.ndarray) -> None:
-        result = self.engine.repair_batch(X, passes=5)
-        X[:] = result
-        logger.debug("IntensifiedRepair: 5 passes (balanced)")
+    POST_GEN: ClassVar[PostGenConfig] = PostGenConfig(
+        elite_fraction=0.20,
+        passes=3,
+        stochastic_alternate=True,
+    )
 
 
 # ======================================================================
-# Action Space Registry — Pipeline Configurations (Phase 53)
+# Action Space Registry — Pipeline Configurations (Phase 55b)
 # ======================================================================
 
 VECTORIZED_ACTION_SPACE: dict[int, type[_AtomicRepairBase]] = {
-    0: ConservativeRepair,  # Full pipeline, 3 passes (exploit)
-    1: AggressiveRepair,  # Full pipeline, 7 passes (explore)
-    2: MemeticEliteRepair,  # 3 passes + 4 extra on worst 15%
-    3: SoftFocusRepair,  # 3 passes + time compaction (soft obj)
-    4: DestructiveConstructive,  # Ruin 10% + 5-pass repair (escape)
-    5: IntensifiedRepair,  # Full pipeline, 5 passes (balanced)
+    0: ConservativeRepair,  # 10% best, 2 passes alt
+    1: AggressiveRepair,  # 25% best, 3 passes alt
+    2: MemeticEliteRepair,  # 15% best, 4 passes alt (memetic clone)
+    3: SoftFocusRepair,  # 8% best, 2 passes + compaction
+    4: DestructiveConstructive,  # Ruin events + 20% best, 2 passes
+    5: IntensifiedRepair,  # 20% best, 3 passes det
 }
 
 ACTION_NAMES: dict[int, str] = {
