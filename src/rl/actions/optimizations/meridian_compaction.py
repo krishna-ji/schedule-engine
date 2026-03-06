@@ -1,25 +1,22 @@
-r"""Meridian Compaction Heuristic — soft-constraint optimisation.
+r"""Meridian Compaction Heuristic — Feasibility-Gated Soft Optimizer.
 
-Targets two soft constraints simultaneously:
+**UPGRADED WITH FEASIBILITY GATING**
 
-* **MIP** (Meridian Interval Preservation) — events scheduled during
-  the lunch window (within-day quanta $\{2, 3, 4\}$) are shifted to
-  adjacent non-lunch slots when a valid alternative exists.
-* **CSC** (Cohort Schedule Contiguity) — by compacting events towards
-  the earliest feasible slot, schedule gaps are reduced.
+Targets soft constraint optimization (MIP + CSC) while preventing hard
+constraint destruction. All assignment moves are now wrapped with
+evaluate_local_move to ensure ΔHard ≤ 0 before commitment.
 
-The operator works in two vectorized passes:
+Algorithm:
+1. **Lunch-window evacuation**: Move events from lunch slots to non-lunch
+   alternatives, but only if ΔHard ≤ 0 (feasibility gate).
+2. **Gap compaction**: Shift events to earliest domain slots to reduce
+   schedule gaps, but reject moves that increase hard violations.
 
-1. **Lunch-window evacuation**: for each event whose time quantum
-   falls inside the lunch window, attempt to reassign it to the
-   nearest valid time outside the window.
-2. **Gap compaction**: for ~10 % of remaining events, shift towards
-   the earliest available slot in their domain to reduce CSC gaps.
+This prevents the compaction heuristic from destroying feasibility while
+still targeting MIP (Meridian Interval Preservation) and CSC (Cohort
+Schedule Contiguity) improvements.
 
-Salvaged concept: gap-filling logic from legacy ``construction.py``
-(earliest-slot-first assignment), translated to batched domain sampling.
-
-Complexity: $O(N \cdot E)$.
+Complexity: $O(N \cdot E \cdot K)$ where $K$ = moves evaluated per event.
 """
 
 from __future__ import annotations
@@ -29,6 +26,10 @@ from typing import ClassVar
 
 import numpy as np
 
+from src.rl.actions.utils.micro_evaluator import (
+    evaluate_local_move,
+    validate_domain_move,
+)
 from src.rl.actions.vectorized_ops import _AtomicRepairBase
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,10 @@ class MeridianCompactionHeuristic(_AtomicRepairBase):
         # Current time slots — shape (N, E)
         time = X[:, 2::3].astype(np.int64)
 
-        # ── Pass 1: Lunch-window evacuation ────────────────────────
+        lunch_evacuations = 0
+        compaction_moves = 0
+
+        # ── Pass 1: Feasibility-Gated Lunch-window evacuation ─────────
         # Compute within-day quantum: q_wd = time_slot % QUANTA_PER_DAY
         within_day = time % _QUANTA_PER_DAY  # (N, E)
 
@@ -68,67 +72,152 @@ class MeridianCompactionHeuristic(_AtomicRepairBase):
         in_lunch = np.isin(within_day, _LUNCH_WITHIN_DAY)  # (N, E)
 
         if in_lunch.any():
-            bi, be = np.nonzero(in_lunch)
+            # Budget: only process top-15 individuals with most lunch conflicts
+            ind_lunch_count = in_lunch.sum(axis=1)
+            sorted_inds = np.argsort(-ind_lunch_count)
+            selected_inds = sorted_inds[: min(5, N)]
 
-            # For each conflicting event, find a domain time slot
-            # that is NOT in the lunch window
-            t_dl = eng.time_dom_len[be]
-            t_valid = t_dl > 1  # need at least 2 options to relocate
-            if t_valid.any():
-                t_bi = bi[t_valid]
-                t_be = be[t_valid]
-                t_dl_v = t_dl[t_valid]
+            for individual_idx in selected_inds:
+                if ind_lunch_count[individual_idx] == 0:
+                    break
+                for event_idx in range(E):
+                    if not in_lunch[individual_idx, event_idx]:
+                        continue
 
-                # Sample a random domain slot and check if it's outside lunch
-                # Attempt up to 3 tries to find a non-lunch slot
-                for _attempt in range(3):
-                    t_idx = (rng.random(len(t_bi)) * t_dl_v).astype(np.int64)
-                    t_idx = np.minimum(t_idx, t_dl_v - 1)
-                    candidates = eng.time_domains[t_be, t_idx]
-                    cand_wd = candidates % _QUANTA_PER_DAY
-                    outside = ~np.isin(cand_wd, _LUNCH_WITHIN_DAY)
+                    current_inst = int(X[individual_idx, 3 * event_idx + 0])
+                    current_room = int(X[individual_idx, 3 * event_idx + 1])
+                    current_time = int(X[individual_idx, 3 * event_idx + 2])
 
-                    if outside.any():
-                        ok_bi = t_bi[outside]
-                        ok_be = t_be[outside]
-                        ok_val = candidates[outside]
-                        X[ok_bi, 3 * ok_be + 2] = ok_val
+                    # Try to find a non-lunch alternative
+                    t_dl = eng.time_dom_len[event_idx]
+                    if t_dl <= 1:  # Need at least 2 options to relocate
+                        continue
 
-                        # Remove successfully moved from retry set
-                        still_inside = ~outside
-                        t_bi = t_bi[still_inside]
-                        t_be = t_be[still_inside]
-                        t_dl_v = t_dl_v[still_inside]
+                    # Sample from time domain and test non-lunch candidates
+                    best_delta = 0.0  # Only accept non-degrading moves
+                    best_time = current_time
+                    attempts = 0
+                    max_attempts = min(5, t_dl)  # Try up to 5 alternatives
 
-                    if len(t_bi) == 0:
-                        break
+                    for _ in range(max_attempts):
+                        attempts += 1
+                        t_idx = rng.integers(0, t_dl)
+                        candidate_time = eng.time_domains[event_idx, t_idx]
 
-            n_evacuated = int(in_lunch.sum()) - len(t_bi) if t_valid.any() else 0
+                        # Skip if same as current or still in lunch window
+                        if candidate_time == current_time:
+                            continue
+                        cand_wd = candidate_time % _QUANTA_PER_DAY
+                        if cand_wd in _LUNCH_WITHIN_DAY:
+                            continue
+
+                        # Validate domain constraints
+                        if not validate_domain_move(
+                            eng, event_idx, candidate_time, current_room, current_inst
+                        ):
+                            continue
+
+                        # === FEASIBILITY GATE: Check ΔHard ===
+                        delta = evaluate_local_move(
+                            eng,
+                            X,
+                            individual_idx,
+                            event_idx,
+                            candidate_time,
+                            current_room,
+                            current_inst,
+                        )
+
+                        # Accept if improvement or neutral (ΔHard ≤ 0)
+                        if delta <= best_delta:
+                            best_delta = delta
+                            best_time = candidate_time
+
+                    # Commit the best feasible move (if any improvement/neutral)
+                    if best_time != current_time and best_delta <= 0.0:
+                        X[individual_idx, 3 * event_idx + 2] = best_time
+                        lunch_evacuations += 1
+
+                        logger.debug(
+                            "Lunch evacuation: ind=%d, event=%d, time %d→%d, ΔHard=%.3f",
+                            individual_idx,
+                            event_idx,
+                            current_time,
+                            best_time,
+                            best_delta,
+                        )
+
             logger.debug(
                 "MeridianCompaction pass 1: %d/%d events evacuated from lunch",
-                n_evacuated,
+                lunch_evacuations,
                 int(in_lunch.sum()),
             )
 
-        # ── Pass 2: Gap compaction (shift towards earliest slot) ───
+        # ── Pass 2: Feasibility-Gated Gap compaction ──────────────────
         compact_mask = rng.random((N, E)) < self.compaction_rate
-        if compact_mask.any():
-            c_bi, c_be = np.nonzero(compact_mask)
 
-            # For selected events, assign the EARLIEST domain time slot
-            # (index 0 in sorted domain) to compact the schedule
-            t_dl = eng.time_dom_len[c_be]
-            t_v = t_dl > 0
-            if t_v.any():
-                c_bi_v = c_bi[t_v]
-                c_be_v = c_be[t_v]
-                # Domain arrays are typically sorted ascending, so index 0
-                # gives the earliest feasible slot
-                X[c_bi_v, 3 * c_be_v + 2] = eng.time_domains[c_be_v, 0]
+        if compact_mask.any():
+            # Budget: only process top-15 individuals
+            ind_compact_count = compact_mask.sum(axis=1)
+            sorted_inds = np.argsort(-ind_compact_count)
+            selected_inds = sorted_inds[: min(5, N)]
+
+            for individual_idx in selected_inds:
+                if ind_compact_count[individual_idx] == 0:
+                    break
+                for event_idx in range(E):
+                    if not compact_mask[individual_idx, event_idx]:
+                        continue
+
+                    current_inst = int(X[individual_idx, 3 * event_idx + 0])
+                    current_room = int(X[individual_idx, 3 * event_idx + 1])
+                    current_time = int(X[individual_idx, 3 * event_idx + 2])
+
+                    # Try earliest domain slot (compaction target)
+                    t_dl = eng.time_dom_len[event_idx]
+                    if t_dl == 0:
+                        continue
+
+                    # Domain arrays are sorted, so index 0 = earliest slot
+                    earliest_time = eng.time_domains[event_idx, 0]
+
+                    if earliest_time == current_time:
+                        continue  # Already at earliest slot
+
+                    # Validate domain constraints
+                    if not validate_domain_move(
+                        eng, event_idx, earliest_time, current_room, current_inst
+                    ):
+                        continue
+
+                    # === FEASIBILITY GATE: Check ΔHard ===
+                    delta = evaluate_local_move(
+                        eng,
+                        X,
+                        individual_idx,
+                        event_idx,
+                        earliest_time,
+                        current_room,
+                        current_inst,
+                    )
+
+                    # Only commit if feasible (ΔHard ≤ 0)
+                    if delta <= 0.0:
+                        X[individual_idx, 3 * event_idx + 2] = earliest_time
+                        compaction_moves += 1
+
+                        logger.debug(
+                            "Gap compaction: ind=%d, event=%d, time %d→%d, ΔHard=%.3f",
+                            individual_idx,
+                            event_idx,
+                            current_time,
+                            earliest_time,
+                            delta,
+                        )
 
             logger.debug(
                 "MeridianCompaction pass 2: %d/%d events compacted (rate=%.2f)",
+                compaction_moves,
                 int(compact_mask.sum()),
-                N * E,
                 self.compaction_rate,
             )

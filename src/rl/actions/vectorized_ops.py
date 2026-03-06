@@ -457,9 +457,15 @@ class ActionFullRepair(_AtomicRepairBase):
 
 # Repairs (hard-constraint feasibility projections)
 # Optimizations (soft-constraint quality-of-life)
-from src.rl.actions.optimizations.meridian_compaction import MeridianCompactionHeuristic
 
 # Perturbations (stochastic neighbourhood exploration)
+
+# ======================================================================
+# Elite 8 — Full Micro-Memetic Action Space (RESTORED)
+# ======================================================================
+# Imports from academic-taxonomy modules with micro-memetic upgrades
+
+from src.rl.actions.optimizations.meridian_compaction import MeridianCompactionHeuristic
 from src.rl.actions.perturbations.stochastic_quanta_perturbation import (
     StochasticQuantaPerturbation,
 )
@@ -475,14 +481,16 @@ from src.rl.actions.repairs.universal_feasibility_projection import (
 )
 
 VECTORIZED_ACTION_SPACE: dict[int, type[_AtomicRepairBase]] = {
-    0: SpatialResourceProjection,
-    1: FacultyTemporalProjection,
-    2: CohortTemporalProjection,
-    3: SymmetricSubcohortSync,
-    4: UniversalFeasibilityProjection,
-    5: StochasticQuantaPerturbation,
-    6: StochasticSpatialPerturbation,
-    7: MeridianCompactionHeuristic,
+    0: SpatialResourceProjection,  # Conflict-directed room sniper (micro-memetic)
+    1: FacultyTemporalProjection,  # Instructor clash repair
+    2: CohortTemporalProjection,  # Group clash repair
+    3: SymmetricSubcohortSync,  # SSCP paired-practical sync (soft)
+    4: (
+        UniversalFeasibilityProjection
+    ),  # Bounded ejection chain bulldozer (micro-memetic)
+    5: StochasticQuantaPerturbation,  # Time-slot exploration
+    6: StochasticSpatialPerturbation,  # Room exploration
+    7: MeridianCompactionHeuristic,  # Feasibility-gated soft optimizer (soft)
 }
 
 ACTION_NAMES: dict[int, str] = {

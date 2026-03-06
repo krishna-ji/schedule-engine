@@ -154,6 +154,9 @@ class PymooHyperHeuristicEnv(gym.Env):
         self._found_feasible: bool = False
         self._episode_start: float = 0.0
 
+        # -- State-Conditioned Action Masking -----------------------------
+        self._current_best_hard: float = np.inf  # Track for action masking
+
     # ------------------------------------------------------------------
     # Gym API
     # ------------------------------------------------------------------
@@ -241,6 +244,7 @@ class PymooHyperHeuristicEnv(gym.Env):
 
         self._prev_best_hard = float(F[:, 0].min())
         self._prev_best_soft = float(F[:, 1].min())
+        self._current_best_hard = self._prev_best_hard  # Update for masking
 
         info = self._build_info(F, G)
         return obs, info
@@ -336,6 +340,7 @@ class PymooHyperHeuristicEnv(gym.Env):
             # Update tracking
             self._prev_best_hard = best_hard
             self._prev_best_soft = best_soft
+            self._current_best_hard = best_hard  # Update for masking
             logger.debug(
                 "Gen %d | action=%d (%s) | COMMITTED | hard=%.1f | R=%.4f | %.2fs",
                 self._gen,
@@ -346,8 +351,10 @@ class PymooHyperHeuristicEnv(gym.Env):
                 step_time,
             )
 
-        # -- Termination checks -------------------------------------------
-        terminated = bool(best_hard == 0.0)
+        # -- Termination checks (DISABLED for training) -----------------------
+        # Disable early termination to prevent micro-memetic optimizers from
+        # ending episodes too quickly. Let episodes run full max_generations.
+        terminated = False  # Never terminate early during training
         truncated = self._gen >= self.max_generations
 
         info = self._build_info(*self._extract_pop(self._algorithm.pop)[:2])
@@ -460,6 +467,33 @@ class PymooHyperHeuristicEnv(gym.Env):
                 info[f"cv_{name}"] = 0.0
 
         return info
+
+    # ------------------------------------------------------------------
+    # State-Conditioned Action Masking
+    # ------------------------------------------------------------------
+
+    def action_masks(self) -> np.ndarray:
+        """Return boolean mask for valid actions based on current state.
+
+        Soft optimizers (Actions 3 and 7) are masked out when hard
+        constraints are violated, forcing the agent to focus on
+        feasibility repair before soft optimization.
+
+        Returns
+        -------
+        mask : ndarray(8,), bool
+            True means action is available. Actions 3 (SymmetricSubcohortSync)
+            and 7 (MeridianCompaction) are False when best_hard > 0.
+        """
+        # Default: all actions available
+        mask = np.ones(NUM_ACTIONS, dtype=bool)
+
+        # If schedule has hard constraint violations, block soft optimizers
+        if self._current_best_hard > 0.0:
+            mask[3] = False  # SymmetricSubcohortSync (soft optimizer)
+            mask[7] = False  # MeridianCompaction (soft optimizer)
+
+        return mask
 
     def render(self) -> None:
         """No rendering — headless environment."""
