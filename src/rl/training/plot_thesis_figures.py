@@ -1,10 +1,11 @@
 r"""Generate publication-ready thesis figures from RL training CSVs.
 
-Produces three PDF figures suitable for direct \LaTeX\ inclusion:
+Produces up to four PDF figures suitable for direct \LaTeX\ inclusion:
 
 1. **Learning Curve** — episode reward with rolling-window smoothing.
 2. **AOS Policy Map** — action selection scatter over generations.
 3. **Convergence Trajectory** — hard / soft penalty descent (dual axis).
+4. **Baseline Comparison** — PPO vs 6 static baselines (hard + soft).
 
 All figures use Times New Roman (serif), 300 DPI, and the Okabe-Ito
 colourblind-safe palette.
@@ -15,7 +16,10 @@ Usage
 .. code-block:: python
 
     from src.rl.training.plot_thesis_figures import generate_plots
-    pdfs = generate_plots(Path("output/rl_vectorized/20260225_120000"))
+    pdfs = generate_plots(
+        Path("output/rl_phase54/20260307_120000"),
+        baselines_csv=Path("output/rl_phase54/static_baselines.csv"),
+    )
 """
 
 from __future__ import annotations
@@ -40,16 +44,14 @@ _CB = [
     "#000000",  # 7 black
 ]
 
-# Canonical action labels (must agree with vectorized_ops.py Elite 8)
+# Canonical action labels (Phase 53 pipeline LLH space)
 _ACTION_LABELS: dict[int, str] = {
-    0: "Spatial Resource (SRE)",
-    1: "Faculty Temporal (FTE)",
-    2: "Cohort Temporal (CTE)",
-    3: "Subcohort Sync (SSCP)",
-    4: "Universal Feasibility",
-    5: "Quanta Perturbation",
-    6: "Spatial Perturbation",
-    7: "Meridian Compaction",
+    0: "Conservative (3-pass)",
+    1: "Aggressive (7-pass)",
+    2: "Memetic Elite",
+    3: "Soft-Focus",
+    4: "Destruct.-Construct.",
+    5: "Intensified (5-pass)",
 }
 
 
@@ -293,8 +295,141 @@ def _fig_03_convergence(run_dir: Path, plt) -> Path | None:
 # ------------------------------------------------------------------
 
 
-def generate_plots(run_dir: str | Path, rolling_window: int = 10) -> list[Path]:
-    """Generate all three thesis figures from CSVs in *run_dir*.
+def _fig_04_baseline_comparison(
+    run_dir: Path,
+    plt,
+    baselines_csv: str | Path | None = None,
+) -> Path | None:
+    """Fig 4: PPO adaptive vs 6 static baselines (hard + soft panels).
+
+    Main panel: Best Hard Constraint vs Generation.
+    Inset/secondary panel: Best Soft Constraint vs Generation.
+    """
+    # -- Load PPO evaluation trajectory ----------------------------------
+    eval_csv = run_dir / "evaluation_trajectory.csv"
+    if not eval_csv.exists():
+        logger.warning("evaluation_trajectory.csv not found — skipping Fig 4")
+        return None
+
+    if baselines_csv is None:
+        logger.warning("No baselines_csv provided — skipping Fig 4")
+        return None
+    baselines_csv = Path(baselines_csv)
+    if not baselines_csv.exists():
+        logger.warning("static_baselines.csv not found — skipping Fig 4")
+        return None
+
+    ppo_rows = _read_csv(eval_csv)
+    bl_rows = _read_csv(baselines_csv)
+
+    ppo_gens = np.array([int(r["generation"]) for r in ppo_rows])
+    ppo_hard = np.array([float(r["best_hard"]) for r in ppo_rows])
+    ppo_soft = np.array([float(r["best_soft"]) for r in ppo_rows])
+
+    # -- Aggregate baselines (mean across seeds per generation) ----------
+    action_ids = sorted(set(int(r["action_id"]) for r in bl_rows))
+
+    # Build per-action trajectories
+    bl_data: dict[int, dict] = {}
+    for aid in action_ids:
+        aid_rows = [r for r in bl_rows if int(r["action_id"]) == aid]
+        seeds = sorted(set(int(r["seed"]) for r in aid_rows))
+
+        # Collect per-seed trajectories, then average
+        gen_set = sorted(set(int(r["generation"]) for r in aid_rows))
+        hard_by_gen = {g: [] for g in gen_set}
+        soft_by_gen = {g: [] for g in gen_set}
+
+        for r in aid_rows:
+            g = int(r["generation"])
+            hard_by_gen[g].append(float(r["best_hard"]))
+            soft_by_gen[g].append(float(r["best_soft"]))
+
+        gens = np.array(gen_set)
+        avg_hard = np.array([np.mean(hard_by_gen[g]) for g in gen_set])
+        avg_soft = np.array([np.mean(soft_by_gen[g]) for g in gen_set])
+        name = aid_rows[0].get("action_name", f"action_{aid}")
+
+        bl_data[aid] = {
+            "gens": gens,
+            "hard": avg_hard,
+            "soft": avg_soft,
+            "name": name,
+            "n_seeds": len(seeds),
+        }
+
+    # -- Plot: 2-panel figure (hard on top, soft on bottom) --------------
+    fig, (ax_h, ax_s) = plt.subplots(2, 1, figsize=(7, 7), sharex=True)
+
+    # Static baselines (dashed)
+    for aid in action_ids:
+        d = bl_data[aid]
+        label = _ACTION_LABELS.get(aid, d["name"])
+        color = _CB[aid % len(_CB)]
+        ax_h.plot(
+            d["gens"],
+            d["hard"],
+            color=color,
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.7,
+            label=f"Static: {label}",
+        )
+        ax_s.plot(
+            d["gens"],
+            d["soft"],
+            color=color,
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.7,
+            label=f"Static: {label}",
+        )
+
+    # PPO adaptive (solid, bold, black)
+    ax_h.plot(
+        ppo_gens,
+        ppo_hard,
+        color=_CB[7],
+        linewidth=2.5,
+        marker="o",
+        markersize=3,
+        label="PPO Adaptive",
+        zorder=10,
+    )
+    ax_s.plot(
+        ppo_gens,
+        ppo_soft,
+        color=_CB[7],
+        linewidth=2.5,
+        marker="s",
+        markersize=3,
+        label="PPO Adaptive",
+        zorder=10,
+    )
+
+    ax_h.set_ylabel("Best Hard Constraint Penalty")
+    ax_h.set_title("PPO Adaptive vs Static Baselines — Hard Constraints")
+    ax_h.legend(fontsize=7, ncol=2, loc="upper right", framealpha=0.9)
+
+    ax_s.set_xlabel("Generation")
+    ax_s.set_ylabel("Best Soft Constraint Penalty")
+    ax_s.set_title("PPO Adaptive vs Static Baselines — Soft Constraints")
+    ax_s.legend(fontsize=7, ncol=2, loc="upper right", framealpha=0.9)
+
+    fig.tight_layout()
+    out = run_dir / "fig_04_baseline_comparison.pdf"
+    fig.savefig(str(out))
+    plt.close(fig)
+    logger.info("Saved: %s", out)
+    return out
+
+
+def generate_plots(
+    run_dir: str | Path,
+    rolling_window: int = 10,
+    baselines_csv: str | Path | None = None,
+) -> list[Path]:
+    """Generate all thesis figures from CSVs in *run_dir*.
 
     Parameters
     ----------
@@ -303,6 +438,9 @@ def generate_plots(run_dir: str | Path, rolling_window: int = 10) -> list[Path]:
         ``evaluation_trajectory.csv``.
     rolling_window : int
         Smoothing window for the learning curve (Fig 1).
+    baselines_csv : str | Path | None
+        Path to ``static_baselines.csv`` for Fig 4.  If ``None`` or
+        the file does not exist, Fig 4 is skipped.
 
     Returns
     -------
@@ -317,6 +455,7 @@ def generate_plots(run_dir: str | Path, rolling_window: int = 10) -> list[Path]:
         lambda: _fig_01_learning_curve(run_dir, plt, rolling_window),
         lambda: _fig_02_aos_policy(run_dir, plt),
         lambda: _fig_03_convergence(run_dir, plt),
+        lambda: _fig_04_baseline_comparison(run_dir, plt, baselines_csv),
     ):
         p = fig_fn()
         if p is not None:

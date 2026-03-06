@@ -6,10 +6,11 @@ Ingests convergence data from all solvers and plots
 
   1. Pure GA      (Mode A — ``output/ga_baseline/``)
   2. Memetic GA   (Mode B — ``output/ga_memetic/``)
-  3. Random       (``output/baselines/random_eval_200.csv``)
-  4. Round-Robin  (``output/baselines/round_robin_eval_200.csv``)
-  5. UCB1         (``output/baselines/ucb1_eval_200.csv``)
-  6. MaskablePPO  (Titan — ``output/titan/`` or step log)
+  3. Random V2    (``output/baselines/v2/random_eval_200.csv``)
+  4. Round-Robin V2 (``output/baselines/v2/round_robin_eval_200.csv``)
+  5. UCB1 V2      (``output/baselines/v2/ucb1_eval_200.csv``)
+  6. MaskablePPO  (Titan V1 — ``output/titan/``)
+  7. MaskablePPO  (Titan V2 — ``output/titan_v2/``)
 
 Usage::
 
@@ -122,9 +123,23 @@ def load_ga_memetic() -> tuple[np.ndarray, np.ndarray] | None:
     return None
 
 
-def load_baseline_csv(name: str) -> tuple[np.ndarray, np.ndarray] | None:
-    """Load RL baseline CSV: (generations, best_hard)."""
-    csv_path = PROJECT_ROOT / "output" / "baselines" / f"{name}_eval_200.csv"
+def load_baseline_csv(
+    name: str,
+    version: str = "v2",
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Load RL baseline CSV: (generations, best_hard).
+
+    Parameters
+    ----------
+    name : str
+        Baseline name (random, round_robin, ucb1).
+    version : str
+        'v2' reads from output/baselines/v2/, 'v1' from output/baselines/.
+    """
+    if version == "v2":
+        csv_path = PROJECT_ROOT / "output" / "baselines" / "v2" / f"{name}_eval_200.csv"
+    else:
+        csv_path = PROJECT_ROOT / "output" / "baselines" / f"{name}_eval_200.csv"
     if not csv_path.exists():
         logger.warning("Baseline CSV not found: %s", csv_path)
         return None
@@ -138,23 +153,36 @@ def load_baseline_csv(name: str) -> tuple[np.ndarray, np.ndarray] | None:
             gens.append(int(row["generation"]))
             hards.append(float(row["best_hard"]))
 
-    logger.info("%s baseline: %d gens from %s", name, len(gens), csv_path)
+    logger.info("%s baseline (%s): %d gens from %s", name, version, len(gens), csv_path)
     return np.array(gens), np.array(hards)
 
 
-def load_titan_model() -> tuple[np.ndarray, np.ndarray] | None:
+def load_titan_model(
+    version: str = "v1",
+) -> tuple[np.ndarray, np.ndarray] | None:
     """Load Titan MaskablePPO training trajectory.
 
-    Attempts to load from the titan training log CSV.  Falls back to
-    evaluating the saved model for 200 generations if no training log
-    exists.
+    Parameters
+    ----------
+    version : str
+        'v1' reads from output/titan/, 'v2' from output/titan_v2/.
     """
+    if version == "v2":
+        titan_dir = PROJECT_ROOT / "output" / "titan_v2"
+        log_name = "titan_v2_training_log.csv"
+        model_name = "maskable_ppo_titan_v2_meta.zip"
+        label = "Titan V2"
+    else:
+        titan_dir = PROJECT_ROOT / "output" / "titan"
+        log_name = "titan_training_log.csv"
+        model_name = "maskable_ppo_titan.zip"
+        label = "Titan V1"
+
     # Try training log first
-    titan_dir = PROJECT_ROOT / "output" / "titan"
     if titan_dir.exists():
         runs = sorted(titan_dir.iterdir(), reverse=True)
         for run_dir in runs:
-            log_path = run_dir / "titan_training_log.csv"
+            log_path = run_dir / log_name
             if log_path.exists():
                 import csv as csvmod
 
@@ -165,12 +193,11 @@ def load_titan_model() -> tuple[np.ndarray, np.ndarray] | None:
                         episodes.append(int(row["episode"]))
                         best_hards.append(float(row["best_hard_ever"]))
                 if episodes:
-                    # Convert episodes to generation-equivalents
-                    # Each episode = MAX_GENERATIONS (50) GA generations
                     GENS_PER_EPISODE = 50
                     gen_equiv = np.array(episodes) * GENS_PER_EPISODE
                     logger.info(
-                        "Titan: %d episodes (gen-equiv %d→%d) from training log",
+                        "%s: %d episodes (gen-equiv %d→%d) from training log",
+                        label,
                         len(episodes),
                         gen_equiv[0],
                         gen_equiv[-1],
@@ -178,12 +205,12 @@ def load_titan_model() -> tuple[np.ndarray, np.ndarray] | None:
                     return gen_equiv, np.array(best_hards)
 
     # Try evaluating saved model
-    model_path = PROJECT_ROOT / "output" / "models" / "maskable_ppo_titan.zip"
+    model_path = PROJECT_ROOT / "output" / "models" / model_name
     if not model_path.exists():
-        logger.warning("No Titan model or training log found")
+        logger.warning("No %s model or training log found", label)
         return None
 
-    logger.info("Evaluating Titan model for 200 generations...")
+    logger.info("Evaluating %s model for 200 generations...", label)
     return _evaluate_titan_model(model_path)
 
 
@@ -263,21 +290,28 @@ def plot_grand_master():
     if ga_mem is not None:
         datasets["Memetic GA (Mode B)"] = ga_mem
 
-    random_data = load_baseline_csv("random")
+    # V2 baselines (Meta-Heuristic action space)
+    random_data = load_baseline_csv("random", version="v2")
     if random_data is not None:
-        datasets["Random Heuristic"] = random_data
+        datasets["Random V2"] = random_data
 
-    rr_data = load_baseline_csv("round_robin")
+    rr_data = load_baseline_csv("round_robin", version="v2")
     if rr_data is not None:
-        datasets["Round-Robin"] = rr_data
+        datasets["Round-Robin V2"] = rr_data
 
-    ucb1_data = load_baseline_csv("ucb1")
+    ucb1_data = load_baseline_csv("ucb1", version="v2")
     if ucb1_data is not None:
-        datasets["UCB1 Bandit"] = ucb1_data
+        datasets["UCB1 V2"] = ucb1_data
 
-    titan_data = load_titan_model()
-    if titan_data is not None:
-        datasets["MaskablePPO (Titan)"] = titan_data
+    # Titan V1 (original action space)
+    titan_v1 = load_titan_model(version="v1")
+    if titan_v1 is not None:
+        datasets["MaskablePPO (Titan V1)"] = titan_v1
+
+    # Titan V2 (Meta-Heuristic action space)
+    titan_v2 = load_titan_model(version="v2")
+    if titan_v2 is not None:
+        datasets["MaskablePPO (Titan V2)"] = titan_v2
 
     if not datasets:
         logger.error("No data sources found! Run baselines and/or Titan first.")
@@ -306,10 +340,21 @@ def plot_grand_master():
     style_map = {
         "Pure GA (Mode A)": {"color": "#888888", "ls": "--", "lw": 1.5, "alpha": 0.7},
         "Memetic GA (Mode B)": {"color": "#2ca02c", "ls": "-", "lw": 2.0, "alpha": 0.9},
-        "Random Heuristic": {"color": "#7f7f7f", "ls": ":", "lw": 1.2, "alpha": 0.6},
-        "Round-Robin": {"color": "#9467bd", "ls": "-.", "lw": 1.3, "alpha": 0.7},
-        "UCB1 Bandit": {"color": "#ff7f0e", "ls": "-.", "lw": 1.5, "alpha": 0.8},
-        "MaskablePPO (Titan)": {"color": "#d62728", "ls": "-", "lw": 2.5, "alpha": 1.0},
+        "Random V2": {"color": "#7f7f7f", "ls": ":", "lw": 1.2, "alpha": 0.6},
+        "Round-Robin V2": {"color": "#9467bd", "ls": "-.", "lw": 1.3, "alpha": 0.7},
+        "UCB1 V2": {"color": "#ff7f0e", "ls": "-.", "lw": 1.5, "alpha": 0.8},
+        "MaskablePPO (Titan V1)": {
+            "color": "#d62728",
+            "ls": "--",
+            "lw": 1.8,
+            "alpha": 0.7,
+        },
+        "MaskablePPO (Titan V2)": {
+            "color": "#1f77b4",
+            "ls": "-",
+            "lw": 2.5,
+            "alpha": 1.0,
+        },
     }
 
     # -- Create figure -----------------------------------------------------

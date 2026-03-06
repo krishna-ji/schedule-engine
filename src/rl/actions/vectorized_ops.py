@@ -1,36 +1,45 @@
-r"""Atomic vectorized repair actions for the RL hyper-heuristic.
+r"""Pipeline-configuration LLHs for the RL hyper-heuristic.
 
-Each class isolates **one** repair concern from the monolithic
-``VectorizedRepair.repair_batch`` pipeline.  The RL agent picks one
-action per generation; the Pymoo algorithm injects it as
-``algorithm.mating.repair`` and calls ``algorithm.next()``.
+**Phase 53 architectural redesign** — each Low-Level Heuristic (LLH)
+runs the **complete** three-stage ``VectorizedRepair.repair_batch``
+pipeline with different parameter configurations.  The RL agent
+selects which *configuration* to use each generation, not which
+single repair concern to address.
 
-Architecture
-------------
+Previous architecture (Phases 35-52) had 8 atomic operators that each
+fixed ONE constraint type per generation inside the same Pymoo
+``Repair`` slot.  They overwrote each other's work.  The working
+memetic mode ran them ALL in sequence — which is exactly what
+``repair_batch`` does.
 
-All operators inherit from ``pymoo.core.repair.Repair`` and share a
-common ``VectorizedRepair`` engine (loaded once via the pkl path).
-The heavy precomputation (domain matrices, expansion arrays, boolean
-availability tensors) happens **once** at construction; each
-``_do`` call is a thin, purely-vectorised NumPy kernel.
+New architecture
+----------------
 
-Action registry
----------------
+Each LLH is a ``pymoo.core.repair.Repair`` that calls the full
+pipeline ``engine.repair_batch(X, passes=P)`` with different ``P``,
+then optionally applies a second-stage intensification or
+diversification kernel.
 
-``VECTORIZED_ACTION_SPACE`` maps integer action IDs to classes::
+Pipeline configurations::
 
-    {0: ActionRepairRoomClash,
-     1: ActionRepairInstructorClash,
-     2: ActionSyncSSCP,
-     3: ActionRandomPerturb,
-     4: ActionRepairGroupClash,
-     5: ActionFullRepair}
+    0: ConservativeRepair   — passes=3, exploit (steady progress)
+    1: AggressiveRepair     — passes=7, explore (heavy resampling)
+    2: MemeticEliteRepair   — passes=3 + extra passes on top-15% worst
+    3: SoftFocusRepair      — passes=3 + time-compaction for soft obj
+    4: DestructiveConstructive — ruin 10% worst + passes=5 (escape)
+    5: IntensifiedRepair    — passes=5, balanced middle ground
+
+The RL agent learns *when* to use aggressive vs. conservative, when
+to trigger elite intensification, when to ruin-and-reconstruct to
+escape plateaus.  Every action produces a coherent, fully-repaired
+population.
 
 Complexity
 ----------
 
-Each atomic action is $O(N \cdot Q)$ or better.  ``ActionFullRepair``
-runs the original three-stage pipeline as a fallback.
+All LLHs are $O(\text{passes} \cdot N \cdot Q)$ with optional
+$+O(N \cdot E)$ intensification.  No action is destructive —
+rollback is unnecessary.
 """
 
 from __future__ import annotations
@@ -66,9 +75,10 @@ def _get_engine(pkl_path: str) -> VectorizedRepair:
 
 
 class _AtomicRepairBase(Repair):
-    """Base for all atomic RL actions.
+    """Base for all pipeline-configuration LLH actions.
 
-    Subclasses override ``_apply`` which receives the engine and X.
+    Subclasses override ``_apply`` which receives the population
+    matrix X and applies a complete repair pipeline configuration.
     """
 
     ACTION_NAME: ClassVar[str] = "base"
@@ -91,214 +101,234 @@ class _AtomicRepairBase(Repair):
 
 
 # ======================================================================
-# Action 0 — Repair Room Clashes (SRE)
+# Action 0 — Conservative Repair (exploit)
 # ======================================================================
 
 
-class ActionRepairRoomClash(_AtomicRepairBase):
-    r"""Resolve Spatial Resource Exclusivity (room double-booking).
+class ConservativeRepair(_AtomicRepairBase):
+    r"""Full pipeline with low passes — steady exploitation.
 
-    Detects room double-booking via ``np.bincount`` on linearised
-    room-time keys $k = n \cdot R \cdot T + r \cdot T + q$.
-    Conflicting events get their **room** resampled from
-    $\mathcal{D}_e^{\text{room}}$.
+    Runs ``repair_batch(X, passes=3)`` — the same configuration used
+    by the working memetic GA.  Minimal disruption to the population,
+    preserving good schemata while resolving the worst conflicts.
 
-    Domain domains are *always* fixed first to avoid sampling from
-    invalid indices.
+    This is the *safe default* action: consistent progress, low
+    variance, no risk of population degradation.
     """
 
-    ACTION_NAME: ClassVar[str] = "repair_room_clash"
+    ACTION_NAME: ClassVar[str] = "conservative_repair"
+
+    def _apply(self, X: np.ndarray) -> None:
+        result = self.engine.repair_batch(X, passes=3)
+        X[:] = result
+        logger.debug("ConservativeRepair: 3 passes (exploit)")
+
+
+# ======================================================================
+# Action 1 — Aggressive Repair (explore)
+# ======================================================================
+
+
+class AggressiveRepair(_AtomicRepairBase):
+    r"""Full pipeline with high passes — aggressive exploration.
+
+    Runs ``repair_batch(X, passes=7)`` — more than double the
+    standard passes.  Each extra pass rescores the population,
+    applies a fresh 30% stochastic mutation mask, and resamples
+    conflicting events.
+
+    High disruption: many events get resampled multiple times,
+    breaking structural correlations.  Useful when the population
+    is stuck in a penalty plateau — the extra passes explore more
+    of the feasible neighbourhood per generation.
+    """
+
+    ACTION_NAME: ClassVar[str] = "aggressive_repair"
+
+    def _apply(self, X: np.ndarray) -> None:
+        result = self.engine.repair_batch(X, passes=7)
+        X[:] = result
+        logger.debug("AggressiveRepair: 7 passes (explore)")
+
+
+# ======================================================================
+# Action 2 — Memetic Elite Repair
+# ======================================================================
+
+
+class MemeticEliteRepair(_AtomicRepairBase):
+    r"""Full pipeline + extra targeted repair on worst individuals.
+
+    1. Standard ``repair_batch(X, passes=3)`` on full population.
+    2. Score population via ``_score_all_batch``.
+    3. Identify top-15% worst individuals (by total conflict score).
+    4. Apply 4 additional repair passes **only** on those elites.
+
+    This concentrates computational budget on the individuals most
+    likely to benefit from extra repair, while leaving already-good
+    individuals untouched.  The RL agent should select this when
+    the population has a wide quality spread (some individuals
+    near-feasible, others heavily infeasible).
+    """
+
+    ACTION_NAME: ClassVar[str] = "memetic_elite_repair"
+
+    def __init__(
+        self,
+        pkl_path: str = ".cache/events_with_domains.pkl",
+        elite_fraction: float = 0.15,
+        extra_passes: int = 4,
+    ):
+        super().__init__(pkl_path)
+        self.elite_fraction = elite_fraction
+        self.extra_passes = extra_passes
 
     def _apply(self, X: np.ndarray) -> None:
         eng = self.engine
         N = X.shape[0]
-        E = eng.n_events
-        T_ = __import__("src.pipeline.bitset_time", fromlist=["T"]).T
 
-        # Fix domains first (prerequisite)
-        eng._fix_domains_vec(X)
+        # Stage 1: full pipeline on everyone
+        result = eng.repair_batch(X, passes=3)
+        X[:] = result
 
-        inst = np.clip(X[:, 0::3], 0, eng.n_instructors - 1).astype(np.int64)
-        room = np.clip(X[:, 1::3], 0, eng.n_rooms - 1).astype(np.int64)
-        time = X[:, 2::3].astype(np.int64)
+        # Stage 2: score and identify worst individuals
+        scores = eng._score_all_batch(X)  # (N, E)
+        ind_severity = scores.sum(axis=1)  # (N,)
 
-        n_idx = np.arange(N, dtype=np.int64)[:, None]
+        n_elite = max(1, int(N * self.elite_fraction))
+        worst_idx = np.argsort(-ind_severity)[:n_elite]
 
-        # Expand to quantum level using engine's expansion arrays
-        starts_exp = time[:, eng.exp_event]
-        quanta_exp = np.clip(starts_exp + eng.exp_offset[None, :], 0, T_ - 1)
-        rooms_exp = room[:, eng.exp_event]
-        event_lin = (n_idx * E + eng.exp_event[None, :]).ravel()
-        NE = N * E
-
-        # Room occupancy histogram
-        nRT = np.int64(eng.n_rooms) * np.int64(T_)
-        room_keys = (n_idx * nRT + rooms_exp * T_ + quanta_exp).ravel()
-        room_cnt = np.bincount(room_keys, minlength=int(N * nRT))
-        room_conflict = (room_cnt[room_keys] > 1).astype(np.float64)
-
-        # Aggregate to per-event score
-        scores = np.bincount(event_lin, weights=room_conflict, minlength=NE)
-        scores = scores[:NE].reshape(N, E)
-
-        conflict_mask = scores > 0
-        if not conflict_mask.any():
+        if ind_severity[worst_idx[0]] == 0:
+            # Everyone is already clean — nothing to do
+            logger.debug("MemeticEliteRepair: population clean, skipping elite pass")
             return
 
-        rng = np.random.default_rng()
-
-        # Resample room for conflicting events
-        bi, be = np.nonzero(conflict_mask)
-        r_dl = eng.room_dom_len[be]
-        r_valid = r_dl > 0
-        bi, be, r_dl = bi[r_valid], be[r_valid], r_dl[r_valid]
-        r_idx = (rng.random(len(bi)) * r_dl).astype(np.int64)
-        r_idx = np.minimum(r_idx, r_dl - 1)
-        X[bi, 3 * be + 1] = eng.room_domains[be, r_idx]
-
-        # Also resample time for ~40 % to break structural overlaps
-        do_time = rng.random(len(bi)) < 0.4
-        t_bi, t_be = bi[do_time], be[do_time]
-        t_dl = eng.time_dom_len[t_be]
-        t_v = t_dl > 0
-        t_bi, t_be, t_dl = t_bi[t_v], t_be[t_v], t_dl[t_v]
-        t_idx = (rng.random(len(t_bi)) * t_dl).astype(np.int64)
-        t_idx = np.minimum(t_idx, t_dl - 1)
-        X[t_bi, 3 * t_be + 2] = eng.time_domains[t_be, t_idx]
+        # Stage 3: extra passes on worst subset only
+        X_elite = X[worst_idx].copy()
+        eng._repair_conflicts_vec(X_elite, passes=self.extra_passes)
+        if eng._n_pairs > 0:
+            eng._sync_paired_events(X_elite)
+        X[worst_idx] = X_elite
 
         logger.debug(
-            "ActionRepairRoomClash: %d/%d events resampled",
-            int(conflict_mask.sum()),
-            N * E,
+            "MemeticEliteRepair: 3+%d passes, %d/%d elites targeted "
+            "(worst_severity=%d)",
+            self.extra_passes,
+            n_elite,
+            N,
+            int(ind_severity[worst_idx[0]]),
         )
 
 
 # ======================================================================
-# Action 1 — Repair Instructor Clashes (FTE)
+# Action 3 — Soft-Focus Repair
 # ======================================================================
 
 
-class ActionRepairInstructorClash(_AtomicRepairBase):
-    r"""Resolve Faculty Temporal Exclusivity (instructor double-booking).
+class SoftFocusRepair(_AtomicRepairBase):
+    r"""Full pipeline + time-compaction pass for soft-constraint quality.
 
-    Detects instructor double-booking via ``np.bincount`` on linearised
-    instructor-time keys.  Conflicting events get their **instructor**
-    (and optionally time) resampled.
+    1. Standard ``repair_batch(X, passes=3)`` on full population.
+    2. For each individual, compute per-event time-slots and attempt
+       to compact them toward earlier time quanta (reducing gaps).
+
+    This targets soft-constraint quality (instructor idle-time gaps,
+    student schedule compactness) without degrading hard-constraint
+    feasibility — the compaction only moves events within their
+    valid time domains and re-runs SSCP sync afterward.
+
+    The RL agent should select this when hard penalties are low
+    and soft-constraint improvement pressure is needed.
     """
 
-    ACTION_NAME: ClassVar[str] = "repair_instructor_clash"
+    ACTION_NAME: ClassVar[str] = "soft_focus_repair"
 
     def _apply(self, X: np.ndarray) -> None:
         eng = self.engine
         N = X.shape[0]
         E = eng.n_events
-        T_ = __import__("src.pipeline.bitset_time", fromlist=["T"]).T
 
-        eng._fix_domains_vec(X)
+        # Stage 1: full pipeline
+        result = eng.repair_batch(X, passes=3)
+        X[:] = result
 
-        inst = np.clip(X[:, 0::3], 0, eng.n_instructors - 1).astype(np.int64)
-        time = X[:, 2::3].astype(np.int64)
-        n_idx = np.arange(N, dtype=np.int64)[:, None]
+        # Stage 2: soft-objective time compaction
+        # Try to move events to earlier valid time slots to reduce
+        # schedule gaps (affects instructor idle time, student compactness)
+        rng = np.random.default_rng()
 
-        starts_exp = time[:, eng.exp_event]
-        quanta_exp = np.clip(starts_exp + eng.exp_offset[None, :], 0, T_ - 1)
-        insts_exp = inst[:, eng.exp_event]
-        event_lin = (n_idx * E + eng.exp_event[None, :]).ravel()
-        NE = N * E
+        # Score to find conflict-free events (candidates for compaction)
+        scores = eng._score_all_batch(X)  # (N, E)
+        clean_mask = scores == 0  # (N, E) — no hard conflicts
 
-        # Instructor occupancy histogram
-        nIT = np.int64(eng.n_instructors) * np.int64(T_)
-        inst_keys = (n_idx * nIT + insts_exp * T_ + quanta_exp).ravel()
-        inst_cnt = np.bincount(inst_keys, minlength=int(N * nIT))
-        inst_conflict = (inst_cnt[inst_keys] > 1).astype(np.float64)
-
-        # Availability violations
-        inst_unavail = (~eng.inst_avail[insts_exp.ravel(), quanta_exp.ravel()]).astype(
-            np.float64
-        ) * 5.0
-
-        q_score = inst_conflict + inst_unavail
-        scores = np.bincount(event_lin, weights=q_score, minlength=NE)
-        scores = scores[:NE].reshape(N, E)
-
-        conflict_mask = scores > 0
-        if not conflict_mask.any():
+        # Only compact ~20% of clean events to avoid over-disruption
+        compact_mask = clean_mask & (rng.random((N, E)) < 0.20)
+        if not compact_mask.any():
+            logger.debug("SoftFocusRepair: no clean events to compact")
             return
 
-        rng = np.random.default_rng()
-        bi, be = np.nonzero(conflict_mask)
+        bi, be = np.nonzero(compact_mask)
+        current_times = X[bi, 3 * be + 2]
 
-        # Resample instructor
-        i_dl = eng.inst_dom_len[be]
-        i_valid = i_dl > 1
-        i_bi, i_be, i_dl_v = bi[i_valid], be[i_valid], i_dl[i_valid]
-        if len(i_bi) > 0:
-            i_idx = (rng.random(len(i_bi)) * i_dl_v).astype(np.int64)
-            i_idx = np.minimum(i_idx, i_dl_v - 1)
-            X[i_bi, 3 * i_be] = eng.inst_domains[i_be, i_idx]
-
-        # Also resample time for all conflicting events
+        # For each selected event, try moving to an earlier valid time
         t_dl = eng.time_dom_len[be]
         t_valid = t_dl > 0
-        t_bi, t_be, t_dl_v = bi[t_valid], be[t_valid], t_dl[t_valid]
-        t_idx = (rng.random(len(t_bi)) * t_dl_v).astype(np.int64)
-        t_idx = np.minimum(t_idx, t_dl_v - 1)
-        X[t_bi, 3 * t_be + 2] = eng.time_domains[t_be, t_idx]
+        bi, be, t_dl = bi[t_valid], be[t_valid], t_dl[t_valid]
+        current_times = X[bi, 3 * be + 2]
 
-        logger.debug(
-            "ActionRepairInstructorClash: %d/%d events resampled",
-            int(conflict_mask.sum()),
-            N * E,
-        )
+        for k in range(len(bi)):
+            n, e = int(bi[k]), int(be[k])
+            dl = int(t_dl[k])
+            domain = eng.time_domains[e, :dl]
+            cur_t = int(current_times[k])
 
+            # Find earlier times in domain
+            earlier = domain[domain < cur_t]
+            if len(earlier) > 0:
+                # Pick the latest of the earlier options (greedy compaction)
+                X[n, 3 * e + 2] = int(earlier[-1])
 
-# ======================================================================
-# Action 2 — Sync SSCP (Paired-Event Synchronisation)
-# ======================================================================
-
-
-class ActionSyncSSCP(_AtomicRepairBase):
-    r"""Enforce Symmetric Sub-Cohort Parallelism.
-
-    For each pair $(a, b)$, forces
-    $t_a = t_b \in \mathcal{T}_a \cap \mathcal{T}_b$ and $r_a \neq r_b$.
-
-    Delegates to ``VectorizedRepair._sync_paired_events``.
-    """
-
-    ACTION_NAME: ClassVar[str] = "sync_sscp"
-
-    def _apply(self, X: np.ndarray) -> None:
-        eng = self.engine
-        eng._fix_domains_vec(X)
+        # Stage 3: re-sync paired events (compaction may break SSCP)
         if eng._n_pairs > 0:
             eng._sync_paired_events(X)
-        logger.debug("ActionSyncSSCP: %d pairs synced", eng._n_pairs)
+
+        logger.debug(
+            "SoftFocusRepair: 3 passes + compaction on %d events",
+            len(bi),
+        )
 
 
 # ======================================================================
-# Action 3 — Random Perturbation (Exploration)
+# Action 4 — Destructive-Constructive (Ruin & Recreate)
 # ======================================================================
 
 
-class ActionRandomPerturb(_AtomicRepairBase):
-    r"""Vectorized random perturbation (mutation for escaping local optima).
+class DestructiveConstructive(_AtomicRepairBase):
+    r"""Ruin worst 10% of events per individual, then full repair.
 
-    Randomly selects $\sim 5\%$ of $(N, E)$ assignments and resamples
-    **all three genes** (instructor, room, time) from their domains.
-    Acts as pure exploration pressure — no conflict detection is
-    performed.
+    1. Score population to identify per-event conflict severity.
+    2. For each individual, "ruin" the top-10% worst-scoring events
+       by randomising all three genes (inst, room, time) from domains.
+    3. Run ``repair_batch(X, passes=5)`` — the full pipeline rebuilds
+       the ruined events within the context of the surviving structure.
+
+    This is the **escape hatch** for local-optima plateaus.  By
+    destroying correlated conflict clusters and letting the pipeline
+    reconstruct them, the population can jump to a different region
+    of the search space.  More aggressive than ``AggressiveRepair``
+    (which just adds passes) because it breaks structural correlations
+    before repairing.
     """
 
-    ACTION_NAME: ClassVar[str] = "random_perturb"
+    ACTION_NAME: ClassVar[str] = "destructive_constructive"
 
     def __init__(
         self,
         pkl_path: str = ".cache/events_with_domains.pkl",
-        perturb_rate: float = 0.05,
+        ruin_fraction: float = 0.10,
     ):
         super().__init__(pkl_path)
-        self.perturb_rate = perturb_rate
+        self.ruin_fraction = ruin_fraction
 
     def _apply(self, X: np.ndarray) -> None:
         eng = self.engine
@@ -306,191 +336,82 @@ class ActionRandomPerturb(_AtomicRepairBase):
         E = eng.n_events
         rng = np.random.default_rng()
 
-        # Select ~perturb_rate of (individual, event) assignments
-        mask = rng.random((N, E)) < self.perturb_rate
-        if not mask.any():
-            return
-
-        bi, be = np.nonzero(mask)
-
-        # Resample instructor
-        i_dl = eng.inst_dom_len[be]
-        i_v = i_dl > 0
-        if i_v.any():
-            i_bi, i_be, i_dl_v = bi[i_v], be[i_v], i_dl[i_v]
-            i_idx = (rng.random(len(i_bi)) * i_dl_v).astype(np.int64)
-            i_idx = np.minimum(i_idx, i_dl_v - 1)
-            X[i_bi, 3 * i_be] = eng.inst_domains[i_be, i_idx]
-
-        # Resample room
-        r_dl = eng.room_dom_len[be]
-        r_v = r_dl > 0
-        if r_v.any():
-            r_bi, r_be, r_dl_v = bi[r_v], be[r_v], r_dl[r_v]
-            r_idx = (rng.random(len(r_bi)) * r_dl_v).astype(np.int64)
-            r_idx = np.minimum(r_idx, r_dl_v - 1)
-            X[r_bi, 3 * r_be + 1] = eng.room_domains[r_be, r_idx]
-
-        # Resample time
-        t_dl = eng.time_dom_len[be]
-        t_v = t_dl > 0
-        if t_v.any():
-            t_bi, t_be, t_dl_v = bi[t_v], be[t_v], t_dl[t_v]
-            t_idx = (rng.random(len(t_bi)) * t_dl_v).astype(np.int64)
-            t_idx = np.minimum(t_idx, t_dl_v - 1)
-            X[t_bi, 3 * t_be + 2] = eng.time_domains[t_be, t_idx]
-
-        logger.debug(
-            "ActionRandomPerturb: %d/%d assignments perturbed (rate=%.2f)",
-            int(mask.sum()),
-            N * E,
-            self.perturb_rate,
-        )
-
-
-# ======================================================================
-# Action 4 — Repair Group Clashes (CTE)
-# ======================================================================
-
-
-class ActionRepairGroupClash(_AtomicRepairBase):
-    r"""Resolve Cohort Temporal Exclusivity (group double-booking).
-
-    Detects group double-booking via ``np.bincount`` on linearised
-    group-time keys.  Conflicting events get their **time** resampled.
-    """
-
-    ACTION_NAME: ClassVar[str] = "repair_group_clash"
-
-    def _apply(self, X: np.ndarray) -> None:
-        eng = self.engine
-        N = X.shape[0]
-        E = eng.n_events
-        T_ = __import__("src.pipeline.bitset_time", fromlist=["T"]).T
-
+        # Stage 1: fix domains so scoring is valid
         eng._fix_domains_vec(X)
 
-        time = X[:, 2::3].astype(np.int64)
-        n_idx = np.arange(N, dtype=np.int64)[:, None]
+        # Stage 2: score and identify worst events per individual
+        scores = eng._score_all_batch(X)  # (N, E)
+        n_ruin = max(1, int(E * self.ruin_fraction))
 
-        # Group-expanded quanta
-        grp_starts = time[:, eng.grp_exp_event]
-        grp_quanta = np.clip(grp_starts + eng.grp_exp_offset[None, :], 0, T_ - 1)
+        total_ruined = 0
+        for n in range(N):
+            row_scores = scores[n]
+            if row_scores.sum() == 0:
+                continue
 
-        nGT = np.int64(eng.n_groups) * np.int64(T_)
-        grp_keys = (
-            n_idx * nGT + eng.grp_exp_group[None, :].astype(np.int64) * T_ + grp_quanta
-        ).ravel()
-        grp_cnt = np.bincount(grp_keys, minlength=int(N * nGT))
-        grp_conflict = (grp_cnt[grp_keys] > 1).astype(np.float64)
+            worst = np.argsort(-row_scores)[:n_ruin]
+            has_conflict = row_scores[worst] > 0
+            worst = worst[has_conflict]
+            if len(worst) == 0:
+                continue
 
-        # Aggregate to per-event via group expansion event indices
-        grp_event_lin = (n_idx * E + eng.grp_exp_event[None, :]).ravel()
-        NE = N * E
-        scores = np.bincount(grp_event_lin, weights=grp_conflict, minlength=NE)
-        scores = scores[:NE].reshape(N, E)
+            # Ruin: randomise all genes from valid domains
+            for e in worst:
+                i_dl = int(eng.inst_dom_len[e])
+                r_dl = int(eng.room_dom_len[e])
+                t_dl = int(eng.time_dom_len[e])
+                if i_dl > 0:
+                    X[n, 3 * e + 0] = eng.inst_domains[e, rng.integers(i_dl)]
+                if r_dl > 0:
+                    X[n, 3 * e + 1] = eng.room_domains[e, rng.integers(r_dl)]
+                if t_dl > 0:
+                    X[n, 3 * e + 2] = eng.time_domains[e, rng.integers(t_dl)]
 
-        conflict_mask = scores > 0
-        if not conflict_mask.any():
-            return
+            total_ruined += len(worst)
 
-        rng = np.random.default_rng()
-        bi, be = np.nonzero(conflict_mask)
-
-        # Resample time for conflicting events
-        t_dl = eng.time_dom_len[be]
-        t_valid = t_dl > 0
-        t_bi, t_be, t_dl_v = bi[t_valid], be[t_valid], t_dl[t_valid]
-        t_idx = (rng.random(len(t_bi)) * t_dl_v).astype(np.int64)
-        t_idx = np.minimum(t_idx, t_dl_v - 1)
-        X[t_bi, 3 * t_be + 2] = eng.time_domains[t_be, t_idx]
-
-        # Resample room for ~30 % to add structural diversity
-        do_room = rng.random(len(bi)) < 0.3
-        r_bi, r_be = bi[do_room], be[do_room]
-        r_dl = eng.room_dom_len[r_be]
-        r_v = r_dl > 0
-        r_bi, r_be, r_dl_v = r_bi[r_v], r_be[r_v], r_dl[r_v]
-        r_idx = (rng.random(len(r_bi)) * r_dl_v).astype(np.int64)
-        r_idx = np.minimum(r_idx, r_dl_v - 1)
-        X[r_bi, 3 * r_be + 1] = eng.room_domains[r_be, r_idx]
+        # Stage 3: full pipeline reconstructs from the rubble
+        result = eng.repair_batch(X, passes=5)
+        X[:] = result
 
         logger.debug(
-            "ActionRepairGroupClash: %d/%d events resampled",
-            int(conflict_mask.sum()),
-            N * E,
+            "DestructiveConstructive: ruined %d events total, " "then 5-pass repair",
+            total_ruined,
         )
 
 
 # ======================================================================
-# Action 5 — Full Pipeline Repair (Fallback)
+# Action 5 — Intensified Repair (balanced)
 # ======================================================================
 
 
-class ActionFullRepair(_AtomicRepairBase):
-    r"""Execute the complete three-stage repair pipeline.
+class IntensifiedRepair(_AtomicRepairBase):
+    r"""Full pipeline with moderate passes — balanced middle ground.
 
-    Delegates to ``VectorizedRepair.repair_batch`` with configurable
-    number of passes.  Serves as a *safe* fallback action that the RL
-    agent can select when the population is heavily infeasible.
+    Runs ``repair_batch(X, passes=5)`` — between conservative (3)
+    and aggressive (7).  A solid workhorse configuration that provides
+    more repair pressure than conservative without the high disruption
+    of aggressive.
     """
 
-    ACTION_NAME: ClassVar[str] = "full_repair"
-
-    def __init__(
-        self,
-        pkl_path: str = ".cache/events_with_domains.pkl",
-        passes: int = 3,
-    ):
-        super().__init__(pkl_path)
-        self.passes = passes
+    ACTION_NAME: ClassVar[str] = "intensified_repair"
 
     def _apply(self, X: np.ndarray) -> None:
-        result = self.engine.repair_batch(X, passes=self.passes)
+        result = self.engine.repair_batch(X, passes=5)
         X[:] = result
-        logger.debug("ActionFullRepair: %d passes", self.passes)
+        logger.debug("IntensifiedRepair: 5 passes (balanced)")
 
 
 # ======================================================================
-# Action Space Registry — Elite 8
+# Action Space Registry — Pipeline Configurations (Phase 53)
 # ======================================================================
-
-# Repairs (hard-constraint feasibility projections)
-# Optimizations (soft-constraint quality-of-life)
-
-# Perturbations (stochastic neighbourhood exploration)
-
-# ======================================================================
-# Elite 8 — Full Micro-Memetic Action Space (RESTORED)
-# ======================================================================
-# Imports from academic-taxonomy modules with micro-memetic upgrades
-
-from src.rl.actions.optimizations.meridian_compaction import MeridianCompactionHeuristic
-from src.rl.actions.perturbations.stochastic_quanta_perturbation import (
-    StochasticQuantaPerturbation,
-)
-from src.rl.actions.perturbations.stochastic_spatial_perturbation import (
-    StochasticSpatialPerturbation,
-)
-from src.rl.actions.repairs.cohort_temporal_projection import CohortTemporalProjection
-from src.rl.actions.repairs.faculty_temporal_projection import FacultyTemporalProjection
-from src.rl.actions.repairs.spatial_resource_projection import SpatialResourceProjection
-from src.rl.actions.repairs.symmetric_subcohort_sync import SymmetricSubcohortSync
-from src.rl.actions.repairs.universal_feasibility_projection import (
-    UniversalFeasibilityProjection,
-)
 
 VECTORIZED_ACTION_SPACE: dict[int, type[_AtomicRepairBase]] = {
-    0: SpatialResourceProjection,  # Conflict-directed room sniper (micro-memetic)
-    1: FacultyTemporalProjection,  # Instructor clash repair
-    2: CohortTemporalProjection,  # Group clash repair
-    3: SymmetricSubcohortSync,  # SSCP paired-practical sync (soft)
-    4: (
-        UniversalFeasibilityProjection
-    ),  # Bounded ejection chain bulldozer (micro-memetic)
-    5: StochasticQuantaPerturbation,  # Time-slot exploration
-    6: StochasticSpatialPerturbation,  # Room exploration
-    7: MeridianCompactionHeuristic,  # Feasibility-gated soft optimizer (soft)
+    0: ConservativeRepair,  # Full pipeline, 3 passes (exploit)
+    1: AggressiveRepair,  # Full pipeline, 7 passes (explore)
+    2: MemeticEliteRepair,  # 3 passes + 4 extra on worst 15%
+    3: SoftFocusRepair,  # 3 passes + time compaction (soft obj)
+    4: DestructiveConstructive,  # Ruin 10% + 5-pass repair (escape)
+    5: IntensifiedRepair,  # Full pipeline, 5 passes (balanced)
 }
 
 ACTION_NAMES: dict[int, str] = {

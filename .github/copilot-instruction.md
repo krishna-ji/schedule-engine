@@ -1,3 +1,6 @@
+
+- after every code chages try to write the changelog and what you did: on changelog.md file
+
 # Role & Persona
 
 - Act as an HPC (High-Performance Computing) Optimization Engineer and Academic Researcher.

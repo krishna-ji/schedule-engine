@@ -1,8 +1,12 @@
 r"""Pymoo-native Gymnasium environment for RL hyper-heuristic control.
 
-The RL agent selects **which atomic repair operator** (action) is
+The RL agent selects **which pipeline configuration** (action) is
 injected into the Pymoo algorithm each generation.  One ``step()``
 $\equiv$ one call to ``algorithm.next()``.
+
+**Phase 53 redesign**: each action runs the COMPLETE repair pipeline
+(``repair_batch``) with different parameters.  No rollback is needed
+because every action produces a coherent, fully-repaired population.
 
 Key design invariants
 ---------------------
@@ -13,6 +17,8 @@ Key design invariants
    (via ``VectorizedStateEncoder``).
 3. **Composable** — any ``pymoo.core.repair.Repair`` can be hot-swapped
    into ``algorithm.mating.repair`` at each step.
+4. **No rollback** — all LLHs run the complete pipeline, so no action
+   is destructive.  The lexicographic safety rail is removed.
 
 Usage
 -----
@@ -66,8 +72,8 @@ class PymooHyperHeuristicEnv(gym.Env):
 
     **Actions** (Discrete):
         Integer indexing into ``VECTORIZED_ACTION_SPACE``.  Each action
-        is an atomic ``pymoo.core.repair.Repair`` targeting a single
-        constraint class.
+        is a complete pipeline configuration (``repair_batch`` with
+        different passes + optional intensification/diversification).
 
     **Reward**:
         Pure delta-based: hard-penalty improvement + 0.1 × soft-penalty
@@ -93,11 +99,6 @@ class PymooHyperHeuristicEnv(gym.Env):
         Multiplicative scale for the reward signal.
     feasibility_bonus : float
         One-time bonus added when first feasible solution is found.
-    acceptance_tolerance : float
-        Maximum allowed increase in ``best_hard`` before a move is
-        rejected and rolled back.  ``0`` = strict hill-climbing (never
-        accept worse hard).  Positive values allow minor degradation
-        to escape local optima.
     """
 
     metadata: dict[str, Any] = {"render_modes": []}
@@ -112,7 +113,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         seed: int = 42,
         reward_scale: float = 1.0,
         feasibility_bonus: float = 10.0,
-        acceptance_tolerance: float = 0.0,
+        acceptance_tolerance: float = 0.0,  # DEPRECATED (Phase 53: no rollback)
     ):
         super().__init__()
 
@@ -124,7 +125,7 @@ class PymooHyperHeuristicEnv(gym.Env):
         self.seed = seed
         self.reward_scale = reward_scale
         self.feasibility_bonus = feasibility_bonus
-        self.acceptance_tolerance = acceptance_tolerance
+        # acceptance_tolerance silently ignored — retained for backward compat
 
         # -- Gym spaces ---------------------------------------------------
         self.observation_space = spaces.Box(
@@ -193,8 +194,8 @@ class PymooHyperHeuristicEnv(gym.Env):
         )
         self._encoder.reset()
 
-        # Create algorithm — start with the full repair as default
-        default_repair = self._action_operators[5]  # ActionFullRepair
+        # Create algorithm — start with conservative (safe default)
+        default_repair = self._action_operators[0]  # ConservativeRepair
 
         if self.algorithm_name.lower() == "nsga2":
             from pymoo.algorithms.moo.nsga2 import NSGA2
@@ -253,13 +254,11 @@ class PymooHyperHeuristicEnv(gym.Env):
         self,
         action: int,
     ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
-        """Execute one generation with the selected repair action.
+        """Execute one generation with the selected pipeline configuration.
 
-        Implements a **lexicographic safety rail**: if the chosen
-        operator causes ``best_hard`` to increase by more than
-        ``self.acceptance_tolerance``, the population is rolled back
-        to its pre-step snapshot and the agent receives a fixed
-        punishment reward of ``-1.0``.
+        **Phase 53**: no rollback — every action runs the complete repair
+        pipeline, so no action is destructive.  The agent always sees
+        the committed result and gets a delta-based reward.
 
         Parameters
         ----------
@@ -276,18 +275,12 @@ class PymooHyperHeuristicEnv(gym.Env):
         """
         assert self._algorithm is not None, "Call reset() first."
 
-        # -- Inject the chosen operator ----------------------------------
+        # -- Inject the chosen pipeline configuration --------------------
         operator = self._action_operators[action]
         self._algorithm.mating.repair = operator
 
-        # -- SNAPSHOT: copy essential arrays before the step ----------------
-        snap_X = self._algorithm.pop.get("X").copy()
-        snap_F = self._algorithm.pop.get("F").copy()
-        snap_G = self._algorithm.pop.get("G")
-        if snap_G is not None:
-            snap_G = snap_G.copy()
-        snap_best_hard = self._prev_best_hard
-        snap_best_soft = self._prev_best_soft
+        prev_best_hard = self._prev_best_hard
+        prev_best_soft = self._prev_best_soft
 
         # -- Run one generational step -----------------------------------
         t0 = _time.perf_counter()
@@ -296,74 +289,48 @@ class PymooHyperHeuristicEnv(gym.Env):
 
         self._gen += 1
 
-        # -- Extract candidate population state --------------------------
+        # -- Extract population state ------------------------------------
         pop = self._algorithm.pop
         F, G, X = self._extract_pop(pop)
 
         best_hard = float(F[:, 0].min())
         best_soft = float(F[:, 1].min())
 
-        # -- DECISION GATE: lexicographic hard-constraint guard ----------
-        delta_hard = best_hard - snap_best_hard  # >0 means WORSE
-        rejected = delta_hard > self.acceptance_tolerance
+        # -- Encode observation and compute reward -----------------------
+        soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
+        obs = self._encoder.encode(F, G, X, soft_breakdown=soft_bd, action_taken=action)
+        reward = self._compute_reward(F, G)
 
-        if rejected:
-            # ---- ROLLBACK: restore snapshot arrays ---------------------
-            self._algorithm.pop.set("X", snap_X)
-            self._algorithm.pop.set("F", snap_F)
-            if snap_G is not None:
-                self._algorithm.pop.set("G", snap_G)
-            # Re-extract from restored pop for consistent obs
-            F_r, G_r, X_r = self._extract_pop(self._algorithm.pop)
-            soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
-            obs = self._encoder.encode(
-                F_r, G_r, X_r, soft_breakdown=soft_bd, action_taken=action
-            )
-            reward = -1.0
-            best_hard = snap_best_hard
-            best_soft = snap_best_soft
-            # Don't update prev_best — nothing changed
-            logger.debug(
-                "Gen %d | action=%d (%s) | REJECTED (Delta_Hard=+%.1f) | R=-1.0",
-                self._gen,
-                action,
-                operator.ACTION_NAME,
-                delta_hard,
-            )
-        else:
-            # ---- COMMIT: keep the new population -----------------------
-            soft_bd = getattr(self._problem, "_last_soft_breakdown", None)
-            obs = self._encoder.encode(
-                F, G, X, soft_breakdown=soft_bd, action_taken=action
-            )
-            reward = self._compute_reward(F, G)
-            # Update tracking
-            self._prev_best_hard = best_hard
-            self._prev_best_soft = best_soft
-            self._current_best_hard = best_hard  # Update for masking
-            logger.debug(
-                "Gen %d | action=%d (%s) | COMMITTED | hard=%.1f | R=%.4f | %.2fs",
-                self._gen,
-                action,
-                operator.ACTION_NAME,
-                best_hard,
-                reward,
-                step_time,
-            )
+        # -- Update tracking ---------------------------------------------
+        self._prev_best_hard = best_hard
+        self._prev_best_soft = best_soft
+        self._current_best_hard = best_hard
 
-        # -- Termination checks (DISABLED for training) -----------------------
-        # Disable early termination to prevent micro-memetic optimizers from
-        # ending episodes too quickly. Let episodes run full max_generations.
-        terminated = False  # Never terminate early during training
+        delta_hard = best_hard - prev_best_hard
+        delta_soft = best_soft - prev_best_soft
+
+        logger.debug(
+            "Gen %d | action=%d (%s) | hard=%.1f (Δ%.1f) | R=%.4f | %.2fs",
+            self._gen,
+            action,
+            operator.ACTION_NAME,
+            best_hard,
+            delta_hard,
+            reward,
+            step_time,
+        )
+
+        # -- Termination checks ------------------------------------------
+        terminated = False  # Let episodes run full max_generations
         truncated = self._gen >= self.max_generations
 
         info = self._build_info(*self._extract_pop(self._algorithm.pop)[:2])
         info["step_time_s"] = step_time
         info["action"] = action
         info["action_name"] = operator.ACTION_NAME
-        info["rejected"] = rejected
+        info["rejected"] = False  # No rollback in Phase 53
         info["delta_hard"] = delta_hard
-        info["delta_soft"] = best_soft - snap_best_soft  # >0 means WORSE
+        info["delta_soft"] = delta_soft
 
         return obs, reward, terminated, truncated, info
 
@@ -475,23 +442,24 @@ class PymooHyperHeuristicEnv(gym.Env):
     def action_masks(self) -> np.ndarray:
         """Return boolean mask for valid actions based on current state.
 
-        Soft optimizers (Actions 3 and 7) are masked out when hard
-        constraints are violated, forcing the agent to focus on
-        feasibility repair before soft optimization.
+        **Phase 53 action space** (6 pipeline configurations):
+
+        - Action 3 (SoftFocusRepair) is masked out when hard constraints
+          are violated — soft optimisation is wasteful when hard
+          penalties dominate.
+        - All other actions are always available since they all run
+          the complete repair pipeline.
 
         Returns
         -------
-        mask : ndarray(8,), bool
-            True means action is available. Actions 3 (SymmetricSubcohortSync)
-            and 7 (MeridianCompaction) are False when best_hard > 0.
+        mask : ndarray(NUM_ACTIONS,), bool
+            True means action is available.
         """
-        # Default: all actions available
         mask = np.ones(NUM_ACTIONS, dtype=bool)
 
-        # If schedule has hard constraint violations, block soft optimizers
+        # Block soft-focus optimiser when hard constraints are violated
         if self._current_best_hard > 0.0:
-            mask[3] = False  # SymmetricSubcohortSync (soft optimizer)
-            mask[7] = False  # MeridianCompaction (soft optimizer)
+            mask[3] = False  # SoftFocusRepair (soft obj only)
 
         return mask
 
