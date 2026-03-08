@@ -139,7 +139,11 @@ if __name__ == "__main__":
     from sb3_contrib import MaskablePPO
     from stable_baselines3.common.vec_env import SubprocVecEnv
 
+    from src.pipeline.build_events import ensure_pkl
     from src.rl.training.thesis_callback import ThesisLoggingCallback
+
+    # -- Pre-flight: build cache BEFORE spawning subprocesses --------------
+    ensure_pkl(PKL_PATH)
 
     # -- Output directory --------------------------------------------------
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

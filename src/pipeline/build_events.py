@@ -26,6 +26,23 @@ _CACHE_DIR = Path(".cache")
 PKL_DEFAULT_PATH = str(_CACHE_DIR / "events_with_domains.pkl")
 
 
+def ensure_pkl(
+    pkl_path: str = PKL_DEFAULT_PATH,
+    data_dir: str = "data",
+) -> str:
+    """Build ``events_with_domains.pkl`` if it does not already exist.
+
+    This is safe to call from any entry point (GA, RL, tests).  If the
+    file already exists the function returns immediately.
+
+    Returns the resolved *pkl_path*.
+    """
+    if not Path(pkl_path).exists():
+        logger.info("Cache miss — building %s from %s ...", pkl_path, data_dir)
+        build_events_with_domains(data_dir)
+    return pkl_path
+
+
 def _make_event_key(gene) -> tuple:
     """Stable, deterministic sort key for an event (gene).
 

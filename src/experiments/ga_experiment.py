@@ -176,14 +176,10 @@ class GAExperiment(BaseExperiment):
 
     def _ensure_pkl(self) -> str:
         """Build ``events_with_domains.pkl`` if missing; return its path."""
-        from src.pipeline.build_events import PKL_DEFAULT_PATH
+        from src.pipeline.build_events import PKL_DEFAULT_PATH, ensure_pkl
 
         pkl_path = str(PROJECT_ROOT / PKL_DEFAULT_PATH)
-        if not Path(pkl_path).exists():
-            self.logger.info("Building %s ...", PKL_DEFAULT_PATH)
-            from src.pipeline.build_events import build_events_with_domains
-
-            build_events_with_domains(str(self.data_dir))
+        ensure_pkl(pkl_path, data_dir=str(self.data_dir))
         return pkl_path
 
     def _build_callback(self, pkl_path: str) -> Any:

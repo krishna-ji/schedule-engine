@@ -81,6 +81,10 @@ _BITSET_ENGINE_CACHE: dict[str, BitsetSchedulingRepair] = {}
 def _get_vec_engine(pkl_path: str) -> VectorizedRepair:
     """Return (or create & cache) a ``VectorizedRepair`` engine."""
     if pkl_path not in _VEC_ENGINE_CACHE:
+        # Auto-build the pkl if it doesn't exist yet
+        from src.pipeline.build_events import ensure_pkl
+
+        ensure_pkl(pkl_path)
         _VEC_ENGINE_CACHE[pkl_path] = VectorizedRepair(pkl_path)
     return _VEC_ENGINE_CACHE[pkl_path]
 
@@ -88,6 +92,9 @@ def _get_vec_engine(pkl_path: str) -> VectorizedRepair:
 def _get_bitset_engine(pkl_path: str) -> BitsetSchedulingRepair:
     """Return (or create & cache) a ``BitsetSchedulingRepair`` engine."""
     if pkl_path not in _BITSET_ENGINE_CACHE:
+        from src.pipeline.build_events import ensure_pkl
+
+        ensure_pkl(pkl_path)
         _BITSET_ENGINE_CACHE[pkl_path] = BitsetSchedulingRepair(pkl_path)
     return _BITSET_ENGINE_CACHE[pkl_path]
 
