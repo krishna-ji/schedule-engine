@@ -37,7 +37,7 @@ dependencies = [
     # Phase 2: RL Integration - pinned to tested versions
     "gymnasium==0.29.1",
     "stable-baselines3==2.3.2",
-    "sb3-contrib==2.3.2",
+    "sb3-contrib==2.3.0",
     # PyTorch with CUDA 12.1 support for GPU acceleration (from pytorch-cu121 index)
     "torch==2.4.1+cu121",
     "torchvision==0.19.1+cu121",
