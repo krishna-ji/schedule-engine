@@ -53,23 +53,23 @@ logger = logging.getLogger("rl_08_titan_v3")
 # ======================================================================
 
 # -- Training -----------------------------------------------------------
-TRAIN_POP_SIZE = 40        # Minimal pop → fastest episodes (~2-3 min)
-TRAIN_MAX_GEN = 25         # 25 gens per episode (24 steps + init)
-TOTAL_TIMESTEPS = 50_000   # 20× Phase 57 budget
-LEARNING_RATE = 5e-4       # Aggressive learning rate
-CLIP_RANGE = 0.2           # Standard PPO clip
-NET_ARCH = [64, 64]        # 2-layer MLP (same architecture)
-N_STEPS = 128              # Larger rollout buffer (multiple episodes)
-BATCH_SIZE = 128            # Large batch for stable gradients
-N_EPOCHS = 10              # PPO update epochs per rollout
-GAE_LAMBDA = 0.95          # Standard GAE
-GAMMA = 0.99               # Discount factor
-ENT_COEF = 0.05            # 5× Phase 57 — prevent policy collapse
+TRAIN_POP_SIZE = 40  # Minimal pop → fastest episodes (~2-3 min)
+TRAIN_MAX_GEN = 25  # 25 gens per episode (24 steps + init)
+TOTAL_TIMESTEPS = 50_000  # 20× Phase 57 budget
+LEARNING_RATE = 5e-4  # Aggressive learning rate
+CLIP_RANGE = 0.2  # Standard PPO clip
+NET_ARCH = [64, 64]  # 2-layer MLP (same architecture)
+N_STEPS = 128  # Larger rollout buffer (multiple episodes)
+BATCH_SIZE = 128  # Large batch for stable gradients
+N_EPOCHS = 10  # PPO update epochs per rollout
+GAE_LAMBDA = 0.95  # Standard GAE
+GAMMA = 0.99  # Discount factor
+ENT_COEF = 0.05  # 5× Phase 57 — prevent policy collapse
 
 # -- Evaluation ---------------------------------------------------------
-EVAL_POP_SIZE = 120         # Full pop for fair comparison
-EVAL_MAX_GEN = 25           # Same horizon
-EVAL_SEED = 42              # Deterministic comparison
+EVAL_POP_SIZE = 120  # Full pop for fair comparison
+EVAL_MAX_GEN = 25  # Same horizon
+EVAL_SEED = 42  # Deterministic comparison
 PKL_PATH = ".cache/events_with_domains.pkl"
 
 # -- Output -------------------------------------------------------------
@@ -85,7 +85,12 @@ ACTION_NAMES = {
     5: "Intensified",
 }
 ACTION_SHORT = {
-    0: "Con", 1: "Agg", 2: "Mem", 3: "Sft", 4: "Des", 5: "Int",
+    0: "Con",
+    1: "Agg",
+    2: "Mem",
+    3: "Sft",
+    4: "Des",
+    5: "Int",
 }
 
 
@@ -105,10 +110,20 @@ def train(run_dir: Path) -> object:
     print("=" * 80)
     print("  TITAN V3 OVERCLOCK — Phase 59 PPO Training")
     print("=" * 80)
-    logger.info("  pop=%d  max_gen=%d  timesteps=%d  lr=%.1e",
-                TRAIN_POP_SIZE, TRAIN_MAX_GEN, TOTAL_TIMESTEPS, LEARNING_RATE)
-    logger.info("  n_steps=%d  batch=%d  epochs=%d  ent_coef=%.3f",
-                N_STEPS, BATCH_SIZE, N_EPOCHS, ENT_COEF)
+    logger.info(
+        "  pop=%d  max_gen=%d  timesteps=%d  lr=%.1e",
+        TRAIN_POP_SIZE,
+        TRAIN_MAX_GEN,
+        TOTAL_TIMESTEPS,
+        LEARNING_RATE,
+    )
+    logger.info(
+        "  n_steps=%d  batch=%d  epochs=%d  ent_coef=%.3f",
+        N_STEPS,
+        BATCH_SIZE,
+        N_EPOCHS,
+        ENT_COEF,
+    )
     logger.info("  model output: %s", MODEL_PATH)
     logger.info("  run_dir: %s", run_dir)
     print("=" * 80)
@@ -153,8 +168,12 @@ def train(run_dir: Path) -> object:
     model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback)
 
     train_time = time.perf_counter() - t0
-    logger.info("Training complete in %.1fs (%.1f min, %.1f hours)",
-                train_time, train_time / 60, train_time / 3600)
+    logger.info(
+        "Training complete in %.1fs (%.1f min, %.1f hours)",
+        train_time,
+        train_time / 60,
+        train_time / 3600,
+    )
 
     # -- Save model --------------------------------------------------------
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -175,7 +194,7 @@ def train(run_dir: Path) -> object:
     print("=" * 80)
     print(f"  Wall-clock:  {train_time:.0f}s ({train_time / 3600:.1f} hours)")
     print(f"  Timesteps:   {TOTAL_TIMESTEPS}")
-    ep_count = callback._episode_count if hasattr(callback, '_episode_count') else '?'
+    ep_count = callback._episode_count if hasattr(callback, "_episode_count") else "?"
     print(f"  Episodes:    {ep_count}")
     print(f"  Model:       {MODEL_PATH}")
     print(f"  Run dir:     {run_dir}")

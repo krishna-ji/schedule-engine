@@ -486,9 +486,7 @@ class PymooHyperHeuristicEnv(gym.Env):
             self._found_feasible = True
 
         # -- Combine (no time penalty) ------------------------------------
-        reward = (
-            hard_reward + soft_reward + first_feasible_bonus
-        ) * self.reward_scale
+        reward = (hard_reward + soft_reward + first_feasible_bonus) * self.reward_scale
 
         # Clip to [-10, 10]  (wider range for amplified post-convergence)
         return float(np.clip(reward, -10.0, 10.0))

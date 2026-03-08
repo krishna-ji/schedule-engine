@@ -106,10 +106,20 @@ def train(run_dir: Path) -> object:
 
     logger.info("=" * 72)
     logger.info("Phase 57 — PPO Training on Validated 6-LLH Space")
-    logger.info("  pop=%d  max_gen=%d  timesteps=%d  lr=%.0e",
-                TRAIN_POP_SIZE, TRAIN_MAX_GEN, TOTAL_TIMESTEPS, LEARNING_RATE)
-    logger.info("  n_steps=%d  batch=%d  epochs=%d  ent_coef=%.3f",
-                N_STEPS, BATCH_SIZE, N_EPOCHS, ENT_COEF)
+    logger.info(
+        "  pop=%d  max_gen=%d  timesteps=%d  lr=%.0e",
+        TRAIN_POP_SIZE,
+        TRAIN_MAX_GEN,
+        TOTAL_TIMESTEPS,
+        LEARNING_RATE,
+    )
+    logger.info(
+        "  n_steps=%d  batch=%d  epochs=%d  ent_coef=%.3f",
+        N_STEPS,
+        BATCH_SIZE,
+        N_EPOCHS,
+        ENT_COEF,
+    )
     logger.info("  run_dir: %s", run_dir)
     logger.info("=" * 72)
 
@@ -168,8 +178,12 @@ def run_static_baselines(run_dir: Path) -> dict[int, list[dict]]:
     from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
 
     logger.info("-" * 72)
-    logger.info("Running 6 static baselines (pop=%d, gens=%d, seed=%d)",
-                EVAL_POP_SIZE, EVAL_MAX_GEN, EVAL_SEED)
+    logger.info(
+        "Running 6 static baselines (pop=%d, gens=%d, seed=%d)",
+        EVAL_POP_SIZE,
+        EVAL_MAX_GEN,
+        EVAL_SEED,
+    )
     logger.info("-" * 72)
 
     all_baselines: dict[int, list[dict]] = {}
@@ -188,30 +202,38 @@ def run_static_baselines(run_dir: Path) -> dict[int, list[dict]]:
         obs, info = env.reset()
         t0 = time.perf_counter()
 
-        rows = [{
-            "gen": 1,
-            "best_hard": info["best_hard"],
-            "best_soft": info["best_soft"],
-            "mean_hard": info["mean_hard"],
-        }]
-
-        for g in range(EVAL_MAX_GEN - 1):
-            obs, reward, done, trunc, info = env.step(action_id)
-            rows.append({
-                "gen": info["generation"],
+        rows = [
+            {
+                "gen": 1,
                 "best_hard": info["best_hard"],
                 "best_soft": info["best_soft"],
                 "mean_hard": info["mean_hard"],
-            })
+            }
+        ]
+
+        for g in range(EVAL_MAX_GEN - 1):
+            obs, reward, done, trunc, info = env.step(action_id)
+            rows.append(
+                {
+                    "gen": info["generation"],
+                    "best_hard": info["best_hard"],
+                    "best_soft": info["best_soft"],
+                    "mean_hard": info["mean_hard"],
+                }
+            )
             if done or trunc:
                 break
 
         elapsed = time.perf_counter() - t0
         final = rows[-1]
         best_hard = min(r["best_hard"] for r in rows)
-        logger.info("    → hard=%d soft=%d mean_hard=%d (%.1fs)",
-                     final["best_hard"], final["best_soft"],
-                     final["mean_hard"], elapsed)
+        logger.info(
+            "    → hard=%d soft=%d mean_hard=%d (%.1fs)",
+            final["best_hard"],
+            final["best_soft"],
+            final["mean_hard"],
+            elapsed,
+        )
 
         all_baselines[action_id] = rows
         env.close()
@@ -220,11 +242,22 @@ def run_static_baselines(run_dir: Path) -> dict[int, list[dict]]:
     csv_path = run_dir / "static_baselines_25gen.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["action_id", "action_name", "gen", "best_hard", "best_soft", "mean_hard"])
+        writer.writerow(
+            ["action_id", "action_name", "gen", "best_hard", "best_soft", "mean_hard"]
+        )
         for aid, rows in all_baselines.items():
             name = PHASE56_BASELINES[aid]["name"]
             for r in rows:
-                writer.writerow([aid, name, r["gen"], r["best_hard"], r["best_soft"], r["mean_hard"]])
+                writer.writerow(
+                    [
+                        aid,
+                        name,
+                        r["gen"],
+                        r["best_hard"],
+                        r["best_soft"],
+                        r["mean_hard"],
+                    ]
+                )
     logger.info("Static baselines saved: %s", csv_path)
 
     return all_baselines
@@ -240,8 +273,12 @@ def evaluate_ppo(model, run_dir: Path) -> tuple[list[dict], list[int]]:
     from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
 
     logger.info("-" * 72)
-    logger.info("PPO Deterministic Evaluation (pop=%d, gens=%d, seed=%d)",
-                EVAL_POP_SIZE, EVAL_MAX_GEN, EVAL_SEED)
+    logger.info(
+        "PPO Deterministic Evaluation (pop=%d, gens=%d, seed=%d)",
+        EVAL_POP_SIZE,
+        EVAL_MAX_GEN,
+        EVAL_SEED,
+    )
     logger.info("-" * 72)
 
     env = PymooHyperHeuristicEnv(
@@ -253,15 +290,17 @@ def evaluate_ppo(model, run_dir: Path) -> tuple[list[dict], list[int]]:
     )
     obs, info = env.reset()
 
-    rows = [{
-        "gen": 1,
-        "action": -1,
-        "action_name": "init",
-        "best_hard": info["best_hard"],
-        "best_soft": info["best_soft"],
-        "mean_hard": info["mean_hard"],
-        "reward": 0.0,
-    }]
+    rows = [
+        {
+            "gen": 1,
+            "action": -1,
+            "action_name": "init",
+            "best_hard": info["best_hard"],
+            "best_soft": info["best_soft"],
+            "mean_hard": info["mean_hard"],
+            "reward": 0.0,
+        }
+    ]
     actions_taken: list[int] = []
     cumulative_reward = 0.0
 
@@ -273,20 +312,26 @@ def evaluate_ppo(model, run_dir: Path) -> tuple[list[dict], list[int]]:
         obs, reward, done, trunc, info = env.step(action)
         cumulative_reward += reward
 
-        rows.append({
-            "gen": info["generation"],
-            "action": action,
-            "action_name": ACTION_SHORT.get(action, f"a{action}"),
-            "best_hard": info["best_hard"],
-            "best_soft": info["best_soft"],
-            "mean_hard": info["mean_hard"],
-            "reward": reward,
-        })
+        rows.append(
+            {
+                "gen": info["generation"],
+                "action": action,
+                "action_name": ACTION_SHORT.get(action, f"a{action}"),
+                "best_hard": info["best_hard"],
+                "best_soft": info["best_soft"],
+                "mean_hard": info["mean_hard"],
+                "reward": reward,
+            }
+        )
 
         logger.info(
             "  Gen %2d | act=%d (%s) | hard=%3.0f soft=%3.0f | R=%.4f",
-            info["generation"], action, ACTION_SHORT.get(action, "?"),
-            info["best_hard"], info["best_soft"], reward,
+            info["generation"],
+            action,
+            ACTION_SHORT.get(action, "?"),
+            info["best_hard"],
+            info["best_soft"],
+            reward,
         )
 
         if done or trunc:
@@ -343,9 +388,9 @@ def print_comparison(
 
     # Phase analysis
     n = len(actions_taken)
-    early = actions_taken[:n // 3]
-    mid = actions_taken[n // 3: 2 * n // 3]
-    late = actions_taken[2 * n // 3:]
+    early = actions_taken[: n // 3]
+    mid = actions_taken[n // 3 : 2 * n // 3]
+    late = actions_taken[2 * n // 3 :]
 
     def _mode(lst):
         if not lst:
@@ -355,10 +400,16 @@ def print_comparison(
             c[x] += 1
         return max(c, key=c.get)
 
-    print(f"\n  Phase Behavior:")
-    print(f"    Early (gen 2-{n // 3 + 1}):  mode={_mode(early)} ({ACTION_SHORT.get(_mode(early), '?')})")
-    print(f"    Mid   (gen {n // 3 + 2}-{2 * n // 3 + 1}):  mode={_mode(mid)} ({ACTION_SHORT.get(_mode(mid), '?')})")
-    print(f"    Late  (gen {2 * n // 3 + 2}-{n + 1}): mode={_mode(late)} ({ACTION_SHORT.get(_mode(late), '?')})")
+    print("\n  Phase Behavior:")
+    print(
+        f"    Early (gen 2-{n // 3 + 1}):  mode={_mode(early)} ({ACTION_SHORT.get(_mode(early), '?')})"
+    )
+    print(
+        f"    Mid   (gen {n // 3 + 2}-{2 * n // 3 + 1}):  mode={_mode(mid)} ({ACTION_SHORT.get(_mode(mid), '?')})"
+    )
+    print(
+        f"    Late  (gen {2 * n // 3 + 2}-{n + 1}): mode={_mode(late)} ({ACTION_SHORT.get(_mode(late), '?')})"
+    )
 
     # -- Comparison Table -------------------------------------------------
     ppo_final = ppo_rows[-1]
@@ -371,10 +422,14 @@ def print_comparison(
 
     print("\n  FINAL COMPARISON TABLE (gen 25)")
     print("  " + "-" * 76)
-    print(f"  {'Method':<25s} {'Hard@25':>8s} {'Soft@25':>8s} {'BestHard':>9s} {'SoftAtBest':>11s} {'vs PPO':>7s}")
+    print(
+        f"  {'Method':<25s} {'Hard@25':>8s} {'Soft@25':>8s} {'BestHard':>9s} {'SoftAtBest':>11s} {'vs PPO':>7s}"
+    )
     print("  " + "-" * 76)
-    print(f"  {'**PPO Adaptive**':<25s} {ppo_final['best_hard']:>8.0f} {ppo_final['best_soft']:>8.0f} "
-          f"{ppo_best_hard:>9.0f} {ppo_soft_at_best:>11.0f} {'—':>7s}")
+    print(
+        f"  {'**PPO Adaptive**':<25s} {ppo_final['best_hard']:>8.0f} {ppo_final['best_soft']:>8.0f} "
+        f"{ppo_best_hard:>9.0f} {ppo_soft_at_best:>11.0f} {'—':>7s}"
+    )
 
     for aid in range(6):
         name = PHASE56_BASELINES[aid]["name"]
@@ -389,22 +444,30 @@ def print_comparison(
 
         delta = bl_final["best_hard"] - ppo_final["best_hard"]
         sign = "+" if delta > 0 else ""
-        print(f"  Static {aid} ({name:<14s}) {bl_final['best_hard']:>8.0f} {bl_final['best_soft']:>8.0f} "
-              f"{bl_best_hard:>9.0f} {bl_soft_at_best:>11.0f} {sign}{delta:>6.0f}")
+        print(
+            f"  Static {aid} ({name:<14s}) {bl_final['best_hard']:>8.0f} {bl_final['best_soft']:>8.0f} "
+            f"{bl_best_hard:>9.0f} {bl_soft_at_best:>11.0f} {sign}{delta:>6.0f}"
+        )
 
     print("  " + "-" * 76)
 
     # -- Success Criterion ------------------------------------------------
     print("\n  SUCCESS CRITERION:")
-    print(f"    PPO hard={ppo_final['best_hard']:.0f}, soft={ppo_final['best_soft']:.0f}")
+    print(
+        f"    PPO hard={ppo_final['best_hard']:.0f}, soft={ppo_final['best_soft']:.0f}"
+    )
 
     # Check Pareto dominance
     pareto_better = True
     for aid in range(6):
         bl = baselines[aid][-1]
-        if ppo_final["best_hard"] <= bl["best_hard"] and ppo_final["best_soft"] < bl["best_soft"]:
-            pass  # PPO dominates this baseline
-        elif ppo_final["best_hard"] < bl["best_hard"] and ppo_final["best_soft"] <= bl["best_soft"]:
+        if (
+            ppo_final["best_hard"] <= bl["best_hard"]
+            and ppo_final["best_soft"] < bl["best_soft"]
+        ) or (
+            ppo_final["best_hard"] < bl["best_hard"]
+            and ppo_final["best_soft"] <= bl["best_soft"]
+        ):
             pass  # PPO dominates this baseline
         else:
             pareto_better = False
@@ -413,17 +476,25 @@ def print_comparison(
     dominated = False
     for aid in range(6):
         bl = baselines[aid][-1]
-        if bl["best_hard"] <= ppo_final["best_hard"] and bl["best_soft"] < ppo_final["best_soft"]:
+        if (
+            bl["best_hard"] <= ppo_final["best_hard"]
+            and bl["best_soft"] < ppo_final["best_soft"]
+        ):
             dominated = True
             break
-        if bl["best_hard"] < ppo_final["best_hard"] and bl["best_soft"] <= ppo_final["best_soft"]:
+        if (
+            bl["best_hard"] < ppo_final["best_hard"]
+            and bl["best_soft"] <= ppo_final["best_soft"]
+        ):
             dominated = True
             break
 
     if pareto_better:
         print("    >>> PARETO DOMINANCE: PPO strictly dominates ALL static baselines!")
     elif not dominated:
-        print("    >>> PARETO NON-DOMINATED: PPO is not dominated by any static baseline.")
+        print(
+            "    >>> PARETO NON-DOMINATED: PPO is not dominated by any static baseline."
+        )
         # Find where PPO sits in the hard-soft Pareto front
         best_soft_at_ppo_hard = float("inf")
         for aid in range(6):
@@ -431,10 +502,14 @@ def print_comparison(
             if bl["best_hard"] <= ppo_final["best_hard"]:
                 best_soft_at_ppo_hard = min(best_soft_at_ppo_hard, bl["best_soft"])
         if ppo_final["best_soft"] < best_soft_at_ppo_hard:
-            print(f"    >>> PPO achieves BETTER soft ({ppo_final['best_soft']:.0f}) than best "
-                  f"static at same hard level ({best_soft_at_ppo_hard:.0f})!")
+            print(
+                f"    >>> PPO achieves BETTER soft ({ppo_final['best_soft']:.0f}) than best "
+                f"static at same hard level ({best_soft_at_ppo_hard:.0f})!"
+            )
     else:
-        print("    >>> PPO is DOMINATED by at least one static baseline. More training needed.")
+        print(
+            "    >>> PPO is DOMINATED by at least one static baseline. More training needed."
+        )
 
     # -- Per-gen trajectory comparison ------------------------------------
     print("\n  PER-GENERATION TRAJECTORY (best_hard)")
@@ -475,6 +550,7 @@ def generate_comparison_plot(
     """Generate fig_04_baseline_comparison.pdf with all 7 convergence lines."""
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         from matplotlib.ticker import MaxNLocator
@@ -483,15 +559,19 @@ def generate_comparison_plot(
         return run_dir / "fig_04_baseline_comparison.pdf"
 
     # -- Style setup (thesis-grade) ----------------------------------------
-    plt.rcParams.update({
-        "font.size": 10,
-        "axes.labelsize": 11,
-        "axes.titlesize": 12,
-        "legend.fontsize": 8,
-        "figure.dpi": 300,
-    })
+    plt.rcParams.update(
+        {
+            "font.size": 10,
+            "axes.labelsize": 11,
+            "axes.titlesize": 12,
+            "legend.fontsize": 8,
+            "figure.dpi": 300,
+        }
+    )
 
-    fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]})
+    fig, axes = plt.subplots(
+        2, 1, figsize=(10, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}
+    )
 
     # -- Top panel: Hard constraints ---------------------------------------
     ax1 = axes[0]
@@ -508,14 +588,27 @@ def generate_comparison_plot(
         name = PHASE56_BASELINES[aid]["name"]
         gens = [r["gen"] for r in baselines[aid]]
         hard = [r["best_hard"] for r in baselines[aid]]
-        ax1.plot(gens, hard, color=colors[aid], alpha=0.5, linewidth=1.0,
-                 linestyle="--", label=f"Static {aid} ({name})")
+        ax1.plot(
+            gens,
+            hard,
+            color=colors[aid],
+            alpha=0.5,
+            linewidth=1.0,
+            linestyle="--",
+            label=f"Static {aid} ({name})",
+        )
 
     # PPO line (thick, black)
     ppo_gens = [r["gen"] for r in ppo_rows]
     ppo_hard = [r["best_hard"] for r in ppo_rows]
-    ax1.plot(ppo_gens, ppo_hard, color="black", linewidth=2.5,
-             label="PPO Adaptive", zorder=10)
+    ax1.plot(
+        ppo_gens,
+        ppo_hard,
+        color="black",
+        linewidth=2.5,
+        label="PPO Adaptive",
+        zorder=10,
+    )
 
     ax1.set_ylabel("Best Hard Penalty")
     ax1.set_title("Phase 57: PPO vs Static Baselines — Hard Constraint Convergence")
@@ -526,14 +619,28 @@ def generate_comparison_plot(
     # -- Second y-axis for soft on top panel --------------------------------
     ax1b = ax1.twinx()
     ppo_soft = [r["best_soft"] for r in ppo_rows]
-    ax1b.plot(ppo_gens, ppo_soft, color="black", linewidth=1.5,
-              linestyle=":", alpha=0.6, label="PPO Soft")
+    ax1b.plot(
+        ppo_gens,
+        ppo_soft,
+        color="black",
+        linewidth=1.5,
+        linestyle=":",
+        alpha=0.6,
+        label="PPO Soft",
+    )
     for aid in [3]:  # Just SoftFocus for comparison
         name = PHASE56_BASELINES[aid]["name"]
         soft = [r["best_soft"] for r in baselines[aid]]
         gens = [r["gen"] for r in baselines[aid]]
-        ax1b.plot(gens, soft, color=colors[aid], alpha=0.4, linewidth=1.0,
-                  linestyle=":", label=f"{name} Soft")
+        ax1b.plot(
+            gens,
+            soft,
+            color=colors[aid],
+            alpha=0.4,
+            linewidth=1.0,
+            linestyle=":",
+            label=f"{name} Soft",
+        )
     ax1b.set_ylabel("Best Soft Penalty", color="gray")
     ax1b.tick_params(axis="y", labelcolor="gray")
     ax1b.legend(loc="lower left", framealpha=0.9)
@@ -542,7 +649,13 @@ def generate_comparison_plot(
     ax2 = axes[1]
     action_gens = list(range(2, 2 + len(actions_taken)))
     action_colors = [colors[a] for a in actions_taken]
-    ax2.bar(action_gens, [1] * len(actions_taken), color=action_colors, width=1.0, edgecolor="none")
+    ax2.bar(
+        action_gens,
+        [1] * len(actions_taken),
+        color=action_colors,
+        width=1.0,
+        edgecolor="none",
+    )
     ax2.set_xlabel("Generation")
     ax2.set_ylabel("Action")
     ax2.set_yticks([])
@@ -550,9 +663,14 @@ def generate_comparison_plot(
 
     # Legend for action colors
     from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=colors[a], label=f"{a}: {PHASE56_BASELINES[a]['name']}")
-                       for a in range(6)]
-    ax2.legend(handles=legend_elements, loc="upper right", ncol=3, fontsize=7, framealpha=0.9)
+
+    legend_elements = [
+        Patch(facecolor=colors[a], label=f"{a}: {PHASE56_BASELINES[a]['name']}")
+        for a in range(6)
+    ]
+    ax2.legend(
+        handles=legend_elements, loc="upper right", ncol=3, fontsize=7, framealpha=0.9
+    )
 
     plt.tight_layout()
     pdf_path = run_dir / "fig_04_baseline_comparison.pdf"
@@ -562,9 +680,12 @@ def generate_comparison_plot(
 
     # Also save PNG for quick viewing
     png_path = run_dir / "fig_04_baseline_comparison.png"
-    fig2, axes2 = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]})
+    fig2, axes2 = plt.subplots(
+        2, 1, figsize=(10, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}
+    )
     # Just re-save as PNG
     import shutil
+
     fig_copy = fig  # Already closed, regenerate
     # Simpler: just save from the same code
     fig.savefig(png_path, bbox_inches="tight", dpi=150)
@@ -582,6 +703,7 @@ def generate_comparison_plot_v2(
     """Generate fig_04 — robust version that doesn't close prematurely."""
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         from matplotlib.patches import Patch
@@ -590,21 +712,28 @@ def generate_comparison_plot_v2(
         logger.warning("matplotlib not available — skipping plot generation")
         return run_dir / "fig_04_baseline_comparison.pdf"
 
-    plt.rcParams.update({
-        "font.size": 10,
-        "axes.labelsize": 11,
-        "axes.titlesize": 12,
-        "legend.fontsize": 8,
-        "figure.dpi": 300,
-    })
+    plt.rcParams.update(
+        {
+            "font.size": 10,
+            "axes.labelsize": 11,
+            "axes.titlesize": 12,
+            "legend.fontsize": 8,
+            "figure.dpi": 300,
+        }
+    )
 
     colors = {
-        0: "#1f77b4", 1: "#ff7f0e", 2: "#2ca02c",
-        3: "#d62728", 4: "#9467bd", 5: "#8c564b",
+        0: "#1f77b4",
+        1: "#ff7f0e",
+        2: "#2ca02c",
+        3: "#d62728",
+        4: "#9467bd",
+        5: "#8c564b",
     }
 
-    fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True,
-                             gridspec_kw={"height_ratios": [3, 1]})
+    fig, axes = plt.subplots(
+        2, 1, figsize=(10, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}
+    )
 
     # -- Top: convergence curves ------------------------------------------
     ax = axes[0]
@@ -612,13 +741,26 @@ def generate_comparison_plot_v2(
         name = PHASE56_BASELINES[aid]["name"]
         gens = [r["gen"] for r in baselines[aid]]
         hard = [r["best_hard"] for r in baselines[aid]]
-        ax.plot(gens, hard, color=colors[aid], alpha=0.5, linewidth=1.0,
-                linestyle="--", label=f"Static {aid} ({name})")
+        ax.plot(
+            gens,
+            hard,
+            color=colors[aid],
+            alpha=0.5,
+            linewidth=1.0,
+            linestyle="--",
+            label=f"Static {aid} ({name})",
+        )
 
     ppo_gens = [r["gen"] for r in ppo_rows]
     ppo_hard = [r["best_hard"] for r in ppo_rows]
-    ax.plot(ppo_gens, ppo_hard, color="black", linewidth=2.5,
-            label="PPO Adaptive", zorder=10)
+    ax.plot(
+        ppo_gens,
+        ppo_hard,
+        color="black",
+        linewidth=2.5,
+        label="PPO Adaptive",
+        zorder=10,
+    )
 
     ax.set_ylabel("Best Hard Penalty")
     ax.set_title("Phase 57: PPO vs Static Baselines — Hard Constraint Convergence")
@@ -630,15 +772,24 @@ def generate_comparison_plot_v2(
     ax2 = axes[1]
     action_gens = list(range(2, 2 + len(actions_taken)))
     action_colors_list = [colors[a] for a in actions_taken]
-    ax2.bar(action_gens, [1] * len(actions_taken), color=action_colors_list,
-            width=1.0, edgecolor="none")
+    ax2.bar(
+        action_gens,
+        [1] * len(actions_taken),
+        color=action_colors_list,
+        width=1.0,
+        edgecolor="none",
+    )
     ax2.set_xlabel("Generation")
     ax2.set_ylabel("Action")
     ax2.set_yticks([])
     ax2.set_title("Learned Action Sequence", fontsize=10)
-    legend_elements = [Patch(facecolor=colors[a], label=f"{a}: {PHASE56_BASELINES[a]['name']}")
-                       for a in range(6)]
-    ax2.legend(handles=legend_elements, loc="upper right", ncol=3, fontsize=7, framealpha=0.9)
+    legend_elements = [
+        Patch(facecolor=colors[a], label=f"{a}: {PHASE56_BASELINES[a]['name']}")
+        for a in range(6)
+    ]
+    ax2.legend(
+        handles=legend_elements, loc="upper right", ncol=3, fontsize=7, framealpha=0.9
+    )
 
     plt.tight_layout()
 
@@ -684,7 +835,7 @@ def main() -> None:
     total_time = time.perf_counter() - t_total
     print(f"\n  Total Phase 57 time: {total_time:.0f}s ({total_time / 60:.1f} min)")
     print(f"  Output: {run_dir}")
-    print(f"  Model:  ppo_phase57.zip")
+    print("  Model:  ppo_phase57.zip")
     print(f"  Plot:   {pdf.name}")
     print()
 

@@ -36,7 +36,9 @@ logger = logging.getLogger("verify_rl_brain")
 # ======================================================================
 # Configuration
 # ======================================================================
-MODEL_PATH = PROJECT_ROOT / "output" / "rl_phase57" / "20260307_161124" / "ppo_phase57.zip"
+MODEL_PATH = (
+    PROJECT_ROOT / "output" / "rl_phase57" / "20260307_161124" / "ppo_phase57.zip"
+)
 PKL_PATH = ".cache/events_with_domains.pkl"
 EVAL_POP_SIZE = 120
 EVAL_MAX_GEN = 25
@@ -217,7 +219,9 @@ def main() -> None:
         "Late  (gen 18-25)": slice(min(17, n_steps), n_steps),
     }
     print("\n  PHASE-WISE MEAN PROBABILITIES:")
-    phase_header = f"    {'Phase':<20} │ " + " ".join(f"{'p(' + ACTION_SHORT[a] + ')':>7}" for a in range(6))
+    phase_header = f"    {'Phase':<20} │ " + " ".join(
+        f"{'p(' + ACTION_SHORT[a] + ')':>7}" for a in range(6)
+    )
     print(phase_header)
     print("    " + "─" * (len(phase_header) - 4))
     for phase_name, phase_slice in phases.items():
@@ -231,38 +235,52 @@ def main() -> None:
     # --- Entropy analysis ---
     entropies = [-np.sum(p * np.log(p + 1e-10)) for p in all_probs]
     max_entropy = np.log(6)  # uniform distribution
-    print(f"\n  ENTROPY ANALYSIS:")
-    print(f"    Mean entropy:    {np.mean(entropies):.4f} / {max_entropy:.4f} (max = uniform)")
-    print(f"    Min entropy:     {np.min(entropies):.4f} (step {np.argmin(entropies) + 1})")
-    print(f"    Max entropy:     {np.max(entropies):.4f} (step {np.argmax(entropies) + 1})")
+    print("\n  ENTROPY ANALYSIS:")
+    print(
+        f"    Mean entropy:    {np.mean(entropies):.4f} / {max_entropy:.4f} (max = uniform)"
+    )
+    print(
+        f"    Min entropy:     {np.min(entropies):.4f} (step {np.argmin(entropies) + 1})"
+    )
+    print(
+        f"    Max entropy:     {np.max(entropies):.4f} (step {np.argmax(entropies) + 1})"
+    )
     print(f"    Entropy trend:   first={entropies[0]:.4f} → last={entropies[-1]:.4f}")
 
     # --- State dependency check ---
     # If probabilities change significantly across steps, the policy IS state-dependent
     prob_variance = prob_matrix.var(axis=0).sum()  # total variance across all actions
-    print(f"\n  STATE-DEPENDENCY METRIC:")
+    print("\n  STATE-DEPENDENCY METRIC:")
     print(f"    Total probability variance: {prob_variance:.6f}")
     if prob_variance > 0.01:
-        print(f"    >>> VERDICT: Policy IS state-dependent (variance > 0.01)")
+        print("    >>> VERDICT: Policy IS state-dependent (variance > 0.01)")
     elif prob_variance > 0.001:
-        print(f"    >>> VERDICT: Policy shows WEAK state-dependency")
+        print("    >>> VERDICT: Policy shows WEAK state-dependency")
     else:
-        print(f"    >>> VERDICT: Policy is STATIC — probabilities don't change with state")
+        print(
+            "    >>> VERDICT: Policy is STATIC — probabilities don't change with state"
+        )
 
     # --- Final scores ---
-    print(f"\n  FINAL SCORES:")
+    print("\n  FINAL SCORES:")
     final_hard = hard_trajectory[-1] if hard_trajectory else "?"
     final_soft = soft_trajectory[-1] if soft_trajectory else "?"
-    best_hard_gen = min(range(len(hard_trajectory)), key=lambda i: hard_trajectory[i]) if hard_trajectory else 0
+    best_hard_gen = (
+        min(range(len(hard_trajectory)), key=lambda i: hard_trajectory[i])
+        if hard_trajectory
+        else 0
+    )
     best_hard_val = min(hard_trajectory) if hard_trajectory else "?"
     best_soft_at_best_hard = soft_trajectory[best_hard_gen] if soft_trajectory else "?"
     print(f"    Final:         hard={final_hard}, soft={final_soft}")
-    print(f"    Best hard:     {best_hard_val} at gen {best_hard_gen + 1} (soft={best_soft_at_best_hard})")
+    print(
+        f"    Best hard:     {best_hard_val} at gen {best_hard_gen + 1} (soft={best_soft_at_best_hard})"
+    )
     print(f"    Cumulative R:  {cumulative_reward:.4f}")
 
     # --- Action sequence as string ---
     seq = " → ".join(ACTION_SHORT[a] for a in actions_taken)
-    print(f"\n  ACTION SEQUENCE:")
+    print("\n  ACTION SEQUENCE:")
     print(f"    {seq}")
 
     print()
