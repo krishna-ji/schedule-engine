@@ -402,10 +402,15 @@ class PymooHyperHeuristicEnv(gym.Env):
         for idx in elite_idx:
             xi = pop[idx].get("X").copy()
             for p in range(cfg.passes):
+                # Always provide an rng to avoid exhaustive paired-placement
+                # search in _find_paired_placement (rng=None can hang).
+                # Stochastic passes use random seeds; "deterministic" passes
+                # use a fixed seed for reproducibility but still get early
+                # termination via the stochastic acceptance shortcut.
                 if cfg.stochastic_alternate and p % 2 == 0:
                     rng = np.random.default_rng()
                 else:
-                    rng = None
+                    rng = np.random.default_rng([self._gen, int(idx), p])
                 xi_new = repairer.repair(xi, rng=rng)
                 if np.array_equal(xi_new, xi):
                     break  # converged
@@ -432,12 +437,23 @@ class PymooHyperHeuristicEnv(gym.Env):
     # ------------------------------------------------------------------
 
     def _compute_reward(self, F: np.ndarray, G: np.ndarray) -> float:
-        r"""Pure delta-based reward from F and G matrices.
+        r"""Phase-transition reward: amplify soft signal once hard converges.
+
+        **Phase 57 redesign**: Hard penalties converge to a tight 65–69
+        band by gen 5–10.  A 4-point improvement on hard must feel
+        significant, but once hard is stable the agent needs a strong
+        gradient toward better soft constraints.
 
         .. math::
 
-            R_t = \Delta_{\text{hard}} + 0.1 \cdot \Delta_{\text{soft}}
-                  + \text{feasibility\_bonus}
+            R_t = \begin{cases}
+              2 \Delta_{\text{hard}} + 0.5 \frac{\Delta_{\text{soft}}}
+                    {\text{norm}_{\text{soft}}} & \text{if prev\_hard} < 100 \\
+              \frac{\Delta_{\text{hard}}}{\text{norm}_{\text{hard}}}
+              + 0.1 \frac{\Delta_{\text{soft}}}{\text{norm}_{\text{soft}}}
+                  & \text{otherwise}
+            \end{cases}
+            + \text{feasibility\_bonus}
 
         where $\Delta = \text{prev\_best} - \text{best}$ (positive means
         improvement).  No time penalty — the agent is rewarded strictly
@@ -446,18 +462,24 @@ class PymooHyperHeuristicEnv(gym.Env):
         best_hard = float(F[:, 0].min())
         best_soft = float(F[:, 1].min())
 
-        # -- Component 1: absolute hard-penalty improvement --------------
-        delta_hard = self._prev_best_hard - best_hard  # >0 = got better
-        # Normalise by initial magnitude so reward scale stays ~O(1)
-        norm_hard = max(self._prev_best_hard, 1.0)
-        hard_reward = delta_hard / norm_hard
-
-        # -- Component 2: absolute soft-penalty improvement --------------
+        # -- Deltas (positive = improvement) ------------------------------
+        delta_hard = self._prev_best_hard - best_hard
         delta_soft = self._prev_best_soft - best_soft
+        norm_hard = max(self._prev_best_hard, 1.0)
         norm_soft = max(self._prev_best_soft, 1.0)
-        soft_reward = delta_soft / norm_soft
 
-        # -- Component 3: one-time feasibility bonus ---------------------
+        # -- Phase-transition reward -------------------------------------
+        # Post-convergence (hard < 100): amplify both signals so a
+        # 4-point hard improvement and soft compression are clearly felt.
+        # Pre-convergence (hard >= 100): normalised delta keeps scale ~O(1).
+        if self._prev_best_hard < 100:
+            hard_reward = 2.0 * delta_hard
+            soft_reward = 0.5 * delta_soft / norm_soft
+        else:
+            hard_reward = delta_hard / norm_hard
+            soft_reward = 0.1 * delta_soft / norm_soft
+
+        # -- One-time feasibility bonus ----------------------------------
         first_feasible_bonus = 0.0
         if best_hard == 0.0 and not self._found_feasible:
             first_feasible_bonus = self.feasibility_bonus
@@ -465,11 +487,11 @@ class PymooHyperHeuristicEnv(gym.Env):
 
         # -- Combine (no time penalty) ------------------------------------
         reward = (
-            hard_reward + 0.1 * soft_reward + first_feasible_bonus
+            hard_reward + soft_reward + first_feasible_bonus
         ) * self.reward_scale
 
-        # Clip to [-5, 5]  (feasibility bonus handled separately)
-        return float(np.clip(reward, -5.0, 5.0))
+        # Clip to [-10, 10]  (wider range for amplified post-convergence)
+        return float(np.clip(reward, -10.0, 10.0))
 
     # ------------------------------------------------------------------
     # Helpers
@@ -535,13 +557,10 @@ class PymooHyperHeuristicEnv(gym.Env):
     def action_masks(self) -> np.ndarray:
         """Return boolean mask for valid actions based on current state.
 
-        **Phase 53 action space** (6 pipeline configurations):
-
-        - Action 3 (SoftFocusRepair) is masked out when hard constraints
-          are violated — soft optimisation is wasteful when hard
-          penalties dominate.
-        - All other actions are always available since they all run
-          the complete repair pipeline.
+        **Phase 57 update**: All 6 actions are always available.
+        Phase 56 proved SoftFocus (action 3) wins 20/50 gens on hard
+        even when hard > 0 (best hard=65 at gen 15).  The previous
+        mask blocking SoftFocus when hard > 0 was counterproductive.
 
         Returns
         -------
@@ -549,11 +568,8 @@ class PymooHyperHeuristicEnv(gym.Env):
             True means action is available.
         """
         mask = np.ones(NUM_ACTIONS, dtype=bool)
-
-        # Block soft-focus optimiser when hard constraints are violated
-        if self._current_best_hard > 0.0:
-            mask[3] = False  # SoftFocusRepair (soft obj only)
-
+        # All actions always available — Phase 56 proved every LLH
+        # contributes at different phases of the search.
         return mask
 
     def render(self) -> None:
