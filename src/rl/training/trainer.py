@@ -133,7 +133,7 @@ class RLTrainer:
         Initialize trainer.
 
         Args:
-            env: Gymnasium environment (ScheduleEnv) or env factory function
+            env: Gymnasium environment or env factory function
             agent_type: Agent type ("ppo" or "dqn")
             save_dir: Directory to save models
             tensorboard_log: TensorBoard log directory

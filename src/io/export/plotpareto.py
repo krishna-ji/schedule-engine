@@ -29,8 +29,8 @@ def plot_pareto_front_from_F(F: np.ndarray, output_dir: str) -> None:
     Columns: ``F[:, 0]`` = hard-constraint violations,
              ``F[:, 1]`` = soft-constraint penalty.
 
-    Produces the same plot as ``plot_pareto_front`` but without requiring
-    DEAP-style ``population[i].fitness.values``.
+    Produces the same plot as ``plot_pareto_front`` using the pymoo
+    objective matrix directly.
     """
     from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 

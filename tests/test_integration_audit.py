@@ -273,6 +273,7 @@ class TestIntegrationLint:
     def test_ruff_on_changed_files(self):
         """Run ruff on all files we modified."""
         import subprocess
+        import sys
 
         files = [
             "src/experiments/ga_experiment.py",
@@ -288,9 +289,10 @@ class TestIntegrationLint:
         existing = [str(PROJECT_ROOT / f) for f in files if (PROJECT_ROOT / f).exists()]
 
         result = subprocess.run(
-            ["python", "-m", "ruff", "check", "--select=E,F,W", *existing],
+            [sys.executable, "-m", "ruff", "check", "--select=E,F,W", *existing],
             capture_output=True,
             text=True,
             cwd=str(PROJECT_ROOT),
+            check=False,
         )
         assert result.returncode == 0, f"Ruff errors:\n{result.stdout}\n{result.stderr}"

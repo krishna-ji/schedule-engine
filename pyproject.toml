@@ -135,7 +135,6 @@ ignore = [
     "RUF002",  # Ambiguous unicode in docstring (en-dash)
     "RUF003",  # Ambiguous unicode in comment (multiplication sign)
     "RUF001",  # Ambiguous unicode in string
-    "RUF059",  # Unused unpacked variable — intentional destructuring
     "A005",    # Module shadows stdlib — src/io is intentional
     "PTH123",  # builtin open() — acceptable in scripts & data loading
     "PTH120",  # os.path.dirname — acceptable
@@ -261,8 +260,7 @@ disallow_incomplete_defs = true
 # RL subsystem — dynamic SB3 / gymnasium types
 [[tool.mypy.overrides]]
 module = [
-    "src.rl.gym_env.schedule_env",
-    "src.rl.gym_env.action_space",
+
     "src.rl.training.callbacks",
     "src.rl.training.trainer",
     "src.rl.deployment.inference",

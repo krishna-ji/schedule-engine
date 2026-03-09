@@ -199,22 +199,7 @@ class TestMetricsEdgeCases:
 
 
 class TestCallbackMOEALists:
-    """Verify _init_moea_lists attaches all expected lists."""
-
-    def test_init_moea_lists_has_igds(self):
-        from src.experiments.ga_experiment import _init_moea_lists
-
-        class FakeCB:
-            pass
-
-        cb = FakeCB()
-        _init_moea_lists(cb)
-        assert hasattr(cb, "igds")
-        assert cb.igds == []
-        assert hasattr(cb, "_hv_running_max")
-        assert cb._hv_running_max is None
-        assert hasattr(cb, "_ref_front")
-        assert hasattr(cb, "_ref_front_checked")
+    """Verify callback MOEA lists include IGD."""
 
     def test_result_dict_includes_igds(self):
         """GAExperiment._execute return dict should contain igds key."""

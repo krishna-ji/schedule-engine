@@ -225,7 +225,7 @@ def mutate_individual(
                 If False, use traditional random mutation
 
     Returns:
-        Tuple containing modified individual (DEAP compatibility)
+        Tuple containing modified individual
     """
     import logging
 

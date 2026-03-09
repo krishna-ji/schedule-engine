@@ -7,8 +7,6 @@ Wraps the GA scheduler as a reinforcement learning environment where:
 - Rewards: Fitness improvement + PBRS shaping + curriculum bonus
 """
 
-# Legacy DEAP‑era imports removed.  The current Pymoo‑native environment
-# lives in  src.rl.gym_env.pymoo_env  and the fast state encoder in
-# src.rl.gym_env.fast_state_encoder .
+from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
 
-__all__: list[str] = []
+__all__: list[str] = ["PymooHyperHeuristicEnv"]

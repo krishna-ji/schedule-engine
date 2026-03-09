@@ -329,8 +329,6 @@ def crossover_constraint_aware(
 def get_constraint_aware_mutation(context: SchedulingContext):
     """
     Factory function to create a constraint-aware mutation operator.
-
-    Returns a function compatible with DEAP's toolbox.register().
     """
 
     def mutation_wrapper(
@@ -344,8 +342,6 @@ def get_constraint_aware_mutation(context: SchedulingContext):
 def get_constraint_aware_crossover(context: SchedulingContext):
     """
     Factory function to create a constraint-aware crossover operator.
-
-    Returns a function compatible with DEAP's toolbox.register().
     """
 
     def crossover_wrapper(
