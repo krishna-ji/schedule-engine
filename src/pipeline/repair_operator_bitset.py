@@ -55,6 +55,7 @@ import pickle
 from collections import defaultdict
 
 import numpy as np
+from numba import njit
 
 from .bitset_time import FULL_MASK, T, mask_from_interval, mask_from_quanta
 
@@ -64,6 +65,119 @@ _MASK_LUT: np.ndarray = np.zeros((_MAX_DUR + 1, T), dtype=np.uint64)
 for _d in range(_MAX_DUR + 1):
     for _s in range(T):
         _MASK_LUT[_d, _s] = mask_from_interval(_s, _d)
+
+
+# ======================================================================
+# Numba-JIT compiled inner-loop functions (Phase 74)
+# ======================================================================
+
+
+@njit(cache=True, nogil=True)
+def _numba_add(e, inst, room, time, rc, ic, gc, durations, egi_flat, egi_len):
+    """Add event e to count arrays (JIT-compiled)."""
+    s = int(time[e])
+    dur = int(durations[e])
+    r = int(room[e])
+    i = int(inst[e])
+    end = s + dur
+    for q in range(s, end):
+        rc[r, q] += 1
+        ic[i, q] += 1
+    n_grp = int(egi_len[e])
+    for g in range(n_grp):
+        gidx = int(egi_flat[e, g])
+        for q in range(s, end):
+            gc[gidx, q] += 1
+
+
+@njit(cache=True, nogil=True)
+def _numba_remove(e, inst, room, time, rc, ic, gc, durations, egi_flat, egi_len):
+    """Remove event e from count arrays (JIT-compiled)."""
+    s = int(time[e])
+    dur = int(durations[e])
+    r = int(room[e])
+    i = int(inst[e])
+    end = s + dur
+    for q in range(s, end):
+        rc[r, q] -= 1
+        ic[i, q] -= 1
+    n_grp = int(egi_len[e])
+    for g in range(n_grp):
+        gidx = int(egi_flat[e, g])
+        for q in range(s, end):
+            gc[gidx, q] -= 1
+
+
+@njit(cache=True, nogil=True)
+def _numba_count_conflicts(
+    e, inst, room, time, rc, ic, gc, durations, egi_flat, egi_len
+):
+    """Count conflicts for event e (which IS in maps, >1 = conflict)."""
+    s = int(time[e])
+    dur = int(durations[e])
+    r = int(room[e])
+    i = int(inst[e])
+    end = s + dur
+    conflicts = 0
+    n_grp = int(egi_len[e])
+    for q in range(s, end):
+        if rc[r, q] > 1:
+            conflicts += 1
+        if ic[i, q] > 1:
+            conflicts += 1
+        for g in range(n_grp):
+            gidx = int(egi_flat[e, g])
+            if gc[gidx, q] > 1:
+                conflicts += 1
+    return conflicts
+
+
+@njit(cache=True, nogil=True)
+def _numba_check_placement(
+    e,
+    i_idx,
+    r_idx,
+    t,
+    rc,
+    ic,
+    gc,
+    durations,
+    egi_flat,
+    egi_len,
+    inst_avail_arr,
+    room_avail_arr,
+):
+    """Check conflicts for hypothetical placement (event REMOVED from maps)."""
+    dur = int(durations[e])
+    end = t + dur
+    conflicts = 0
+    # Availability penalties
+    for q in range(t, end):
+        if not inst_avail_arr[i_idx, q]:
+            conflicts += 100
+        if not room_avail_arr[r_idx, q]:
+            conflicts += 100
+    # Exclusivity — any event already there means conflict
+    n_grp = int(egi_len[e])
+    for q in range(t, end):
+        if rc[r_idx, q] > 0:
+            conflicts += 1
+        if ic[i_idx, q] > 0:
+            conflicts += 1
+        for g in range(n_grp):
+            gidx = int(egi_flat[e, g])
+            if gc[gidx, q] > 0:
+                conflicts += 1
+    return conflicts
+
+
+@njit(cache=True, nogil=True)
+def _numba_build_counts(
+    n_events, inst, room, time, rc, ic, gc, durations, egi_flat, egi_len
+):
+    """Build count arrays from current assignments (JIT-compiled)."""
+    for e in range(n_events):
+        _numba_add(e, inst, room, time, rc, ic, gc, durations, egi_flat, egi_len)
 
 
 class BitsetSchedulingRepair:
@@ -143,6 +257,15 @@ class BitsetSchedulingRepair:
             [ev["num_quanta"] for ev in self.events], dtype=np.int32
         )
 
+        # Flattened group indices for Numba (padded 2-D int32 array)
+        _max_grp = max((len(g) for g in self.event_group_indices), default=1) or 1
+        self._egi_flat = np.zeros((self.n_events, _max_grp), dtype=np.int32)
+        self._egi_len = np.zeros(self.n_events, dtype=np.int32)
+        for _e, _glist in enumerate(self.event_group_indices):
+            self._egi_len[_e] = len(_glist)
+            for _gi, _gv in enumerate(_glist):
+                self._egi_flat[_e, _gi] = _gv
+
         # Boolean availability arrays: shape (resource, T)
         self.inst_avail_arr = np.ones((self.n_instructors, T), dtype=np.bool_)
         for idx, slots in self.inst_avail.items():
@@ -218,90 +341,103 @@ class BitsetSchedulingRepair:
         )
 
     def _add(self, e, inst, room, time, rc, ic, gc):
-        """Add event e to count arrays."""
-        s = int(time[e])
-        dur = int(self.durations[e])
-        r = int(room[e])
-        i = int(inst[e])
-        end = s + dur
-        rc[r, s:end] += 1
-        ic[i, s:end] += 1
-        for gidx in self.event_group_indices[e]:
-            gc[gidx, s:end] += 1
+        """Add event e to count arrays (delegates to Numba JIT)."""
+        _numba_add(
+            e,
+            inst,
+            room,
+            time,
+            rc,
+            ic,
+            gc,
+            self.durations,
+            self._egi_flat,
+            self._egi_len,
+        )
         if self.is_practical[e]:
+            s = int(time[e])
+            end = s + int(self.durations[e])
             for gidx in self.event_group_indices[e]:
                 self._prac_occ[gidx, s:end] += 1
 
     def _remove(self, e, inst, room, time, rc, ic, gc):
-        """Remove event e from count arrays."""
-        s = int(time[e])
-        dur = int(self.durations[e])
-        r = int(room[e])
-        i = int(inst[e])
-        end = s + dur
-        rc[r, s:end] -= 1
-        ic[i, s:end] -= 1
-        for gidx in self.event_group_indices[e]:
-            gc[gidx, s:end] -= 1
+        """Remove event e from count arrays (delegates to Numba JIT)."""
+        _numba_remove(
+            e,
+            inst,
+            room,
+            time,
+            rc,
+            ic,
+            gc,
+            self.durations,
+            self._egi_flat,
+            self._egi_len,
+        )
         if self.is_practical[e]:
+            s = int(time[e])
+            end = s + int(self.durations[e])
             for gidx in self.event_group_indices[e]:
                 self._prac_occ[gidx, s:end] -= 1
 
     def _count_conflicts(self, e, inst, room, time, rc, ic, gc) -> int:
-        """Count conflicts for event e (which IS in the maps, so >1 means conflict)."""
-        s = int(time[e])
-        dur = int(self.durations[e])
-        r = int(room[e])
-        i = int(inst[e])
-        end = s + dur
-        conflicts = 0
-        # Use scalar loop for small dur — avoids numpy slice overhead
-        for q in range(s, end):
-            if rc[r, q] > 1:
-                conflicts += 1
-            if ic[i, q] > 1:
-                conflicts += 1
-            for gidx in self.event_group_indices[e]:
-                if gc[gidx, q] > 1:
-                    conflicts += 1
-        return conflicts
+        """Count conflicts for event e (delegates to Numba JIT)."""
+        return _numba_count_conflicts(
+            e,
+            inst,
+            room,
+            time,
+            rc,
+            ic,
+            gc,
+            self.durations,
+            self._egi_flat,
+            self._egi_len,
+        )
 
     def _check_placement(self, e, i_idx, r_idx, t, rc, ic, gc) -> int:
-        """Check conflicts for hypothetical placement. Event must be REMOVED from maps."""
-        dur = int(self.durations[e])
-        end = t + dur
-        conflicts = 0
-
-        # Availability — scalar loop for small dur
-        ia = self.inst_avail_arr
-        ra = self.room_avail_arr
-        for q in range(t, end):
-            if not ia[i_idx, q]:
-                conflicts += 100
-            if not ra[r_idx, q]:
-                conflicts += 100
-
-        # Exclusivity — any event already there means conflict
-        for q in range(t, end):
-            if rc[r_idx, q] > 0:
-                conflicts += 1
-            if ic[i_idx, q] > 0:
-                conflicts += 1
-            for gidx in self.event_group_indices[e]:
-                if gc[gidx, q] > 0:
-                    conflicts += 1
-
-        return conflicts
+        """Check conflicts for hypothetical placement (delegates to Numba JIT)."""
+        return _numba_check_placement(
+            e,
+            i_idx,
+            r_idx,
+            t,
+            rc,
+            ic,
+            gc,
+            self.durations,
+            self._egi_flat,
+            self._egi_len,
+            self.inst_avail_arr,
+            self.room_avail_arr,
+        )
 
     # ------------------------------------------------------------------
     # Build occupancy
     # ------------------------------------------------------------------
 
     def _build_counts(self, inst, room, time):
-        """Build count arrays from current assignments."""
+        """Build count arrays from current assignments (Numba-accelerated)."""
         rc, ic, gc = self._make_counts()
+        _numba_build_counts(
+            self.n_events,
+            inst,
+            room,
+            time,
+            rc,
+            ic,
+            gc,
+            self.durations,
+            self._egi_flat,
+            self._egi_len,
+        )
+        # Rebuild _prac_occ for practical events (Python — cold path)
         for e in range(self.n_events):
-            self._add(e, inst, room, time, rc, ic, gc)
+            if self.is_practical[e]:
+                s = int(time[e])
+                end = s + int(self.durations[e])
+                for gidx in self.event_group_indices[e]:
+                    self._prac_occ[gidx, s:end] += 1
         return rc, ic, gc
 
     # ------------------------------------------------------------------

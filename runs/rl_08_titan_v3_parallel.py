@@ -85,6 +85,7 @@ def make_env(rank: int, seed: int = 42):
             pop_size=TRAIN_POP_SIZE,
             algorithm_name="nsga2",
             seed=seed + rank,
+            run_preflight=False,  # Skip redundant feasibility checks in workers
         )
         return env
 

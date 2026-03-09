@@ -1,5 +1,11 @@
 """
-Notebook utilities for RL experiments.
+"""Notebook utilities for RL experiments  [DEPRECATED].
+
+.. deprecated::
+    This module references the legacy DEAP-era ``ScheduleEnv`` and uses
+    obsolete GA parameters (cxpb=0.7, mutpb=0.2).  It is NOT used by the
+    current Pymoo-native pipeline.  For the active environment, see
+    ``src.rl.gym_env.pymoo_env.PymooHyperHeuristicEnv``.
 
 These helpers wrap the production ScheduleEnv and RL agents so notebooks stay
 thin and aligned with the main codebase.

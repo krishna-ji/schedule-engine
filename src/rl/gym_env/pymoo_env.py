@@ -115,8 +115,10 @@ class PymooHyperHeuristicEnv(gym.Env):
         reward_scale: float = 1.0,
         feasibility_bonus: float = 10.0,
         acceptance_tolerance: float = 0.0,  # DEPRECATED (Phase 53: no rollback)
+        run_preflight: bool = True,
     ):
         super().__init__()
+        self._run_preflight = run_preflight
 
         self.pkl_path = pkl_path
         self.max_generations = max(max_generations, 1)
@@ -197,7 +199,9 @@ class PymooHyperHeuristicEnv(gym.Env):
         if not self._problem_cached:
             from src.pipeline.scheduling_problem import create_problem
 
-            self._problem = create_problem(self.pkl_path)
+            self._problem = create_problem(
+                self.pkl_path, run_preflight=self._run_preflight
+            )
             self._problem_cached = True
 
         self._encoder = VectorizedStateEncoder(

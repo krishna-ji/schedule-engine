@@ -2,9 +2,9 @@
 Gymnasium environment for schedule optimization.
 
 Wraps the GA scheduler as a reinforcement learning environment where:
-- State: Population metrics, fitness stats, diversity, progress
-- Actions: 20 discrete actions (19 heuristics + no-op)
-- Rewards: Fitness improvement + diversity bonus - time penalty
+- State: Population metrics, fitness stats, diversity, progress (39-D)
+- Actions: 6 discrete actions (LLH pipeline configurations)
+- Rewards: Fitness improvement + PBRS shaping + curriculum bonus
 """
 
 # Legacy DEAP‑era imports removed.  The current Pymoo‑native environment

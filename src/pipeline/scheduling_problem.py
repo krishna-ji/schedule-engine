@@ -158,7 +158,7 @@ class SchedulingProblem(Problem):
 
         # ---- Soft evaluation (vectorized over full population) ----
         soft_total, soft_bd = eval_soft_vectorized_breakdown(x, self._soft_data)
-        F[:, 1] = soft_total
+        F[:, 1] += soft_total
 
         # ---- Paired cohort practical alignment (soft) ----
         paired_penalty = evaluate_paired_cohorts_vectorized(x, self.lookups)
@@ -216,17 +216,25 @@ def create_problem(
     pkl_path: str = ".cache/events_with_domains.pkl",
     ctx: SchedulingContext | None = None,
     qts: QuantumTimeSystem | None = None,
+    run_preflight: bool = True,
 ) -> SchedulingProblem:
     """Factory function to create SchedulingProblem.
 
     If ctx/qts are not provided, tries to load from data directory.
+
+    Parameters
+    ----------
+    run_preflight : bool
+        Run feasibility checks when loading DataStore.  Set False in
+        SubprocVecEnv workers to avoid redundant O(N²) checks that
+        spam stdout 24× at startup.  Default True for safety.
     """
     if ctx is None:
         try:
             from src.io.data_store import DataStore
             from src.io.time_system import QuantumTimeSystem as QTS
 
-            store = DataStore.from_json("data")
+            store = DataStore.from_json("data", run_preflight=run_preflight)
             ctx = store.to_context()
             qts = QTS()
 

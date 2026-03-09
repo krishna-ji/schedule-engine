@@ -357,7 +357,7 @@ VECTORIZED_ACTION_SPACE: dict[int, type[_AtomicRepairBase]] = {
     2: MemeticEliteRepair,  # 15% best, 4 passes alt (memetic clone)
     3: SoftFocusRepair,  # 8% best, 2 passes + compaction
     4: DestructiveConstructive,  # Ruin events + 20% best, 2 passes
-    5: IntensifiedRepair,  # 20% best, 3 passes det
+    5: IntensifiedRepair,  # 20% best, 3 passes alt
 }
 
 ACTION_NAMES: dict[int, str] = {

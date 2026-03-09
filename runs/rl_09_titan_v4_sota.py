@@ -58,6 +58,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("rl_09_titan_v4_sota")
 
+# Suppress noisy per-reset/per-step logs from worker subprocesses.
+# NOTE: This is cosmetic — SubprocVecEnv workers run in separate
+# processes with independent GILs.  Logging is NOT the bottleneck
+# (24 lines per episode boundary vs 13 min of GA computation).
+logging.getLogger("src.pipeline.pymoo_operators").setLevel(logging.WARNING)
+logging.getLogger("src.pipeline").setLevel(logging.WARNING)
+logging.getLogger("src.rl.gym_env").setLevel(logging.WARNING)
+
 # ======================================================================
 # Configuration
 # ======================================================================
@@ -114,6 +122,7 @@ def make_env(rank: int, seed: int = 42):
             pop_size=TRAIN_POP_SIZE,
             algorithm_name="nsga2",
             seed=seed + rank,
+            run_preflight=False,  # Skip redundant feasibility checks in workers
         )
 
         wrapped_env = ConstraintCurriculumWrapper(
@@ -144,6 +153,13 @@ if __name__ == "__main__":
 
     # -- Pre-flight: build cache BEFORE spawning subprocesses --------------
     ensure_pkl(PKL_PATH)
+
+    # -- One-time feasibility check (in main process only) -----------------
+    logger.info("Running feasibility preflight (one-time, main process only)...")
+    from src.pipeline.scheduling_problem import create_problem as _preflight_check
+
+    _preflight_check(PKL_PATH, run_preflight=True)
+    logger.info("Preflight PASSED — workers will skip redundant checks.")
 
     # -- Output directory --------------------------------------------------
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

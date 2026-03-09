@@ -1,5 +1,12 @@
 """
-Action space mapper for RL environment.
+"""Action space mapper for RL environment  [DEPRECATED].
+
+.. deprecated::
+    This module contains the legacy DEAP-era action space with 20 discrete
+    actions (19 heuristics + 1 no-op).  It is NO LONGER USED by the active
+    pipeline.  The current Pymoo-native action space lives in
+    ``src.rl.actions.vectorized_ops`` and exposes 6 LLH pipeline
+    configurations selected by ``src.rl.gym_env.pymoo_env``.
 
 Maps discrete action indices to heuristic function calls.
 Action space: 20 discrete actions (19 heuristics + 1 no-op)
