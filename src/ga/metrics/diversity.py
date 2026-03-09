@@ -1,3 +1,5 @@
+"""Population diversity metrics — pairwise distance and gene-level diversity measures."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

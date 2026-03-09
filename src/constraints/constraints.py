@@ -32,15 +32,12 @@ def _compute_gap_penalty(
 ) -> float:
     """Sum gap penalties across all entities/days, excluding break quanta.
 
-    Parameters
-    ----------
-    daily_map:
-        ``{entity_id: {day_name: set[within_day_quantum]}}``
-        — works for both group_daily and instructor_daily.
-    break_quanta_by_day:
-        ``{day_name: set[within_day_quantum]}`` from ``qts.get_midday_break_quanta()``.
-    gap_penalty:
-        Penalty added per non-break gap quantum.
+    Args:
+        daily_map: ``{entity_id: {day_name: set[within_day_quantum]}}``
+            — works for both group_daily and instructor_daily.
+        break_quanta_by_day: ``{day_name: set[within_day_quantum]}`` from
+            ``qts.get_midday_break_quanta()``.
+        gap_penalty: Penalty added per non-break gap quantum.
     """
     penalty = 0.0
     for days in daily_map.values():

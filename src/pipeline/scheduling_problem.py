@@ -72,15 +72,11 @@ class SchedulingProblem(Problem):
     Inequality constraints (G <= 0 means feasible):
         G[:, i] = violation count for hard constraint i
 
-    Parameters
-    ----------
-    pkl_path : str
-        Path to .cache/events_with_domains.pkl.
-    ctx : SchedulingContext | None
-        If provided, enables full soft constraint evaluation via the
-        original Evaluator. Without this, soft penalty is 0.
-    qts : QuantumTimeSystem | None
-        Quantum time system (needed only if ctx is provided).
+    Args:
+        pkl_path: Path to .cache/events_with_domains.pkl.
+        ctx: If provided, enables full soft constraint evaluation via the
+            original Evaluator. Without this, soft penalty is 0.
+        qts: Quantum time system (needed only if ctx is provided).
     """
 
     def __init__(
@@ -222,12 +218,10 @@ def create_problem(
 
     If ctx/qts are not provided, tries to load from data directory.
 
-    Parameters
-    ----------
-    run_preflight : bool
-        Run feasibility checks when loading DataStore.  Set False in
-        SubprocVecEnv workers to avoid redundant O(N²) checks that
-        spam stdout 24× at startup.  Default True for safety.
+    Args:
+        run_preflight: Run feasibility checks when loading DataStore.
+            Set False in SubprocVecEnv workers to avoid redundant
+            O(N²) checks that spam stdout 24× at startup.
     """
     if ctx is None:
         try:

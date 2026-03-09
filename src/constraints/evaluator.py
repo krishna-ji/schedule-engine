@@ -37,10 +37,9 @@ class Evaluator:
     Accepts either raw genes or a pre-built ``Timetable`` for both
     aggregate fitness and per-constraint breakdown.
 
-    Parameters
-    ----------
-    constraints : list[Constraint] | None
-        Custom constraint list.  Defaults to all hard + soft constraints.
+    Args:
+        constraints: Custom constraint list. Defaults to all hard + soft
+            constraints.
     """
 
     def __init__(self, constraints: list[Constraint] | None = None) -> None:

@@ -20,26 +20,15 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class QuantumTimeSystem:
-    """
-    A quantum-based time system for scheduling with CONTINUOUS quantum indices.
+    """Quantum-based time system for scheduling with continuous quantum indices.
 
-    - Time is represented in quantum units (default: 60-minute units).
-    - Operating hours are configured per day.
-    - Quantum indices are CONTINUOUS and ONLY cover operating hours.
-    - No quantum indices are assigned to non-operating times.
-    - Supports schedule encoding/decoding into quantum sets.
+    Time is represented in quantum units (default: 60-minute blocks).
+    Operating hours are configured per day. Quantum indices are continuous
+    and only cover operating hours — no indices are assigned to
+    non-operating times.
 
-    Public Methods:
-        __init__(self)
-        set_operating_hours(self, day: str, start_time: Optional[str], end_time: Optional[str])
-        is_operational(self, day: str) -> bool
-        encode_schedule(self, schedule_json: Dict) -> Set[int]
-        decode_schedule(self, quanta_set: Set[int]) -> Dict[str, List[Dict]]
-        get_all_operating_quanta(self) -> Set[int]
-        time_to_quanta(self, day: str, time_str: str) -> int
-        quanta_to_time(self, quantum: int) -> Tuple[str, str]
+    Example::
 
-    Example:
         qts = QuantumTimeSystem()
         q = qts.time_to_quanta("Monday", "10:00")  # Returns continuous index
         day, time = qts.quanta_to_time(q)

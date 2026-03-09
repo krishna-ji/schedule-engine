@@ -59,6 +59,7 @@ class RepairStats:
     step_results: list[RepairStepResult] = field(default_factory=list)
 
     def record(self, result: RepairStepResult) -> None:
+        """Record a single repair step result into aggregate statistics."""
         self.steps += 1
         if result.applied:
             self.applied_steps += 1
@@ -385,6 +386,8 @@ def _is_instructor_conflict_free(
 
 
 class MoveTimeOperator:
+    """Repair operator that proposes moving a gene to a different time slot."""
+
     name = "move_time"
 
     def propose(
@@ -446,6 +449,8 @@ class MoveTimeOperator:
 
 
 class SwapRoomOperator:
+    """Repair operator that proposes reassigning a gene to a different room."""
+
     name = "swap_room"
 
     def propose(
@@ -489,6 +494,8 @@ class SwapRoomOperator:
 
 
 class ReassignInstructorOperator:
+    """Repair operator that proposes reassigning a gene to a different instructor."""
+
     name = "reassign_instructor"
 
     def propose(
@@ -592,6 +599,7 @@ class RepairEngine:
         self.operator_stats: dict[str, dict[str, float]] = {}
 
     def get_action_space(self) -> list[str]:
+        """Return the list of available operator names."""
         return [op.name for op in self.operators]
 
     def repair_individual(
@@ -748,11 +756,13 @@ class RepairEngine:
 
     @staticmethod
     def _is_lex_better(a: tuple[float, float], b: tuple[float, float]) -> bool:
+        """Return True if fitness *a* is lexicographically better than *b*."""
         return (a[0], a[1]) < (b[0], b[1])
 
     def _evaluate_candidate(
         self, individual: list[SessionGene], candidate: RepairCandidate
     ) -> tuple[float, float] | None:
+        """Evaluate a candidate repair by temporarily applying it and scoring."""
         gene = individual[candidate.gene_idx]
         old_start = gene.start_quanta
         old_room = gene.room_id
@@ -775,6 +785,7 @@ class RepairEngine:
     def _apply_candidate(
         self, individual: list[SessionGene], candidate: RepairCandidate
     ) -> None:
+        """Permanently apply a repair candidate to the individual."""
         gene = individual[candidate.gene_idx]
         if candidate.new_start is not None:
             gene.shift_to(candidate.new_start)

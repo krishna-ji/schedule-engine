@@ -841,6 +841,8 @@ class MemeticExperiment(GAExperiment):
         n_workers = max(1, (os.cpu_count() or 1) - 1)
 
         class CB(GACallbackBase):
+            """Memetic callback — applies bitset repair to elite survivors."""
+
             def _on_generation(self, algorithm, F, G, cv, best_idx):
                 gen = algorithm.n_gen or 0
                 # Throttle: only run expensive repair every Nth generation
@@ -905,6 +907,8 @@ class AggressiveExperiment(GAExperiment):
         n_workers = max(1, (os.cpu_count() or 1) - 1)
 
         class CB(GACallbackBase):
+            """Aggressive callback — repairs entire population every generation."""
+
             def _on_generation(self, algorithm, F, G, cv, best_idx):
                 pop = algorithm.pop
                 gen = algorithm.n_gen or 0
@@ -974,6 +978,8 @@ class AdaptiveExperiment(GAExperiment):
         n_workers = max(1, (os.cpu_count() or 1) - 1)
 
         class CB(GACallbackBase):
+            """Adaptive callback — escalates mutation on stagnation."""
+
             def __init__(self, _log_interval):
                 super().__init__(_log_interval)
                 self._stagnant = 0
@@ -1066,6 +1072,8 @@ class CPHybridExperiment(GAExperiment):
         cp_timeout = self.cp_timeout
 
         class CB(GACallbackBase):
+            """CP-Hybrid callback — invokes CP-SAT solver at fixed intervals."""
+
             def __init__(self, _log_interval):
                 super().__init__(_log_interval)
                 self._pkl_data = None

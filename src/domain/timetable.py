@@ -77,15 +77,12 @@ class Timetable:
     5. **Practical quanta** ``(course_id, course_type, group_id) → set[quantum]``
        - ``_practical_quanta``: for paired-cohort practical alignment
 
-    Parameters
-    ----------
-    genes : list[SessionGene]
-        The chromosome (individual) to index.
-    context : SchedulingContext
-        Immutable scheduling universe (courses, groups, instructors, rooms).
-    qts : QuantumTimeSystem | None
-        Time system for day-based decomposition.  If ``None``, day-based
-        indexes will not be built (they'll be empty dicts).
+    Args:
+        genes: The chromosome (individual) to index.
+        context: Immutable scheduling universe (courses, groups,
+            instructors, rooms).
+        qts: Time system for day-based decomposition. If ``None``,
+            day-based indexes will not be built.
     """
 
     # Construction
@@ -346,9 +343,9 @@ class Timetable:
 
             # Completeness: accumulate quanta per (course, type, group)
             for gid in gene.group_ids:
-                course_group_quanta[(gene.course_id, gene.course_type, gid)] += (
-                    gene.num_quanta
-                )
+                course_group_quanta[
+                    (gene.course_id, gene.course_type, gid)
+                ] += gene.num_quanta
 
             # Practical quanta tracking
             if gene.course_type == "practical":

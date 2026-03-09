@@ -38,11 +38,13 @@ RESULTS_DIR.mkdir(exist_ok=True)
 
 
 def load_data():
+    """Load pickled event domain data from the cache."""
     with open(PKL_PATH, "rb") as f:
         return pickle.load(f)
 
 
 def make_random_population(data, N, rng):
+    """Generate a random population of N chromosomes from domain data."""
     E = len(data["events"])
     X = np.zeros((N, 3 * E), dtype=int)
     for n in range(N):
@@ -57,6 +59,7 @@ def make_random_population(data, N, rng):
 
 
 def percentile(arr, p):
+    """Return the p-th percentile of arr as a float."""
     return float(np.percentile(arr, p))
 
 
@@ -174,6 +177,7 @@ def bench_pymoo_evaluate(data, X):
 
 
 def stats(arr):
+    """Compute summary statistics (mean, median, p95, min, max) in milliseconds."""
     return {
         "mean_ms": round(float(np.mean(arr)), 3),
         "median_ms": round(float(np.median(arr)), 3),
@@ -184,6 +188,7 @@ def stats(arr):
 
 
 def main():
+    """Run all evaluator and repair benchmarks and export results."""
     logger.info("=" * 60)
     logger.info("BENCHMARK: Evaluator & Repair Acceleration")
     logger.info("=" * 60)

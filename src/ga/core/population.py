@@ -1,3 +1,5 @@
+"""Population cache — serialisation and deserialisation of GA populations."""
+
 from __future__ import annotations
 
 import json

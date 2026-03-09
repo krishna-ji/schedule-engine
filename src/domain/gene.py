@@ -1,3 +1,5 @@
+"""SessionGene — the atomic scheduling unit assigning a course session to a time/room/instructor."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

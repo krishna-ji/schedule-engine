@@ -198,27 +198,21 @@ class BitsetSchedulingRepair:
     \\mathcal{R}_{e_1} \\times \\mathcal{R}_{e_2}$ subject to
     $r_1 \\neq r_2$.
 
-    Parameters
-    ----------
-    events_data_path : str
-        Path to ``events_with_domains.pkl`` containing event metadata,
-        domain lists, availability maps, and paired-event tuples.
+    Args:
+        events_data_path: Path to ``events_with_domains.pkl`` containing
+            event metadata, domain lists, availability maps, and
+            paired-event tuples.
 
-    Attributes
-    ----------
-    n_events : int
-        Number of scheduling events $E$.
-    n_rooms, n_instructors, n_groups : int
-        Cardinalities $R$, $I$, $G$ of the resource dimensions.
-    durations : ndarray, shape ``(E,)``, int32
-        Duration in quanta for each event.
-    paired_event_map : dict[int, int]
-        Bidirectional map $e \\mapsto e'$ for simultaneously-placed
-        paired practicals ($|\\text{map}| = 2P$ for $P$ pairs).
-    inst_avail_arr : ndarray, shape ``(I, T)``, bool
-        Per-quantum instructor availability.
-    room_avail_arr : ndarray, shape ``(R, T)``, bool
-        Per-quantum room availability.
+    Attributes:
+        n_events: Number of scheduling events $E$.
+        n_rooms: Cardinality $R$ of the room dimension.
+        n_instructors: Cardinality $I$ of the instructor dimension.
+        n_groups: Cardinality $G$ of the group dimension.
+        durations: Duration in quanta for each event, shape ``(E,)``.
+        paired_event_map: Bidirectional map $e \\mapsto e'$ for
+            simultaneously-placed paired practicals.
+        inst_avail_arr: Per-quantum instructor availability, shape ``(I, T)``.
+        room_avail_arr: Per-quantum room availability, shape ``(R, T)``.
     """
 
     def __init__(self, events_data_path: str = ".cache/events_with_domains.pkl"):
@@ -495,14 +489,12 @@ class BitsetSchedulingRepair:
     ) -> np.ndarray:
         """Repair a 3*E interleaved chromosome (returns copy).
 
-        Parameters
-        ----------
-        chromosome : ndarray, shape (3*E,)
-        rng : numpy Generator, optional
-            When provided, introduces stochastic tie-breaking in placement
-            and randomised conflict-processing order so that successive
-            repair passes explore *different* local-minimum basins instead
-            of converging to the same deterministic fixed point.
+        Args:
+            chromosome: 1-D array of length ``3 * E``.
+            rng: NumPy random generator for stochastic tie-breaking.
+                When provided, successive repair passes explore different
+                local-minimum basins instead of converging to the same
+                deterministic fixed point.
         """
         expected = 3 * self.n_events
         if len(chromosome) != expected:
@@ -634,30 +626,19 @@ class BitsetSchedulingRepair:
         2. Alternative instructors (up to 8), group-free timeslots.
         3. Fallback — all timeslots including group-conflicting ones.
 
-        Parameters
-        ----------
-        e : int
-            Event index. **Must** already be removed from count arrays.
-        inst, room, time : ndarray, shape ``(E,)``
-            Mutable assignment views (updated in-place on return).
-        rc : ndarray, shape ``(R, T)``, int16
-            Room occupancy counts.
-        ic : ndarray, shape ``(I, T)``, int16
-            Instructor occupancy counts.
-        gc : ndarray, shape ``(G, T)``, int16
-            Group occupancy counts.
-        rng : numpy.random.Generator, optional
-            When provided, ties are broken stochastically so successive
-            passes explore different local-minimum basins.
+        Args:
+            e: Event index. **Must** already be removed from count arrays.
+            inst: Mutable instructor assignment view, shape ``(E,)``.
+            room: Mutable room assignment view, shape ``(E,)``.
+            time: Mutable time assignment view, shape ``(E,)``.
+            rc: Room occupancy counts, shape ``(R, T)``, int16.
+            ic: Instructor occupancy counts, shape ``(I, T)``, int16.
+            gc: Group occupancy counts, shape ``(G, T)``, int16.
+            rng: When provided, ties are broken stochastically so
+                successive passes explore different basins.
 
-        Returns
-        -------
-        bool
-            ``True`` if a zero-hard-cost placement was found.
-
-        Complexity
-        ----------
-        $O(|\mathcal{I}_e| \cdot (|\mathcal{T}_e| \cdot d_e + |\mathcal{R}_e|))$
+        Returns:
+            True if a zero-hard-cost placement was found.
         per call.  The dominant cost is the fancy-index gather
         ``gc[gidx_arr][:, offsets]`` which reads $|G_e| \cdot |\mathcal{T}| \cdot d_e$
         contiguous int16 cells.

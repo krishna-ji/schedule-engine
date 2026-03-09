@@ -84,22 +84,15 @@ class PymooHyperHeuristicEnv(gym.Env):
         ``done = True`` when the best individual is fully feasible
         (``F[best, 0] == 0``) or when ``max_generations`` is reached.
 
-    Parameters
-    ----------
-    pkl_path : str
-        Path to ``events_with_domains.pkl``.
-    max_generations : int
-        Episode budget.
-    pop_size : int
-        Pymoo population size.
-    algorithm_name : str
-        ``"nsga2"`` or ``"ga"``.
-    seed : int
-        Random seed for the Pymoo algorithm.
-    reward_scale : float
-        Multiplicative scale for the reward signal.
-    feasibility_bonus : float
-        One-time bonus added when first feasible solution is found.
+    Args:
+        pkl_path: Path to ``events_with_domains.pkl``.
+        max_generations: Episode budget.
+        pop_size: Pymoo population size.
+        algorithm_name: ``"nsga2"`` or ``"ga"``.
+        seed: Random seed for the Pymoo algorithm.
+        reward_scale: Multiplicative scale for the reward signal.
+        feasibility_bonus: One-time bonus added when first feasible
+            solution is found.
     """
 
     metadata: dict[str, Any] = {"render_modes": []}
@@ -178,10 +171,9 @@ class PymooHyperHeuristicEnv(gym.Env):
     ) -> tuple[NDArray[np.float32], dict[str, Any]]:
         """Reset the environment: create a fresh problem + algorithm.
 
-        Returns
-        -------
-        obs : ndarray(39,)
-        info : dict
+        Returns:
+            Tuple of (obs, info) where obs is ndarray(39,) and info is
+            a dict of episode metadata.
         """
         super().reset(seed=seed)
         effective_seed = seed if seed is not None else self.seed
@@ -276,18 +268,11 @@ class PymooHyperHeuristicEnv(gym.Env):
         1. Mating repair (domain fix + SSCP sync) on offspring
         2. Post-gen BitsetRepair on BEST K% of surviving population
 
-        Parameters
-        ----------
-        action : int
-            Index into ``VECTORIZED_ACTION_SPACE``.
+        Args:
+            action: Index into ``VECTORIZED_ACTION_SPACE``.
 
-        Returns
-        -------
-        obs : ndarray(39,)
-        reward : float
-        terminated : bool  (fully feasible found)
-        truncated : bool   (max generations reached)
-        info : dict
+        Returns:
+            Tuple of (obs, reward, terminated, truncated, info).
         """
         assert self._algorithm is not None, "Call reset() first."
 
@@ -372,16 +357,11 @@ class PymooHyperHeuristicEnv(gym.Env):
         (lowest hard penalty), repair them with ``BitsetSchedulingRepair``,
         and force re-evaluation so NSGA-II sees updated fitness.
 
-        Parameters
-        ----------
-        operator : _AtomicRepairBase
-            The active LLH operator (provides ``bitset_engine``).
-        cfg : PostGenConfig
-            Post-gen repair parameters from the LLH action.
+        Args:
+            operator: The active LLH operator (provides ``bitset_engine``).
+            cfg: Post-gen repair parameters from the LLH action.
 
-        Returns
-        -------
-        int
+        Returns:
             Number of individuals repaired.
         """
         from pymoo.core.evaluator import Evaluator

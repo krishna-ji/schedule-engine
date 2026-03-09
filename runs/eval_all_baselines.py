@@ -98,20 +98,15 @@ def run_evaluation(
 ) -> list[dict]:
     """Run a single 200-gen evaluation with the given action selection function.
 
-    Parameters
-    ----------
-    strategy_name : str
-        Human-readable label (PPO, Random, Round-Robin, UCB1).
-    action_fn : callable(obs, gen, env, model) -> int
-        Returns the action to take at each step.
-    csv_path : Path
-        Output CSV path.
-    model : optional
-        SB3 model (only for PPO).
+    Args:
+        strategy_name: Human-readable label (PPO, Random, Round-Robin, UCB1).
+        action_fn: Callable ``(obs, gen, env, model) -> int`` returning
+            the action to take at each step.
+        csv_path: Output CSV path.
+        model: SB3 model (only for PPO).
 
-    Returns
-    -------
-    rows : list[dict]
+    Returns:
+        List of per-generation row dicts with constraint breakdowns.
     """
     from src.rl.actions.vectorized_ops import ACTION_NAMES
     from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
@@ -275,6 +270,7 @@ def action_ucb1(obs, gen, env, model):
 
 
 def main() -> None:
+    """Run all four baseline evaluations and save CSV results."""
     global _ucb1
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
