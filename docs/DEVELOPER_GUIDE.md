@@ -116,10 +116,12 @@ python -m runs.ga_04_adaptive
 python -m runs.ga_05_cp_hybrid
 
 # RL experiments
-python -m runs.rl_03_capstone_FIXED
-python -m runs.rl_04_train_dqn
-python -m runs.rl_06_train_maskable_ppo
-python -m runs.rl_09_titan_v4_sota
+python -m runs.rl_01_static_baselines
+python -m runs.rl_02_llh_differentiation
+python -m runs.rl_03_train_dqn
+python -m runs.rl_04_train_ppo_baseline
+python -m runs.rl_05_train_maskable_ppo
+python -m runs.rl_06_train_ppo_titan_v4_sota
 
 # Evaluation
 python -m runs.eval_all_baselines

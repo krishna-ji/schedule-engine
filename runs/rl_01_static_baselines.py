@@ -22,7 +22,7 @@ Baselines
 
 Usage::
 
-    python runs/rl_03_static_baselines.py
+    python runs/rl_01_static_baselines.py
 
 Outputs (in ``output/rl_phase54/``)::
 
@@ -50,7 +50,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("rl_03_static_baselines")
+logger = logging.getLogger("rl_01_static_baselines")
 
 # ======================================================================
 # Configuration

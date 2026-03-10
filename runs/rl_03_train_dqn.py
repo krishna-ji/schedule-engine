@@ -10,7 +10,7 @@ Identical pipeline to the PPO capstone, but using Stable-Baselines3 DQN.
 
 Usage::
 
-    python runs/rl_04_train_dqn.py
+    python runs/rl_03_train_dqn.py
 
 Outputs::
 
@@ -43,7 +43,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("rl_04_train_dqn")
+logger = logging.getLogger("rl_03_train_dqn")
 
 # ======================================================================
 # Configuration

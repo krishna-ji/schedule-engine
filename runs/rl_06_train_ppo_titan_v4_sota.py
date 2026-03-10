@@ -34,7 +34,7 @@ CRITICAL: Windows requires ``if __name__ == '__main__':`` guard.
 
 Usage::
 
-    python runs/rl_09_titan_v4_sota.py
+    python runs/rl_06_train_ppo_titan_v4_sota.py
 
 Model saved to: output/models/ppo_titan_v4_sota.zip
 """
@@ -56,7 +56,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("rl_09_titan_v4_sota")
+logger = logging.getLogger("rl_06_train_ppo_titan_v4_sota")
 
 # Suppress noisy per-reset/per-step logs from worker subprocesses.
 # NOTE: This is cosmetic — SubprocVecEnv workers run in separate

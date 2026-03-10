@@ -312,7 +312,7 @@ def main() -> None:
             except Exception as e:
                 logger.warning(
                     "Failed to load PPO model (%s). Skipping PPO eval. "
-                    "Re-train with runs/rl_03_capstone_thesis.py",
+                    "Re-train with runs/rl_04_train_ppo_baseline.py",
                     e,
                 )
         else:

@@ -14,7 +14,7 @@ Key Features:
 
 Usage::
 
-    python runs/rl_06_train_maskable_ppo.py
+    python runs/rl_05_train_maskable_ppo.py
 
 Outputs (in ``output/maskable_ppo/<timestamp>/``)::
 

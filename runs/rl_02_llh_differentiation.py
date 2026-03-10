@@ -8,7 +8,7 @@ Runs all 6 LLHs for 50 generations (pop=120, seed=42) and produces:
 
 Usage::
 
-    python -m runs.rl_06_llh_differentiation
+    python -m runs.rl_02_llh_differentiation
 """
 
 from __future__ import annotations

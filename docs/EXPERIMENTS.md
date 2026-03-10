@@ -128,9 +128,9 @@ for deep constraint satisfaction on the best individual. Requires `ortools>=9.8`
 
 ## RL Experiments
 
-### RL 03 — Capstone FIXED: PPO with Tolerance Exploration
+### RL 04 — PPO Baseline: Tolerance Exploration
 
-**Script:** `runs/rl_03_capstone_FIXED.py`
+**Script:** `runs/rl_04_train_ppo_baseline.py`
 
 Two-phase training: (1) exploration with tolerance=10 for 150k timesteps,
 (2) strict 200-gen evaluation with tolerance=0.
@@ -151,9 +151,9 @@ Two-phase training: (1) exploration with tolerance=10 for 150k timesteps,
 
 ---
 
-### RL 03 — Static Baselines: Per-LLH Isolation
+### RL 01 — Static Baselines: Per-LLH Isolation
 
-**Script:** `runs/rl_03_static_baselines.py`
+**Script:** `runs/rl_01_static_baselines.py`
 
 Evaluates each of the 6 low-level heuristics (LLHs) in isolation as a
 static policy for 50 generations, repeated across 3 seeds for robustness.
@@ -169,9 +169,9 @@ static policy for 50 generations, repeated across 3 seeds for robustness.
 
 ---
 
-### RL 04 — DQN Competitor
+### RL 03 — DQN Competitor
 
-**Script:** `runs/rl_04_train_dqn.py`
+**Script:** `runs/rl_03_train_dqn.py`
 
 Identical pipeline to the PPO capstone, but using Stable-Baselines3 DQN.
 
@@ -190,9 +190,9 @@ Identical pipeline to the PPO capstone, but using Stable-Baselines3 DQN.
 
 ---
 
-### RL 06 — LLH Differentiation Check
+### RL 02 — LLH Differentiation Check
 
-**Script:** `runs/rl_06_llh_differentiation.py`
+**Script:** `runs/rl_02_llh_differentiation.py`
 
 Diagnostic script that verifies the 6 LLHs produce meaningfully different
 optimisation trajectories. Outputs per-generation trajectory, checkpoint
@@ -209,9 +209,9 @@ comparison table (gen 5, 25, 50), and best-ever hard penalty per LLH.
 
 ---
 
-### RL 06 — Maskable PPO: State-Conditioned Action Masking
+### RL 05 — Maskable PPO: State-Conditioned Action Masking
 
-**Script:** `runs/rl_06_train_maskable_ppo.py`
+**Script:** `runs/rl_05_train_maskable_ppo.py`
 
 MaskablePPO (sb3-contrib) with state-conditioned action masking.
 Blocks soft optimizers (Actions 3 & 7) when hard constraints are violated,
@@ -231,9 +231,9 @@ forcing feasibility repair before soft optimisation.
 
 ---
 
-### RL 09 — Titan V4 SOTA: PBRS + Curriculum
+### RL 06 — Titan V4 SOTA: PBRS + Curriculum
 
-**Script:** `runs/rl_09_titan_v4_sota.py`
+**Script:** `runs/rl_06_train_ppo_titan_v4_sota.py`
 
 State-of-the-art RL run using MaskablePPO on 24-core `SubprocVecEnv`.
 Features Potential-Based Reward Shaping (PBRS) and a 3-phase constraint
