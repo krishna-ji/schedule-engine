@@ -312,3 +312,8 @@ if __name__ == "__main__":
     print("  Next: python runs/eval_titan_v3_stochastic.py")
     print("         (update MODEL_PATH to ppo_titan_v4_sota.zip)")
     print("=" * 80)
+
+    # Generate thesis plots
+    from src.rl.training.plot_thesis_figures import generate_plots
+
+    generate_plots(run_dir)

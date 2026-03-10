@@ -310,6 +310,11 @@ def main() -> None:
     logger.info("  Baselines CSV: output/baselines/dqn_eval_200.csv")
     logger.info("=" * 60)
 
+    # 4. Generate thesis plots
+    from src.rl.training.plot_thesis_figures import generate_plots
+
+    generate_plots(run_dir)
+
 
 if __name__ == "__main__":
     main()

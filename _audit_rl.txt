@@ -1,0 +1,69 @@
+--- rl_capstone (14 files) ---
+  rl_capstone\20260227_220706\evaluation_trajectory_200.csv
+  rl_capstone\20260227_220706\heuristic_efficacy_matrix.txt
+  rl_capstone\20260227_220706\salvaged_training_convergence.pdf
+  rl_capstone\20260227_220706\salvaged_training_convergence.png
+  rl_capstone\20260227_220706\step_log.csv
+  rl_capstone\20260227_220706\training_curve.csv
+  rl_capstone\20260301_001159\evaluation_trajectory_200.csv
+  rl_capstone\20260301_001159\fig_01_learning_curve.pdf
+  rl_capstone\20260301_001159\fig_02_heuristic_policy.pdf
+  rl_capstone\20260301_001159\fig_03_eval_convergence.pdf
+  rl_capstone\20260301_001159\heuristic_efficacy_matrix.txt
+  rl_capstone\20260301_001159\ppo_capstone_final.zip
+  rl_capstone\20260301_001159\step_log.csv
+  rl_capstone\20260301_001159\training_curve.csv
+--- rl_dqn (5 files) ---
+  rl_dqn\20260301_001224\dqn_capstone_final.zip
+  rl_dqn\20260301_001224\evaluation_trajectory_200.csv
+  rl_dqn\20260301_001224\heuristic_efficacy_matrix.txt
+  rl_dqn\20260301_001224\step_log.csv
+  rl_dqn\20260301_001224\training_curve.csv
+--- maskable_ppo (9 files) ---
+  maskable_ppo\20260301_214841\step_log.csv
+  maskable_ppo\20260301_214841\training_curve.csv
+  maskable_ppo\20260301_214906\step_log.csv
+  maskable_ppo\20260301_214906\training_curve.csv
+  maskable_ppo\20260301_214943\step_log.csv
+  maskable_ppo\20260301_214943\training_curve.csv
+  maskable_ppo\20260301_215022\step_log.csv
+  maskable_ppo\20260301_215022\training_curve.csv
+  maskable_ppo\20260302_014654\training_curve.csv
+--- rl_phase57 (8 files) ---
+  rl_phase57\20260307_161124\fig_04_baseline_comparison.pdf
+  rl_phase57\20260307_161124\fig_04_baseline_comparison.png
+  rl_phase57\20260307_161124\heuristic_efficacy_matrix.txt
+  rl_phase57\20260307_161124\ppo_evaluation_trajectory.csv
+  rl_phase57\20260307_161124\ppo_phase57.zip
+  rl_phase57\20260307_161124\static_baselines_25gen.csv
+  rl_phase57\20260307_161124\step_log.csv
+  rl_phase57\20260307_161124\training_curve.csv
+--- baselines (8 files) ---
+  baselines\dqn_eval_200.csv
+  baselines\ppo_eval_200.csv
+  baselines\random_eval_200.csv
+  baselines\round_robin_eval_200.csv
+  baselines\ucb1_eval_200.csv
+  baselines\v2\random_eval_200.csv
+  baselines\v2\round_robin_eval_200.csv
+  baselines\v2\ucb1_eval_200.csv
+--- rl_titan_v4_sota (0 files) ---
+--- rl_capstone_fixed (MISSING) ---
+--- rl_phase54 (1 files) ---
+  rl_phase54\static_baselines.csv
+--- rl_titan_v3_parallel (4 files) ---
+  rl_titan_v3_parallel\20260309_012008\heuristic_efficacy_matrix.txt
+  rl_titan_v3_parallel\20260309_012008\ppo_titan_v3_parallel.zip
+  rl_titan_v3_parallel\20260309_012008\step_log.csv
+  rl_titan_v3_parallel\20260309_012008\training_curve.csv
+--- figures (4 files) ---
+  figures\grand_master_hard_convergence.pdf
+  figures\grand_master_hard_convergence.png
+  figures\master_trajectory_comparison.pdf
+  figures\master_trajectory_comparison.png
+--- models (5 files) ---
+  models\dqn_capstone_final.zip
+  models\maskable_ppo_titan.zip
+  models\maskable_ppo_titan_v2_meta.zip
+  models\ppo_capstone_final.zip
+  models\ppo_titan_v3_parallel.zip

@@ -17,6 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.rl.gym_env.pymoo_env import PymooHyperHeuristicEnv
+from src.rl.training.plot_thesis_figures import generate_plots
 from src.rl.training.thesis_callback import ThesisLoggingCallback
 
 # ==================== CONFIGURATION ====================
@@ -242,6 +243,9 @@ def main():
 
     # Phase 2: Evaluate with strict tolerance
     evaluate(trained_model)
+
+    # Phase 3: Generate thesis plots
+    generate_plots(run_dir)
 
     logger.info("CAPSTONE RUN COMPLETE!")
 

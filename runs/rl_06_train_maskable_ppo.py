@@ -333,6 +333,11 @@ def main():
         print("    MaskablePPO training completed: 150,000 timesteps")
         print("=" * 60)
 
+        # Generate thesis plots
+        from src.rl.training.plot_thesis_figures import generate_plots
+
+        generate_plots(run_dir)
+
     except KeyboardInterrupt:
         logger.warning("Training interrupted by user")
     except Exception as e:

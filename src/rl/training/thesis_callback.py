@@ -70,6 +70,10 @@ class ThesisLoggingCallback(BaseCallback):
         self._action_delta_hard_sum: dict[int, float] = defaultdict(float)
         self._action_delta_soft_sum: dict[int, float] = defaultdict(float)
 
+        # -- SB3 internal training metrics (loss, entropy, etc.) --------
+        self._sb3_metrics: list[dict[str, Any]] = []
+        self._last_sb3_scrape_ts: int = -1
+
     def _on_training_start(self) -> None:
         """Reset accumulators at training start."""
         self._ep_reward = 0.0
@@ -82,6 +86,9 @@ class ThesisLoggingCallback(BaseCallback):
         self._action_count = defaultdict(int)
         self._action_delta_hard_sum = defaultdict(float)
         self._action_delta_soft_sum = defaultdict(float)
+        # Reset SB3 metric trackers
+        self._sb3_metrics = []
+        self._last_sb3_scrape_ts = -1
 
     def _on_step(self) -> bool:
         """Called at every environment step."""
@@ -129,6 +136,32 @@ class ThesisLoggingCallback(BaseCallback):
                 self._action_delta_hard_sum[act_val] += float(delta_hard)
             if delta_soft is not None and not np.isnan(delta_soft):
                 self._action_delta_soft_sum[act_val] += float(delta_soft)
+
+        # -- Scrape SB3 internal training metrics (once per rollout) ----
+        if (
+            self.model is not None
+            and hasattr(self.model, "logger")
+            and self.num_timesteps != self._last_sb3_scrape_ts
+        ):
+            sb3_log = getattr(self.model.logger, "name_to_value", {})
+            if sb3_log:
+                metrics_row: dict[str, Any] = {"timestep": self.num_timesteps}
+                _KEYS = [
+                    "train/policy_gradient_loss",
+                    "train/value_loss",
+                    "train/entropy_loss",
+                    "train/approx_kl",
+                    "train/clip_fraction",
+                    "train/explained_variance",
+                    "train/loss",
+                    "train/learning_rate",
+                ]
+                for k in _KEYS:
+                    if k in sb3_log:
+                        metrics_row[k.replace("train/", "")] = float(sb3_log[k])
+                if len(metrics_row) > 1:  # has at least one real metric
+                    self._sb3_metrics.append(metrics_row)
+                    self._last_sb3_scrape_ts = self.num_timesteps
 
         # Step-level log
         self._step_log.append(
@@ -223,6 +256,28 @@ class ThesisLoggingCallback(BaseCallback):
                 writer.writeheader()
                 writer.writerows(self._step_log)
             logger.info("Saved step log: %s (%d steps)", step_csv, len(self._step_log))
+
+        # -- Write sb3_training_metrics.csv (loss, entropy, etc.) -------
+        metrics_csv = self.run_dir / "sb3_training_metrics.csv"
+        if self._sb3_metrics:
+            all_keys: list[str] = []
+            seen: set[str] = set()
+            for row in self._sb3_metrics:
+                for k in row:
+                    if k not in seen:
+                        all_keys.append(k)
+                        seen.add(k)
+            with open(metrics_csv, "w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=all_keys, extrasaction="ignore")
+                writer.writeheader()
+                writer.writerows(self._sb3_metrics)
+            logger.info(
+                "Saved SB3 training metrics: %s (%d rows)",
+                metrics_csv,
+                len(self._sb3_metrics),
+            )
+        else:
+            logger.warning("No SB3 training metrics captured.")
 
         # -- Print Heuristic Efficacy Matrix ----------------------------
         self._print_efficacy_matrix()
