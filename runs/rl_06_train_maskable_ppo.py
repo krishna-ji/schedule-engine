@@ -321,16 +321,16 @@ def main():
         model, run_dir = train_maskable_ppo()
 
         logger.info("=" * 60)
-        logger.info("✅ MASKABLE PPO TRAINING COMPLETE")
+        logger.info(" MASKABLE PPO TRAINING COMPLETE")
         logger.info("  Model: output/models/maskable_ppo_final.zip")
         logger.info("  Logs:  %s", run_dir)
         logger.info("=" * 60)
 
         print("\\n" + "=" * 60)
-        print("🎯 STATE-CONDITIONED ACTION MASKING DEPLOYED")
-        print("   ✅ Soft optimizers blocked during hard constraint violations")
-        print("   ✅ Full action space available when schedule is feasible")
-        print("   ✅ MaskablePPO training completed: 150,000 timesteps")
+        print(" STATE-CONDITIONED ACTION MASKING DEPLOYED")
+        print("    Soft optimizers blocked during hard constraint violations")
+        print("    Full action space available when schedule is feasible")
+        print("    MaskablePPO training completed: 150,000 timesteps")
         print("=" * 60)
 
     except KeyboardInterrupt:

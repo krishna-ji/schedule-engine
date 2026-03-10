@@ -351,7 +351,7 @@ def log_duration(
                 elapsed = _time.perf_counter() - t0
                 _logger.log(
                     level,
-                    "[bold]⏱ %s[/bold] completed in %.4fs",
+                    "[bold] %s[/bold] completed in %.4fs",
                     fn.__qualname__,
                     elapsed,
                 )

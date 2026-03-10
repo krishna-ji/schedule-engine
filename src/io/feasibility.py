@@ -1144,7 +1144,7 @@ def generate_feasibility_report_file(
 
     with Path(output_path).open("w", encoding="utf-8") as f:
         status = report.summary["status"].upper()
-        status_icon = "✅" if status == "FEASIBLE" else "❌"
+        status_icon = "" if status == "FEASIBLE" else ""
 
         f.write("# Feasibility Analysis Report\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n")
@@ -1164,7 +1164,7 @@ def generate_feasibility_report_file(
         f.write("## Detailed Results\n\n")
 
         for i, result in enumerate(report.results, 1):
-            pass_icon = "✅" if result.passed else "❌"
+            pass_icon = "" if result.passed else ""
             severity_badge = f"`{result.severity.upper()}`"
 
             f.write(f"### {i}. {result.check_name}\n\n")
@@ -1274,11 +1274,11 @@ def generate_feasibility_report_file(
         # Footer
         if report.is_feasible:
             f.write(
-                "> ✅ **Problem is feasible** — all critical checks passed. GA should find a solution.  \n"
+                ">  **Problem is feasible** — all critical checks passed. GA should find a solution.  \n"
             )
             f.write("> *Note: this doesn't guarantee a perfect solution exists.*\n")
         else:
             f.write(
-                f"> ❌ **Problem is INFEASIBLE** — {report.summary['critical_failures']} critical issue(s) found.  \n"
+                f">  **Problem is INFEASIBLE** — {report.summary['critical_failures']} critical issue(s) found.  \n"
             )
             f.write("> *GA will not find a valid solution until these are fixed.*\n")

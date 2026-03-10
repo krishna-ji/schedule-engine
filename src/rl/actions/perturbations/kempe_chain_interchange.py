@@ -158,7 +158,7 @@ class KempeChainInterchange(_AtomicRepairBase):
                             t_end = min(t_start + int(durations[e]), T_)
                             quantum_conflict[t_start:t_end] += row_scores[e]
                     logger.debug(
-                        "Kempe: individual %d chain T%d↔T%d len=%d, %d→%d (Δ=%d)",
+                        "Kempe: individual %d chain T%dT%d len=%d, %d→%d (Δ=%d)",
                         idx,
                         t1,
                         t2,

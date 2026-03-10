@@ -19,7 +19,7 @@ constraints such as compactness, lunch breaks, and session continuity).
 
 ```
 ┌──────────────┐     ┌────────────────┐      ┌────────────────────┐
-│ data/*.json  │────▶│  DataStore /    │─────▶│ SchedulingContext   │
+│ data/*.json  │────│  DataStore /    │─────│ SchedulingContext   │
 │ (Course,     │     │  QuantumTime   │      │ (courses, groups,   │
 │  Groups,     │     │  System        │      │  instructors, rooms,│
 │  Instructors,│     └────────────────┘      │  available_quanta)  │
@@ -149,7 +149,7 @@ src/
 │
 ├── pipeline/                             # Pymoo integration layer
 │   ├── scheduling_problem.py             #   SchedulingProblem (pymoo Problem)
-│   ├── encoding.py                       #   Chromosome ↔ gene encoding
+│   ├── encoding.py                       #   Chromosome  gene encoding
 │   ├── pymoo_operators.py               #   Sampling, crossover, mutation
 │   ├── repair_operator.py               #   SchedulingRepair (pymoo Repair)
 │   ├── repair_operator_bitset.py        #   BitsetSchedulingRepair (Numba JIT)
