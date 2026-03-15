@@ -1,23 +1,27 @@
 """Thesis-grade CSV logging callback for Stable-Baselines3.
 
-Tracks per-step and per-episode metrics during PPO training and dumps
-them to ``training_curve.csv`` at the end of training.  No TensorBoard
-— raw CSV for direct LaTeX/pgfplots ingestion.
+Tracks per-step and per-episode metrics during PPO training and writes
+them **continuously** to CSV files — no data loss on crash.
 
 Also tracks per-action DeltaHard and DeltaSoft for the **Heuristic Efficacy
 Matrix** — printed at the end of training as empirical proof that each
 of the Elite 8 heuristics contributes meaningfully during the MDP.
 
-Columns in ``training_curve.csv``::
+Files written continuously:
+  - ``training_curve.csv`` — one row per episode (appended live)
+  - ``step_log.csv`` — one row per step (appended live)
+  - ``sb3_training_metrics.csv`` — one row per rollout update
 
-    timestep, episode, episode_reward, episode_length,
-    action_0_count, action_1_count, ..., action_7_count
+Checkpoint support:
+  - Pass ``checkpoint_interval`` to save model every N episodes
+  - Checkpoints saved to ``run_dir/checkpoints/checkpoint_<ep>.zip``
 
 Usage::
 
     from src.rl.training.thesis_callback import ThesisLoggingCallback
 
-    cb = ThesisLoggingCallback(run_dir="output/rl_vectorized/20260225_120000")
+    cb = ThesisLoggingCallback(run_dir="output/rl_vectorized/20260225_120000",
+                               checkpoint_interval=10)
     model.learn(total_timesteps=2000, callback=cb)
 """
 
@@ -38,32 +42,40 @@ logger = logging.getLogger(__name__)
 
 
 class ThesisLoggingCallback(BaseCallback):
-    """SB3 callback that logs episode-level metrics to CSV.
+    """SB3 callback that logs episode-level metrics to CSV **continuously**.
 
     Parameters
     ----------
     run_dir : str | Path
-        Directory where ``training_curve.csv`` will be written.
+        Directory where CSVs and checkpoints will be written.
     verbose : int
         0 = silent, 1 = episode summaries, 2 = every step.
+    checkpoint_interval : int
+        Save model checkpoint every N episodes. 0 = disabled.
     """
 
-    def __init__(self, run_dir: str | Path, verbose: int = 1):
+    def __init__(
+        self,
+        run_dir: str | Path,
+        verbose: int = 1,
+        checkpoint_interval: int = 10,
+    ):
         super().__init__(verbose)
         self.run_dir = Path(run_dir)
         self.run_dir.mkdir(parents=True, exist_ok=True)
+        self.checkpoint_interval = checkpoint_interval
+
+        if checkpoint_interval > 0:
+            self._ckpt_dir = self.run_dir / "checkpoints"
+            self._ckpt_dir.mkdir(parents=True, exist_ok=True)
 
         # Per-episode accumulators
         self._ep_reward: float = 0.0
         self._ep_length: int = 0
         self._ep_actions: dict[int, int] = defaultdict(int)
 
-        # Collected rows
-        self._episodes: list[dict[str, Any]] = []
+        # Episode count (no in-memory buffer — written to disk immediately)
         self._episode_count: int = 0
-
-        # Per-step log (for fine-grained analysis)
-        self._step_log: list[dict[str, Any]] = []
 
         # -- Per-action efficacy tracking (Heuristic Efficacy Matrix) ----
         self._action_count: dict[int, int] = defaultdict(int)
@@ -71,24 +83,82 @@ class ThesisLoggingCallback(BaseCallback):
         self._action_delta_soft_sum: dict[int, float] = defaultdict(float)
 
         # -- SB3 internal training metrics (loss, entropy, etc.) --------
-        self._sb3_metrics: list[dict[str, Any]] = []
         self._last_sb3_scrape_ts: int = -1
 
+        # -- File handles for continuous writing -------------------------
+        self._curve_file = None
+        self._curve_writer = None
+        self._step_file = None
+        self._step_writer = None
+        self._metrics_file = None
+        self._metrics_writer = None
+
     def _on_training_start(self) -> None:
-        """Reset accumulators at training start."""
+        """Open CSV files for continuous writing (append if resuming)."""
         self._ep_reward = 0.0
         self._ep_length = 0
         self._ep_actions = defaultdict(int)
-        self._episodes = []
-        self._step_log = []
         self._episode_count = 0
         # Reset efficacy trackers
         self._action_count = defaultdict(int)
         self._action_delta_hard_sum = defaultdict(float)
         self._action_delta_soft_sum = defaultdict(float)
-        # Reset SB3 metric trackers
-        self._sb3_metrics = []
         self._last_sb3_scrape_ts = -1
+
+        # -- Open training_curve.csv (header + append) ------------------
+        curve_path = self.run_dir / "training_curve.csv"
+        curve_fields = ["timestep", "episode", "episode_reward", "episode_length"]
+        curve_fields += [f"action_{a}_count" for a in range(NUM_ACTIONS)]
+        append = curve_path.exists() and curve_path.stat().st_size > 0
+        self._curve_file = open(curve_path, "a" if append else "w", newline="")
+        self._curve_writer = csv.DictWriter(self._curve_file, fieldnames=curve_fields)
+        if not append:
+            self._curve_writer.writeheader()
+        self._curve_file.flush()
+
+        # -- Open step_log.csv ------------------------------------------
+        step_path = self.run_dir / "step_log.csv"
+        step_fields = [
+            "timestep",
+            "action",
+            "reward",
+            "best_hard",
+            "best_soft",
+            "feasible_frac",
+            "rejected",
+            "delta_hard",
+            "delta_soft",
+        ]
+        append_s = step_path.exists() and step_path.stat().st_size > 0
+        self._step_file = open(step_path, "a" if append_s else "w", newline="")
+        self._step_writer = csv.DictWriter(self._step_file, fieldnames=step_fields)
+        if not append_s:
+            self._step_writer.writeheader()
+        self._step_file.flush()
+
+        # -- Open sb3_training_metrics.csv ------------------------------
+        metrics_path = self.run_dir / "sb3_training_metrics.csv"
+        metrics_fields = [
+            "timestep",
+            "policy_gradient_loss",
+            "value_loss",
+            "entropy_loss",
+            "approx_kl",
+            "clip_fraction",
+            "explained_variance",
+            "loss",
+            "learning_rate",
+        ]
+        append_m = metrics_path.exists() and metrics_path.stat().st_size > 0
+        self._metrics_file = open(metrics_path, "a" if append_m else "w", newline="")
+        self._metrics_writer = csv.DictWriter(
+            self._metrics_file,
+            fieldnames=metrics_fields,
+            extrasaction="ignore",
+        )
+        if not append_m:
+            self._metrics_writer.writeheader()
+        self._metrics_file.flush()
 
     def _on_step(self) -> bool:
         """Called at every environment step."""
@@ -159,24 +229,29 @@ class ThesisLoggingCallback(BaseCallback):
                 for k in _KEYS:
                     if k in sb3_log:
                         metrics_row[k.replace("train/", "")] = float(sb3_log[k])
-                if len(metrics_row) > 1:  # has at least one real metric
-                    self._sb3_metrics.append(metrics_row)
+                if len(metrics_row) > 1:
+                    if self._metrics_writer is not None:
+                        self._metrics_writer.writerow(metrics_row)
+                        self._metrics_file.flush()
                     self._last_sb3_scrape_ts = self.num_timesteps
 
-        # Step-level log
-        self._step_log.append(
-            {
-                "timestep": self.num_timesteps,
-                "action": act_val,
-                "reward": rew_val,
-                "best_hard": info_dict.get("best_hard", np.nan),
-                "best_soft": info_dict.get("best_soft", np.nan),
-                "feasible_frac": info_dict.get("feasible_frac", np.nan),
-                "rejected": info_dict.get("rejected", False),
-                "delta_hard": info_dict.get("delta_hard", 0.0),
-                "delta_soft": info_dict.get("delta_soft", 0.0),
-            }
-        )
+        # Step-level log — write immediately
+        step_row = {
+            "timestep": self.num_timesteps,
+            "action": act_val,
+            "reward": rew_val,
+            "best_hard": info_dict.get("best_hard", np.nan),
+            "best_soft": info_dict.get("best_soft", np.nan),
+            "feasible_frac": info_dict.get("feasible_frac", np.nan),
+            "rejected": info_dict.get("rejected", False),
+            "delta_hard": info_dict.get("delta_hard", 0.0),
+            "delta_soft": info_dict.get("delta_soft", 0.0),
+        }
+        if self._step_writer is not None:
+            self._step_writer.writerow(step_row)
+            # Flush step log every 100 steps to balance I/O
+            if self._ep_length % 100 == 0:
+                self._step_file.flush()
 
         if self.verbose >= 2:
             logger.info(
@@ -200,7 +275,10 @@ class ThesisLoggingCallback(BaseCallback):
             for a in range(NUM_ACTIONS):
                 row[f"action_{a}_count"] = self._ep_actions.get(a, 0)
 
-            self._episodes.append(row)
+            # Write immediately to CSV
+            if self._curve_writer is not None:
+                self._curve_writer.writerow(row)
+                self._curve_file.flush()
 
             if self.verbose >= 1:
                 logger.info(
@@ -208,6 +286,25 @@ class ThesisLoggingCallback(BaseCallback):
                     self._episode_count,
                     self._ep_reward,
                     self._ep_length,
+                    self.num_timesteps,
+                )
+
+            # Flush step log at episode boundary
+            if self._step_file is not None:
+                self._step_file.flush()
+
+            # -- Checkpoint model periodically --------------------------
+            if (
+                self.checkpoint_interval > 0
+                and self._episode_count % self.checkpoint_interval == 0
+                and self.model is not None
+            ):
+                ckpt_path = self._ckpt_dir / f"checkpoint_{self._episode_count}"
+                self.model.save(str(ckpt_path))
+                logger.info(
+                    "Checkpoint saved: %s (ep=%d, ts=%d)",
+                    ckpt_path,
+                    self._episode_count,
                     self.num_timesteps,
                 )
 
@@ -219,7 +316,7 @@ class ThesisLoggingCallback(BaseCallback):
         return True  # continue training
 
     def _on_training_end(self) -> None:
-        """Dump collected data to CSV."""
+        """Flush remaining data and close CSV files."""
         # If there's an unfinished episode, flush it
         if self._ep_length > 0:
             self._episode_count += 1
@@ -231,53 +328,23 @@ class ThesisLoggingCallback(BaseCallback):
             }
             for a in range(NUM_ACTIONS):
                 row[f"action_{a}_count"] = self._ep_actions.get(a, 0)
-            self._episodes.append(row)
+            if self._curve_writer is not None:
+                self._curve_writer.writerow(row)
 
-        # -- Write training_curve.csv -----------------------------------
-        csv_path = self.run_dir / "training_curve.csv"
-        if self._episodes:
-            fieldnames = list(self._episodes[0].keys())
-            with open(csv_path, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(self._episodes)
-            logger.info(
-                "Saved training curve: %s (%d episodes)", csv_path, len(self._episodes)
-            )
-        else:
-            logger.warning("No episodes completed during training.")
+        # Close all file handles
+        for f in (self._curve_file, self._step_file, self._metrics_file):
+            if f is not None:
+                f.flush()
+                f.close()
+        self._curve_file = None
+        self._step_file = None
+        self._metrics_file = None
 
-        # -- Write step_log.csv (fine-grained) --------------------------
-        step_csv = self.run_dir / "step_log.csv"
-        if self._step_log:
-            fieldnames_s = list(self._step_log[0].keys())
-            with open(step_csv, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames_s)
-                writer.writeheader()
-                writer.writerows(self._step_log)
-            logger.info("Saved step log: %s (%d steps)", step_csv, len(self._step_log))
-
-        # -- Write sb3_training_metrics.csv (loss, entropy, etc.) -------
-        metrics_csv = self.run_dir / "sb3_training_metrics.csv"
-        if self._sb3_metrics:
-            all_keys: list[str] = []
-            seen: set[str] = set()
-            for row in self._sb3_metrics:
-                for k in row:
-                    if k not in seen:
-                        all_keys.append(k)
-                        seen.add(k)
-            with open(metrics_csv, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=all_keys, extrasaction="ignore")
-                writer.writeheader()
-                writer.writerows(self._sb3_metrics)
-            logger.info(
-                "Saved SB3 training metrics: %s (%d rows)",
-                metrics_csv,
-                len(self._sb3_metrics),
-            )
-        else:
-            logger.warning("No SB3 training metrics captured.")
+        logger.info(
+            "CSV files closed: %d episodes, run_dir=%s",
+            self._episode_count,
+            self.run_dir,
+        )
 
         # -- Print Heuristic Efficacy Matrix ----------------------------
         self._print_efficacy_matrix()

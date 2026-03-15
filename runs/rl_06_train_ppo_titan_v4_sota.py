@@ -98,6 +98,10 @@ PKL_PATH = ".cache/events_with_domains.pkl"
 MODEL_DIR = PROJECT_ROOT / "output" / "models"
 MODEL_PATH = MODEL_DIR / "ppo_titan_v4_sota.zip"
 
+# Resume support — set to a run directory to resume from its latest checkpoint
+# e.g. RESUME_FROM = PROJECT_ROOT / "output" / "rl_titan_v4_sota" / "20260315_120000"
+RESUME_FROM: Path | None = None
+
 
 # ======================================================================
 # Environment Factory (must be top-level for pickling on Windows)
@@ -161,10 +165,32 @@ if __name__ == "__main__":
     _preflight_check(PKL_PATH, run_preflight=True)
     logger.info("Preflight PASSED — workers will skip redundant checks.")
 
+    # -- Resume detection ---------------------------------------------------
+    resume_ckpt: Path | None = None
+    if RESUME_FROM is not None:
+        ckpt_dir = RESUME_FROM / "checkpoints"
+        if ckpt_dir.exists():
+            ckpts = sorted(
+                ckpt_dir.glob("checkpoint_*.zip"), key=lambda p: p.stat().st_mtime
+            )
+            if ckpts:
+                resume_ckpt = ckpts[-1]
+                logger.info("RESUME: Found checkpoint %s", resume_ckpt)
+            else:
+                logger.warning(
+                    "RESUME_FROM set but no checkpoints found in %s", ckpt_dir
+                )
+        else:
+            logger.warning("RESUME_FROM set but checkpoints/ dir missing: %s", ckpt_dir)
+
     # -- Output directory --------------------------------------------------
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = PROJECT_ROOT / "output" / "rl_titan_v4_sota" / timestamp
-    run_dir.mkdir(parents=True, exist_ok=True)
+    if RESUME_FROM is not None and RESUME_FROM.exists():
+        run_dir = RESUME_FROM  # continue in the same directory
+        logger.info("Resuming into existing run_dir: %s", run_dir)
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_dir = PROJECT_ROOT / "output" / "rl_titan_v4_sota" / timestamp
+        run_dir.mkdir(parents=True, exist_ok=True)
 
     est_eps_per_worker = TOTAL_TIMESTEPS // (NUM_CPU * (TRAIN_MAX_GEN - 1))
     est_rollouts = -(-TOTAL_TIMESTEPS // (NUM_CPU * N_STEPS))
@@ -236,30 +262,40 @@ if __name__ == "__main__":
     logger.info("Action masks shape: %s (all True: %s)", masks.shape, np.all(masks))
 
     # -- MaskablePPO Agent -------------------------------------------------
-    logger.info("Creating MaskablePPO agent...")
-
-    model = MaskablePPO(
-        "MlpPolicy",
-        env,
-        learning_rate=LEARNING_RATE,
-        clip_range=CLIP_RANGE,
-        n_steps=N_STEPS,
-        batch_size=BATCH_SIZE,
-        n_epochs=N_EPOCHS,
-        gae_lambda=GAE_LAMBDA,
-        gamma=GAMMA,
-        ent_coef=ENT_COEF,
-        policy_kwargs=dict(net_arch=NET_ARCH),
-        seed=42,
-        verbose=1,
-    )
+    if resume_ckpt is not None:
+        logger.info("Loading model from checkpoint: %s", resume_ckpt)
+        model = MaskablePPO.load(
+            str(resume_ckpt),
+            env=env,
+            verbose=1,
+        )
+        logger.info(
+            "Model loaded — will continue training with reset_num_timesteps=False"
+        )
+    else:
+        logger.info("Creating fresh MaskablePPO agent...")
+        model = MaskablePPO(
+            "MlpPolicy",
+            env,
+            learning_rate=LEARNING_RATE,
+            clip_range=CLIP_RANGE,
+            n_steps=N_STEPS,
+            batch_size=BATCH_SIZE,
+            n_epochs=N_EPOCHS,
+            gae_lambda=GAE_LAMBDA,
+            gamma=GAMMA,
+            ent_coef=ENT_COEF,
+            policy_kwargs=dict(net_arch=NET_ARCH),
+            seed=42,
+            verbose=1,
+        )
 
     logger.info("Policy network:\n%s", model.policy.mlp_extractor)
     total_params = sum(p.numel() for p in model.policy.parameters())
     logger.info("Total parameters: %d", total_params)
 
     # -- Callback ----------------------------------------------------------
-    callback = ThesisLoggingCallback(run_dir=run_dir, verbose=1)
+    callback = ThesisLoggingCallback(run_dir=run_dir, verbose=1, checkpoint_interval=10)
 
     # -- Train! ------------------------------------------------------------
     t0 = time.perf_counter()
@@ -271,7 +307,11 @@ if __name__ == "__main__":
         est_rollouts,
     )
 
-    model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=callback)
+    model.learn(
+        total_timesteps=TOTAL_TIMESTEPS,
+        callback=callback,
+        reset_num_timesteps=(resume_ckpt is None),
+    )
 
     train_time = time.perf_counter() - t0
     logger.info(
