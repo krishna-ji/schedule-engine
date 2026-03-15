@@ -50,10 +50,10 @@ logger = logging.getLogger("rl_03_train_dqn")
 # ======================================================================
 
 SEED = 42
-POP_SIZE = 120
+POP_SIZE = 40  # Reduced from 120 → ~5-7s/step instead of ~37s
 MAX_GENERATIONS = 50  # episode length during training
-TOTAL_TIMESTEPS = 150_000  # DQN training budget
-EVAL_GENERATIONS = 200
+TOTAL_TIMESTEPS = 10_000  # Reduced from 150k (DQN has no VecEnv support)
+EVAL_GENERATIONS = 50  # Reduced from 200
 LEARNING_RATE = 1e-4
 NET_ARCH = [64, 64]
 PKL_PATH = ".cache/events_with_domains.pkl"
@@ -62,9 +62,9 @@ TRAIN_TOLERANCE = 10.0
 EVAL_TOLERANCE = 0.0
 
 # DQN-specific
-BUFFER_SIZE = 100_000
+BUFFER_SIZE = 10_000  # Reduced from 100k to match timesteps
 BATCH_SIZE = 32
-TARGET_UPDATE_INTERVAL = 1000
+TARGET_UPDATE_INTERVAL = 500  # Reduced from 1000
 EXPLORATION_FRACTION = 0.1
 EXPLORATION_FINAL_EPS = 0.05
 
