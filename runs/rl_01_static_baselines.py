@@ -24,7 +24,7 @@ Usage::
 
     python runs/rl_01_static_baselines.py
 
-Outputs (in ``output/rl_phase54/``)::
+Outputs (in ``output/rl_static_baselines/``)::
 
     static_baselines.csv
 """
@@ -154,7 +154,7 @@ def main() -> Path:
     """Run all 6 static baselines × 3 seeds and export CSV."""
     from src.rl.actions.vectorized_ops import ACTION_NAMES, NUM_ACTIONS
 
-    out_dir = PROJECT_ROOT / "output" / "rl_phase54"
+    out_dir = PROJECT_ROOT / "output" / "rl_static_baselines"
     out_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / "static_baselines.csv"
 

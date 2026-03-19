@@ -98,9 +98,17 @@ PKL_PATH = ".cache/events_with_domains.pkl"
 MODEL_DIR = PROJECT_ROOT / "output" / "models"
 MODEL_PATH = MODEL_DIR / "ppo_titan_v4_sota.zip"
 
-# Resume support — set to a run directory to resume from its latest checkpoint
-# e.g. RESUME_FROM = PROJECT_ROOT / "output" / "rl_titan_v4_sota" / "20260315_120000"
-RESUME_FROM: Path | None = None
+MAX_CRASH_RETRIES = 10  # Max auto-restarts on BrokenPipeError
+CHECKPOINT_INTERVAL = 5  # Save every 5 episodes (more frequent = less lost)
+
+
+def _find_latest_checkpoint(run_dir: Path) -> Path | None:
+    """Return the most recent checkpoint .zip in run_dir/checkpoints/, or None."""
+    ckpt_dir = run_dir / "checkpoints"
+    if not ckpt_dir.exists():
+        return None
+    ckpts = sorted(ckpt_dir.glob("checkpoint_*.zip"), key=lambda p: p.stat().st_mtime)
+    return ckpts[-1] if ckpts else None
 
 
 # ======================================================================
@@ -165,32 +173,10 @@ if __name__ == "__main__":
     _preflight_check(PKL_PATH, run_preflight=True)
     logger.info("Preflight PASSED — workers will skip redundant checks.")
 
-    # -- Resume detection ---------------------------------------------------
-    resume_ckpt: Path | None = None
-    if RESUME_FROM is not None:
-        ckpt_dir = RESUME_FROM / "checkpoints"
-        if ckpt_dir.exists():
-            ckpts = sorted(
-                ckpt_dir.glob("checkpoint_*.zip"), key=lambda p: p.stat().st_mtime
-            )
-            if ckpts:
-                resume_ckpt = ckpts[-1]
-                logger.info("RESUME: Found checkpoint %s", resume_ckpt)
-            else:
-                logger.warning(
-                    "RESUME_FROM set but no checkpoints found in %s", ckpt_dir
-                )
-        else:
-            logger.warning("RESUME_FROM set but checkpoints/ dir missing: %s", ckpt_dir)
-
     # -- Output directory --------------------------------------------------
-    if RESUME_FROM is not None and RESUME_FROM.exists():
-        run_dir = RESUME_FROM  # continue in the same directory
-        logger.info("Resuming into existing run_dir: %s", run_dir)
-    else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_dir = PROJECT_ROOT / "output" / "rl_titan_v4_sota" / timestamp
-        run_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = PROJECT_ROOT / "output" / "rl_titan_v4_sota" / timestamp
+    run_dir.mkdir(parents=True, exist_ok=True)
 
     est_eps_per_worker = TOTAL_TIMESTEPS // (NUM_CPU * (TRAIN_MAX_GEN - 1))
     est_rollouts = -(-TOTAL_TIMESTEPS // (NUM_CPU * N_STEPS))
@@ -242,118 +228,174 @@ if __name__ == "__main__":
     logger.info("")
     logger.info("  Model:       %s", MODEL_PATH)
     logger.info("  Run dir:     %s", run_dir)
+    logger.info(
+        "  Auto-restart: up to %d retries on BrokenPipeError", MAX_CRASH_RETRIES
+    )
     print("=" * 80)
     print()
 
-    # -- Create 24 parallel environments -----------------------------------
-    logger.info("Spawning %d subprocess environments (expect 30-60s delay)...", NUM_CPU)
-    t_spawn = time.perf_counter()
-
-    env = SubprocVecEnv(
-        [make_env(i) for i in range(NUM_CPU)],
-        start_method="spawn",
-    )
-
-    spawn_time = time.perf_counter() - t_spawn
-    logger.info("All %d environments spawned in %.1fs", NUM_CPU, spawn_time)
-
-    # Verify action masks work through the vec env pipe
-    masks = np.stack(env.env_method("action_masks"))
-    logger.info("Action masks shape: %s (all True: %s)", masks.shape, np.all(masks))
-
-    # -- MaskablePPO Agent -------------------------------------------------
-    if resume_ckpt is not None:
-        logger.info("Loading model from checkpoint: %s", resume_ckpt)
-        model = MaskablePPO.load(
-            str(resume_ckpt),
-            env=env,
-            verbose=1,
-        )
-        logger.info(
-            "Model loaded — will continue training with reset_num_timesteps=False"
-        )
-    else:
-        logger.info("Creating fresh MaskablePPO agent...")
-        model = MaskablePPO(
-            "MlpPolicy",
-            env,
-            learning_rate=LEARNING_RATE,
-            clip_range=CLIP_RANGE,
-            n_steps=N_STEPS,
-            batch_size=BATCH_SIZE,
-            n_epochs=N_EPOCHS,
-            gae_lambda=GAE_LAMBDA,
-            gamma=GAMMA,
-            ent_coef=ENT_COEF,
-            policy_kwargs=dict(net_arch=NET_ARCH),
-            seed=42,
-            verbose=1,
-        )
-
-    logger.info("Policy network:\n%s", model.policy.mlp_extractor)
-    total_params = sum(p.numel() for p in model.policy.parameters())
-    logger.info("Total parameters: %d", total_params)
-
-    # -- Callback ----------------------------------------------------------
-    callback = ThesisLoggingCallback(run_dir=run_dir, verbose=1, checkpoint_interval=10)
-
-    # -- Train! ------------------------------------------------------------
+    # ==================================================================
+    # Auto-restart training loop
+    # ==================================================================
     t0 = time.perf_counter()
     start_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info("Training started at %s", start_str)
-    logger.info(
-        "ETA: ~%d hours (%d rollouts × ~36 min each)",
-        est_rollouts * 36 // 60,
-        est_rollouts,
-    )
 
-    model.learn(
-        total_timesteps=TOTAL_TIMESTEPS,
-        callback=callback,
-        reset_num_timesteps=(resume_ckpt is None),
-    )
+    crash_count = 0
+    training_complete = False
+
+    while not training_complete and crash_count <= MAX_CRASH_RETRIES:
+        env = None
+        try:
+            # -- Spawn environments ------------------------------------
+            logger.info(
+                "Spawning %d subprocess environments (attempt %d)...",
+                NUM_CPU,
+                crash_count + 1,
+            )
+            t_spawn = time.perf_counter()
+            env = SubprocVecEnv(
+                [make_env(i) for i in range(NUM_CPU)],
+                start_method="spawn",
+            )
+            spawn_time = time.perf_counter() - t_spawn
+            logger.info("All %d environments spawned in %.1fs", NUM_CPU, spawn_time)
+
+            # Verify action masks
+            masks = np.stack(env.env_method("action_masks"))
+            logger.info(
+                "Action masks shape: %s (all True: %s)", masks.shape, np.all(masks)
+            )
+
+            # -- Create or load model ----------------------------------
+            resume_ckpt = _find_latest_checkpoint(run_dir)
+            if resume_ckpt is not None:
+                logger.info("RESUME: Loading checkpoint %s", resume_ckpt)
+                model = MaskablePPO.load(str(resume_ckpt), env=env, verbose=1)
+                reset_ts = False
+                logger.info(
+                    "Model loaded (ts=%d) — continuing training",
+                    model.num_timesteps,
+                )
+            else:
+                logger.info("Creating fresh MaskablePPO agent...")
+                model = MaskablePPO(
+                    "MlpPolicy",
+                    env,
+                    learning_rate=LEARNING_RATE,
+                    clip_range=CLIP_RANGE,
+                    n_steps=N_STEPS,
+                    batch_size=BATCH_SIZE,
+                    n_epochs=N_EPOCHS,
+                    gae_lambda=GAE_LAMBDA,
+                    gamma=GAMMA,
+                    ent_coef=ENT_COEF,
+                    policy_kwargs={"net_arch": NET_ARCH},
+                    seed=42,
+                    verbose=1,
+                )
+                reset_ts = True
+
+            logger.info("Policy network:\n%s", model.policy.mlp_extractor)
+            total_params = sum(p.numel() for p in model.policy.parameters())
+            logger.info("Total parameters: %d", total_params)
+
+            # -- Callback ----------------------------------------------
+            callback = ThesisLoggingCallback(
+                run_dir=run_dir,
+                verbose=1,
+                checkpoint_interval=CHECKPOINT_INTERVAL,
+            )
+
+            # -- Train! ------------------------------------------------
+            logger.info(
+                "ETA: ~%d hours (%d rollouts × ~36 min each)",
+                est_rollouts * 36 // 60,
+                est_rollouts,
+            )
+            model.learn(
+                total_timesteps=TOTAL_TIMESTEPS,
+                callback=callback,
+                reset_num_timesteps=reset_ts,
+            )
+
+            training_complete = True
+            logger.info("Training completed successfully!")
+
+        except (BrokenPipeError, EOFError, ConnectionResetError) as exc:
+            crash_count += 1
+            logger.error("CRASH #%d: %s — %s", crash_count, type(exc).__name__, exc)
+
+            # Save emergency checkpoint if model exists
+            try:
+                emergency_path = run_dir / "checkpoints" / "emergency_crash"
+                (run_dir / "checkpoints").mkdir(parents=True, exist_ok=True)
+                model.save(str(emergency_path))
+                logger.info("Emergency checkpoint saved: %s", emergency_path)
+            except Exception:
+                logger.warning("Could not save emergency checkpoint")
+
+            if crash_count > MAX_CRASH_RETRIES:
+                logger.error("Max retries (%d) exceeded. Giving up.", MAX_CRASH_RETRIES)
+                break
+
+            logger.info(
+                "Auto-restarting in 5 seconds... (attempt %d/%d)",
+                crash_count + 1,
+                MAX_CRASH_RETRIES + 1,
+            )
+            time.sleep(5)
+
+        finally:
+            # Always try to close the env to release subprocess resources
+            if env is not None:
+                try:
+                    env.close()
+                except Exception:
+                    pass
 
     train_time = time.perf_counter() - t0
     logger.info(
-        "Training complete in %.1fs (%.1f min, %.1f hours)",
+        "Total wall-clock: %.1fs (%.1f min, %.1f hours), crashes: %d",
         train_time,
         train_time / 60,
         train_time / 3600,
+        crash_count,
     )
 
-    # -- Save model --------------------------------------------------------
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    model.save(str(MODEL_PATH))
-    logger.info("Model saved: %s", MODEL_PATH)
+    # -- Save final model --------------------------------------------------
+    if training_complete:
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        model.save(str(MODEL_PATH))
+        logger.info("Model saved: %s", MODEL_PATH)
 
-    # Also save in run dir
-    run_model = run_dir / "ppo_titan_v4_sota.zip"
-    model.save(str(run_model))
-    logger.info("Model copy: %s", run_model)
-
-    # -- Cleanup -----------------------------------------------------------
-    env.close()
+        run_model = run_dir / "ppo_titan_v4_sota.zip"
+        model.save(str(run_model))
+        logger.info("Model copy: %s", run_model)
 
     # -- Summary -----------------------------------------------------------
     print()
     print("=" * 80)
-    print("  TITAN V4 SOTA TRAINING COMPLETE")
+    status = (
+        "COMPLETE" if training_complete else f"FAILED (after {crash_count} crashes)"
+    )
+    print(f"  TITAN V4 SOTA TRAINING {status}")
     print("=" * 80)
     print(f"  Wall-clock:      {train_time:.0f}s ({train_time / 3600:.1f} hours)")
     print(f"  Timesteps:       {TOTAL_TIMESTEPS}")
-    ep_count = callback._episode_count if hasattr(callback, "_episode_count") else "?"
-    print(f"  Episodes:        {ep_count} (logged from env 0 only)")
     print(f"  Workers:         {NUM_CPU}")
+    print(f"  Crashes/Restarts: {crash_count}")
     print(f"  PBRS:            γ={PBRS_GAMMA}, Tier2={USE_CHROMOSOME_POTENTIAL}")
     print(f"  Curriculum:      {PHASE1_EPISODES}/{PHASE2_EPISODES} episode thresholds")
     print(f"  Model:           {MODEL_PATH}")
     print(f"  Run dir:         {run_dir}")
     print()
-    print("  Next: python runs/eval_titan_v3_stochastic.py")
-    print("         (update MODEL_PATH to ppo_titan_v4_sota.zip)")
+    if training_complete:
+        print("  Next: python runs/eval_titan_v3_stochastic.py")
+        print("         (update MODEL_PATH to ppo_titan_v4_sota.zip)")
     print("=" * 80)
 
-    # Generate thesis plots
-    from src.rl.training.plot_thesis_figures import generate_plots
+    if training_complete:
+        from src.rl.training.plot_thesis_figures import generate_plots
 
-    generate_plots(run_dir)
+        generate_plots(run_dir)

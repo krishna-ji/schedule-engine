@@ -80,7 +80,8 @@
         ".pytest_cache/": true,
         ".data": true,
         ".mypy_cache/": true,
-        ".ruff_cache/": true
+        ".ruff_cache/": true,
+        "**/build/": true,
     },
     // ==================
     // TOKEN CUSTOMIZATION
