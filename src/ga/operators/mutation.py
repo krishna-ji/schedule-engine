@@ -77,6 +77,11 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
 
     start_q, num_q = quanta_list_to_contiguous(new_quanta)
 
+    # Co-instructor: mutate for practical genes
+    new_co_instructors = _mutate_co_instructors(
+        gene, new_instructor, qualified_instructors
+    )
+
     return SessionGene(
         course_id=new_course_id,  # NEVER MUTATED
         course_type=gene.course_type,  # NEVER MUTATED
@@ -85,6 +90,7 @@ def mutate_gene(gene: SessionGene, context: SchedulingContext) -> SessionGene:
         room_id=new_room,  # Mutated
         start_quanta=start_q,
         num_quanta=num_q,
+        co_instructor_ids=new_co_instructors,
     )
 
 
@@ -293,6 +299,9 @@ def mutate_individual(
                 room_id=new_room,
                 start_quanta=start_q,
                 num_quanta=num_q,
+                co_instructor_ids=_mutate_co_instructors(
+                    gene, new_instructor, qualified_instructors
+                ),
             )
     return (individual,)
 
@@ -388,7 +397,34 @@ def mutate_gene_spreading(
         room_id=new_room,
         start_quanta=new_start,
         num_quanta=gene.num_quanta,
+        co_instructor_ids=_mutate_co_instructors(
+            gene, new_instructor, list(domain.instructors)
+        ),
     )
 
     tracker.add_gene(new_gene)
     return new_gene
+
+
+def _mutate_co_instructors(
+    gene: SessionGene,
+    new_main_instructor: str,
+    qualified_instructors: list[str],
+) -> list[str]:
+    """Return co-instructor list for a mutated gene.
+
+    Structural invariant: practical genes ALWAYS have exactly 1
+    co-instructor. Theory genes always have none.
+    """
+    if gene.course_type != "practical":
+        return []
+    candidates = [iid for iid in qualified_instructors if iid != new_main_instructor]
+    if not candidates:
+        # Preserve existing co-instructor (data guarantees availability)
+        existing = getattr(gene, "co_instructor_ids", [])
+        return list(existing) if existing else [new_main_instructor]
+    # 60% keep current co-instructor if still valid, 40% pick new
+    current_co = getattr(gene, "co_instructor_ids", [])
+    if current_co and current_co[0] in candidates and random.random() < 0.6:
+        return list(current_co)
+    return [random.choice(candidates)]

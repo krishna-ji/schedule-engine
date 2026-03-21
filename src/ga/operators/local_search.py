@@ -273,6 +273,7 @@ def _generate_time_neighbors(
             room_id=gene.room_id,
             start_quanta=start_q,
             num_quanta=num_q,
+            co_instructor_ids=list(gene.co_instructor_ids),
         )
         neighbors.append(neighbor)
 
@@ -306,6 +307,7 @@ def _generate_room_neighbors(
             room_id=room.room_id,
             start_quanta=gene.start_quanta,
             num_quanta=gene.num_quanta,
+            co_instructor_ids=list(gene.co_instructor_ids),
         )
         neighbors.append(neighbor)
 
@@ -344,6 +346,9 @@ def _generate_instructor_neighbors(
             room_id=gene.room_id,
             start_quanta=gene.start_quanta,
             num_quanta=gene.num_quanta,
+            co_instructor_ids=_pick_co_instructors(
+                gene, instructor.instructor_id, context
+            ),
         )
         neighbors.append(neighbor)
 
@@ -415,6 +420,9 @@ def _generate_time_instructor_neighbors(
                 room_id=gene.room_id,
                 start_quanta=start_q,
                 num_quanta=duration,
+                co_instructor_ids=_pick_co_instructors(
+                    gene, instructor.instructor_id, context
+                ),
             )
             neighbors.append(neighbor)
             if len(neighbors) >= max_combined:
@@ -450,6 +458,37 @@ def _is_room_suitable(
         return False  # Don't use labs for theory
 
     return True
+
+
+def _pick_co_instructors(
+    gene: SessionGene,
+    new_main_instructor: str,
+    context: SchedulingContext,
+) -> list[str]:
+    """Return co-instructor list preserving the structural invariant.
+
+    For practical genes: keep existing co-instructor if valid (different from
+    new main), otherwise pick another qualified one.
+    For theory genes: always empty.
+    """
+    if gene.course_type != "practical":
+        return []
+    # Keep current co-instructor if it differs from new main
+    current_co = gene.co_instructor_ids
+    if current_co and current_co[0] != new_main_instructor:
+        return list(current_co)
+    # Pick a new co-instructor
+    course_key = (gene.course_id, gene.course_type)
+    candidates = [
+        iid
+        for iid, inst in context.instructors.items()
+        if course_key in getattr(inst, "qualified_courses", [])
+        and iid != new_main_instructor
+    ]
+    if candidates:
+        return [random.choice(candidates)]
+    others = [iid for iid in context.instructors if iid != new_main_instructor]
+    return [random.choice(others)] if others else list(current_co)
 
 
 def _count_gene_violations(

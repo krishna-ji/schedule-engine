@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -60,6 +60,9 @@ class SessionGene:
     # Contiguous block representation (NEW)
     start_quanta: int  # Starting quantum index (e.g., 10 = Monday 10:00 AM)
     num_quanta: int  # Duration in quanta (e.g., 2 = 2-hour block)
+
+    # Co-instructors for practical sessions (domain rule: practicals need 3 teachers)
+    co_instructor_ids: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Validate quantum range and continuity constraints."""

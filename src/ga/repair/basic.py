@@ -57,6 +57,7 @@ Usage:
     # Mode C-E: Applied with adaptive triggers (stagnation, periodic)
 """
 
+import random
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
@@ -269,6 +270,7 @@ def repair_instructor_availability_reassign(
 
         if new_instructor_id is not None:
             gene.instructor_id = new_instructor_id
+            _repair_co_instructors(gene, new_instructor_id, context)
             fixes += 1
             # Rebuild occupied map with the new instructor assignment
             occupied = _build_occupied_quanta_map(individual)
@@ -476,6 +478,7 @@ def repair_instructor_conflicts(
 
         if new_instructor is not None:
             gene.instructor_id = new_instructor
+            _repair_co_instructors(gene, new_instructor, context)
             fixes += 1
             occupied = _build_occupied_quanta_map(individual)
 
@@ -509,6 +512,7 @@ def repair_instructor_qualifications(
         replacement = _find_available_instructor(individual, gene, context, course_key)
         if replacement is not None:
             gene.instructor_id = replacement
+            _repair_co_instructors(gene, replacement, context)
             fixes += 1
 
     return fixes
@@ -1139,6 +1143,30 @@ def _find_available_slot(
         Start quantum if valid slot found, None otherwise
     """
     return _find_conflict_free_slot(individual, current_gene, available_quanta)
+
+
+def _repair_co_instructors(
+    gene: SessionGene,
+    new_main: str,
+    context: SchedulingContext,
+) -> None:
+    """Ensure practical gene keeps a valid co-instructor after main swap."""
+    if gene.course_type != "practical":
+        return
+    current_co = getattr(gene, "co_instructor_ids", [])
+    if current_co and current_co[0] != new_main:
+        return  # existing co-instructor is still valid
+    course_key = (gene.course_id, gene.course_type)
+    candidates = [
+        iid
+        for iid, inst in context.instructors.items()
+        if course_key in getattr(inst, "qualified_courses", []) and iid != new_main
+    ]
+    if candidates:
+        gene.co_instructor_ids = [random.choice(candidates)]
+    else:
+        others = [iid for iid in context.instructors if iid != new_main]
+        gene.co_instructor_ids = [random.choice(others)] if others else list(current_co)
 
 
 def _find_available_instructor(

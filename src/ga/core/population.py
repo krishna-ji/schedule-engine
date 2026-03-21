@@ -597,6 +597,7 @@ def _create_single_individual_wrapper(
             genes.append(session_gene)
 
     if genes:
+        _assign_practical_co_instructors(genes, context)
         return genes
     if not silent:
         logger.warning("Individual %s has no genes!", individual_idx + 1)
@@ -897,8 +898,40 @@ def _create_individual_with_spreading(
             gene_idx += 1
 
     if genes:
+        _assign_practical_co_instructors(genes, context)
         return genes
     return None
+
+
+def _assign_practical_co_instructors(
+    genes: list[SessionGene],
+    context: SchedulingContext,
+) -> None:
+    """Assign one co-instructor to every practical gene (in-place).
+
+    Structural invariant: each practical session ALWAYS has exactly
+    2 instructors (1 main + 1 co-instructor). This is not an optimisation
+    objective — it is enforced at construction and preserved by every
+    operator (mutation, crossover).
+    """
+    for gene in genes:
+        if gene.course_type != "practical":
+            continue
+        course_key = (gene.course_id, gene.course_type)
+        qualified = [
+            iid
+            for iid, inst in context.instructors.items()
+            if course_key in getattr(inst, "qualified_courses", [])
+            and iid != gene.instructor_id
+        ]
+        if qualified:
+            gene.co_instructor_ids = [random.choice(qualified)]
+        else:
+            # Data guarantees enough instructors; pick any other as fallback
+            others = [iid for iid in context.instructors if iid != gene.instructor_id]
+            gene.co_instructor_ids = (
+                [random.choice(others)] if others else [gene.instructor_id]
+            )
 
 
 def extract_course_group_relationships(

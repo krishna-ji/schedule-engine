@@ -123,6 +123,7 @@ def _save_schedule_as_json(
                 "course_type": session.course_type,
                 "instructor_id": session.instructor_id,
                 "instructor_name": instructor_name,
+                "co_instructor_ids": getattr(session, "co_instructor_ids", []),
                 "group_ids": (
                     session.group_ids
                 ),  # Export as list for multi-group support

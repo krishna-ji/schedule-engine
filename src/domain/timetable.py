@@ -339,6 +339,8 @@ class Timetable:
             for gid in gene.group_ids:
                 genes_by_group[gid].append(idx)
             genes_by_instructor[gene.instructor_id].append(idx)
+            for co_id in getattr(gene, "co_instructor_ids", []):
+                genes_by_instructor[co_id].append(idx)
             genes_by_room[gene.room_id].append(idx)
 
             # Completeness: accumulate quanta per (course, type, group)
@@ -358,6 +360,9 @@ class Timetable:
                 for gid in gene.group_ids:
                     group_occ[(gid, q)].append(idx)
                 instructor_occ[(gene.instructor_id, q)].append(idx)
+                # Co-instructors also occupy the same time slots
+                for co_id in getattr(gene, "co_instructor_ids", []):
+                    instructor_occ[(co_id, q)].append(idx)
                 room_occ[(gene.room_id, q)].append(idx)
 
                 # Per-quantum gene list
@@ -373,6 +378,8 @@ class Timetable:
                     for gid in gene.group_ids:
                         group_daily[gid][day].add(within_day)
                     instructor_daily[gene.instructor_id][day].add(within_day)
+                    for co_id in getattr(gene, "co_instructor_ids", []):
+                        instructor_daily[co_id][day].add(within_day)
                     course_daily[(gene.course_id, gene.course_type)][day].append(
                         within_day
                     )

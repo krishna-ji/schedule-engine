@@ -301,11 +301,14 @@ def _compute_instructor_violations(
     """
     result: dict[str, dict[str, int]] = {}
 
-    # Double-booking: >=2 sessions at same quantum
+    # Double-booking: >=2 sessions at same quantum (includes co-instructors)
     occ: dict[str, Counter] = defaultdict(Counter)
     for s in sessions:
         for q in s.session_quanta:
             occ[s.instructor_id][q] += 1
+            for co_id in getattr(s, "co_instructor_ids", []):
+                if co_id != s.instructor_id:
+                    occ[co_id][q] += 1
 
     for iid, inst in instructors.items():
         dbl = sum(max(0, c - 1) for c in occ.get(iid, {}).values())
@@ -313,7 +316,10 @@ def _compute_instructor_violations(
         avail_v = 0
         if not inst.is_full_time:
             for s in sessions:
-                if s.instructor_id != iid:
+                is_assigned = s.instructor_id == iid or iid in getattr(
+                    s, "co_instructor_ids", []
+                )
+                if not is_assigned:
                     continue
                 for q in s.session_quanta:
                     if q not in inst.available_quanta:
@@ -427,10 +433,13 @@ def generate_instructor_schedules_pdf(
     start_hour, end_hour = auto_start, auto_end
     num_days = len(active_days)
     num_hours = end_hour - start_hour
-    # Collect sessions per instructor
+    # Collect sessions per instructor (include co-instructor assignments)
     inst_sessions: dict[str, list[CourseSession]] = defaultdict(list)
     for s in sessions:
         inst_sessions[s.instructor_id].append(s)
+        for co_id in getattr(s, "co_instructor_ids", []):
+            if co_id != s.instructor_id:
+                inst_sessions[co_id].append(s)
 
     # Build color map
     course_ids: set[tuple[str, str]] = set()
@@ -747,10 +756,16 @@ def _sessions_to_cal(
         else:
             inst_name = s.instructor_id
 
+        co_names = []
+        for co_id in getattr(s, "co_instructor_ids", []):
+            if co_id != s.instructor_id:
+                co_names.append(co_id)
+
         if label_mode == "instructor":
             label = f"{course_label}, {groups_str}"
         else:
-            label = f"{course_label}, {inst_name}\n{groups_str}"
+            co_suffix = f" +{','.join(co_names)}" if co_names else ""
+            label = f"{course_label}, {inst_name}{co_suffix}\n{groups_str}"
 
         # Convert quanta to day/time
         schedule = qts.decode_schedule(set(s.session_quanta))

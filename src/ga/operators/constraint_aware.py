@@ -204,6 +204,7 @@ def mutate_gene_constraint_aware(
         room_id=new_room,
         start_quanta=new_start,
         num_quanta=gene.num_quanta,  # NEVER mutated
+        co_instructor_ids=_update_co_instructors(gene, new_instructor, context),
     )
 
 
@@ -222,6 +223,35 @@ def mutate_individual_constraint_aware(
             individual[i] = mutate_gene_constraint_aware(
                 individual[i], list(individual), context
             )
+
+    return (individual,)
+
+
+def _update_co_instructors(
+    gene: SessionGene,
+    new_main_instructor: str,
+    context: SchedulingContext,
+) -> list[str]:
+    """Return valid co-instructor list when main instructor may change.
+
+    Structural invariant: practical genes always have exactly 1 co-instructor.
+    """
+    if gene.course_type != "practical":
+        return []
+    current_co = getattr(gene, "co_instructor_ids", [])
+    if current_co and current_co[0] != new_main_instructor:
+        return list(current_co)
+    course_key = (gene.course_id, gene.course_type)
+    candidates = [
+        iid
+        for iid, inst in context.instructors.items()
+        if course_key in getattr(inst, "qualified_courses", [])
+        and iid != new_main_instructor
+    ]
+    if candidates:
+        return [random.choice(candidates)]
+    others = [iid for iid in context.instructors if iid != new_main_instructor]
+    return [random.choice(others)] if others else list(current_co)
 
     return (individual,)
 
@@ -304,6 +334,12 @@ def crossover_constraint_aware(
 
         # Swap room
         gene1.room_id, gene2.room_id = gene2.room_id, gene1.room_id
+
+        # Swap co-instructors
+        gene1.co_instructor_ids, gene2.co_instructor_ids = (
+            gene2.co_instructor_ids,
+            gene1.co_instructor_ids,
+        )
 
         # Swap time (start only - duration is fixed)
         gene1.start_quanta, gene2.start_quanta = gene2.start_quanta, gene1.start_quanta

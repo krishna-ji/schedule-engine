@@ -111,6 +111,7 @@ def decode_individual(
             instructor=instructor,
             group=group,  # Primary group (first in list)
             room=room,
+            co_instructor_ids=list(getattr(gene, "co_instructor_ids", [])),
         )
 
         decoded_sessions.append(session)

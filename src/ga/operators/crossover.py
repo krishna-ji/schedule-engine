@@ -152,6 +152,11 @@ def crossover_course_group_aware(
                 gene2.start_quanta,
                 gene1.start_quanta,
             )
+            # Swap co-instructors (practical sessions)
+            gene1.co_instructor_ids, gene2.co_instructor_ids = (
+                gene2.co_instructor_ids,
+                gene1.co_instructor_ids,
+            )
             # DO NOT swap num_quanta - it's fixed by course.quanta_per_week (L+T or P)
 
     # Validate start_quanta don't exceed valid range after swap

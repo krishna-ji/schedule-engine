@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -45,3 +45,4 @@ class CourseSession:
     instructor: Instructor | None = None
     group: Group | None = None
     room: Room | None = None
+    co_instructor_ids: list[str] = field(default_factory=list)

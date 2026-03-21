@@ -662,6 +662,37 @@ class BreakPlacementCompliance:
         return windows
 
 
+class PracticalMinInstructors:
+    """Practical sessions must have a minimum number of instructors (default 2).
+
+    Domain requirement: each practical/lab session needs 1 main instructor
+    plus 1 co-instructor (2 total). This checks that each practical gene
+    has enough total instructors (instructor_id + co_instructor_ids).
+    """
+
+    kind: str = "hard"
+
+    def __init__(self, weight: float = 1.0, min_instructors: int = 2):
+        self.name = "PMI"  # Practical Min Instructors
+        self.weight = weight
+        self.min_instructors = min_instructors
+
+    def evaluate(self, tt: Timetable) -> float:
+        violations = 0
+        for gene in tt.genes:
+            if gene.course_type != "practical":
+                continue
+            co_ids = getattr(gene, "co_instructor_ids", [])
+            total = 1 + len(co_ids)  # main + co-instructors
+            if total < self.min_instructors:
+                violations += self.min_instructors - total
+            # Also penalise duplicates among (main + co-instructors)
+            all_ids = [gene.instructor_id] + list(co_ids)
+            if len(set(all_ids)) < len(all_ids):
+                violations += len(all_ids) - len(set(all_ids))
+        return float(violations)
+
+
 # Registries
 
 
@@ -675,6 +706,7 @@ HARD_CONSTRAINT_CLASSES: list[Constraint] = [
     InstructorTimeAvailability(),
     CourseCompleteness(),
     SiblingSameDay(),
+    PracticalMinInstructors(),
 ]
 
 SOFT_CONSTRAINT_CLASSES: list[Constraint] = [
@@ -705,6 +737,7 @@ def build_constraints(
     instructor_time_availability_weight: float | None = None,
     course_completeness_weight: float | None = None,
     sibling_same_day_weight: float | None = None,
+    practical_min_instructors_weight: float | None = None,
     student_schedule_compactness_weight: float | None = None,
     instructor_schedule_compactness_weight: float | None = None,
     student_lunch_break_weight: float | None = None,
@@ -811,6 +844,13 @@ def build_constraints(
             weight=(
                 sibling_same_day_weight
                 if sibling_same_day_weight is not None
+                else hard_weight
+            )
+        ),
+        PracticalMinInstructors(
+            weight=(
+                practical_min_instructors_weight
+                if practical_min_instructors_weight is not None
                 else hard_weight
             )
         ),

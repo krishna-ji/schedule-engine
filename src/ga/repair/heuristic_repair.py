@@ -235,6 +235,7 @@ def _find_first_feasible(
                     room_id=room_id,
                     start_quanta=span[0],
                     num_quanta=len(span),
+                    co_instructor_ids=list(getattr(session, "co_instructor_ids", [])),
                 )
 
     return None
@@ -383,6 +384,7 @@ def _random_assignment(
                     room_id=random.choice(suitable),
                     start_quanta=start_q,
                     num_quanta=session_duration,
+                    co_instructor_ids=list(getattr(session, "co_instructor_ids", [])),
                 )
 
     return None
@@ -443,6 +445,7 @@ def _propose_move(
                 room_id=session.room_id,
                 start_quanta=session.start_quanta,
                 num_quanta=session.num_quanta,
+                co_instructor_ids=list(getattr(session, "co_instructor_ids", [])),
             )
             return neighbor
 

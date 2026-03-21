@@ -434,6 +434,11 @@ class GAExperiment(BaseExperiment):
             X_best = res.pop[best_idx].get("X")
             genes = self._chromosome_to_genes(X_best, pkl_data)
             if genes is not None:
+                # Assign co-instructors for practical genes (pymoo chromosomes
+                # don't encode co_instructor_ids so we add them here).
+                from src.ga.core.population import _assign_practical_co_instructors
+
+                _assign_practical_co_instructors(genes, ctx)
                 self._safe_call(
                     "schedule decode + export",
                     lambda: self._export_schedule_pdfs(genes, ctx, qts, out),

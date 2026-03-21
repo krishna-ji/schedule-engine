@@ -181,6 +181,10 @@ def _check_instructor_conflicts(
         for q in session.session_quanta:
             key = (session.instructor_id, q)
             instructor_time_map[key].append(session)
+            # Co-instructors are also occupied
+            for co_id in getattr(session, "co_instructor_ids", []):
+                if co_id != session.instructor_id:
+                    instructor_time_map[(co_id, q)].append(session)
 
     # Find conflicts
     for (instructor_id, quantum), session_list in instructor_time_map.items():
@@ -280,6 +284,22 @@ def _check_instructor_qualifications(
                     "room": session.room.name if session.room else session.room_id,
                 }
             )
+        # Check co-instructor qualifications
+        for co_id in getattr(session, "co_instructor_ids", []):
+            if co_id not in course.qualified_instructor_ids:
+                course_display, course_code = _course_display(
+                    session.course_id, session.course_type, course_map
+                )
+                violations.append(
+                    {
+                        "course": course_display,
+                        "course_code": course_code,
+                        "course_type": session.course_type,
+                        "instructor": f"{co_id} (co-instructor)",
+                        "groups": ", ".join(session.group_ids),
+                        "room": session.room.name if session.room else session.room_id,
+                    }
+                )
 
     return violations
 
