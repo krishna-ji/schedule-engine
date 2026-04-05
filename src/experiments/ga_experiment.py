@@ -26,9 +26,9 @@ from pymoo.core.population import Population
 from .base import PROJECT_ROOT, BaseExperiment
 from .callback_core import (
     GACallbackBase,
-    _METRICS_INTERVAL,
-    _init_moea_lists,
-    _record_moea_metrics,
+    _METRICS_INTERVAL,  # noqa: F401 — re-exported for tests
+    _init_moea_lists,  # noqa: F401 — re-exported for tests
+    _record_moea_metrics,  # noqa: F401 — re-exported for tests
 )
 
 logger = logging.getLogger(__name__)
