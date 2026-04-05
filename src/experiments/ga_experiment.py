@@ -24,11 +24,21 @@ from pymoo.core.evaluator import Evaluator
 from pymoo.core.population import Population
 
 from .base import PROJECT_ROOT, BaseExperiment
-from .callback_core import GACallbackBase
+from .callback_core import (
+    GACallbackBase,
+    _METRICS_INTERVAL,
+    _init_moea_lists,
+    _record_moea_metrics,
+)
 
 logger = logging.getLogger(__name__)
 
 __version__ = "3.0.0"  # pymoo runner v3
+
+
+def _make_progress_cb(log_interval: int) -> GACallbackBase:
+    """Create a baseline progress callback with MOEA metric tracking."""
+    return GACallbackBase(log_interval)
 
 
 # ── Module-level worker for ProcessPoolExecutor (must be picklable) ──

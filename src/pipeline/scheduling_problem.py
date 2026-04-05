@@ -12,6 +12,7 @@ simplified numeric soft penalty.
 
 from __future__ import annotations
 
+import logging
 import pickle
 from typing import TYPE_CHECKING
 
@@ -246,6 +247,9 @@ def create_problem(
                         ):
                             course.specific_lab_features = []
         except Exception:
-            pass  # No soft evaluation; hard-only mode
+            logging.getLogger(__name__).debug(
+                "Could not load scheduling context; running in hard-only mode",
+                exc_info=True,
+            )
 
     return SchedulingProblem(pkl_path=pkl_path, ctx=ctx, qts=qts)

@@ -368,7 +368,7 @@ class InputValidator:
                 qualified_instructors = getattr(course, "qualified_instructor_ids", [])
                 if not qualified_instructors or len(qualified_instructors) == 0:
                     # Convert course_id to string (it might be a tuple like ('CE707', 'practical'))
-                    course_id_str = str(course_id)
+                    course_id_str = course_id[0] if isinstance(course_id, tuple) else str(course_id)
                     courses_without_instructors.append(
                         (
                             course_id_str,

@@ -216,6 +216,10 @@ class DataStore:
             hierarchy = analyze_group_hierarchy(self.groups)
             return build_group_family_map(hierarchy)
         except Exception:
+            logging.getLogger(__name__).debug(
+                "Could not build group family map; falling back to empty map",
+                exc_info=True,
+            )
             return {}
 
     def to_dict(self) -> dict[str, Any]:
